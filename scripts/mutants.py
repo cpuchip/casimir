@@ -64,8 +64,8 @@ MUTANTS = {
     ],
     # 001: 0×u folded to u
     "zero-times": [
-        ("src/casim.c", "if (rat_is(&cv, 0, 1)) return small(c, C_0);        /* 0×u is 0 */",
-         "if (rat_is(&cv, 0, 1)) rat_int(&cv, 1);"),
+        ("src/casim.c", "if (is_k(c, t[i], 0, 1)) return small(c, C_0);           /* 0×u is 0 */",
+         "if (is_k(c, t[i], 0, 1)) t[i] = small(c, C_1);"),
     ],
     # ours: u-u kept (a zero coefficient left in the sum)
     "u-minus-u-kept": [
@@ -73,8 +73,8 @@ MUTANTS = {
     ],
     # ours: a power's base printed bare when it is a product ((2×X)^1.5 as 2×X^1.5)
     "printer-pow-base": [
-        ("src/casim.c", "        print_in(c, w, b, level(c, b) < 4);\n        puts_(w, \"^\");",
-         "        print_in(c, w, b, level(c, b) < 2);\n        puts_(w, \"^\");"),
+        ("src/casim.c", "        print_in(c, w, b, level(c, b) < 4);\n        puts_(w, \"^\");\n        put_exp(c, w, x);",
+         "        print_in(c, w, b, level(c, b) < 2);\n        puts_(w, \"^\");\n        put_exp(c, w, x);"),
     ],
 }
 

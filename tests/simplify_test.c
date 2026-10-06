@@ -61,6 +61,55 @@ static void pair(const char *a, const char *b, int angle)
     CHECK(simp(oa, angle, again) == CASIM_OK && strcmp(again, oa) == 0, "not idempotent: %s -> %s", oa, again);
 }
 
+/* The fresh-eyes review's findings (2026-10-06), each now a test. */
+static void review(void)
+{
+    char t[4096], r[4096];
+    /* 1: a number kept apart (too long to fold) keeps its sign in a product */
+    is("X×(-3E18)×(-3E18)", "X×3000000000000000000×3000000000000000000");     /* one sign rule (review 2) */
+    is("(-3E18)×(-3E18)", "3000000000000000000×3000000000000000000");
+    is("X×(-3E18)×3E18", "X×(-3000000000000000000)×3000000000000000000");
+    is("117649×117649÷13319113015296÷13319113015296", "(1÷13319113015296)×(1÷13319113015296)×117649×117649");
+    /* 2: any merge gets another pass (a merge can make a power of another base, or a sum not primitive) */
+    is("SQRT(X^2)×SQRT(X^2)×X", "X^3");
+    is("SQRT(X^Y)×SQRT(X^Y)×X", "X^(Y+1)");
+    is("Y×(Y^0.5)^1.5÷(Y^0.5)^0.5", "Y^1.5");
+    is("SQRT(2×X+2)×SQRT(2×X+2)×Y", "2×Y×(X+1)");
+    is("SQRT(2×X+2)×SQRT(2×X+2)×(X+1)", "2×(X+1)^2");
+    /* 3: no limit on the numbers folded together */
+    strcpy(t, "1");
+    strcpy(r, "X");
+    for (int i = 2; i <= 25; i++) sprintf(t + strlen(t), "+%d", i);
+    strcat(t, "+X");
+    is(t, "X+325");
+    for (int i = 25; i >= 1; i--) sprintf(r + strlen(r), "+%d", i);
+    is(r, "X+325");
+    strcpy(t, "X");
+    for (int i = 0; i < 25; i++) strcat(t, "×2");
+    is(t, "33554432×X");
+    /* 4: a fold that would overflow folds nothing: every number apart, in order, a fixed point */
+    is("(-4E18)+(-4E18)+3E18+X", "X-4000000000000000000-4000000000000000000+3000000000000000000");
+    is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");
+    /* 5: 0 to a negative power stays as it is (undefined; 1÷0^2 would read back as 1÷0) */
+    is("0^(-2)", "0^(-2)");
+    is("(X-X)^(-2)", "0^(-2)");
+    /* the second review (2026-10-06): -1 and -1/2 too; a regrouped product still merges with its power;
+       a-b and -b+a agree with numbers that do not fold; a like-term merge with them stays canonical */
+    is("0^(-1)", "0^(-1)");
+    is("X÷0", "X×0^(-1)");
+    is("0^(-1÷2)", "0^(-0.5)");
+    pair("(SQRT(2×Z)×SQRT(2×Z))÷SQRT(2×Z)", "SQRT(2×Z)×SQRT(2×Z)÷SQRT(2×Z)", CASIM_RAD);
+    pair("(SQRT(Y×Z)×SQRT(Y×Z))÷SQRT(Y×Z)", "SQRT(Y×Z)×(SQRT(Y×Z)÷SQRT(Y×Z))", CASIM_RAD);
+    pair("X-4E18×4E18", "-4E18×4E18+X", CASIM_RAD);
+    pair("Y-X×4E18×4E18", "-(X×4E18×4E18)+Y", CASIM_RAD);
+    is("4E18×X×4E18×Y+4E18×Y×4E18×X", "X×Y×2×4000000000000000000×4000000000000000000");
+    is("2×SQRT(1.5)÷3", "2×SQRT(1.5)÷3");          /* a power of a number among numbers (pair test) */
+    /* the third review: a 19-digit decimal the printer writes reads back as the same number */
+    is("531441÷262144×X", "2.027286529541015625×X");
+    is("531441÷262144+531441÷262144", "4.05457305908203125");
+    is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-0.5×π-SQRT(π+5)-0.25^1.5");     /* whole powers fold only */
+}
+
 static void rules(void)
 {
     /* sums and products sorted: variables by letter, constants last in a sum, coefficient first */
@@ -224,6 +273,7 @@ static void visible_pairs(void)
 int main(void)
 {
     ce_init();
+    review();
     rules();
     folding();
     nesting();

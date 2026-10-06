@@ -25,7 +25,8 @@ enum {
     /* canonical (VAR and PI are raw too) */
     K_NUM, K_VAR, K_PI, K_FN, K_POW, K_MUL, K_ADD, K_EQ, K_LIT,
     /* raw only */
-    K_NEG, K_BADD, K_BSUB, K_BMUL, K_BDIV, K_BPOW, K_RFN, K_REQ, K_BAD
+    K_NEG, K_BADD, K_BSUB, K_BMUL, K_BDIV, K_BPOW, K_RFN, K_REQ, K_BAD,
+    K_GROUP                     /* a chain in written parentheses: a chain's walk stops there */
 };
 
 /* The functions casim knows (SGN only appears in a derivative). */
@@ -306,8 +307,8 @@ static bool rat_from_abn(rat *r, const abn *x)
         rat_int(r, 0);
         return true;
     }
-    if (nd_ > 18) return false;
-    for (int i = 0; i < nd_; i++) m = m * 10 + (d[i] - '0');
+    for (int i = 0; i < nd_; i++)          /* as many digits as fit: the rule decimal_of prints by */
+        if (!mul64(&m, m, 10) || !add64(&m, m, d[i] - '0')) return false;
     if (neg) m = -m;
     e = lead - nd_ + 1;
     if (e >= 0) return e <= 18 && mul64(&m, m, POW10[e]) && rat_make(r, m, 1);
@@ -415,8 +416,19 @@ static ref exp_of(ctx *c, ref f)
 
 static int by_factor(ctx *c, ref a, ref b)
 {
-    int s = cmp(c, base_of(c, a), base_of(c, b));
+    int s;
+    /* numbers after every other factor, together: a power of a number (SQRT(1.5)) sorts by its base's
+       value, and would otherwise fall between them (fold reads the numbers as one run; pair test) */
+    if (is_num(c, a) != is_num(c, b)) return is_num(c, a) ? 1 : -1;
+    s = cmp(c, base_of(c, a), base_of(c, b));
     return s ? s : cmp(c, exp_of(c, a), exp_of(c, b));
+}
+
+/* A product's operand list has a coefficient when its first operand is its only number. (Numbers that
+   could not be folded together stay apart, after the other factors; each is then a factor.) */
+static bool has_coef(const ctx *c, const ref *k, int n)
+{
+    return is_num(c, k[0]) && (n == 1 || !is_num(c, k[1]));
 }
 
 /* A term's monomial: its factors without the coefficient (one factor: the term itself). */
@@ -425,7 +437,7 @@ static const ref *mono(const ctx *c, const ref *t, int *n)
     const node *x = nd(c, *t);
     if (x->kind == K_MUL) {
         const ref *k = list(c, x->a);
-        int skip = is_num(c, k[0]);
+        int skip = has_coef(c, k, x->n);
         *n = x->n - skip;
         return k + skip;
     }
@@ -441,11 +453,6 @@ static int by_mono(ctx *c, ref a, ref b)
     if (na == 1) return (s = rank(c, x[0]) - 4) != 0 ? s : -1;
     if (nb == 1) return (s = 4 - rank(c, y[0])) != 0 ? s : 1;
     return cmp_lists(c, x, na, y, nb);
-}
-
-static int by_value(ctx *c, ref a, ref b)
-{
-    return cmp(c, a, b);
 }
 
 /* Insertion sort (stable): the lists are short. */
@@ -538,22 +545,47 @@ static int flatten(ctx *c, const ref *in, int n, int kind, ref *l)
     return m;
 }
 
-/* Moves the numbers out of t[0..m) (in order of value) and folds them with f into *v, starting from
-   *v; a number too long to fold stays in t. Returns the new length. */
-static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, const rat *))
+/* Sorts t[0..m) with by, then folds its numbers into *v with f, all of them or none. by puts the numbers
+   together, in order of value (both orders rank a number after every kind but a literal), so this works
+   in place. When any step would not fit, every number stays, in order, the identities (1 in a product, 0
+   in a sum) dropped: the result is the same whatever the grouping that led to it, and simplifying it
+   again changes nothing. Returns the new length. */
+static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, const rat *),
+                int (*by)(ctx *, ref, ref))
 {
-    ref nums[24];
-    int nn = 0, j = 0;
-    for (int i = 0; i < m; i++) {
-        if (is_num(c, t[i]) && nn < 24) nums[nn++] = t[i];
-        else t[j++] = t[i];
-    }
-    sort(c, nums, nn, by_value);
-    for (int i = 0; i < nn; i++) {
+    int first = 0, last, j;
+    rat acc = *v;
+    bool ok = true;
+    sort(c, t, m, by);
+    while (first < m && !is_num(c, t[first])) first++;
+    last = first;
+    while (last < m && is_num(c, t[last])) last++;
+    for (int i = first; i < last && ok; i++) {
         rat r;
-        if (f(&r, v, val(c, nums[i]))) *v = r;
-        else t[j++] = nums[i];
+        if ((ok = f(&r, &acc, val(c, t[i])))) acc = r;
     }
+    j = first;
+    if (ok) *v = acc;
+    else if (f == rat_add) {
+        for (int i = first; i < last; i++)
+            if (!is_k(c, t[i], 0, 1)) t[j++] = t[i];
+    } else {
+        /* a product's numbers apart: one sign rule, so X-4E18×4E18 and -4E18×4E18+X agree: their absolute
+           values in order, the 1s dropped, the product's sign on the first (second review) */
+        int neg_ = 0;
+        for (int i = first; i < last; i++) {
+            rat a = *val(c, t[i]);
+            if (a.p < 0) neg_ ^= 1, a.p = -a.p;
+            if (!rat_is(&a, 1, 1)) t[j++] = a.p == val(c, t[i])->p ? t[i] : num(c, &a);
+        }
+        sort(c, t + first, j - first, by);
+        if (neg_ && j > first) {
+            rat a = *val(c, t[first]);
+            a.p = -a.p;
+            t[first] = num(c, &a);
+        }
+    }
+    for (int i = last; i < m; i++) t[j++] = t[i];         /* literals, after the numbers */
     return j;
 }
 
@@ -567,8 +599,7 @@ static ref add(ctx *c, const ref *in, int n)
     if ((m = flatten(c, in, n, K_ADD, &l)) < 0) return SPARE;
     t = list(c, l) + 1;
     rat_int(&sum, 0);
-    m = fold(c, t, m, &sum, rat_add);
-    sort(c, t, m, by_mono);
+    m = fold(c, t, m, &sum, rat_add, by_mono);
     for (int i = 0; i < m; i++) {
         ref prev = k > 0 ? t[k - 1] : 0;
         if (prev && !is_num(c, prev) && !is_num(c, t[i]) && by_mono(c, prev, t[i]) == 0) {
@@ -579,12 +610,22 @@ static ref add(ctx *c, const ref *in, int n)
             const node *pa = nd(c, prev), *pb = nd(c, t[i]);
             rat_int(&ca, 1);
             rat_int(&cb, 1);
-            if (pa->kind == K_MUL && is_num(c, list(c, pa->a)[0])) ca = *val(c, list(c, pa->a)[0]);
-            if (pb->kind == K_MUL && is_num(c, list(c, pb->a)[0])) cb = *val(c, list(c, pb->a)[0]);
+            if (pa->kind == K_MUL && has_coef(c, list(c, pa->a), pa->n)) ca = *val(c, list(c, pa->a)[0]);
+            if (pb->kind == K_MUL && has_coef(c, list(c, pb->a), pb->n)) cb = *val(c, list(c, pb->a)[0]);
             if (rat_add(&s, &ca, &cb)) {
+                bool nums = false;
                 f = mono(c, &t[i], &nf);
+                for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
                 if (rat_is(&s, 0, 1)) k--;
-                else t[k - 1] = mul_node(c, num(c, &s), f, nf);
+                else if (!nums) t[k - 1] = mul_node(c, num(c, &s), f, nf);
+                else {
+                    /* numbers kept apart in the monomial: the coefficient joins them (second review) */
+                    ref ml = grab(c, (size_t)(nf + 1) * sizeof(ref));
+                    if (!ml) return SPARE;
+                    list(c, ml)[0] = num(c, &s);
+                    memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
+                    t[k - 1] = mul(c, list(c, ml), nf + 1);
+                }
                 continue;
             }
         }
@@ -604,7 +645,8 @@ static rat content(ctx *c, ref s)
     ref t0 = list(c, nd(c, s)->a)[0];
     rat k;
     rat_int(&k, 1);
-    if (nd(c, t0)->kind == K_MUL && is_num(c, list(c, nd(c, t0)->a)[0])) k = *val(c, list(c, nd(c, t0)->a)[0]);
+    if (nd(c, t0)->kind == K_MUL && has_coef(c, list(c, nd(c, t0)->a), nd(c, t0)->n))
+        k = *val(c, list(c, nd(c, t0)->a)[0]);
     return k;
 }
 
@@ -626,7 +668,8 @@ static ref sum_div(ctx *c, ref s, const rat *k)
             const ref *f = mono(c, &t, &nf);
             rat ct;
             rat_int(&ct, 1);
-            if (nd(c, t)->kind == K_MUL && is_num(c, list(c, nd(c, t)->a)[0])) ct = *val(c, list(c, nd(c, t)->a)[0]);
+            if (nd(c, t)->kind == K_MUL && has_coef(c, list(c, nd(c, t)->a), nd(c, t)->n))
+                ct = *val(c, list(c, nd(c, t)->a)[0]);
             if (!rat_mul(&q, &ct, &inv)) return 0;
             r = mul_node(c, num(c, &q), f, nf);
         }
@@ -651,13 +694,16 @@ static ref mul(ctx *c, const ref *in, int n)
         if (is_num(c, in[i])) reuse = in[i];
         else if (x->kind == K_MUL && is_num(c, list(c, x->a)[0])) reuse = list(c, x->a)[0];
     }
-    for (int pass = 0; pass < 16; pass++) {
+    for (int pass = 0; pass < 64; pass++) {
         bool again = false;
         int k = 0;
         if ((m = flatten(c, in, n, K_MUL, &l)) < 0) return SPARE;
         t = list(c, l) + 1;
-        m = fold(c, t, m, &cv, rat_mul);
-        if (rat_is(&cv, 0, 1)) return small(c, C_0);        /* 0×u is 0 */
+        if (!rat_is(&cv, 1, 1)) t[m++] = num(c, &cv), rat_int(&cv, 1);    /* the last pass's coefficient */
+        for (int i = 0; i < m; i++)
+            if (is_k(c, t[i], 0, 1)) return small(c, C_0);           /* 0×u is 0 */
+        m = fold(c, t, m, &cv, rat_mul, by_factor);
+        if (rat_is(&cv, 0, 1)) return small(c, C_0);
         for (int i = 0; i < m; i++) {
             /* a sum as a factor: primitive, so 2×(X+1) and (2×X+2) are one product */
             rat k = nd(c, t[i])->kind == K_ADD ? content(c, t[i]) : cv, ck;
@@ -673,17 +719,19 @@ static ref mul(ctx *c, const ref *in, int n)
                 ref f = power(c, base_of(c, prev), add2(c, exp_of(c, prev), exp_of(c, t[i])));
                 if (is_k(c, f, 1, 1)) {
                     k--;
+                    again = true;
                     continue;
                 }
                 t[k - 1] = f;
-                if (nd(c, f)->kind == K_NUM || nd(c, f)->kind == K_MUL) again = true;
+                again = true;       /* a merge can make a number, a product, a power of another base, a
+                                       sum not yet primitive: each needs the steps again */
                 continue;
             }
             t[k++] = t[i];
         }
         m = k;
         if (!again) break;
-        /* a merge made a number or a product: flatten and fold once more (the list has room for the
+        /* a merge: flatten, fold, make primitive, sort and merge once more (the list has room for the
            coefficient: a merge freed a place) */
         in = t;
         n = m;
@@ -961,6 +1009,25 @@ static int operand(ctx *c, pstack *p, int i, bool parg, bool *done)
     return -1;
 }
 
+/* A number as written: a literal, minus signs before one, or a group of numbers. */
+static bool numeric_leaf(const ctx *c, ref r)
+{
+    while (nd(c, r)->kind == K_NEG) r = nd(c, r)->a;
+    return nd(c, r)->kind == K_LIT || nd(c, r)->kind == K_GROUP;
+}
+
+/* A chain of + - × ÷ whose operands are all numbers (walked down its left side in a loop). */
+static bool numeric_chain(const ctx *c, ref r)
+{
+    int k = nd(c, r)->kind;
+    if (k != K_BADD && k != K_BSUB && k != K_BMUL && k != K_BDIV) return false;
+    while ((k = nd(c, r)->kind) == K_BADD || k == K_BSUB || k == K_BMUL || k == K_BDIV) {
+        if (!numeric_leaf(c, nd(c, r)->b)) return false;
+        r = nd(c, r)->a;
+    }
+    return numeric_leaf(c, r);
+}
+
 /* A closer: ")", "," or "]". Returns false on a syntax error. */
 static bool closer(ctx *c, pstack *p, int *i)
 {
@@ -969,6 +1036,11 @@ static bool closer(ctx *c, pstack *p, int *i)
     reduce_to(c, p, 1);
     o = p->no > 0 ? &p->ops[p->no - 1] : NULL;
     if (o && t == ')' && o->op == M_PAREN) {
+        /* (p÷q)×… is the one number p/q times …, not p×(1/q)×…: the parentheses stay around a chain of
+           numbers. (Only numbers: a group of factors canonicalized apart cannot merge with a power of the
+           same product, (SQRT(2×Z)×SQRT(2×Z))÷SQRT(2×Z) against the same unparenthesized; second review.) */
+        ref v = p->nv > 0 ? p->val[p->nv - 1] : 0;
+        if (v && numeric_chain(c, v)) p->val[p->nv - 1] = mk(c, K_GROUP, v, 0);
         p->no--;
         (*i)++;
         return true;
@@ -1018,7 +1090,7 @@ static ref parse(ctx *c)
     int i = 0;
     bool want = true, parg = false, eq = false;
     ref out = SPARE;
-    if (c->top < c->used + need) {
+    if (len > 65535u || c->top < c->used + need) {     /* a literal's offset and length are 16 bits */
         c->st = CASIM_TOO_LONG;
         return SPARE;
     }
@@ -1166,6 +1238,7 @@ static ref canon(ctx *c, ref r)
         for (int k = 0; k < m; k++) b = power(c, b, canon(c, list(c, l)[k]));
         return b;
     }
+    case K_GROUP: return canon(c, x->a);
     case K_RFN: return fn(c, x->id, canon(c, x->a));
     case K_REQ: {
         ref a = canon(c, x->a), b = canon(c, nd(c, r)->b);
@@ -1398,6 +1471,8 @@ static __attribute__((noinline)) int put_rat_abs(out_t *w, const rat *v)
     return 2;
 }
 
+static __attribute__((noinline)) void put_signed(const ctx *c, out_t *w, ref t, bool flip);
+
 /* The recursive printer's frames hold only references: every number (a coefficient, an exponent) is read
    in an out-of-line leaf below, which returns before the printer goes deeper. On the S3 a 192-byte power
    chain took 25 KB of stack with the numbers in the frames (measured, CAS 002). */
@@ -1419,10 +1494,11 @@ static bool abs_is(const ctx *c, ref x, int p, int q)
     return (v->p == p || v->p == -p) && v->q == q;
 }
 
-/* A factor goes under the ÷ when its exponent is a number below 0. */
+/* A factor goes under the ÷ when its exponent is a number below 0, unless its base is 0: 0^(-2) is
+   undefined and stays as it is (as 1÷0^2 it would read back as 1÷0). */
 static bool below(const ctx *c, ref f)
 {
-    return nd(c, f)->kind == K_POW && num_negative(c, nd(c, f)->b);
+    return nd(c, f)->kind == K_POW && num_negative(c, nd(c, f)->b) && !is_k(c, nd(c, f)->a, 0, 1);
 }
 
 /* A coefficient's parts: whether it prints in the numerator (a decimal other than 1, or the p of a p÷q
@@ -1503,8 +1579,12 @@ static void put_chain(ctx *c, out_t *w, ref f)
 static void put_factor(ctx *c, out_t *w, ref f, int min)
 {
     ref b, x;
-    if (is_num(c, f)) {                         /* a number kept apart (too long to fold) */
-        put_rat_abs(w, val(c, f));
+    if (is_num(c, f)) {
+        /* a number kept apart (it would not fold): whole, so it reads back as the one number */
+        bool paren = num_negative(c, f) || put_rat_abs(NULL, val(c, f)) < 5;
+        if (paren) puts_(w, "(");
+        put_signed(c, w, f, false);
+        if (paren) puts_(w, ")");
         return;
     }
     if (nd(c, f)->kind != K_POW) {
@@ -1514,7 +1594,13 @@ static void put_factor(ctx *c, out_t *w, ref f, int min)
     b = nd(c, f)->a;
     x = nd(c, f)->b;
     if (!is_num(c, x)) put_chain(c, w, f);
-    else if (abs_is(c, x, 1, 1)) print_in(c, w, b, level(c, b) < min);
+    else if (num_negative(c, x) && !below(c, f)) {
+        /* 0^(-e), in a numerator, as written: 1÷0, SQRT(0) or 0 would each read back as 0 */
+        print_in(c, w, b, level(c, b) < 4);
+        puts_(w, "^(-");
+        put_exp(c, w, x);
+        puts_(w, ")");
+    } else if (abs_is(c, x, 1, 1)) print_in(c, w, b, level(c, b) < min);
     else if (abs_is(c, x, 1, 2)) {
         puts_(w, "SQRT(");
         print(c, w, b);
@@ -1531,7 +1617,7 @@ static int factor_level(ctx *c, ref f)
 {
     ref x;
     int l;
-    if (is_num(c, f)) return level(c, f);
+    if (is_num(c, f)) return 5;
     if (nd(c, f)->kind != K_POW) return (l = level(c, f)) < 2 ? 5 : l;
     x = nd(c, f)->b;
     if (!is_num(c, x)) return 4;
@@ -1544,7 +1630,7 @@ static void print_product(ctx *c, out_t *w, ref r, bool flip)
 {
     const node *x = nd(c, r);
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
-    int n = x->kind == K_MUL ? x->n : 1, start = is_num(c, f[0]), items;
+    int n = x->kind == K_MUL ? x->n : 1, start = has_coef(c, f, n), items;
     items = put_coef(c, w, start ? f[0] : 0, flip, true);
     for (int i = start; i < n; i++) {
         if (below(c, f[i])) continue;
@@ -1565,7 +1651,7 @@ static int product_level(ctx *c, ref r)
 {
     const node *x = nd(c, r);
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
-    int n = x->kind == K_MUL ? x->n : 1, start = is_num(c, f[0]), items, dens, one = 5;
+    int n = x->kind == K_MUL ? x->n : 1, start = has_coef(c, f, n), items, dens, one = 5;
     bool top, bottom, sign = start && num_negative(c, f[0]);
     coef_parts(c, start ? f[0] : 0, &top, &bottom);
     items = top, dens = bottom;
@@ -1581,7 +1667,8 @@ static int product_level(ctx *c, ref r)
 static bool negative(ctx *c, ref t)
 {
     if (is_num(c, t)) return num_negative(c, t);
-    return nd(c, t)->kind == K_MUL && num_negative(c, list(c, nd(c, t)->a)[0]);
+    return nd(c, t)->kind == K_MUL && has_coef(c, list(c, nd(c, t)->a), nd(c, t)->n) &&
+           num_negative(c, list(c, nd(c, t)->a)[0]);
 }
 
 static __attribute__((noinline)) void put_signed(const ctx *c, out_t *w, ref t, bool flip)

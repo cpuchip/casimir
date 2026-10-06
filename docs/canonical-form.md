@@ -48,7 +48,21 @@ time in a profile (Euclid on software decimal: gcd 18%, fmod 10%, isZero 13%). W
 same derivative takes 0.9 ms, and a 191-byte equation simplifies in at most 2.1 ms.
 
 Printed: a rational whose decimal expansion terminates within 18 digits prints as that decimal (0.3);
-any other prints as a quotient (2÷3).
+any other prints as a quotient (2÷3). A number is folded into a whole power only (0.25^1.5 stays: exact
+roots are not part of CAS 002).
+
+**Numbers that do not fold together** (a step past 2^62) are handled all or nothing: when any step of
+folding a sum's or a product's numbers would not fit, none is folded. They stay apart, after every other
+operand, in order of value, the identities dropped (1 in a product, 0 in a sum). In a product they follow
+one sign rule: their absolute values, the product's sign on the first (so X−4E18×4E18 and −4E18×4E18+X
+agree). A product has a coefficient only when it holds exactly one number; numbers kept apart print whole,
+as d, (−d) or (p÷q). Written parentheses around a chain of numbers survive parsing, so (p÷q)×… reads back
+as that one number and not as p×(1/q)×…. Grouped this way the result is deterministic and a fixed point;
+two groupings of the same mathematics may still differ past 2^62 (the folding happens in different places).
+Two fresh-eyes review passes found each of these cases; each is a test in tests/simplify_test.c.
+
+**0 to a negative power** is undefined and stays as written, in the numerator: 0^(−1), 0^(−0.5).
+(Written as 1÷0, SQRT(0) or 0 under a ÷, it would read back as something else.)
 
 ## The forms
 
@@ -82,9 +96,14 @@ regrouped pair printed two texts (our pair test, 12 of 2921 before the rule). Wi
 primitive, both are −10×(Y−π)÷Y. It also keeps printing re-readable: the sign of a product is always in
 its coefficient, never inside a sum factor, so −(S)÷X reads back to the same tree.
 
-After sorting, adjacent like operands merge. A merge can create something that sorts elsewhere or must be
-flattened ((X+Y)^(1/2) × (X+Y)^(1/2) is X+Y, a sum inside a sum), so a level repeats flatten, sort and merge
-until nothing changes. Skipping that repeat is the idempotence mutant the unit names.
+Plain numbers sort after every other factor (a power of a number, SQRT(1.5), would otherwise sort by its
+base's value among them).
+
+After sorting, adjacent like operands merge. Any merge can create something that sorts elsewhere or must
+be flattened, folded or made primitive ((X+Y)^(1/2) × (X+Y)^(1/2) is X+Y, a sum inside a sum; SQRT(X^2)²
+is X^2, a power of another base), so a level repeats flatten, fold, make primitive, sort and merge until
+nothing merges. Skipping that repeat is the idempotence mutant the unit names; the first version repeated
+only when a merge made a number or a product, and the review found the rest.
 
 ## The domain rule
 

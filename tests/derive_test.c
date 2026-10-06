@@ -241,6 +241,15 @@ static void limits(void)
           small[0] == '\0', "a 4-byte out: not TOO_LONG");
     CHECK(casim_derive("SIN(X×X)", 'X' - 'A', CASIM_RAD, out, sizeof out, tiny, sizeof tiny) == CASIM_TOO_LONG &&
           out[0] == '\0', "a 16-byte arena: not TOO_LONG");
+    {
+        /* 6 (review): a text past 65,535 bytes is TOO_LONG (offsets are 16 bits), never misread */
+        static char big[70010], bigout[80000];
+        static unsigned char huge[1 << 19];
+        memset(big, '0', 70000);
+        strcpy(big + 70000, "5+X");
+        CHECK(casim_simplify(big, CASIM_RAD, bigout, sizeof bigout, huge, sizeof huge) == CASIM_TOO_LONG,
+              "a 70,003-byte text: \"%.40s...\"", bigout);
+    }
     CHECK(casim_derive("X", 26, CASIM_RAD, out, sizeof out, arena, sizeof arena) == CASIM_BAD_ARG, "var 26 accepted");
     CHECK(casim_derive("X", -1, CASIM_RAD, out, sizeof out, arena, sizeof arena) == CASIM_BAD_ARG, "var -1 accepted");
     CHECK(casim_derive("X", 23, 3, out, sizeof out, arena, sizeof arena) == CASIM_BAD_ARG, "angle 3 accepted");
