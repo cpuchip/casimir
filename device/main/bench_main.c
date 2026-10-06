@@ -1,5 +1,5 @@
 /* casim's on-chip bench: for each case (generated from the host CLI), the derivative on the S3 must
- * be byte-for-byte the host's; then its time (min and median of REPS runs, esp_timer), the smallest
+ * be byte-for-byte the host's (derive or simplify); then its time (min and median of REPS runs, esp_timer), the smallest
  * arena that gives OK (bisection), and the stack it takes: one derivative run in a fresh worker task,
  * whose high-water mark less an idle worker's is casim's own. The report repeats, so a reader that attaches late still
  * gets a whole one (BENCH BEGIN ... DEVICE DONE). */
@@ -15,7 +15,7 @@
 #include "cases.h"
 
 #define REPS 15
-#define ARENA_MAX 16384
+#define ARENA_MAX 32768
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536
@@ -32,6 +32,12 @@ static char out[OUT_MAX];
 static result res[256];
 static unsigned stack_free, stack_base;
 
+static casim_status run(const bench_case *k, size_t arena_cap)
+{
+    if (k->simplify) return casim_simplify(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
+    return casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
+}
+
 typedef struct {
     const bench_case *k;    /* NULL: the idle baseline */
     unsigned free;
@@ -41,7 +47,7 @@ typedef struct {
 static void worker(void *arg)
 {
     job *j = arg;
-    if (j->k) casim_derive(j->k->expr, j->k->var, j->k->angle, out, OUT_MAX, arena, ARENA_MAX);
+    if (j->k) run(j->k, ARENA_MAX);
     j->free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     xTaskNotifyGive(j->parent);
     vTaskDelete(NULL);
@@ -69,11 +75,11 @@ static void run_cases(void)
         const bench_case *k = &cases[i];
         int64_t t[REPS];
         size_t lo = 0, hi = ARENA_MAX;
-        casim_status st = casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, ARENA_MAX);
+        casim_status st = run(k, ARENA_MAX);
         res[i].ok = st == CASIM_OK && strcmp(out, k->want) == 0;
         for (int r = 0; r < REPS; r++) {
             int64_t t0 = esp_timer_get_time();
-            casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, ARENA_MAX);
+            run(k, ARENA_MAX);
             t[r] = esp_timer_get_time() - t0;
         }
         qsort(t, REPS, sizeof t[0], cmp64);
@@ -81,7 +87,7 @@ static void run_cases(void)
         res[i].us_med = t[REPS / 2];
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
-            if (casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, mid) == CASIM_OK) hi = mid;
+            if (run(k, mid) == CASIM_OK) hi = mid;
             else lo = mid + 1;
         }
         res[i].arena = lo;
@@ -98,12 +104,13 @@ static void bench_task(void *arg)
     for (;;) {
         int pass = 1;
         printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS);
-        printf("%-24s %5s %8s %8s %6s %6s %5s %s\n", "case", "chars", "us_min", "us_med", "arena", "stack", "out",
-               "host");
+        printf("%-26s %2s %5s %8s %8s %6s %6s %5s %s\n", "case", "op", "chars", "us_min", "us_med", "arena", "stack",
+               "out", "host");
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-24s %5d %8lld %8lld %6u %6u %5u %s\n", k->name, k->chars, (long long)res[i].us_min,
+            printf("%-26s %2s %5d %8lld %8lld %6u %6u %5u %s\n", k->name, k->simplify ? "s" : "d", k->chars,
+                   (long long)res[i].us_min,
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack, (unsigned)strlen(k->want),
                    res[i].ok ? "same" : "DIFFERENT");
         }

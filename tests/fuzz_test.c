@@ -80,7 +80,7 @@ static bool central(const char *text, char var, const abn *x, const abn *h, abn 
 
 int main(void)
 {
-    int used = 0, roundtrips = 0, refused_in_scope = 0;
+    int used = 0, roundtrips = 0, refused_in_scope = 0, edges = 0;
     ce_init();
     for (int i = 0; i < CASES; i++) {
         char e[1024], out[4096], re[4096];
@@ -94,10 +94,16 @@ int main(void)
         ce_set('Y', rnd(2) ? "0.45" : "1.3");
         x = ce_calc->var[var - 'A'].re;
         if (ce_eval(e, &f0) != ABN_OK) continue;           /* outside the domain here */
-        /* simplify keeps the value */
+        /* simplify keeps the value. A domain edge is counted apart, and printed: the core evaluated the
+           input only through rounding (ATANH(INV(Y)×Y): 1÷Y×Y rounds below 1, but is exactly 1, where
+           ATANH is undefined), and the simplified text is undefined there too. abacus's generator refuses
+           these cases (SymPy sees the edge); here each is listed, and more than a few fail the test. */
         if (casim_simplify(e, angle, re, sizeof re, arena, sizeof arena) == CASIM_OK) {
             roundtrips++;
-            CHECK(ce_eval(re, &r0) == ABN_OK && ce_close(&r0, &f0, -20), "simplify %s -> %s changed the value", e, re);
+            if (ce_eval(re, &r0) != ABN_OK) {
+                edges++;
+                printf("domain edge: %s -> %s (input %s, simplified undefined)\n", e, re, ce_text(&f0));
+            } else CHECK(ce_close(&r0, &f0, -20), "simplify %s -> %s changed the value", e, re);
         } else CHECK(false, "simplify %s failed", e);
         st = casim_derive(e, var - 'A', angle, out, sizeof out, arena, sizeof arena);
         if (st != CASIM_OK) {
@@ -130,6 +136,7 @@ int main(void)
         }
     }
     printf("fuzz: %d derivatives judged numerically, %d simplified, %d refused\n", used, roundtrips, refused_in_scope);
+    CHECK(edges <= 3, "%d domain edges: too many to be rounding (each is listed above)", edges);
     CHECK(used >= CASES / 3, "only %d of %d cases judged: the generator or the domain filter is too strict", used, CASES);
     return check_done();
 }

@@ -26,19 +26,28 @@ unit's rules (work/002-simplify.md). This is the contract; `tests/` holds the ch
 
 Everything lives in the caller's arena. A node is 8 bytes on the host and on the S3 alike: a kind, an id,
 a count, and two 16-bit references (arena offsets in 8-byte units, so up to 512 KB). A sum or product
-points to an array of references; a number points to a 32-byte rational. So arena figures measured on the
-host hold on the chip.
+points to an array of references; a number points to a 16-byte rational. So arena figures measured on the
+host hold on the chip. The recursive walks (canon, derive, compare, print) keep only references in their
+frames; numbers are read in out-of-line leaves, and a left chain of powers prints in a loop. Before that,
+a 192-byte power chain took 25 KB of stack on the S3; after, the worst measured case is 16.1 KB.
 
 ## Numbers: exact rationals
 
-A number is p/q with p and q whole numbers of at most 34 significant digits held in the core's decimal128
-(`abn`), q > 0, gcd(p, q) = 1. Every operation is exact: `abn_mul_exact`, an addition whose digit span is
-checked first, and `abn_fmod` for Euclid's algorithm (gcd, as in Knuth, TAOCP vol. 2, section 4.5.2).
-Nothing passes through binary floating point. A decimal literal is the rational of the value the core
-reads for it (0.1 is 1/10); a fraction a.b.c is (a×c+b)/c. When a result would need more than 34 digits it is simply not folded: the
-operands stay as they are, in canonical order, so both texts of a pair still agree.
+A number is p/q with q > 0, gcd(p, q) = 1 and |p|, q below 2^62, held in 64-bit integers. Every operation
+is exact and checked: a product or a sum that would overflow is reported, and Euclid's algorithm reduces
+(gcd, Knuth, TAOCP vol. 2, section 4.5.2). Nothing passes through binary floating point, not even to
+order two numbers: a/b against c/d compares their whole parts, then the reciprocals of their remainders,
+in turn (their continued fractions), so no product can overflow. A decimal literal is the rational of the
+value the core reads for it (0.1 is 1/10); a fraction a.b.c is (a×c+b)/c. A number that does not fit
+(more than 18 digits, or a sum or product beyond 2^62) is simply not folded: a literal is kept as typed,
+and folded operands stay as they are, in canonical order, so both texts of a pair still agree.
 
-Printed: a rational whose decimal expansion terminates within 34 digits prints as that decimal (0.3);
+The first version held p and q in the core's decimal128 (`abn`), exactly too, with 34 digits. On the S3 it
+made CAS 001's derivatives 15 to 45 times slower (D0001: 238 µs to 10.4 ms), and folding was 80% of the
+time in a profile (Euclid on software decimal: gcd 18%, fmod 10%, isZero 13%). With 64-bit integers the
+same derivative takes 0.9 ms, and a 191-byte equation simplifies in at most 2.1 ms.
+
+Printed: a rational whose decimal expansion terminates within 18 digits prints as that decimal (0.3);
 any other prints as a quotient (2÷3).
 
 ## The forms
@@ -48,8 +57,8 @@ any other prints as a quotient (2÷3).
 | number | reduced p/q as above |
 | variable, π | always |
 | sum | flattened; at least two terms; at most one number, which is not 0; no two terms with equal monomials (like terms collected: 2×X + 3×X is 5×X); a numeric coefficient times a single sum is distributed (−(X+Y) is −X−Y) |
-| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
-| power u^e | e is not 0 or 1; a number to an integer power is folded; (u^a)^n with an integer n is u^(a×n) |
+| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); a sum that is a factor is **primitive**: its first term's coefficient is 1, the content moved into the coefficient (2×(X+1)×Y and (2×X+2)×Y are both 2×Y×(X+1)); an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
+| power u^e | e is not 0 or 1; a number to an integer power is folded; (u^a)^n with an integer n is u^(a×n); an integer power of a sum with content k is k^n × (primitive sum)^n |
 | function | its argument is canonical; LN(EXP(u)) and EXP(LN(u)) are u, and likewise LOG and ALOG; SQ(u) is u^2, INV(u) is u^−1, SQRT(u) is u^(1/2); ABS of a number is folded |
 | L=R | each side canonical |
 
@@ -66,6 +75,12 @@ Sums and products sort their operands by one total order, at every depth, functi
   coefficient is first.
 - A sum's terms sort by **monomial** (the term without its coefficient), so like terms are adjacent; the
   constant is last.
+
+Why primitive sums: distributing a number over a sum only when the sum stands alone made the result
+depend on grouping. (π−Y)×2 alone is −2×Y+2×π, but inside 2×(π−Y)×(5÷Y) it was not distributed, so a
+regrouped pair printed two texts (our pair test, 12 of 2921 before the rule). With every sum factor
+primitive, both are −10×(Y−π)÷Y. It also keeps printing re-readable: the sign of a product is always in
+its coefficient, never inside a sum factor, so −(S)÷X reads back to the same tree.
 
 After sorting, adjacent like operands merge. A merge can create something that sorts elsewhere or must be
 flattened ((X+Y)^(1/2) × (X+Y)^(1/2) is X+Y, a sum inside a sum), so a level repeats flatten, sort and merge

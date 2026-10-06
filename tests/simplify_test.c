@@ -87,6 +87,10 @@ static void rules(void)
     is("X^Y×X", "X^(Y+1)");
     is("2^X×2^Y", "2^(X+Y)");
     is("SQRT(X)×SQRT(X)", "X");
+    /* a merge that makes a number or a product is flattened and folded again (the unit's idempotence
+       mutant survived every generator until these: none of them made such a merge) */
+    is("2^X×2^(1-X)×Y", "2×Y");
+    is("SQRT(X×Y)×SQRT(X×Y)×Z", "X×Y×Z");
     /* subtraction and division as + and ×, printed back */
     is("X+-1×Y", "X-Y");
     is("-(X+Y)", "-X-Y");
@@ -98,6 +102,14 @@ static void rules(void)
     is("X÷2", "0.5×X");
     is("X÷3", "X÷3");
     is("-X÷3", "-X÷3");
+    /* a sum that is a factor is primitive: its first coefficient 1, the content in the coefficient */
+    is("2×(X+1)×Y", "2×Y×(X+1)");
+    is("(2×X+2)×Y", "2×Y×(X+1)");
+    is("(-X-1)×Y", "-Y×(X+1)");
+    is("(2×X+2)^2", "4×(X+1)^2");
+    is("(2×X+2)×(X+1)", "2×(X+1)^2");
+    is("2×(X+1)", "2×X+2");                 /* alone, a number times a sum is distributed */
+    is("-(-X-π+0.5)÷X", "(X+π-0.5)÷X");
     /* SQ, INV, SQRT */
     is("SQ(X)", "X^2");
     is("INV(X)", "1÷X");
@@ -107,6 +119,7 @@ static void rules(void)
     is("(X×Y)^2", "X^2×Y^2");
     is("(X^2)^3", "X^6");
     is("(X^0.5)^2", "X");
+    is("(2×X)^1.5", "(2×X)^1.5");      /* a product under a power that is not whole keeps its () */
     is("X^1", "X");
     is("X^0", "1");
     /* functions */

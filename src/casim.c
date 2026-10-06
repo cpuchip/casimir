@@ -1,14 +1,16 @@
-/* casim: unit CAS 001, the derivative of an equation (see casim.h).
+/* Casimir (casim): units CAS 001 (the derivative) and CAS 002 (simplify, to a canonical form).
+ * docs/canonical-form.md is the contract this file implements; in brief:
  *
- * Three parts, all in the caller's arena:
- * - a parser that builds a tree from the core's equation grammar (core/eqn.h's grammar comment and
- *   core/eqn.c, read as the spec), failing where and as the core fails, so SYNTAX positions agree;
- * - the derivative, by the standard rules (the sum, product, quotient, power and chain rules and the
- *   table of elementary derivatives, e.g. Wikipedia "Differentiation rules", "Differentiation of
- *   trigonometric functions"), with the angle mode's factor on the trigonometric functions;
- * - a printer back to the core's grammar with only the parentheses its precedence needs.
- * The derivative shares the input's subtrees rather than copying them. Its constructors simplify
- * exactly as the unit's rule 5 asks and no further.
+ * - parse: an iterative operator-precedence parser over the core's equation grammar (core/eqn.h's
+ *   grammar comment, core/eqn.c read as the spec), failing where and as the core's check-only pass
+ *   fails. Its stacks live at the top of the arena, so its C stack does not grow with nesting.
+ * - canon: the raw tree to the canonical one, bottom-up; chains of one operator are walked in a loop.
+ * - numbers: exact rationals p/q on the core's decimal128 (abn), reduced by Euclid's algorithm (Knuth,
+ *   TAOCP vol. 2, 4.5.2); nothing through binary floating point.
+ * - derive: the standard rules (Wikipedia "Differentiation rules", "Differentiation of trigonometric
+ *   functions") on the canonical tree, built through the canonical constructors.
+ * - print: back to the core's grammar, readable, and read back to the same canonical tree.
+ * All memory is the caller's arena: 8-byte nodes with 16-bit references (offsets in 8-byte units).
  */
 #include <stdbool.h>
 #include <stdint.h>
@@ -17,9 +19,16 @@
 #include "abn.h"
 #include "casim.h"
 
-enum { N_NUM, N_VAR, N_PI, N_NEG, N_ADD, N_SUB, N_MUL, N_DIV, N_POW, N_FN, N_EQ };
+/* ---- nodes ---- */
 
-/* The functions casim differentiates (and SGN, which only appears in a derivative). */
+enum {
+    /* canonical (VAR and PI are raw too) */
+    K_NUM, K_VAR, K_PI, K_FN, K_POW, K_MUL, K_ADD, K_EQ, K_LIT,
+    /* raw only */
+    K_NEG, K_BADD, K_BSUB, K_BMUL, K_BDIV, K_BPOW, K_RFN, K_REQ, K_BAD
+};
+
+/* The functions casim knows (SGN only appears in a derivative). */
 enum {
     F_SQ, F_SQRT, F_INV, F_LN, F_LOG, F_EXP, F_ALOG, F_SIN, F_COS, F_TAN, F_ASIN, F_ACOS, F_ATAN, F_SINH,
     F_COSH, F_TANH, F_ASINH, F_ACOSH, F_ATANH, F_ABS, F_SGN, F_REFUSED
@@ -30,23 +39,22 @@ static const char *const FNAME[] = {
     "COSH", "TANH", "ASINH", "ACOSH", "ATANH", "ABS", "SGN",
 };
 
-typedef struct node node;
-struct node {
-    uint8_t kind;
-    uint8_t id;         /* N_FN: the function; N_VAR: the variable, 0-25 for A-Z, 26 for i */
-    uint8_t exact;      /* N_NUM: u.v is the value the core reads (a fraction literal has none) */
-    uint8_t len;        /* N_NUM from the text: its length in bytes; 0 for a computed number */
-    uint16_t src;       /* N_NUM from the text: its byte offset */
-    union {
-        abn v;
-        struct {
-            node *a, *b;
-        } k;
-    } u;
-};
+typedef uint16_t ref;           /* an arena offset in 8-byte units; 0 is none */
 
-/* Every name of the core's grammar (core/eqn.c's table, kinds as there: 1 and 2 take that many
-   arguments, 0 none), so a name outside unit 001 is parsed as the core parses it, then refused. */
+typedef struct {
+    uint8_t kind;
+    uint8_t id;                 /* K_FN, K_RFN: the function; K_VAR: 0-25 for A-Z, 26 for i */
+    uint16_t n;                 /* K_ADD, K_MUL: operands; K_LIT: the text's length */
+    ref a, b;                   /* operands; K_ADD, K_MUL: a is the operand list; K_NUM: a is the rational;
+                                   K_LIT: a is the text's byte offset */
+} node;
+
+typedef struct {
+    int64_t p, q;               /* p/q: see "rationals, exactly" */
+} rat;
+
+/* Every name of the core's grammar (core/eqn.c's table; args as there: 1 and 2 take that many, 0 none),
+   so a name outside casim's set is parsed as the core parses it, then refused. */
 typedef struct {
     const char *name;
     uint8_t args;
@@ -80,90 +88,696 @@ static const name_t NAMES[] = {
 #define PI_UTF8 "\xcf\x80"
 #define IND_I "\xe2\x92\xa4"    /* the indirect (i) and (j) glyphs, as core/eqn.c keeps them */
 #define IND_J "\xe2\x92\xa5"
+#define TIMES "\xc3\x97"
+#define DIVIDE "\xc3\xb7"
+
+/* The constants the rules use, one node each per call. */
+enum { C_M1, C_0, C_1, C_2, C_10, C_180, C_200, C_HALF, C_MHALF, C_M2, SMALL };
 
 typedef struct {
     const char *s;
-    int i;                      /* byte offset */
     casim_status st;            /* the first error */
     int errpos;                 /* SYNTAX: its character offset */
     const char *bad;            /* the first construct refused, in the text */
     int badlen;
     unsigned char *mem;
-    size_t cap, used;
-    node spare;                 /* what alloc gives once the arena is spent: a leaf (the number 0, not
-                                   exact) that nothing writes, so a starved tree has no cycles */
+    size_t cap, used, top;      /* nodes grow up from used; the parser's stacks down from top */
     int var, angle;
-    node *ints[6], *pi;         /* the derivative's constants, one node each (nodes never change) */
+    ref small[SMALL], pi;
 } ctx;
+
+#define SPARE ((ref)1)          /* what an exhausted arena gives: a leaf that nothing writes */
+
+static node *nd(const ctx *c, ref r)
+{
+    return (node *)(void *)(c->mem + (size_t)r * 8u);
+}
+
+static ref *list(const ctx *c, ref r)
+{
+    return (ref *)(void *)(c->mem + (size_t)r * 8u);
+}
+
+static rat *rt(const ctx *c, ref r)
+{
+    return (rat *)(void *)(c->mem + (size_t)r * 8u);
+}
 
 /* ---- the arena ---- */
 
-static node *alloc(ctx *c, int kind)
+static ref grab(ctx *c, size_t bytes)
 {
+    size_t need = (bytes + 7u) & ~(size_t)7u;
+    ref r;
+    if (need == 0) need = 8;
+    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;
+    if (c->st != CASIM_OK) return 0;
+    r = (ref)(c->used / 8u);
+    memset(c->mem + c->used, 0, need);
+    c->used += need;
+    return r;
+}
+
+static ref mk(ctx *c, int kind, ref a, ref b)
+{
+    ref r = grab(c, sizeof(node));
     node *n;
-    if (c->used + sizeof(node) > c->cap) {
-        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
-        return &c->spare;
-    }
-    n = (node *)(void *)(c->mem + c->used);
-    c->used += sizeof(node);
-    memset(n, 0, sizeof *n);
+    if (!r) return SPARE;
+    n = nd(c, r);
     n->kind = (uint8_t)kind;
-    return n;
+    n->a = a;
+    n->b = b;
+    return r;
 }
 
-static node *mk2(ctx *c, int kind, node *a, node *b)
+static ref leaf(ctx *c, int kind, int id)
 {
-    node *n = alloc(c, kind);
-    if (n == &c->spare) return n;
-    n->u.k.a = a;
-    n->u.k.b = b;
-    return n;
+    ref r = mk(c, kind, 0, 0);
+    if (r != SPARE) nd(c, r)->id = (uint8_t)id;
+    return r;
 }
 
-static node *mk_fn(ctx *c, int fn, node *a)
+/* ---- rationals, exactly ---- */
+
+/* p/q with q > 0 and gcd(p, q) = 1, |p| and q below 2^62: 64-bit integers, every operation checked for
+   overflow. A result that would not fit is not folded, and its operands stay as they are. (The core's
+   decimal128 did this exactly too, at 15 to 45 times the S3's time: measured, CAS 002.) */
+#define RAT_MAX ((int64_t)1 << 62)
+
+static bool fits(int64_t v)
 {
-    node *n = mk2(c, N_FN, a, NULL);
-    if (n != &c->spare) n->id = (uint8_t)fn;
-    return n;
+    return v > -RAT_MAX && v < RAT_MAX;
 }
 
-static node *mk_abn(ctx *c, abn v)
+static bool mul64(int64_t *r, int64_t a, int64_t b)
 {
-    node *n = alloc(c, N_NUM);
-    if (n == &c->spare) return n;
-    n->exact = 1;
-    n->u.v = v;
-    return n;
+    return !__builtin_mul_overflow(a, b, r) && fits(*r);
 }
 
-/* The small whole numbers the rules use, each allocated once per call. */
-static node *mk_int(ctx *c, int v)
+static bool add64(int64_t *r, int64_t a, int64_t b)
 {
-    static const int16_t K[6] = {0, 1, 2, 10, 180, 200};
-    for (int i = 0; i < 6; i++)
-        if (K[i] == v) {
-            if (!c->ints[i] || c->ints[i] == &c->spare) c->ints[i] = mk_abn(c, abn_from_int(v));
-            return c->ints[i];
+    return !__builtin_add_overflow(a, b, r) && fits(*r);
+}
+
+/* gcd(|a|, |b|) by Euclid's algorithm. */
+static int64_t gcd64(int64_t a, int64_t b)
+{
+    if (a < 0) a = -a;
+    if (b < 0) b = -b;
+    while (b) {
+        int64_t r = a % b;
+        a = b;
+        b = r;
+    }
+    return a;
+}
+
+/* p/q reduced, q made positive; false when q is 0 or a part does not fit. */
+static bool rat_make(rat *r, int64_t p, int64_t q)
+{
+    int64_t g;
+    if (q == 0 || !fits(p) || !fits(q)) return false;
+    if (q < 0) p = -p, q = -q;
+    g = p == 0 ? q : gcd64(p, q);
+    r->p = p / g;
+    r->q = q / g;
+    return true;
+}
+
+static void rat_int(rat *r, int k)
+{
+    r->p = k;
+    r->q = 1;
+}
+
+static bool rat_add(rat *r, const rat *x, const rat *y)
+{
+    int64_t g = gcd64(x->q, y->q), a, b, p, q;
+    return mul64(&a, x->p, y->q / g) && mul64(&b, y->p, x->q / g) && add64(&p, a, b) &&
+           mul64(&q, x->q / g, y->q) && rat_make(r, p, q);
+}
+
+static bool rat_mul(rat *r, const rat *x, const rat *y)
+{
+    int64_t g1, g2, p, q;
+    if (x->p == 0 || y->p == 0) {
+        rat_int(r, 0);
+        return true;
+    }
+    g1 = gcd64(x->p, y->q);
+    g2 = gcd64(y->p, x->q);
+    return mul64(&p, x->p / g1, y->p / g2) && mul64(&q, x->q / g2, y->q / g1) && rat_make(r, p, q);
+}
+
+/* x^k for a whole k, |k| <= 4096, by squaring. */
+static bool rat_pow(rat *r, const rat *x, long k)
+{
+    rat acc, base = *x;
+    if (k < -4096 || k > 4096) return false;
+    if (k < 0) {
+        if (!rat_make(&base, x->q, x->p)) return false;
+        k = -k;
+    }
+    rat_int(&acc, 1);
+    while (k) {
+        if ((k & 1) && !rat_mul(&acc, &acc, &base)) return false;
+        k >>= 1;
+        if (k && !rat_mul(&base, &base, &base)) return false;
+    }
+    *r = acc;
+    return true;
+}
+
+static bool rat_is(const rat *x, int p, int q)
+{
+    return x->p == p && x->q == q;
+}
+
+/* x as a whole number k with |k| <= 4096. */
+static bool rat_whole(const rat *x, long *k)
+{
+    if (x->q != 1 || x->p > 4096 || x->p < -4096) return false;
+    *k = (long)x->p;
+    return true;
+}
+
+/* a/b against c/d (b, d > 0), exactly, without a product that could overflow: the whole parts, then the
+   remainders' reciprocals in reverse (the continued fractions' terms, one by one). */
+static int frac_cmp(int64_t a, int64_t b, int64_t c, int64_t d)
+{
+    int sign = 1;
+    if ((a < 0) != (c < 0)) return a < 0 ? -1 : 1;
+    if (a < 0) a = -a, c = -c, sign = -1;
+    for (;;) {
+        int64_t qa = a / b, qc = c / d, ra = a % b, rc = c % d, t;
+        if (qa != qc) return qa < qc ? -sign : sign;
+        if (ra == 0 || rc == 0) return ra == rc ? 0 : ra == 0 ? -sign : sign;
+        t = b, b = ra, a = t;           /* ra/b against rc/d is b/ra against d/rc, reversed */
+        t = d, d = rc, c = t;
+        sign = -sign;
+    }
+}
+
+/* A total order: by value, ties (none: reduced forms are unique) on p then q. */
+static int rat_cmp(const rat *x, const rat *y)
+{
+    int s;
+    if (x->p == y->p && x->q == y->q) return 0;
+    if ((s = frac_cmp(x->p, x->q, y->p, y->q)) != 0) return s;
+    return x->p != y->p ? (x->p < y->p ? -1 : 1) : (x->q < y->q ? -1 : 1);
+}
+
+static const int64_t POW10[19] = {
+    1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000LL,
+    100000000000LL, 1000000000000LL, 10000000000000LL, 100000000000000LL, 1000000000000000LL,
+    10000000000000000LL, 100000000000000000LL, 1000000000000000000LL,
+};
+
+/* The rational of a decimal value of the core (a literal as the core reads it), when it fits. */
+static bool rat_from_abn(rat *r, const abn *x)
+{
+    bool neg;
+    char d[ABN_DIGITS + 2];
+    int lead, nd_, e;
+    int64_t m = 0;
+    abn_digits(x, &neg, d, &lead);
+    nd_ = (int)strlen(d);
+    if (nd_ == 0) {
+        rat_int(r, 0);
+        return true;
+    }
+    if (nd_ > 18) return false;
+    for (int i = 0; i < nd_; i++) m = m * 10 + (d[i] - '0');
+    if (neg) m = -m;
+    e = lead - nd_ + 1;
+    if (e >= 0) return e <= 18 && mul64(&m, m, POW10[e]) && rat_make(r, m, 1);
+    return -e <= 18 && rat_make(r, m, POW10[-e]);
+}
+
+/* ---- numbers as nodes ---- */
+
+static ref num(ctx *c, const rat *v)
+{
+    ref r = grab(c, sizeof(rat));
+    if (!r) return SPARE;
+    *rt(c, r) = *v;
+    return mk(c, K_NUM, r, 0);
+}
+
+static ref small(ctx *c, int k)
+{
+    static const int16_t P[SMALL] = {-1, 0, 1, 2, 10, 180, 200, 1, -1, -2};
+    static const uint8_t Q[SMALL] = {1, 1, 1, 1, 1, 1, 1, 2, 2, 1};
+    if (!c->small[k] || c->small[k] == SPARE) {
+        rat v;
+        rat_make(&v, P[k], Q[k]);
+        c->small[k] = num(c, &v);
+    }
+    return c->small[k];
+}
+
+static bool is_num(const ctx *c, ref r)
+{
+    return r != SPARE && nd(c, r)->kind == K_NUM;
+}
+
+static const rat *val(const ctx *c, ref r)
+{
+    return rt(c, nd(c, r)->a);
+}
+
+static bool is_k(const ctx *c, ref r, int p, int q)
+{
+    return is_num(c, r) && rat_is(val(c, r), p, q);
+}
+
+static bool num_negative(const ctx *c, ref r)
+{
+    return is_num(c, r) && val(c, r)->p < 0;
+}
+
+/* ---- the order (docs/canonical-form.md, "The order") ---- */
+
+static int rank(const ctx *c, ref r)
+{
+    static const int8_t R[] = {[K_VAR] = 0, [K_PI] = 1, [K_FN] = 2, [K_POW] = 3, [K_MUL] = 4, [K_ADD] = 5,
+                               [K_NUM] = 6, [K_LIT] = 7, [K_EQ] = 8};
+    return r == SPARE ? 9 : R[nd(c, r)->kind];
+}
+
+static int cmp(const ctx *c, ref a, ref b);
+
+static int cmp_lists(const ctx *c, const ref *x, int nx, const ref *y, int ny)
+{
+    for (int i = 0; i < nx && i < ny; i++) {
+        int s = cmp(c, x[i], y[i]);
+        if (s) return s;
+    }
+    return nx - ny;
+}
+
+static int cmp(const ctx *c, ref a, ref b)
+{
+    const node *x = nd(c, a), *y = nd(c, b);
+    int s;
+    if (a == b) return 0;
+    if ((s = rank(c, a) - rank(c, b)) != 0 || a == SPARE || b == SPARE) return s;
+    switch (x->kind) {
+    case K_VAR: return x->id - y->id;
+    case K_PI: return 0;
+    case K_NUM: return rat_cmp(val(c, a), val(c, b));
+    case K_LIT: {
+        int m = x->n < y->n ? x->n : y->n;
+        if ((s = memcmp(c->s + x->a, c->s + y->a, (size_t)m)) != 0) return s;
+        return x->n - y->n;
+    }
+    case K_FN:
+        if (x->id != y->id) return x->id - y->id;
+        return cmp(c, x->a, y->a);
+    case K_POW:
+    case K_EQ:
+        if ((s = cmp(c, x->a, y->a)) != 0) return s;
+        return cmp(c, x->b, y->b);
+    default: return cmp_lists(c, list(c, x->a), x->n, list(c, y->a), y->n);
+    }
+}
+
+/* A factor as base^exponent (X is X^1). */
+static ref base_of(const ctx *c, ref f)
+{
+    return nd(c, f)->kind == K_POW ? nd(c, f)->a : f;
+}
+
+static ref exp_of(ctx *c, ref f)
+{
+    return nd(c, f)->kind == K_POW ? nd(c, f)->b : small(c, C_1);
+}
+
+static int by_factor(ctx *c, ref a, ref b)
+{
+    int s = cmp(c, base_of(c, a), base_of(c, b));
+    return s ? s : cmp(c, exp_of(c, a), exp_of(c, b));
+}
+
+/* A term's monomial: its factors without the coefficient (one factor: the term itself). */
+static const ref *mono(const ctx *c, const ref *t, int *n)
+{
+    const node *x = nd(c, *t);
+    if (x->kind == K_MUL) {
+        const ref *k = list(c, x->a);
+        int skip = is_num(c, k[0]);
+        *n = x->n - skip;
+        return k + skip;
+    }
+    *n = 1;
+    return t;
+}
+
+static int by_mono(ctx *c, ref a, ref b)
+{
+    int na, nb, s;
+    const ref *x = mono(c, &a, &na), *y = mono(c, &b, &nb);
+    if (na == 1 && nb == 1) return cmp(c, x[0], y[0]);
+    if (na == 1) return (s = rank(c, x[0]) - 4) != 0 ? s : -1;
+    if (nb == 1) return (s = 4 - rank(c, y[0])) != 0 ? s : 1;
+    return cmp_lists(c, x, na, y, nb);
+}
+
+static int by_value(ctx *c, ref a, ref b)
+{
+    return cmp(c, a, b);
+}
+
+/* Insertion sort (stable): the lists are short. */
+static void sort(ctx *c, ref *k, int n, int (*by)(ctx *, ref, ref))
+{
+    for (int i = 1; i < n; i++) {
+        ref x = k[i];
+        int j = i;
+        while (j > 0 && by(c, k[j - 1], x) > 0) {
+            k[j] = k[j - 1];
+            j--;
         }
-    return mk_abn(c, abn_from_int(v));
+        k[j] = x;
+    }
 }
 
-static node *mk_pi(ctx *c)
+/* ---- the canonical constructors ---- */
+
+static ref add(ctx *c, const ref *in, int n);
+static ref mul(ctx *c, const ref *in, int n);
+static ref power(ctx *c, ref b, ref e);
+
+static ref add2(ctx *c, ref a, ref b)
 {
-    if (!c->pi || c->pi == &c->spare) c->pi = alloc(c, N_PI);
-    return c->pi;
+    ref k[2] = {a, b};
+    return add(c, k, 2);
 }
 
-/* ---- the parser: core/eqn.c's grammar and its failure positions ---- */
+static ref mul2(ctx *c, ref a, ref b)
+{
+    ref k[2] = {a, b};
+    return mul(c, k, 2);
+}
 
-static void fail(ctx *c, casim_status st)
+static ref mul3(ctx *c, ref a, ref b, ref d)
+{
+    ref k[3] = {a, b, d};
+    return mul(c, k, 3);
+}
+
+static ref neg(ctx *c, ref a)
+{
+    return mul2(c, small(c, C_M1), a);
+}
+
+static ref flat_node(ctx *c, int kind, ref l, int n)
+{
+    ref r = mk(c, kind, l, 0);
+    if (r != SPARE) nd(c, r)->n = (uint16_t)n;
+    return r;
+}
+
+/* A sum or product node over t[0..k), which sits one slot into the list l: moved to the list's start (a
+   list is referenced by its 8-byte unit) instead of copied to a new one. */
+static ref in_place(ctx *c, int kind, ref l, ref *t, int k)
+{
+    memmove(list(c, l), t, (size_t)k * sizeof(ref));
+    return flat_node(c, kind, l, k);
+}
+
+/* A product from a coefficient and factors already canonical, sorted and merged. */
+static ref mul_node(ctx *c, ref co, const ref *f, int n)
+{
+    int one = is_k(c, co, 1, 1), m = n + !one;
+    ref l;
+    if (n == 0) return co;
+    if (one && n == 1) return f[0];
+    if (!(l = grab(c, (size_t)m * sizeof(ref)))) return SPARE;
+    if (!one) list(c, l)[0] = co;
+    memcpy(list(c, l) + !one, f, (size_t)n * sizeof(ref));
+    return flat_node(c, K_MUL, l, m);
+}
+
+/* The operands of in[0..n), with sums (or products) opened, into a new list; returns its length. The list
+   starts one slot in: list(c, *l)[0] is free, for a product's coefficient (see mul_place). */
+static int flatten(ctx *c, const ref *in, int n, int kind, ref *l)
+{
+    int m = 0, k = 0;
+    ref *t;
+    for (int i = 0; i < n; i++) m += nd(c, in[i])->kind == kind ? nd(c, in[i])->n : 1;
+    if (!(*l = grab(c, (size_t)(m + 2) * sizeof(ref)))) return -1;
+    t = list(c, *l) + 1;
+    for (int i = 0; i < n; i++) {
+        const node *x = nd(c, in[i]);
+        if (x->kind == kind) {
+            memcpy(t + k, list(c, x->a), (size_t)x->n * sizeof(ref));
+            k += x->n;
+        } else t[k++] = in[i];
+    }
+    return m;
+}
+
+/* Moves the numbers out of t[0..m) (in order of value) and folds them with f into *v, starting from
+   *v; a number too long to fold stays in t. Returns the new length. */
+static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, const rat *))
+{
+    ref nums[24];
+    int nn = 0, j = 0;
+    for (int i = 0; i < m; i++) {
+        if (is_num(c, t[i]) && nn < 24) nums[nn++] = t[i];
+        else t[j++] = t[i];
+    }
+    sort(c, nums, nn, by_value);
+    for (int i = 0; i < nn; i++) {
+        rat r;
+        if (f(&r, v, val(c, nums[i]))) *v = r;
+        else t[j++] = nums[i];
+    }
+    return j;
+}
+
+/* A sum (docs: flattened, sorted by monomial, like terms collected, the constant last). */
+static ref add(ctx *c, const ref *in, int n)
+{
+    ref l, *t;
+    rat sum;
+    int m, k = 0;
+    if (c->st != CASIM_OK) return SPARE;
+    if ((m = flatten(c, in, n, K_ADD, &l)) < 0) return SPARE;
+    t = list(c, l) + 1;
+    rat_int(&sum, 0);
+    m = fold(c, t, m, &sum, rat_add);
+    sort(c, t, m, by_mono);
+    for (int i = 0; i < m; i++) {
+        ref prev = k > 0 ? t[k - 1] : 0;
+        if (prev && !is_num(c, prev) && !is_num(c, t[i]) && by_mono(c, prev, t[i]) == 0) {
+            /* like terms: their coefficients added (a merge that would not fit is left alone) */
+            rat s, ca, cb;
+            const ref *f;
+            int nf;
+            const node *pa = nd(c, prev), *pb = nd(c, t[i]);
+            rat_int(&ca, 1);
+            rat_int(&cb, 1);
+            if (pa->kind == K_MUL && is_num(c, list(c, pa->a)[0])) ca = *val(c, list(c, pa->a)[0]);
+            if (pb->kind == K_MUL && is_num(c, list(c, pb->a)[0])) cb = *val(c, list(c, pb->a)[0]);
+            if (rat_add(&s, &ca, &cb)) {
+                f = mono(c, &t[i], &nf);
+                if (rat_is(&s, 0, 1)) k--;
+                else t[k - 1] = mul_node(c, num(c, &s), f, nf);
+                continue;
+            }
+        }
+        t[k++] = t[i];
+    }
+    if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
+    if (k == 0) return small(c, C_0);
+    if (k == 1) return t[0];
+    list(c, l)[0] = 0;
+    return in_place(c, K_ADD, l, t, k);
+}
+
+/* A sum's content: its first term's coefficient (the constant is last, so the first term has a
+   monomial). */
+static rat content(ctx *c, ref s)
+{
+    ref t0 = list(c, nd(c, s)->a)[0];
+    rat k;
+    rat_int(&k, 1);
+    if (nd(c, t0)->kind == K_MUL && is_num(c, list(c, nd(c, t0)->a)[0])) k = *val(c, list(c, nd(c, t0)->a)[0]);
+    return k;
+}
+
+/* The sum s with every term divided by k (k not 0); 0 when a quotient would not fit. The terms keep their
+   order: their monomials do not change. */
+static ref sum_div(ctx *c, ref s, const rat *k)
+{
+    int n = nd(c, s)->n;
+    rat inv, q;
+    ref l;
+    if (!rat_make(&inv, k->q, k->p) || !(l = grab(c, (size_t)n * sizeof(ref)))) return 0;
+    for (int i = 0; i < n; i++) {
+        ref t = list(c, nd(c, s)->a)[i], r;
+        if (is_num(c, t)) {
+            if (!rat_mul(&q, val(c, t), &inv)) return 0;
+            r = num(c, &q);
+        } else {
+            int nf;
+            const ref *f = mono(c, &t, &nf);
+            rat ct;
+            rat_int(&ct, 1);
+            if (nd(c, t)->kind == K_MUL && is_num(c, list(c, nd(c, t)->a)[0])) ct = *val(c, list(c, nd(c, t)->a)[0]);
+            if (!rat_mul(&q, &ct, &inv)) return 0;
+            r = mul_node(c, num(c, &q), f, nf);
+        }
+        list(c, l)[i] = r;
+    }
+    return flat_node(c, K_ADD, l, n);
+}
+
+/* A product (docs: flattened, coefficient first, factors sorted by base, like factors combined; a sum
+   that is a factor is made primitive, its first coefficient 1, the content moved to the coefficient; a
+   number times a single sum distributed). */
+static ref mul(ctx *c, const ref *in, int n)
+{
+    ref l, *t, co, reuse = 0;
+    rat cv;
+    int m = 0;
+    if (c->st != CASIM_OK) return SPARE;
+    rat_int(&cv, 1);
+    for (int i = 0; i < n; i++) {
+        /* the coefficient's node, when an operand already holds that number (no new 40 bytes) */
+        const node *x = nd(c, in[i]);
+        if (is_num(c, in[i])) reuse = in[i];
+        else if (x->kind == K_MUL && is_num(c, list(c, x->a)[0])) reuse = list(c, x->a)[0];
+    }
+    for (int pass = 0; pass < 16; pass++) {
+        bool again = false;
+        int k = 0;
+        if ((m = flatten(c, in, n, K_MUL, &l)) < 0) return SPARE;
+        t = list(c, l) + 1;
+        m = fold(c, t, m, &cv, rat_mul);
+        if (rat_is(&cv, 0, 1)) return small(c, C_0);        /* 0×u is 0 */
+        for (int i = 0; i < m; i++) {
+            /* a sum as a factor: primitive, so 2×(X+1) and (2×X+2) are one product */
+            rat k = nd(c, t[i])->kind == K_ADD ? content(c, t[i]) : cv, ck;
+            ref p;
+            if (nd(c, t[i])->kind != K_ADD || rat_is(&k, 1, 1) || !rat_mul(&ck, &cv, &k)) continue;
+            if ((p = sum_div(c, t[i], &k)) != 0) t[i] = p, cv = ck;
+        }
+        sort(c, t, m, by_factor);
+        for (int i = 0; i < m; i++) {
+            ref prev = k > 0 ? t[k - 1] : 0;
+            if (prev && !is_num(c, prev) && !is_num(c, t[i]) && cmp(c, base_of(c, prev), base_of(c, t[i])) == 0) {
+                /* like factors: one base, the exponents added */
+                ref f = power(c, base_of(c, prev), add2(c, exp_of(c, prev), exp_of(c, t[i])));
+                if (is_k(c, f, 1, 1)) {
+                    k--;
+                    continue;
+                }
+                t[k - 1] = f;
+                if (nd(c, f)->kind == K_NUM || nd(c, f)->kind == K_MUL) again = true;
+                continue;
+            }
+            t[k++] = t[i];
+        }
+        m = k;
+        if (!again) break;
+        /* a merge made a number or a product: flatten and fold once more (the list has room for the
+           coefficient: a merge freed a place) */
+        in = t;
+        n = m;
+    }
+    co = rat_is(&cv, 1, 1) ? small(c, C_1) : reuse == 0 || rat_cmp(&cv, val(c, reuse)) != 0 ? num(c, &cv) : reuse;
+    if (m == 1 && !rat_is(&cv, 1, 1) && nd(c, t[0])->kind == K_ADD) {
+        /* a number times one sum: distributed */
+        const node *s = nd(c, t[0]);
+        int ns = s->n;
+        ref dl = grab(c, (size_t)ns * sizeof(ref));
+        if (!dl) return SPARE;
+        for (int i = 0; i < ns; i++) {
+            ref d = mul2(c, co, list(c, nd(c, t[0])->a)[i]);
+            list(c, dl)[i] = d;
+        }
+        return add(c, list(c, dl), ns);
+    }
+    if (m == 0 || (m == 1 && is_k(c, co, 1, 1))) return mul_node(c, co, t, m);
+    if (is_k(c, co, 1, 1)) return in_place(c, K_MUL, l, t, m);
+    list(c, l)[0] = co;                 /* the coefficient, in the slot before the factors */
+    return flat_node(c, K_MUL, l, m + 1);
+}
+
+/* u^e (docs: e not 0 or 1; a number to a whole power folded; (u^a)^n and (u×v)^n for a whole n). */
+static ref power(ctx *c, ref b, ref e)
+{
+    long k_ = 0;
+    bool w;
+    if (c->st != CASIM_OK) return SPARE;
+    w = is_num(c, e) && rat_whole(val(c, e), &k_);
+    if (is_k(c, e, 0, 1)) return small(c, C_1);
+    if (is_k(c, e, 1, 1) || is_k(c, b, 1, 1)) return b;
+    if (is_num(c, b)) {
+        const rat *v = val(c, b);
+        rat p;
+        if (rat_is(v, 0, 1) && is_num(c, e) && val(c, e)->p > 0) return b;     /* 0^e, e > 0 */
+        if (w && !(rat_is(v, 0, 1) && k_ < 0) && rat_pow(&p, v, k_)) return num(c, &p);
+    }
+    if (w && nd(c, b)->kind == K_POW) return power(c, nd(c, b)->a, mul2(c, nd(c, b)->b, e));
+    if (w && nd(c, b)->kind == K_ADD) {
+        /* (k×s)^n = k^n × s^n, s primitive */
+        rat k = content(c, b), kn;
+        ref p;
+        if (!rat_is(&k, 1, 1) && rat_pow(&kn, &k, k_) && (p = sum_div(c, b, &k)) != 0)
+            return mul2(c, num(c, &kn), power(c, p, e));
+    }
+    if (w && nd(c, b)->kind == K_MUL) {
+        int nb = nd(c, b)->n;
+        ref l = grab(c, (size_t)nb * sizeof(ref));
+        if (!l) return SPARE;
+        for (int i = 0; i < nb; i++) {
+            ref f = power(c, list(c, nd(c, b)->a)[i], e);
+            list(c, l)[i] = f;
+        }
+        return mul(c, list(c, l), nb);
+    }
+    return mk(c, K_POW, b, e);
+}
+
+static ref fn(ctx *c, int f, ref a)
+{
+    const node *x = nd(c, a);
+    ref r;
+    if (c->st != CASIM_OK) return SPARE;
+    switch (f) {
+    case F_SQ: return power(c, a, small(c, C_2));
+    case F_INV: return power(c, a, small(c, C_M1));
+    case F_SQRT: return power(c, a, small(c, C_HALF));
+    case F_LN: if (x->kind == K_FN && x->id == F_EXP) return x->a; break;
+    case F_EXP: if (x->kind == K_FN && x->id == F_LN) return x->a; break;
+    case F_LOG: if (x->kind == K_FN && x->id == F_ALOG) return x->a; break;
+    case F_ALOG: if (x->kind == K_FN && x->id == F_LOG) return x->a; break;
+    case F_ABS:
+        if (is_num(c, a)) {
+            rat v = *val(c, a);
+            v.p = v.p < 0 ? -v.p : v.p;
+            return num(c, &v);
+        }
+        break;
+    }
+    r = mk(c, K_FN, a, 0);
+    if (r != SPARE) nd(c, r)->id = (uint8_t)f;
+    return r;
+}
+
+/* ---- the parser: core/eqn.c's grammar and its failure positions, without recursion ---- */
+
+static void fail(ctx *c, int at)
 {
     if (c->st == CASIM_OK) {
         int n = 0;
-        for (int i = 0; i < c->i && c->s[i]; i++)
+        for (int i = 0; i < at && c->s[i]; i++)
             if (((unsigned char)c->s[i] & 0xC0) != 0x80) n++;
-        c->st = st;
+        c->st = CASIM_SYNTAX;
         c->errpos = n;
     }
 }
@@ -175,16 +789,6 @@ static void refuse(ctx *c, const char *at, int len)
         c->bad = at;
         c->badlen = len;
     }
-}
-
-static bool at(ctx *c, const char *tok)
-{
-    size_t n = strlen(tok);
-    if (strncmp(c->s + c->i, tok, n) == 0) {
-        c->i += (int)n;
-        return true;
-    }
-    return false;
 }
 
 static bool digit(char ch)
@@ -223,464 +827,452 @@ static int decimal_len(const char *s, int *points, int *digits)
     return n;
 }
 
-static void parse_add(ctx *c, node **v);
+/* The parser's operators: binary by level (+ - 1, × ÷ 2, ^ 4), the two unary minuses (before a power,
+   level 3: -X^2 is -(X^2); after ^, level 5: X^-Y^2 is (X^-Y)^2), =, and the openers. */
+enum { O_ADD, O_SUB, O_MUL, O_DIV, O_NEG, O_POW, O_PNEG, O_EQ, M_PAREN, M_FN, M_VEC };
 
-/* The value the core reads for the n-byte decimal at s. Kept out of line: its buffer would otherwise
-   sit in every frame of the recursive parser (S3 stack, measured). */
-static __attribute__((noinline)) bool literal_value(abn *v, const char *s, int n)
+static const uint8_t LEVEL[] = {1, 1, 2, 2, 3, 4, 5, 0};
+
+typedef struct {
+    uint8_t op, fn, args, need;
+} opent;
+
+typedef struct {
+    ref *val;
+    opent *ops;
+    int nv, no;
+} pstack;
+
+static void reduce(ctx *c, pstack *p)
 {
-    char buf[200];
-    int k = 0;
-    if (s[0] == '.') buf[k++] = '0';
-    if (n + k >= (int)sizeof buf) return false;
-    memcpy(buf + k, s, (size_t)n);
-    buf[k + n] = '\0';
-    return abn_from_text(v, buf) == ABN_OK;
+    static const uint8_t KIND[] = {K_BADD, K_BSUB, K_BMUL, K_BDIV, K_NEG, K_BPOW, K_NEG, K_REQ};
+    opent o = p->ops[--p->no];
+    if (o.op == O_NEG || o.op == O_PNEG) {
+        if (p->nv >= 1) p->val[p->nv - 1] = mk(c, K_NEG, p->val[p->nv - 1], 0);
+        return;
+    }
+    if (p->nv < 2) return;
+    p->nv--;
+    p->val[p->nv - 1] = mk(c, KIND[o.op], p->val[p->nv - 1], p->val[p->nv]);
 }
 
-/* A number as typed. A plain decimal keeps its text and the value the core reads; a fraction a.b.c
-   keeps only its text; based and complex numbers are refused. */
-static bool parse_number(ctx *c, node **v)
+/* Applies the operators that bind at least as tightly as level, down to the nearest opener. */
+static void reduce_to(ctx *c, pstack *p, int level)
 {
-    const char *s = c->s + c->i;
+    while (p->no > 0 && p->ops[p->no - 1].op < M_PAREN && LEVEL[p->ops[p->no - 1].op] >= level) reduce(c, p);
+}
+
+static bool any_opener(const pstack *p)
+{
+    for (int i = 0; i < p->no; i++)
+        if (p->ops[i].op >= M_PAREN) return true;
+    return false;
+}
+
+/* An operand where one is expected: a minus, a number, an opener, a name, a variable. Returns the bytes
+   consumed and sets *done when an operand is complete; -1 on a syntax error. */
+static int operand(ctx *c, pstack *p, int i, bool parg, bool *done)
+{
+    const char *s = c->s, *t = s + i;
     int n, points, digits;
-    if ((n = based_len(s)) > 0) {
-        refuse(c, s, n);
-        c->i += n;
-        *v = mk_int(c, 0);
-        return true;
+    *done = true;
+    if (*t == '-') {
+        p->ops[p->no++] = (opent){parg ? O_PNEG : O_NEG, 0, 0, 0};
+        *done = false;
+        return 1;
     }
-    n = decimal_len(s, &points, &digits);
-    if (n == 0) return false;
-    if (!digits || points > 2) {
-        c->i += n;
-        fail(c, CASIM_SYNTAX);
-        return true;
+    if ((n = based_len(t)) > 0) {
+        refuse(c, t, n);
+        p->val[p->nv++] = leaf(c, K_BAD, 0);
+        return n;
     }
-    if (points == 2) {
-        /* the core reads a fraction with an exponent, or without a denominator, as SYNTAX at its start */
-        int d = 0, part = 0;
-        for (int k = 0; k < n; k++) {
-            if (s[k] == 'E') d = -1000;
-            if (s[k] == '.') part++;
-            else if (part == 2) d++;
+    if ((n = decimal_len(t, &points, &digits)) > 0) {
+        int j = i + n;
+        if (!digits || points > 2) {
+            fail(c, j);
+            return -1;
         }
-        if (d <= 0) {
-            fail(c, CASIM_SYNTAX);
-            c->i += n;
-            return true;
-        }
-    }
-    *v = alloc(c, N_NUM);
-    if (*v != &c->spare) {
-        (*v)->src = (uint16_t)c->i;
-        (*v)->len = (uint8_t)n;
-    }
-    if (points < 2 && *v != &c->spare) (*v)->exact = literal_value(&(*v)->u.v, s, n);
-    c->i += n;
-    if (at(c, "i") || at(c, "\xce\xb8")) {
-        int n2;
-        at(c, "-");
-        n2 = decimal_len(c->s + c->i, &points, &digits);
-        if (n2 == 0 || !digits || points > 1) {
-            fail(c, CASIM_SYNTAX);
-            return true;
-        }
-        c->i += n2;
-        refuse(c, s, (int)(c->s + c->i - s));
-    }
-    return true;
-}
-
-static void parse_prim(ctx *c, node **v)
-{
-    const char *s = c->s + c->i;
-    *v = &c->spare;
-    if (c->st != CASIM_OK) return;
-    if (parse_number(c, v)) return;
-    if (at(c, "(")) {
-        parse_add(c, v);
-        if (!at(c, ")")) fail(c, CASIM_SYNTAX);
-        return;
-    }
-    if (at(c, "[")) {
-        node *e;
-        int k = 0;
-        refuse(c, s, 1);
-        do {
-            if (k == 3) {
-                fail(c, CASIM_SYNTAX);
-                return;
+        if (s[j] == 'i' || strncmp(s + j, "\xce\xb8", 2) == 0) {
+            /* a complex number, x i y or r θ a: parsed as the core parses it, then refused */
+            int n2;
+            j += s[j] == 'i' ? 1 : 2;
+            if (s[j] == '-') j++;
+            n2 = decimal_len(s + j, &points, &digits);
+            if (n2 == 0 || !digits || points > 1) {
+                fail(c, j);
+                return -1;
             }
-            k++;
-            parse_add(c, &e);
-        } while (c->st == CASIM_OK && at(c, ","));
-        if (c->st == CASIM_OK && !at(c, "]")) fail(c, CASIM_SYNTAX);
-        return;
+            j += n2;
+            refuse(c, t, j - i);
+            p->val[p->nv++] = leaf(c, K_BAD, 0);
+        } else {
+            ref r = mk(c, K_LIT, (ref)i, 0);
+            if (r != SPARE) nd(c, r)->n = (uint16_t)n;
+            p->val[p->nv++] = r;
+        }
+        return j - i;
+    }
+    if (*t == '(' || *t == '[') {
+        if (*t == '[') refuse(c, t, 1);
+        p->ops[p->no++] = (opent){*t == '(' ? M_PAREN : M_VEC, 0, 1, 3};
+        *done = false;
+        return 1;
     }
     {
         /* a name: the longest that fits; a function name needs its "(" */
         const name_t *best = NULL;
         size_t bl = 0;
         for (size_t k = 0; k < sizeof NAMES / sizeof NAMES[0]; k++) {
-            size_t n = strlen(NAMES[k].name);
-            if (n > bl && strncmp(s, NAMES[k].name, n) == 0 && (NAMES[k].args == 0 || s[n] == '(')) {
+            size_t m;
+            if (NAMES[k].name[0] != *t) continue;          /* most never share the first byte */
+            m = strlen(NAMES[k].name);
+            if (m > bl && strncmp(t, NAMES[k].name, m) == 0 && (NAMES[k].args == 0 || t[m] == '(')) {
                 best = &NAMES[k];
-                bl = n;
+                bl = m;
             }
+        }
+        if (best && best->args == 0) {
+            if (strcmp(best->name, PI_UTF8) == 0) p->val[p->nv++] = leaf(c, K_PI, 0);
+            else {
+                refuse(c, t, (int)bl);
+                p->val[p->nv++] = leaf(c, K_BAD, 0);
+            }
+            return (int)bl;
         }
         if (best) {
-            node *a, *b;
-            c->i += (int)bl;
-            if (best->args == 0) {
-                if (strcmp(best->name, PI_UTF8) == 0) *v = alloc(c, N_PI);
-                else refuse(c, s, (int)bl);
-                return;
-            }
-            c->i++;                     /* the "(" */
-            parse_add(c, &a);
-            if (best->args == 2) {
-                if (!at(c, ",")) {
-                    fail(c, CASIM_SYNTAX);
-                    return;
-                }
-                parse_add(c, &b);
-            }
-            if (!at(c, ")")) {
-                fail(c, CASIM_SYNTAX);
-                return;
-            }
-            if (best->fn == F_REFUSED) refuse(c, s, (int)bl);
-            else *v = mk_fn(c, best->fn, a);
-            return;
+            if (best->fn == F_REFUSED) refuse(c, t, (int)bl);
+            p->ops[p->no++] = (opent){M_FN, best->fn, 1, best->args};
+            *done = false;
+            return (int)bl + 1;     /* and its "(" */
         }
     }
-    if (at(c, IND_I) || at(c, IND_J)) {
-        refuse(c, s, 3);
-        return;
+    if (strncmp(t, IND_I, 3) == 0 || strncmp(t, IND_J, 3) == 0) {
+        refuse(c, t, 3);
+        p->val[p->nv++] = leaf(c, K_BAD, 0);
+        return 3;
     }
-    if ((*s >= 'A' && *s <= 'Z') || *s == 'i') {
-        /* A-Z, and i: the 33s's variable i (33s p.13-23, core unit 025); the 35s rejects a lone i
-           before casim could see it */
-        c->i++;
-        *v = alloc(c, N_VAR);
-        if (*v != &c->spare) (*v)->id = (uint8_t)(*s == 'i' ? 26 : *s - 'A');
-        return;
+    if ((*t >= 'A' && *t <= 'Z') || *t == 'i') {
+        /* A-Z, and i: the 33s's variable i (33s p.13-23, core unit 025); the 35s rejects a lone i before
+           casim could see it */
+        p->val[p->nv++] = leaf(c, K_VAR, *t == 'i' ? 26 : *t - 'A');
+        return 1;
     }
-    fail(c, CASIM_SYNTAX);
+    fail(c, i);
+    return -1;
 }
 
-static void parse_post(ctx *c, node **v)
+/* A closer: ")", "," or "]". Returns false on a syntax error. */
+static bool closer(ctx *c, pstack *p, int *i)
 {
-    parse_prim(c, v);
-    while (c->st == CASIM_OK && c->s[c->i] == '!') {
-        refuse(c, c->s + c->i, 1);
-        c->i++;
-    }
-}
-
-static void parse_parg(ctx *c, node **v)
-{
-    if (at(c, "-")) {
-        node *a;
-        parse_parg(c, &a);
-        *v = mk2(c, N_NEG, a, NULL);
-        return;
-    }
-    parse_post(c, v);
-}
-
-static void parse_pow(ctx *c, node **v)
-{
-    parse_post(c, v);
-    while (c->st == CASIM_OK && at(c, "^")) {
-        node *e;
-        parse_parg(c, &e);
-        *v = mk2(c, N_POW, *v, e);
-    }
-}
-
-static void parse_neg(ctx *c, node **v)
-{
-    if (at(c, "-")) {
-        node *a;
-        parse_neg(c, &a);
-        *v = mk2(c, N_NEG, a, NULL);
-        return;
-    }
-    parse_pow(c, v);
-}
-
-static void parse_mul(ctx *c, node **v)
-{
-    parse_neg(c, v);
-    while (c->st == CASIM_OK) {
-        int kind;
-        node *r;
-        if (at(c, "\xc3\x97")) kind = N_MUL;
-        else if (at(c, "\xc3\xb7")) kind = N_DIV;
-        else break;
-        parse_neg(c, &r);
-        *v = mk2(c, kind, *v, r);
-    }
-}
-
-static void parse_add(ctx *c, node **v)
-{
-    parse_mul(c, v);
-    while (c->st == CASIM_OK) {
-        int kind;
-        node *r;
-        if (at(c, "+")) kind = N_ADD;
-        else if (at(c, "-")) kind = N_SUB;
-        else break;
-        parse_mul(c, &r);
-        *v = mk2(c, kind, *v, r);
-    }
-}
-
-static node *parse(ctx *c)
-{
-    node *l, *r;
-    parse_add(c, &l);
-    if (c->st == CASIM_OK && at(c, "=")) {
-        parse_add(c, &r);
-        l = mk2(c, N_EQ, l, r);
-    }
-    if (c->st == CASIM_OK && c->s[c->i] != '\0') fail(c, CASIM_SYNTAX);
-    if (c->st == CASIM_OK && c->bad) c->st = CASIM_NOT_DIFFERENTIABLE;
-    return l;
-}
-
-/* ---- constants, folded only when the result is exact (unit CAS 001 rule 5) ---- */
-
-/* The value the core reads for n, if n is a number (or the negation of one) known exactly. */
-static bool num_of(const node *n, abn *v)
-{
-    if (n->kind == N_NUM && n->exact) {
-        *v = n->u.v;
+    char t = c->s[*i];
+    opent *o;
+    reduce_to(c, p, 1);
+    o = p->no > 0 ? &p->ops[p->no - 1] : NULL;
+    if (o && t == ')' && o->op == M_PAREN) {
+        p->no--;
+        (*i)++;
         return true;
     }
-    if (n->kind == N_NEG && num_of(n->u.k.a, v)) {
-        *v = abn_neg(v);
+    if (o && t == ')' && o->op == M_FN && o->args == o->need) {
+        p->no--;
+        (*i)++;
+        if (o->need == 2) p->nv--;
+        if (o->need == 2 || o->fn == F_REFUSED) p->val[p->nv - 1] = leaf(c, K_BAD, 0);
+        else {
+            ref r = mk(c, K_RFN, p->val[p->nv - 1], 0);
+            if (r != SPARE) nd(c, r)->id = o->fn;
+            p->val[p->nv - 1] = r;
+        }
         return true;
     }
+    if (o && t == ',' && o->op == M_FN && o->args < o->need) {
+        o->args++;
+        (*i)++;
+        return true;
+    }
+    if (o && t == ',' && o->op == M_VEC) {
+        (*i)++;
+        if (o->args == 3) {
+            fail(c, *i);
+            return false;
+        }
+        o->args++;
+        return true;
+    }
+    if (o && t == ']' && o->op == M_VEC) {
+        p->nv -= o->args - 1;
+        p->val[p->nv - 1] = leaf(c, K_BAD, 0);
+        p->no--;
+        (*i)++;
+        return true;
+    }
+    fail(c, *i);
     return false;
 }
 
-static bool is_int(const node *n, int k)
+static ref parse(ctx *c)
 {
-    abn v, w = abn_from_int(k);
-    return num_of(n, &v) && abn_cmp(&v, &w) == 0;
-}
-
-/* The exponents of a's leading and last significant digits. */
-static void span(const abn *a, int *lead, int *last)
-{
-    bool neg;
-    char d[ABN_DIGITS + 2];
-    abn_digits(a, &neg, d, lead);
-    *last = *lead - (int)strlen(d) + 1;
-}
-
-/* a + b exactly, when the sum fits in the engine's digits (its span, carry included). */
-static bool add_exact(abn *r, const abn *a, const abn *b)
-{
-    int la, ta, lb, tb;
-    if (abn_is_zero(a)) return *r = *b, true;
-    if (abn_is_zero(b)) return *r = *a, true;
-    span(a, &la, &ta);
-    span(b, &lb, &tb);
-    if ((la > lb ? la : lb) + 1 - (ta < tb ? ta : tb) + 1 > ABN_DIGITS) return false;
-    return abn_add(r, a, b) == ABN_OK;
-}
-
-/* a / b exactly: the quotient times b gives a back with no rounding. */
-static bool div_exact(abn *r, const abn *a, const abn *b)
-{
-    abn q, back;
-    if (abn_is_zero(b) || abn_div(&q, a, b) != ABN_OK) return false;
-    if (abn_mul_exact(&back, &q, b) != ABN_OK || abn_cmp(&back, a) != 0) return false;
-    *r = q;
-    return true;
-}
-
-/* a ^ k for a small whole k, exactly. */
-static bool pow_exact(abn *r, const abn *a, const abn *k)
-{
-    abn acc = abn_from_int(1), lim = abn_from_int(64), one = abn_from_int(1), i = abn_zero();
-    if (!abn_is_integer(k) || abn_is_negative(k) || abn_cmp(k, &lim) > 0) return false;
-    while (abn_cmp(&i, k) < 0)
-        if (abn_mul_exact(&acc, &acc, a) != ABN_OK || abn_add(&i, &i, &one) != ABN_OK) return false;
-    *r = acc;
-    return true;
-}
-
-/* ---- the derivative's constructors: rule 5's simplifications, and three more (u-u, 0÷u, d 0^v)
-   that keep a derivative defined wherever its function is ---- */
-
-/* The same expression, node for node. */
-static bool same(const ctx *c, const node *a, const node *b)
-{
-    if (a == b) return true;
-    if (a->kind != b->kind || a->id != b->id) return false;
-    switch (a->kind) {
-    case N_NUM:
-        if (a->exact != b->exact) return false;
-        if (a->exact) return abn_cmp(&a->u.v, &b->u.v) == 0;
-        return a->len == b->len && memcmp(c->s + a->src, c->s + b->src, a->len) == 0;   /* a fraction's text */
-    case N_VAR:
-    case N_PI: return true;
-    case N_NEG:
-    case N_FN: return same(c, a->u.k.a, b->u.k.a);
-    default: return same(c, a->u.k.a, b->u.k.a) && same(c, a->u.k.b, b->u.k.b);
+    const char *s = c->s;
+    size_t len = strlen(s), need = ((len + 2) * (sizeof(ref) + sizeof(opent)) + 7u) & ~(size_t)7u;
+    pstack p = {0};
+    int i = 0;
+    bool want = true, parg = false, eq = false;
+    ref out = SPARE;
+    if (c->top < c->used + need) {
+        c->st = CASIM_TOO_LONG;
+        return SPARE;
     }
-}
-
-static node *s_neg(ctx *c, node *a)
-{
-    abn v;
-    if (a->kind == N_NEG) return a->u.k.a;                    /* -(-u) is u */
-    if (num_of(a, &v)) return mk_abn(c, abn_neg(&v));
-    return mk2(c, N_NEG, a, NULL);
-}
-
-static node *s_add(ctx *c, node *a, node *b)
-{
-    abn x, y, r;
-    if (is_int(a, 0)) return b;
-    if (is_int(b, 0)) return a;
-    if (num_of(a, &x) && num_of(b, &y) && add_exact(&r, &x, &y)) return mk_abn(c, r);
-    return mk2(c, N_ADD, a, b);
-}
-
-static node *s_sub(ctx *c, node *a, node *b)
-{
-    abn x, y, r;
-    if (is_int(b, 0)) return a;
-    if (is_int(a, 0)) return s_neg(c, b);                     /* 0-u is -u */
-    if (same(c, a, b)) return mk_int(c, 0);                      /* u-u is 0 (ours, beyond rule 5) */
-    if (num_of(a, &x) && num_of(b, &y)) {
-        y = abn_neg(&y);
-        if (add_exact(&r, &x, &y)) return mk_abn(c, r);
-    }
-    return mk2(c, N_SUB, a, b);
-}
-
-static node *s_mul(ctx *c, node *a, node *b)
-{
-    abn x, y, r;
-    if (is_int(a, 0) || is_int(b, 0)) return mk_int(c, 0);    /* 0×u and u×0 are 0 */
-    if (is_int(a, 1)) return b;
-    if (is_int(b, 1)) return a;
-    if (num_of(a, &x) && num_of(b, &y) && abn_mul_exact(&r, &x, &y) == ABN_OK) return mk_abn(c, r);
-    return mk2(c, N_MUL, a, b);
-}
-
-static node *s_div(ctx *c, node *a, node *b)
-{
-    abn x, y, r;
-    if (is_int(b, 1)) return a;
-    if (is_int(a, 0)) return a;                               /* 0÷u is 0 (ours, beyond rule 5) */
-    if (num_of(a, &x) && num_of(b, &y) && div_exact(&r, &x, &y)) return mk_abn(c, r);
-    return mk2(c, N_DIV, a, b);
-}
-
-static node *s_pow(ctx *c, node *a, node *b)
-{
-    abn x, y, r;
-    if (is_int(b, 1)) return a;
-    if (is_int(b, 0)) return mk_int(c, 1);
-    if (num_of(a, &x) && num_of(b, &y) && pow_exact(&r, &x, &y)) return mk_abn(c, r);
-    return mk2(c, N_POW, a, b);
-}
-
-/* ---- the derivative ---- */
-
-/* A derivative in the angle mode: the trigonometric functions read their argument in degrees or
-   grads, so d/du SIN(u) carries π/180 (π/200); the inverses return them, so they carry 180/π. */
-static node *trig(ctx *c, node *e)
-{
-    if (c->angle == CASIM_RAD) return e;
-    return s_div(c, s_mul(c, e, mk_pi(c)), mk_int(c, c->angle == CASIM_DEG ? 180 : 200));
-}
-
-static node *itrig(ctx *c, node *e)
-{
-    if (c->angle == CASIM_RAD) return e;
-    return s_div(c, s_mul(c, e, mk_int(c, c->angle == CASIM_DEG ? 180 : 200)), mk_pi(c));
-}
-
-static node *fn(ctx *c, int f, node *a)
-{
-    return mk_fn(c, f, a);
-}
-
-static node *deriv(ctx *c, node *n);
-
-/* d/dx f(u) for f(u) = n, by the chain rule: f'(u)·u'. */
-static node *deriv_fn(ctx *c, node *n)
-{
-    node *u = n->u.k.a, *du = deriv(c, u), *one = NULL;
-    if (is_int(du, 0)) return du;
-    switch (n->id) {
-    case F_SQ: return s_mul(c, s_mul(c, mk_int(c, 2), u), du);
-    case F_SQRT: return s_div(c, du, s_mul(c, mk_int(c, 2), n));
-    case F_INV: return s_neg(c, s_div(c, du, fn(c, F_SQ, u)));
-    case F_LN: return s_div(c, du, u);
-    case F_LOG: return s_div(c, du, s_mul(c, u, fn(c, F_LN, mk_int(c, 10))));
-    case F_EXP: return s_mul(c, n, du);
-    case F_ALOG: return s_mul(c, s_mul(c, n, fn(c, F_LN, mk_int(c, 10))), du);
-    case F_SIN: return trig(c, s_mul(c, fn(c, F_COS, u), du));
-    case F_COS: return trig(c, s_mul(c, s_neg(c, fn(c, F_SIN, u)), du));
-    case F_TAN: return trig(c, s_div(c, du, fn(c, F_SQ, fn(c, F_COS, u))));
-    case F_ASIN: one = mk_int(c, 1); return itrig(c, s_div(c, du, fn(c, F_SQRT, s_sub(c, one, fn(c, F_SQ, u)))));
-    case F_ACOS:
-        one = mk_int(c, 1);
-        return itrig(c, s_neg(c, s_div(c, du, fn(c, F_SQRT, s_sub(c, one, fn(c, F_SQ, u))))));
-    case F_ATAN: return itrig(c, s_div(c, du, s_add(c, mk_int(c, 1), fn(c, F_SQ, u))));
-    case F_SINH: return s_mul(c, fn(c, F_COSH, u), du);
-    case F_COSH: return s_mul(c, fn(c, F_SINH, u), du);
-    case F_TANH: return s_div(c, du, fn(c, F_SQ, fn(c, F_COSH, u)));
-    case F_ASINH: return s_div(c, du, fn(c, F_SQRT, s_add(c, fn(c, F_SQ, u), mk_int(c, 1))));
-    case F_ACOSH: return s_div(c, du, fn(c, F_SQRT, s_sub(c, fn(c, F_SQ, u), mk_int(c, 1))));
-    case F_ATANH: return s_div(c, du, s_sub(c, mk_int(c, 1), fn(c, F_SQ, u)));
-    case F_ABS: return s_mul(c, fn(c, F_SGN, u), du);        /* right except at u = 0 */
-    }
-    return mk_int(c, 0);    /* not reached: the parser refuses every other function */
-}
-
-static node *deriv(ctx *c, node *n)
-{
-    node *a = n->u.k.a, *b = n->u.k.b, *da, *db;
-    if (c->st != CASIM_OK) return &c->spare;
-    switch (n->kind) {
-    case N_NUM:
-    case N_PI: return mk_int(c, 0);
-    case N_VAR: return mk_int(c, n->id == c->var);
-    case N_NEG: return s_neg(c, deriv(c, a));
-    case N_FN: return deriv_fn(c, n);
-    case N_EQ: return mk2(c, N_EQ, deriv(c, a), deriv(c, b));
-    }
-    da = deriv(c, a);
-    db = deriv(c, b);
-    switch (n->kind) {
-    case N_ADD: return s_add(c, da, db);
-    case N_SUB: return s_sub(c, da, db);
-    case N_MUL: return s_add(c, s_mul(c, da, b), s_mul(c, a, db));         /* (uv)' = u'v + uv' */
-    case N_DIV:                                                            /* (u/v)' = (u'v - uv')/v² */
-        if (is_int(db, 0)) return s_div(c, da, b);
-        return s_div(c, s_sub(c, s_mul(c, da, b), s_mul(c, a, db)), fn(c, F_SQ, b));
-    default:                                                               /* N_POW, u^v */
-        if (is_int(db, 0)) {
-            /* v constant: v·u^(v-1)·u' */
-            if (is_int(da, 0)) return da;
-            return s_mul(c, s_mul(c, b, s_pow(c, a, s_sub(c, b, mk_int(c, 1)))), da);
+    c->top -= need;                     /* the stacks, at the top of the arena */
+    p.val = (ref *)(void *)(c->mem + c->top);
+    p.ops = (opent *)(void *)(c->mem + c->top + (len + 2) * sizeof(ref));
+    while (c->st == CASIM_OK) {
+        const char *t = s + i;
+        int op = -1;
+        if (want) {
+            bool done;
+            int n = operand(c, &p, i, parg, &done);
+            if (n < 0) break;
+            i += n;
+            if (done) want = false;
+            else if (s[i - 1] != '-') parg = false;
+            continue;
         }
-        if (is_int(a, 0)) return mk_int(c, 0);         /* 0^v is 0 wherever it is defined (v > 0) */
-        if (is_int(da, 0)) return s_mul(c, s_mul(c, n, fn(c, F_LN, a)), db);   /* u constant: u^v·ln u·v' */
-        /* u^v·(v'·ln u + v·u'/u) */
-        return s_mul(c, n, s_add(c, s_mul(c, db, fn(c, F_LN, a)), s_div(c, s_mul(c, b, da), a)));
+        if (*t == '!') {
+            refuse(c, t, 1);
+            i++;
+            continue;
+        }
+        if (*t == '^') op = O_POW;
+        else if (strncmp(t, TIMES, 2) == 0) op = O_MUL;
+        else if (strncmp(t, DIVIDE, 2) == 0) op = O_DIV;
+        else if (*t == '+') op = O_ADD;
+        else if (*t == '-') op = O_SUB;
+        else if (*t == '=' && !eq && !any_opener(&p)) op = O_EQ, eq = true;
+        if (op >= 0) {
+            reduce_to(c, &p, op == O_EQ ? 1 : LEVEL[op]);
+            p.ops[p.no++] = (opent){(uint8_t)op, 0, 0, 0};
+            i += op == O_MUL || op == O_DIV ? 2 : 1;
+            want = true;
+            parg = op == O_POW;
+            continue;
+        }
+        if (*t == ')' || *t == ',' || *t == ']') {
+            if (!closer(c, &p, &i)) break;
+            if (*t != ')' && *t != ']') want = true, parg = false;
+            continue;
+        }
+        if (*t == '\0' && !any_opener(&p)) {
+            while (p.no > 0) reduce(c, &p);
+            if (c->st == CASIM_OK && p.nv == 1) out = p.val[0];
+            break;
+        }
+        fail(c, i);
+    }
+    c->top += need;
+    if (c->st == CASIM_OK && c->bad) c->st = CASIM_NOT_DIFFERENTIABLE;
+    return out;
+}
+
+/* ---- raw to canonical ---- */
+
+/* The rational of the value the core reads for a literal: a decimal, or a fraction a.b.c as (a×c+b)/c;
+   false (the literal is kept as typed) when it does not fit. Kept out of line: its buffer would otherwise
+   sit in the recursion. */
+static __attribute__((noinline)) bool literal(rat *v, const char *s, int n)
+{
+    char buf[200];
+    int points = 0, k = 0;
+    for (int i = 0; i < n; i++) points += s[i] == '.';
+    if (n + 2 >= (int)sizeof buf) return false;
+    if (points < 2) {
+        abn x;
+        if (s[0] == '.') buf[k++] = '0';
+        memcpy(buf + k, s, (size_t)n);
+        buf[k + n] = '\0';
+        return abn_from_text(&x, buf) == ABN_OK && rat_from_abn(v, &x);
+    }
+    {
+        /* a.b.c: three digit strings, no exponent, a nonzero denominator (else the core's evaluating pass
+           rejects it, and casim keeps the text) */
+        int64_t part[3], ac, top;
+        int at = 0;
+        for (int j = 0; j < 3; j++) {
+            int64_t m = 0;
+            int digits = 0;
+            while (at < n && s[at] != '.') {
+                if (!digit(s[at]) || ++digits > 18) return false;
+                m = m * 10 + (s[at++] - '0');
+            }
+            at++;
+            part[j] = m;
+        }
+        return part[2] != 0 && mul64(&ac, part[0], part[2]) && add64(&top, ac, part[1]) && rat_make(v, top, part[2]);
+    }
+}
+
+static ref canon(ctx *c, ref r);
+
+/* A chain of + and - (or × and ÷), walked down its left side in a loop. */
+static ref chain(ctx *c, ref r, bool sum)
+{
+    int m = 1, k1 = sum ? K_BADD : K_BMUL, k2 = sum ? K_BSUB : K_BDIV;
+    ref l, x = r;
+    while (nd(c, x)->kind == k1 || nd(c, x)->kind == k2) m++, x = nd(c, x)->a;
+    if (!(l = grab(c, (size_t)m * sizeof(ref)))) return SPARE;
+    x = r;
+    for (int k = m - 1; k > 0; k--) {
+        ref v = canon(c, nd(c, x)->b);
+        if (nd(c, x)->kind == k2) v = sum ? neg(c, v) : power(c, v, small(c, C_M1));
+        list(c, l)[k] = v;
+        x = nd(c, x)->a;
+    }
+    {
+        ref v = canon(c, x);
+        list(c, l)[0] = v;
+    }
+    return sum ? add(c, list(c, l), m) : mul(c, list(c, l), m);
+}
+
+static ref canon(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    if (c->st != CASIM_OK) return SPARE;
+    switch (x->kind) {
+    case K_LIT: {
+        rat v;
+        if (literal(&v, c->s + x->a, x->n)) return num(c, &v);
+        return r;               /* kept as typed */
+    }
+    case K_NEG: {
+        int k = 0;
+        ref y = r;
+        while (nd(c, y)->kind == K_NEG) k++, y = nd(c, y)->a;
+        y = canon(c, y);
+        return k % 2 ? neg(c, y) : y;
+    }
+    case K_BADD:
+    case K_BSUB: return chain(c, r, true);
+    case K_BMUL:
+    case K_BDIV: return chain(c, r, false);
+    case K_BPOW: {
+        /* ^ is left to right: walk the left side in a loop, then apply the exponents innermost first */
+        int m = 0;
+        ref y = r, b, l;
+        while (nd(c, y)->kind == K_BPOW) m++, y = nd(c, y)->a;
+        if (!(l = grab(c, (size_t)m * sizeof(ref)))) return SPARE;
+        y = r;
+        for (int k = m - 1; k >= 0; k--) list(c, l)[k] = nd(c, y)->b, y = nd(c, y)->a;
+        b = canon(c, y);
+        for (int k = 0; k < m; k++) b = power(c, b, canon(c, list(c, l)[k]));
+        return b;
+    }
+    case K_RFN: return fn(c, x->id, canon(c, x->a));
+    case K_REQ: {
+        ref a = canon(c, x->a), b = canon(c, nd(c, r)->b);
+        return mk(c, K_EQ, a, b);
+    }
+    default: return r;          /* a variable or π */
+    }
+}
+
+/* ---- the derivative, on the canonical tree ---- */
+
+/* The angle mode's factor: the trigonometric functions read degrees or grads, so d/du SIN(u) carries
+   π/180 (π/200); the inverses return them, so they carry 180/π. */
+static ref angle_factor(ctx *c, bool inverse)
+{
+    ref d, pi;
+    if (c->angle == CASIM_RAD) return small(c, C_1);
+    d = small(c, c->angle == CASIM_DEG ? C_180 : C_200);
+    if (!c->pi || c->pi == SPARE) c->pi = leaf(c, K_PI, 0);
+    pi = c->pi;
+    return inverse ? mul2(c, d, power(c, pi, small(c, C_M1))) : mul2(c, pi, power(c, d, small(c, C_M1)));
+}
+
+/* (1 - u^2), (1 + u^2), (u^2 + 1), (u^2 - 1): the inverse functions' radicands. */
+static ref one_pm_sq(ctx *c, ref u, int sign_one, int sign_sq)
+{
+    ref sq = power(c, u, small(c, C_2));
+    return add2(c, small(c, sign_one > 0 ? C_1 : C_M1), sign_sq > 0 ? sq : neg(c, sq));
+}
+
+/* d/dx f(u) = f'(u)·u' for the function node r. */
+static ref deriv_fn(ctx *c, ref r, ref du)
+{
+    ref u = nd(c, r)->a, m1 = small(c, C_M1);
+    switch (nd(c, r)->id) {
+    case F_LN: return mul2(c, du, power(c, u, m1));
+    case F_LOG: return mul3(c, du, power(c, u, m1), power(c, fn(c, F_LN, small(c, C_10)), m1));
+    case F_EXP: return mul2(c, r, du);
+    case F_ALOG: return mul3(c, r, fn(c, F_LN, small(c, C_10)), du);
+    case F_SIN: return mul3(c, fn(c, F_COS, u), du, angle_factor(c, false));
+    case F_COS: return neg(c, mul3(c, fn(c, F_SIN, u), du, angle_factor(c, false)));
+    case F_TAN: return mul3(c, du, power(c, fn(c, F_COS, u), small(c, C_M2)), angle_factor(c, false));
+    case F_ASIN: return mul3(c, du, power(c, one_pm_sq(c, u, 1, -1), small(c, C_MHALF)), angle_factor(c, true));
+    case F_ACOS:
+        return neg(c, mul3(c, du, power(c, one_pm_sq(c, u, 1, -1), small(c, C_MHALF)), angle_factor(c, true)));
+    case F_ATAN: return mul3(c, du, power(c, one_pm_sq(c, u, 1, 1), m1), angle_factor(c, true));
+    case F_SINH: return mul2(c, fn(c, F_COSH, u), du);
+    case F_COSH: return mul2(c, fn(c, F_SINH, u), du);
+    case F_TANH: return mul2(c, du, power(c, fn(c, F_COSH, u), small(c, C_M2)));
+    case F_ASINH: return mul2(c, du, power(c, one_pm_sq(c, u, 1, 1), small(c, C_MHALF)));
+    case F_ACOSH: return mul2(c, du, power(c, one_pm_sq(c, u, -1, 1), small(c, C_MHALF)));
+    case F_ATANH: return mul2(c, du, power(c, one_pm_sq(c, u, 1, -1), m1));
+    case F_ABS: return mul2(c, fn(c, F_SGN, u), du);      /* right except at u = 0 */
+    }
+    return small(c, C_0);       /* not reached: the parser refuses every other function */
+}
+
+static ref deriv(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    if (c->st != CASIM_OK) return SPARE;
+    switch (x->kind) {
+    case K_VAR: return small(c, x->id == c->var ? C_1 : C_0);
+    case K_ADD: {
+        int n = x->n;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (!l) return SPARE;
+        for (int i = 0; i < n; i++) {
+            ref d = deriv(c, list(c, nd(c, r)->a)[i]);
+            list(c, l)[i] = d;
+        }
+        return add(c, list(c, l), n);
+    }
+    case K_MUL: {
+        /* (f1·f2·…)' = Σ f1·…·fi'·…: the product with one factor replaced by its derivative, each */
+        int n = x->n, k = 0;
+        ref terms = grab(c, (size_t)n * sizeof(ref)), f = grab(c, (size_t)n * sizeof(ref));
+        if (!terms || !f) return SPARE;
+        for (int i = 0; i < n; i++) {
+            ref d = deriv(c, list(c, nd(c, r)->a)[i]);
+            if (is_k(c, d, 0, 1)) continue;
+            memcpy(list(c, f), list(c, nd(c, r)->a), (size_t)n * sizeof(ref));
+            list(c, f)[i] = d;
+            d = mul(c, list(c, f), n);
+            list(c, terms)[k++] = d;
+        }
+        return add(c, list(c, terms), k);
+    }
+    case K_POW: {
+        ref u = x->a, e = x->b, du = deriv(c, u), de = deriv(c, e);
+        bool cu = is_k(c, du, 0, 1), ce = is_k(c, de, 0, 1);
+        if (cu && ce) return small(c, C_0);
+        if (ce) return mul3(c, e, power(c, u, add2(c, e, small(c, C_M1))), du);     /* e·u^(e-1)·u' */
+        if (is_k(c, u, 0, 1)) return small(c, C_0);                            /* 0^v: 0 where defined */
+        if (cu) return mul3(c, r, fn(c, F_LN, u), de);                          /* u^e·ln u·e' */
+        return mul2(c, r, add2(c, mul2(c, de, fn(c, F_LN, u)), mul3(c, e, du, power(c, u, small(c, C_M1)))));
+    }
+    case K_FN: {
+        ref du = deriv(c, x->a);
+        if (is_k(c, du, 0, 1)) return du;
+        return deriv_fn(c, r, du);
+    }
+    case K_EQ: {
+        ref a = deriv(c, x->a), b = deriv(c, nd(c, r)->b);
+        return mk(c, K_EQ, a, b);
+    }
+    default: return small(c, C_0);      /* numbers, π, literals */
     }
 }
 
@@ -694,7 +1286,8 @@ typedef struct {
 
 static void put(out_t *w, const char *s, size_t len)
 {
-    if (w->full || w->n + len + 1 > w->cap) {
+    if (!w || w->full) return;
+    if (w->n + len + 1 > w->cap) {
         w->full = true;
         return;
     }
@@ -708,56 +1301,39 @@ static void puts_(out_t *w, const char *s)
     put(w, s, strlen(s));
 }
 
-static bool neg_num(const node *n)
-{
-    return n->kind == N_NUM && n->len == 0 && abn_is_negative(&n->u.v);
-}
-
-/* The grammar level a node prints at: 1 + -, 2 × ÷, 3 unary minus, 4 ^, 5 a primary. */
-static int level(const node *n)
-{
-    switch (n->kind) {
-    case N_ADD: case N_SUB: return 1;
-    case N_MUL: case N_DIV: return 2;
-    case N_NEG: return 3;
-    case N_POW: return 4;
-    case N_NUM: return neg_num(n) ? 3 : 5;
-    default: return 5;
-    }
-}
-
-/* A computed number: plain where it is short, else d.dddEn, in the forms core/eqn.c reads. Kept out of
-   line, so its buffers are not in every frame of the recursive printer. */
+/* A number in the forms core/eqn.c reads: plain where it is short, else d.dddEn. Kept out of line, so its
+   buffers are not in every frame of the recursive printer. */
 static __attribute__((noinline)) void put_num(out_t *w, const abn *v)
 {
-    bool neg;
+    bool neg_;
     char d[ABN_DIGITS + 2], buf[ABN_DIGITS + 48];
-    int lead, nd, k = 0;
-    abn_digits(v, &neg, d, &lead);
-    nd = (int)strlen(d);
-    if (nd == 0) {
+    int lead, nd_, k = 0;
+    if (!w) return;
+    abn_digits(v, &neg_, d, &lead);
+    nd_ = (int)strlen(d);
+    if (nd_ == 0) {
         puts_(w, "0");
         return;
     }
-    if (neg) buf[k++] = '-';
+    if (neg_) buf[k++] = '-';
     if (lead >= 0 && lead < ABN_DIGITS) {
-        for (int i = 0; i <= lead; i++) buf[k++] = i < nd ? d[i] : '0';
-        if (nd > lead + 1) {
+        for (int i = 0; i <= lead; i++) buf[k++] = i < nd_ ? d[i] : '0';
+        if (nd_ > lead + 1) {
             buf[k++] = '.';
-            for (int i = lead + 1; i < nd; i++) buf[k++] = d[i];
+            for (int i = lead + 1; i < nd_; i++) buf[k++] = d[i];
         }
     } else if (lead < 0 && lead >= -6) {
         buf[k++] = '0';
         buf[k++] = '.';
         for (int i = -1; i > lead; i--) buf[k++] = '0';
-        for (int i = 0; i < nd; i++) buf[k++] = d[i];
+        for (int i = 0; i < nd_; i++) buf[k++] = d[i];
     } else {
         int e = lead < 0 ? -lead : lead, p = 0;
         char ex[8];
         buf[k++] = d[0];
-        if (nd > 1) {
+        if (nd_ > 1) {
             buf[k++] = '.';
-            for (int i = 1; i < nd; i++) buf[k++] = d[i];
+            for (int i = 1; i < nd_; i++) buf[k++] = d[i];
         }
         buf[k++] = 'E';
         if (lead < 0) buf[k++] = '-';
@@ -767,75 +1343,316 @@ static __attribute__((noinline)) void put_num(out_t *w, const abn *v)
     put(w, buf, (size_t)k);
 }
 
-static void print(ctx *c, out_t *w, const node *n);
+/* v's digits, a minus sign first when negative; returns the length. */
+static int i64_text(char *buf, int64_t v)
+{
+    char d[20];
+    int n = 0, k = 0;
+    uint64_t u = v < 0 ? (uint64_t)(-(v + 1)) + 1u : (uint64_t)v;
+    if (v < 0) buf[k++] = '-';
+    do d[n++] = (char)('0' + u % 10u); while ((u /= 10u) && n < 20);
+    while (n) buf[k++] = d[--n];
+    buf[k] = '\0';
+    return k;
+}
 
-static void print_in(ctx *c, out_t *w, const node *n, bool paren)
+static void put_int(out_t *w, int64_t v)
+{
+    char buf[24];
+    put(w, buf, (size_t)i64_text(buf, v));
+}
+
+/* p/q as a decimal, when it terminates (q has no prime but 2 and 5) and its digits fit. */
+static bool decimal_of(const rat *v, abn *d)
+{
+    char buf[48];
+    int64_t q = v->q, m;
+    int twos = 0, fives = 0, k, n;
+    while (q % 2 == 0) q /= 2, twos++;
+    while (q % 5 == 0) q /= 5, fives++;
+    if (q != 1) return false;
+    k = twos > fives ? twos : fives;
+    if (k > 18 || !mul64(&m, v->p, POW10[k] / v->q)) return false;
+    n = i64_text(buf, m);
+    if (k) {
+        buf[n++] = 'E';
+        buf[n++] = '-';
+        n += i64_text(buf + n, k);
+    }
+    buf[n] = '\0';
+    return abn_from_text(d, buf) == ABN_OK;
+}
+
+/* |v| as a decimal, or p÷q; returns the level it prints at (5, or 2 for a quotient). */
+static __attribute__((noinline)) int put_rat_abs(out_t *w, const rat *v)
+{
+    abn d;
+    rat a = {v->p < 0 ? -v->p : v->p, v->q};
+    if (decimal_of(&a, &d)) {
+        put_num(w, &d);
+        return 5;
+    }
+    put_int(w, a.p);
+    puts_(w, DIVIDE);
+    put_int(w, a.q);
+    return 2;
+}
+
+/* The recursive printer's frames hold only references: every number (a coefficient, an exponent) is read
+   in an out-of-line leaf below, which returns before the printer goes deeper. On the S3 a 192-byte power
+   chain took 25 KB of stack with the numbers in the frames (measured, CAS 002). */
+
+static int level(ctx *c, ref r);
+static void print(ctx *c, out_t *w, ref r);
+
+static void print_in(ctx *c, out_t *w, ref r, bool paren)
 {
     if (paren) puts_(w, "(");
-    print(c, w, n);
+    print(c, w, r);
     if (paren) puts_(w, ")");
 }
 
-/* An exponent prints bare when parg reads it whole: a primary, or minus signs before one. */
-static bool parg_ok(const node *n)
+/* The number x is p/q in absolute value. */
+static bool abs_is(const ctx *c, ref x, int p, int q)
 {
-    if (n->kind == N_NEG) return level(n->u.k.a) < 3 || parg_ok(n->u.k.a);   /* -(…) reads as - prim */
-    return level(n) == 5 || neg_num(n);
+    const rat *v = val(c, x);
+    return (v->p == p || v->p == -p) && v->q == q;
 }
 
-static void print(ctx *c, out_t *w, const node *n)
+/* A factor goes under the ÷ when its exponent is a number below 0. */
+static bool below(const ctx *c, ref f)
 {
-    static const char *const OPS[] = {[N_ADD] = "+", [N_SUB] = "-", [N_MUL] = "\xc3\x97",
-                                      [N_DIV] = "\xc3\xb7", [N_POW] = "^", [N_EQ] = "="};
-    const node *a = n->u.k.a, *b = n->u.k.b;
-    if (w->full) return;
-    switch (n->kind) {
-    case N_NUM:
-        if (n->len) put(w, c->s + n->src, n->len);
-        else put_num(w, &n->u.v);
+    return nd(c, f)->kind == K_POW && num_negative(c, nd(c, f)->b);
+}
+
+/* A coefficient's parts: whether it prints in the numerator (a decimal other than 1, or the p of a p÷q
+   other than 1) and whether it has a denominator (the q of a p÷q). */
+static __attribute__((noinline)) void coef_parts(const ctx *c, ref f0, bool *top, bool *bottom)
+{
+    rat co;
+    abn d;
+    *top = *bottom = false;
+    if (!f0) return;
+    co = *val(c, f0);
+    co.p = co.p < 0 ? -co.p : co.p;
+    if (decimal_of(&co, &d)) *top = !rat_is(&co, 1, 1);
+    else *top = co.p != 1, *bottom = co.q != 1;
+}
+
+/* The coefficient's sign and numerator (top) or its ÷ denominator; returns whether it printed an item. */
+static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bool flip, bool top)
+{
+    rat co;
+    abn d;
+    bool neg_;
+    rat_int(&co, 1);
+    if (f0) co = *val(c, f0);
+    neg_ = (co.p < 0) != flip;
+    co.p = co.p < 0 ? -co.p : co.p;
+    if (top && neg_) puts_(w, "-");
+    if (decimal_of(&co, &d)) {
+        if (!top || rat_is(&co, 1, 1)) return 0;
+        put_num(w, &d);
+        return 1;
+    }
+    if (top) {
+        if (co.p == 1) return 0;
+        put_int(w, co.p);
+        return 1;
+    }
+    if (co.q != 1) {
+        puts_(w, DIVIDE);
+        put_int(w, co.q);
+    }
+    return 0;
+}
+
+/* A number exponent, its absolute value: a decimal, or (p÷q). */
+static __attribute__((noinline)) void put_exp(const ctx *c, out_t *w, ref x)
+{
+    rat e = *val(c, x);
+    abn d;
+    e.p = e.p < 0 ? -e.p : e.p;
+    if (decimal_of(&e, &d)) put_num(w, &d);
+    else {
+        puts_(w, "(");
+        put_rat_abs(w, &e);
+        puts_(w, ")");
+    }
+}
+
+/* A power with a symbolic exponent, and the left chain under it, ((b^x)^y)^z, as b^x^y^z, in a loop: the
+   chain's depth does not reach the stack. */
+static void put_chain(ctx *c, out_t *w, ref f)
+{
+    int k = 0;
+    ref b = f;
+    while (nd(c, b)->kind == K_POW && !is_num(c, nd(c, b)->b)) k++, b = nd(c, b)->a;
+    print_in(c, w, b, level(c, b) < 4);
+    for (int i = k - 1; i >= 0; i--) {
+        ref y = f, x;
+        for (int j = 0; j < i; j++) y = nd(c, y)->a;
+        x = nd(c, y)->b;
+        puts_(w, "^");
+        print_in(c, w, x, level(c, x) < 5);
+    }
+}
+
+/* One factor, its exponent's sign dropped (a denominator's): the base for |e| = 1 (in () below level min),
+   SQRT(base) for 1/2, base^|e| otherwise. */
+static void put_factor(ctx *c, out_t *w, ref f, int min)
+{
+    ref b, x;
+    if (is_num(c, f)) {                         /* a number kept apart (too long to fold) */
+        put_rat_abs(w, val(c, f));
         return;
-    case N_VAR:
-        if (n->id == 26) puts_(w, "i");
+    }
+    if (nd(c, f)->kind != K_POW) {
+        print_in(c, w, f, level(c, f) < min);
+        return;
+    }
+    b = nd(c, f)->a;
+    x = nd(c, f)->b;
+    if (!is_num(c, x)) put_chain(c, w, f);
+    else if (abs_is(c, x, 1, 1)) print_in(c, w, b, level(c, b) < min);
+    else if (abs_is(c, x, 1, 2)) {
+        puts_(w, "SQRT(");
+        print(c, w, b);
+        puts_(w, ")");
+    } else {
+        print_in(c, w, b, level(c, b) < 4);
+        puts_(w, "^");
+        put_exp(c, w, x);
+    }
+}
+
+/* The level a factor prints at in a numerator (min 2), from its own kind and its base's: no deeper. */
+static int factor_level(ctx *c, ref f)
+{
+    ref x;
+    int l;
+    if (is_num(c, f)) return level(c, f);
+    if (nd(c, f)->kind != K_POW) return (l = level(c, f)) < 2 ? 5 : l;
+    x = nd(c, f)->b;
+    if (!is_num(c, x)) return 4;
+    return abs_is(c, x, 1, 2) ? 5 : 4;
+}
+
+/* A product (or one power): its sign, the numerator's items joined by ×, then ÷ each denominator item
+   (X÷(Y+1): ÷'s right side above level 2); flip prints the negated product. */
+static void print_product(ctx *c, out_t *w, ref r, bool flip)
+{
+    const node *x = nd(c, r);
+    const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
+    int n = x->kind == K_MUL ? x->n : 1, start = is_num(c, f[0]), items;
+    items = put_coef(c, w, start ? f[0] : 0, flip, true);
+    for (int i = start; i < n; i++) {
+        if (below(c, f[i])) continue;
+        if (items++) puts_(w, TIMES);
+        put_factor(c, w, f[i], 2);
+    }
+    if (!items) puts_(w, "1");
+    put_coef(c, w, start ? f[0] : 0, flip, false);
+    for (int i = start; i < n; i++) {
+        if (!below(c, f[i])) continue;
+        puts_(w, DIVIDE);
+        put_factor(c, w, f[i], 3);
+    }
+}
+
+/* The level a product prints at, counted, not printed. */
+static int product_level(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
+    int n = x->kind == K_MUL ? x->n : 1, start = is_num(c, f[0]), items, dens, one = 5;
+    bool top, bottom, sign = start && num_negative(c, f[0]);
+    coef_parts(c, start ? f[0] : 0, &top, &bottom);
+    items = top, dens = bottom;
+    for (int i = start; i < n; i++) {
+        if (below(c, f[i])) dens++;
+        else items++, one = factor_level(c, f[i]);
+    }
+    if (dens || items > 1) return 2;
+    if (items == 0) one = 5;
+    return sign && one > 3 ? 3 : one;
+}
+
+static bool negative(ctx *c, ref t)
+{
+    if (is_num(c, t)) return num_negative(c, t);
+    return nd(c, t)->kind == K_MUL && num_negative(c, list(c, nd(c, t)->a)[0]);
+}
+
+static __attribute__((noinline)) void put_signed(const ctx *c, out_t *w, ref t, bool flip)
+{
+    if (num_negative(c, t) != flip) puts_(w, "-");
+    put_rat_abs(w, val(c, t));
+}
+
+static void print_term(ctx *c, out_t *w, ref t, bool flip)
+{
+    if (is_num(c, t)) put_signed(c, w, t, flip);
+    else if (nd(c, t)->kind == K_MUL || nd(c, t)->kind == K_POW) print_product(c, w, t, flip);
+    else print(c, w, t);
+}
+
+static int level(ctx *c, ref r)
+{
+    if (r == SPARE) return 5;
+    switch (nd(c, r)->kind) {
+    case K_ADD: return 1;
+    case K_MUL:
+    case K_POW: return product_level(c, r);
+    case K_NUM: {
+        int l = put_rat_abs(NULL, val(c, r));
+        return num_negative(c, r) && l > 3 ? 3 : l;
+    }
+    case K_EQ: return 0;
+    default: return 5;
+    }
+}
+
+static void print(ctx *c, out_t *w, ref r)
+{
+    const node *x = nd(c, r);
+    if (w->full || r == SPARE) return;
+    switch (x->kind) {
+    case K_NUM: put_signed(c, w, r, false); return;
+    case K_LIT: put(w, c->s + x->a, x->n); return;
+    case K_VAR:
+        if (x->id == 26) puts_(w, "i");
         else {
-            char ch = (char)('A' + n->id);
+            char ch = (char)('A' + x->id);
             put(w, &ch, 1);
         }
         return;
-    case N_PI: puts_(w, PI_UTF8); return;
-    case N_NEG:
-        puts_(w, "-");
-        print_in(c, w, a, level(a) < 3);
+    case K_PI: puts_(w, PI_UTF8); return;
+    case K_FN:
+        puts_(w, FNAME[x->id]);
+        print_in(c, w, x->a, true);
         return;
-    case N_FN:
-        puts_(w, FNAME[n->id]);
-        print_in(c, w, a, true);
-        return;
-    case N_EQ:
-        print(c, w, a);
+    case K_EQ:
+        print(c, w, x->a);
         puts_(w, "=");
-        print(c, w, b);
+        print(c, w, nd(c, r)->b);
         return;
-    case N_ADD:
-    case N_SUB:
-    case N_MUL:
-    case N_DIV: {
-        int lv = level(n);
-        print_in(c, w, a, level(a) < lv);
-        puts_(w, OPS[n->kind]);
-        print_in(c, w, b, level(b) <= lv);     /* left to right: an equal level on the right needs () */
+    case K_ADD:
+        for (int i = 0; i < x->n; i++) {
+            ref t = list(c, nd(c, r)->a)[i];
+            bool m = i > 0 && negative(c, t);
+            if (i > 0) puts_(w, m ? "-" : "+");
+            print_term(c, w, t, m);
+        }
         return;
-    }
-    default:                                   /* N_POW: post { "^" parg }, left to right */
-        print_in(c, w, a, level(a) < 4);
-        puts_(w, "^");
-        print_in(c, w, b, !parg_ok(b));
-        return;
+    case K_MUL:
+    case K_POW: print_product(c, w, r, false); return;
     }
 }
 
 /* ---- the API ---- */
 
-static casim_status finish(ctx *c, const node *n, char *out, size_t cap)
+static casim_status finish(ctx *c, ref n, char *out, size_t cap)
 {
     out_t w = {out, cap, 0, false};
     if (cap == 0) return CASIM_TOO_LONG;
@@ -845,55 +1662,58 @@ static casim_status finish(ctx *c, const node *n, char *out, size_t cap)
         if (w.full) c->st = CASIM_TOO_LONG;
     }
     if (c->st == CASIM_SYNTAX) {
-        char num[12];
+        char d[12];
         int k = 0, e = c->errpos;
-        do num[k++] = (char)('0' + e % 10); while ((e /= 10) && k < 11);
-        while (k) {
-            char ch = num[--k];
-            put(&w, &ch, 1);
-        }
+        do d[k++] = (char)('0' + e % 10); while ((e /= 10) && k < 11);
+        while (k) put(&w, &d[--k], 1);
     } else if (c->st == CASIM_NOT_DIFFERENTIABLE) put(&w, c->bad, (size_t)c->badlen);
-    if (w.full) out[0] = '\0';
+    if (w.full || c->st == CASIM_TOO_LONG) out[0] = '\0';
     return c->st;
 }
 
-static void start(ctx *c, const char *eqn, void *arena, size_t arena_cap)
+static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_cap)
 {
     uintptr_t p = (uintptr_t)arena, q = (p + 7u) & ~(uintptr_t)7u;
+    size_t cap = arena_cap > q - p ? arena_cap - (q - p) : 0;
     memset(c, 0, sizeof *c);
     c->s = eqn;
+    c->angle = angle;
     c->mem = (unsigned char *)arena + (q - p);
-    c->cap = arena_cap > q - p ? arena_cap - (q - p) : 0;
+    if (cap > 65535u * 8u) cap = 65535u * 8u;
+    c->cap = c->top = cap & ~(size_t)7u;
+    /* unit 0 is "none"; unit 1 is the spare leaf */
+    if (c->cap < 16) {
+        c->st = CASIM_TOO_LONG;
+        return;
+    }
+    memset(c->mem, 0, 16);
+    nd(c, SPARE)->kind = K_PI;
+    c->used = 16;
 }
 
 casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena,
                           size_t arena_cap)
 {
     ctx c;
-    node *n;
+    ref n = SPARE;
     if (cap) out[0] = '\0';
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
-    start(&c, eqn, arena, arena_cap);
+    start(&c, eqn, angle, arena, arena_cap);
     c.var = var;
-    c.angle = angle;
-    n = parse(&c);
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
     if (c.st == CASIM_OK) n = deriv(&c, n);
-    return finish(&c, n, out, cap);
-}
-
-casim_status casim_reprint(const char *eqn, char *out, size_t cap, void *arena, size_t arena_cap)
-{
-    ctx c;
-    node *n;
-    if (cap) out[0] = '\0';
-    start(&c, eqn, arena, arena_cap);
-    n = parse(&c);
     return finish(&c, n, out, cap);
 }
 
 casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    (void)eqn, (void)angle, (void)arena, (void)arena_cap;     /* a stub until unit CAS 002 lands */
+    ctx c;
+    ref n = SPARE;
     if (cap) out[0] = '\0';
-    return CASIM_TOO_LONG;
+    if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
+    return finish(&c, n, out, cap);
 }

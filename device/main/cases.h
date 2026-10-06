@@ -6,6 +6,7 @@ typedef struct {
     const char *name;
     const char *expr;
     int var, angle;
+    int simplify;           /* 1: casim_simplify; 0: casim_derive */
     int chars;              /* the equation's length in characters */
     const char *want;       /* the host's derivative */
 } bench_case;
