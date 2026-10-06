@@ -255,8 +255,8 @@ static void limits(void)
     } else CHECK(false, "SIN(X) did not derive");
 }
 
-/* An arena of every size from 0 up gives TOO_LONG until it is enough, then the one answer: never a
-   crash, never another text. */
+/* An arena of every size from 0 up gives TOO_LONG until it is enough, then the one answer, for derive
+   and simplify: never a crash, never another text. */
 static void starved(void)
 {
     static const char *const eqs[] = {
@@ -269,19 +269,20 @@ static void starved(void)
         char want[OUT], got[OUT], wantr[OUT], gotr[OUT];
         int bad = 0, badr = 0;
         casim_status st = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, want, sizeof want, arena, sizeof arena);
-        casim_status sr = casim_reprint(eqs[i], wantr, sizeof wantr, arena, sizeof arena);
+        casim_status sr = casim_simplify(eqs[i], CASIM_DEG, wantr, sizeof wantr, arena, sizeof arena);
         CHECK(st == CASIM_OK && sr == CASIM_OK, "%s: status %d / %d with the full arena", eqs[i], (int)st, (int)sr);
         for (size_t n = 0; n <= 8192; n++) {
             casim_status a = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, got, sizeof got, arena, n);
-            casim_status r = casim_reprint(eqs[i], gotr, sizeof gotr, arena, n);
+            casim_status r = casim_simplify(eqs[i], CASIM_DEG, gotr, sizeof gotr, arena, n);
             if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want) == 0))) bad++;
             if (!((r == CASIM_TOO_LONG && gotr[0] == '\0') || (r == CASIM_OK && strcmp(gotr, wantr) == 0))) badr++;
         }
-        CHECK(bad == 0 && badr == 0, "%s: %d derive and %d reprint arena sizes gave another answer", eqs[i], bad, badr);
+        CHECK(bad == 0 && badr == 0, "%s: %d derive and %d simplify arena sizes gave another answer", eqs[i], bad, badr);
     }
 }
 
-/* Parse then print: the core gives the same value, digit for digit, and printing is a fixed point. */
+/* Simplify keeps the value (to 1E-26: it may reorder the arithmetic) and is a fixed point, on texts that
+   lean on the core's precedence (unary minus, ^ left to right, ÷ and - on the right). */
 static void round_trips(void)
 {
     static const char *const texts[] = {
@@ -299,15 +300,15 @@ static void round_trips(void)
         char out[OUT], again[OUT];
         abn a, b;
         abn_status sa, sb;
-        casim_status st = casim_reprint(texts[i], out, sizeof out, arena, sizeof arena);
-        CHECK(st == CASIM_OK, "reprint %s: status %d", texts[i], (int)st);
+        casim_status st = casim_simplify(texts[i], CASIM_RAD, out, sizeof out, arena, sizeof arena);
+        CHECK(st == CASIM_OK, "simplify %s: status %d", texts[i], (int)st);
         if (st != CASIM_OK) continue;
         sa = ce_eval(texts[i], &a);
         sb = ce_eval(out, &b);
-        CHECK(sa == ABN_OK && sb == ABN_OK && abn_cmp(&a, &b) == 0, "reprint %s -> %s: %s vs %s", texts[i], out,
+        CHECK(sa == ABN_OK && sb == ABN_OK && ce_close(&b, &a, -26), "simplify %s -> %s: %s vs %s", texts[i], out,
               sa == ABN_OK ? ce_text(&a) : "error", sb == ABN_OK ? ce_text(&b) : "error");
-        CHECK(casim_reprint(out, again, sizeof again, arena, sizeof arena) == CASIM_OK && strcmp(out, again) == 0,
-              "reprint is not a fixed point: %s -> %s -> %s", texts[i], out, again);
+        CHECK(casim_simplify(out, CASIM_RAD, again, sizeof again, arena, sizeof arena) == CASIM_OK &&
+              strcmp(out, again) == 0, "simplify is not a fixed point: %s -> %s -> %s", texts[i], out, again);
     }
 }
 

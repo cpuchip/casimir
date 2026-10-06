@@ -2,8 +2,7 @@
  * grammar (our own generator), each derivative compared with a numeric one taken through the core
  * itself. The numeric derivative is the central difference at h and h/2, extrapolated (Richardson:
  * (4·D(h/2) − D(h))/3, error O(h^4)); a case counts only where the two differences agree (the
- * function is smooth there). Every expression also round-trips through casim's parser and printer
- * to the same value, digit for digit. */
+ * function is smooth there). Every expression also simplifies to the same value. */
 #include <stdio.h>
 #include <string.h>
 
@@ -95,11 +94,11 @@ int main(void)
         ce_set('Y', rnd(2) ? "0.45" : "1.3");
         x = ce_calc->var[var - 'A'].re;
         if (ce_eval(e, &f0) != ABN_OK) continue;           /* outside the domain here */
-        /* round trip */
-        if (casim_reprint(e, re, sizeof re, arena, sizeof arena) == CASIM_OK) {
+        /* simplify keeps the value */
+        if (casim_simplify(e, angle, re, sizeof re, arena, sizeof arena) == CASIM_OK) {
             roundtrips++;
-            CHECK(ce_eval(re, &r0) == ABN_OK && abn_cmp(&r0, &f0) == 0, "reprint %s -> %s changed the value", e, re);
-        } else CHECK(false, "reprint %s failed", e);
+            CHECK(ce_eval(re, &r0) == ABN_OK && ce_close(&r0, &f0, -20), "simplify %s -> %s changed the value", e, re);
+        } else CHECK(false, "simplify %s failed", e);
         st = casim_derive(e, var - 'A', angle, out, sizeof out, arena, sizeof arena);
         if (st != CASIM_OK) {
             refused_in_scope++;
@@ -130,7 +129,7 @@ int main(void)
                   out, ce_text(&got), ce_text(&num));
         }
     }
-    printf("fuzz: %d derivatives judged numerically, %d round trips, %d refused\n", used, roundtrips, refused_in_scope);
+    printf("fuzz: %d derivatives judged numerically, %d simplified, %d refused\n", used, roundtrips, refused_in_scope);
     CHECK(used >= CASES / 3, "only %d of %d cases judged: the generator or the domain filter is too strict", used, CASES);
     return check_done();
 }

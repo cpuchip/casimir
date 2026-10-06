@@ -1,6 +1,7 @@
-/* casim: computer algebra on the abacus core's equation grammar.
+/* Casimir (casim): computer algebra on the abacus core's equation grammar.
  *
- * Unit CAS 001: the derivative of an equation. The input is equation text in the core's grammar
+ * Unit CAS 001: the derivative of an equation; CAS 002: simplify, to a canonical form
+ * (docs/canonical-form.md). The input is equation text in the core's grammar
  * (core/eqn.h), the output is equation text in the same grammar, so the core can evaluate, SOLVE or
  * store it. All working memory comes from the caller's arena; nothing is allocated.
  */
@@ -27,7 +28,9 @@ typedef enum {
 casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena,
                           size_t arena_cap);
 
-/* eqn parsed and printed back unchanged in meaning: the parser and printer alone (round trips). */
-casim_status casim_reprint(const char *eqn, char *out, size_t cap, void *arena, size_t arena_cap);
+/* eqn in its canonical form (unit CAS 002): one text for each expression, the same value wherever eqn
+   is defined; L=R simplifies each side. angle matters only to the derivative, which casim_derive also
+   returns simplified. A construct casim_derive refuses is refused here too, by name. */
+casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap);
 
 #endif
