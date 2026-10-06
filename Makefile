@@ -20,7 +20,7 @@ TESTS := $(patsubst tests/%.c,build/%,$(wildcard tests/*_test.c))
 LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 
 .PHONY: all test size clean
-all: $(TESTS)
+all: $(TESTS) build/casim
 
 test: all
 	scripts/run-tests.sh $(TESTS)
@@ -46,8 +46,12 @@ build/libcore.a: build/core/.pin
 	    $(CC) $(CFLAGS) -I$(CB)/core -c -o build/coreobj/$$(basename $$f .c).o $(CB)/$$f || exit 1; done
 	rm -f $@ && ar rcs $@ build/coreobj/*.o
 
-build/%_test: tests/%_test.c tests/check.h $(CASIM_SRC) $(CASIM_HDRS) build/libcore.a
+build/%_test: tests/%_test.c tests/check.h tests/coreeval.h $(CASIM_SRC) $(CASIM_HDRS) build/libcore.a
 	$(CC) $(CFLAGS) -I$(CB)/core -Isrc -Itests -o $@ $< $(CASIM_SRC) $(LIBS)
+
+# the host command line abacus runs the hidden sets through
+build/casim: cli/casim_cli.c $(CASIM_SRC) $(CASIM_HDRS) build/libcore.a
+	$(CC) $(CFLAGS) -I$(CB)/core -Isrc -o $@ cli/casim_cli.c $(CASIM_SRC) $(LIBS)
 
 clean:
 	rm -rf build
