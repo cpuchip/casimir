@@ -129,6 +129,12 @@ static void arithmetic(void)
     same("X^Y^2", 'X', CASIM_RAD, "2×Y×X^(2×Y-1)");   /* (X^Y)^2, left to right */
     same("-X^2", 'X', CASIM_RAD, "-2×X");             /* -(X^2) */
     same("2^-X", 'X', CASIM_RAD, "-(2^-X)×LN(2)");
+    /* where the function is defined, so is its derivative (ours, beyond rule 5): u-u is 0, 0÷u is 0,
+       and d/dx 0^v is 0; ASIN(1) and ASINH(-ASIN(1)) sit at ASIN's edge, where SQRT(1-SQ(1)) is 0 */
+    same("ASIN(X÷X)", 'X', CASIM_RAD, "0");
+    same("ASINH(-ASIN(Y÷Y))+X", 'Y', CASIM_DEG, "0");
+    same("ACOS(SIN(0^X))", 'X', CASIM_GRAD, "0");
+    same("SQRT(0÷X)", 'X', CASIM_RAD, "0");
 }
 
 static void angles(void)
@@ -249,6 +255,32 @@ static void limits(void)
     } else CHECK(false, "SIN(X) did not derive");
 }
 
+/* An arena of every size from 0 up gives TOO_LONG until it is enough, then the one answer: never a
+   crash, never another text. */
+static void starved(void)
+{
+    static const char *const eqs[] = {
+        "((π)-(ABS(ACOSH(Y))))+(Y)",
+        "(SQ((ASIN(X))-(SIN(Y))))÷((0.25)+(((X)-(X))-(SQRT(X))))",
+        "X^X^X÷(X+1)-COS(-X)=SQRT(X)×LN(X÷X)",
+        "--X×-(Y-X)^-2",
+    };
+    for (size_t i = 0; i < sizeof eqs / sizeof eqs[0]; i++) {
+        char want[OUT], got[OUT], wantr[OUT], gotr[OUT];
+        int bad = 0, badr = 0;
+        casim_status st = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, want, sizeof want, arena, sizeof arena);
+        casim_status sr = casim_reprint(eqs[i], wantr, sizeof wantr, arena, sizeof arena);
+        CHECK(st == CASIM_OK && sr == CASIM_OK, "%s: status %d / %d with the full arena", eqs[i], (int)st, (int)sr);
+        for (size_t n = 0; n <= 8192; n++) {
+            casim_status a = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, got, sizeof got, arena, n);
+            casim_status r = casim_reprint(eqs[i], gotr, sizeof gotr, arena, n);
+            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want) == 0))) bad++;
+            if (!((r == CASIM_TOO_LONG && gotr[0] == '\0') || (r == CASIM_OK && strcmp(gotr, wantr) == 0))) badr++;
+        }
+        CHECK(bad == 0 && badr == 0, "%s: %d derive and %d reprint arena sizes gave another answer", eqs[i], bad, badr);
+    }
+}
+
 /* Parse then print: the core gives the same value, digit for digit, and printing is a fixed point. */
 static void round_trips(void)
 {
@@ -256,7 +288,7 @@ static void round_trips(void)
         "-X^2", "2^-X", "2^-X^2", "X-Y-Z", "X-(Y-Z)", "X÷Y÷Z", "X÷(Y×Z)", "X^Y^Z", "X^(Y^Z)", "--X", "X--Y",
         "2×-X", "-(X+Y)", "(-X)^2", "-X^-Y", "SQ(-X)", "X=Y+1", "1.5E-3×X", ".5×X", "1.2.3+X", "X+-Y×Z",
         "((X))", "SIN(X)^2", "-SIN(X)^2", "X×(Y+Z)×(Y-Z)", "(X+Y)÷(Y-Z)^2", "π×X", "X^0.5^2", "(X^Y)^Z",
-        "-(-X)", "X-(-Y)", "X×(-Y)", "X^(-Y)", "(X-Y)^-(Y+Z)", "LOG(X)+ALOG(-X)-EXP(X)÷LN(Y)", "ABS(X-Y)",
+        "-(-X)", "X-(-Y)", "X×(-Y)", "X^(-Y)", "(Y-X)^-(Y+Z)", "LOG(X)+ALOG(-X)-EXP(X)÷LN(Y)", "ABS(X-Y)",
         "1E5×X", "2.5E-30+X", "X-Y+Z", "X-(Y+Z)", "X÷Y×Z", "X÷(Y÷Z)", "X×Y÷Z", "X×(Y÷Z)", "-X×Y", "-(X×Y)",
     };
     ce_angle(CASIM_RAD);
@@ -289,6 +321,7 @@ int main(void)
     refusals();
     syntax();
     limits();
+    starved();
     round_trips();
     return check_done();
 }

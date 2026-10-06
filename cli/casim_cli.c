@@ -13,7 +13,7 @@
 
 #include "casim.h"
 
-#define OUT 4096
+#define OUT 65536
 static unsigned char arena[1 << 20];
 
 static casim_status run(int derive, const char *text, int var, int angle, char *out, size_t arena_cap)
