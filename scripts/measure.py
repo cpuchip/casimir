@@ -55,9 +55,8 @@ def run(expr, var, angle):
     return int(lines[1].split()[1]), lines[0], None
 
 
-def main():
-    if not os.path.exists(CLI):
-        sys.exit("build/casim missing: run make first")
+def all_cases():
+    """(name, expression, variable, angle) for the visible examples and the shapes."""
     rows = []
     with open(os.path.join(ROOT, "work", "001-examples.txt"), encoding="utf-8") as f:
         for line in f:
@@ -67,6 +66,13 @@ def main():
             rows.append((parts[0], parts[1], parts[2], parts[3]))
     for name, (expr, angle) in SHAPES.items():
         rows.append((name, expr, "X", angle))
+    return rows
+
+
+def main():
+    if not os.path.exists(CLI):
+        sys.exit("build/casim missing: run make first")
+    rows = all_cases()
     print(f"{'case':<24} {'chars':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios = []
     worst = 0

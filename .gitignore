@@ -1,1 +1,4 @@
 build/
+device/main/generated/
+device/dependencies.lock
+__pycache__/

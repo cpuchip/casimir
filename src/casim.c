@@ -225,6 +225,19 @@ static int decimal_len(const char *s, int *points, int *digits)
 
 static void parse_add(ctx *c, node **v);
 
+/* The value the core reads for the n-byte decimal at s. Kept out of line: its buffer would otherwise
+   sit in every frame of the recursive parser (S3 stack, measured). */
+static __attribute__((noinline)) bool literal_value(abn *v, const char *s, int n)
+{
+    char buf[200];
+    int k = 0;
+    if (s[0] == '.') buf[k++] = '0';
+    if (n + k >= (int)sizeof buf) return false;
+    memcpy(buf + k, s, (size_t)n);
+    buf[k + n] = '\0';
+    return abn_from_text(v, buf) == ABN_OK;
+}
+
 /* A number as typed. A plain decimal keeps its text and the value the core reads; a fraction a.b.c
    keeps only its text; based and complex numbers are refused. */
 static bool parse_number(ctx *c, node **v)
@@ -263,16 +276,7 @@ static bool parse_number(ctx *c, node **v)
         (*v)->src = (uint16_t)c->i;
         (*v)->len = (uint8_t)n;
     }
-    if (points < 2 && *v != &c->spare) {
-        char buf[200];
-        int k = 0;
-        if (s[0] == '.') buf[k++] = '0';
-        if (n + k < (int)sizeof buf) {
-            memcpy(buf + k, s, (size_t)n);
-            buf[k + n] = '\0';
-            (*v)->exact = abn_from_text(&(*v)->u.v, buf) == ABN_OK;
-        }
-    }
+    if (points < 2 && *v != &c->spare) (*v)->exact = literal_value(&(*v)->u.v, s, n);
     c->i += n;
     if (at(c, "i") || at(c, "\xce\xb8")) {
         int n2;
@@ -722,8 +726,9 @@ static int level(const node *n)
     }
 }
 
-/* A computed number: plain where it is short, else d.dddEn, in the forms core/eqn.c reads. */
-static void put_num(out_t *w, const abn *v)
+/* A computed number: plain where it is short, else d.dddEn, in the forms core/eqn.c reads. Kept out of
+   line, so its buffers are not in every frame of the recursive printer. */
+static __attribute__((noinline)) void put_num(out_t *w, const abn *v)
 {
     bool neg;
     char d[ABN_DIGITS + 2], buf[ABN_DIGITS + 48];
