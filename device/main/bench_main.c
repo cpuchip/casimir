@@ -76,7 +76,7 @@ static void run_cases(void)
         int64_t t[REPS];
         size_t lo = 0, hi = ARENA_MAX;
         casim_status st = run(k, ARENA_MAX);
-        res[i].ok = st == CASIM_OK && strcmp(out, k->want) == 0;
+        res[i].ok = (int)st == k->status && (st != CASIM_OK || strcmp(out, k->want) == 0);
         for (int r = 0; r < REPS; r++) {
             int64_t t0 = esp_timer_get_time();
             run(k, ARENA_MAX);
@@ -85,6 +85,7 @@ static void run_cases(void)
         qsort(t, REPS, sizeof t[0], cmp64);
         res[i].us_min = t[0];
         res[i].us_med = t[REPS / 2];
+        if (k->status != CASIM_OK) lo = hi = 0;       /* no arena gives OK: nothing to find */
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
             if (run(k, mid) == CASIM_OK) hi = mid;
@@ -105,13 +106,14 @@ static void bench_task(void *arg)
         int pass = 1;
         printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS);
         printf("%-26s %2s %5s %8s %8s %6s %6s %5s %s\n", "case", "op", "chars", "us_min", "us_med", "arena", "stack",
-               "out", "host");
+               "out", "host");   /* out: the text's bytes, or -status */
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-26s %2s %5d %8lld %8lld %6u %6u %5u %s\n", k->name, k->simplify ? "s" : "d", k->chars,
+            printf("%-26s %2s %5d %8lld %8lld %6u %6u %5d %s\n", k->name, k->simplify ? "s" : "d", k->chars,
                    (long long)res[i].us_min,
-                   (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack, (unsigned)strlen(k->want),
+                   (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
+                   k->status ? -k->status : (int)strlen(k->want),
                    res[i].ok ? "same" : "DIFFERENT");
         }
         printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u\n", stack_free,

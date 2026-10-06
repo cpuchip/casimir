@@ -64,6 +64,18 @@ Two fresh-eyes review passes found each of these cases; each is a test in tests/
 **0 to a negative power** is undefined and stays as written, in the numerator: 0^(−1), 0^(−0.5).
 (Written as 1÷0, SQRT(0) or 0 under a ÷, it would read back as something else.)
 
+## The depth guard (unit CAS 002b)
+
+Every structural walk (canonical form, derivative, comparison, printing) counts its nesting; past 52
+the call returns TOO_LONG. So the stack is bounded by construction: on the S3 the deepest case of every
+kind of nesting, swept across the limit, takes at most 11.3 KB (abacus's ruling: at most 12 KB). The
+parser is a loop and a left chain of powers prints in one, so neither counts. A nest of powers or
+functions costs one level per level of the text, and every 192-byte one passes (up to 51 levels); a nest
+that alternates sums and products costs two (each level is a sum node and a product node), so it stops at
+25 levels: 191-byte texts like X+Y×(X+Y×(… or 1÷(1+1÷(1+… past 25 levels, and -(X+-(X+… past 25,
+are TOO_LONG. The constructors (sum, product, power) are not counted: they recurse one level on their
+own, under a walk that is.
+
 ## The forms
 
 | Kind | Canonical when |

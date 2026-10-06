@@ -16,6 +16,34 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLI = os.path.join(ROOT, "build", "casim")
 
 
+# CAS 002b: probes past the depth guard, one for each kind of recursion (longer than 192 bytes: the guard
+# must bound any input the API takes). Each must return TOO_LONG or OK, never more than 12 KB of stack.
+PROBES = {
+    "probe X^( nest": ("X^(" * 150 + "X" + ")" * 150, "RAD"),
+    "probe SIN nest": ("SIN(" * 150 + "X" + ")" * 150, "DEG"),
+    "probe SQ nest": ("SQ(" * 150 + "X" + ")" * 150, "RAD"),
+    "probe X+Y×( nest": ("X+Y×(" * 150 + "X" + ")" * 150, "RAD"),
+    "probe X^X^ chain 400": ("^".join(["X"] * 400), "RAD"),
+    "probe deep compare": ("SIN(" * 100 + "X" + ")" * 100 + "+" + "SIN(" * 100 + "Y" + ")" * 100, "RAD"),
+    "probe -(X+( nest": ("-(X+" * 150 + "X" + ")" * 150, "RAD"),
+    "probe SQRT(1+ nest": ("SQRT(1+" * 150 + "X" + ")" * 150, "RAD"),
+    "probe 1÷(1+1÷( nest": ("1÷(1+" * 150 + "X" + ")" * 150, "RAD"),
+}
+
+
+# The sweep: each nested shape at depths around the guard, so some case of every kind reaches it exactly
+# where its walk is deepest (a probe far past the guard stops early, in the canonical form, and would not
+# show the derivative's deeper recursion).
+SWEEP = {}
+for _n in range(36, 58, 2):
+    SWEEP[f"sweep X^( {_n}"] = ("X^(" * _n + "X" + ")" * _n, "RAD")
+    SWEEP[f"sweep SIN {_n}"] = ("SIN(" * _n + "X" + ")" * _n, "DEG")
+    SWEEP[f"sweep X+Y×( {_n}"] = ("X+Y×(" * _n + "X" + ")" * _n, "RAD")
+    SWEEP[f"sweep 1÷(1+ {_n}"] = ("1÷(1+" * _n + "X" + ")" * _n, "RAD")
+    SWEEP[f"sweep SQRT(1+ {_n}"] = ("SQRT(1+" * _n + "X" + ")" * _n, "RAD")
+    SWEEP[f"sweep -(X+ {_n}"] = ("-(X+" * _n + "X" + ")" * _n, "RAD")
+
+
 def chain(op, n):
     return op.join(["X"] * n)
 
@@ -101,7 +129,7 @@ def all_cases():
                 continue
             parts = [p.strip() for p in line.split(" | ")]
             rows.append((parts[0], parts[1], "X", parts[3], "simplify"))
-    for name, (expr, angle) in SHAPES192.items():
+    for name, (expr, angle) in list(SHAPES192.items()) + list(PROBES.items()) + list(SWEEP.items()):
         rows.append((name + " S", expr, "X", angle, "simplify"))
         rows.append((name + " D", expr, "X", angle, "derive"))
     return rows

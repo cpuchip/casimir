@@ -8,7 +8,8 @@ typedef struct {
     int var, angle;
     int simplify;           /* 1: casim_simplify; 0: casim_derive */
     int chars;              /* the equation's length in characters */
-    const char *want;       /* the host's derivative */
+    int status;             /* the host's status (0 OK, 3 TOO_LONG, ...) */
+    const char *want;       /* the host's text ("" unless OK) */
 } bench_case;
 
 extern const bench_case cases[];

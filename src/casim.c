@@ -104,6 +104,7 @@ typedef struct {
     unsigned char *mem;
     size_t cap, used, top;      /* nodes grow up from used; the parser's stacks down from top */
     int var, angle;
+    int depth;                  /* the recursive walks' nesting, bounded by CASIM_DEPTH_MAX */
     ref small[SMALL], pi;
 } ctx;
 
@@ -123,6 +124,33 @@ static rat *rt(const ctx *c, ref r)
 {
     return (rat *)(void *)(c->mem + (size_t)r * 8u);
 }
+
+/* ---- the depth guard ---- */
+
+/* Every structural walk (canonical form, derivative, comparison, printing) enters through enter(): past
+   CASIM_DEPTH_MAX nested entries the call returns TOO_LONG. So the stack is bounded by construction, not
+   by the inputs measured: the limit was set on the S3 so that the deepest case of every kind of nesting
+   stays within 12 KB (unit CAS 002b; abacus's ruling, #4236). The sum, product and power constructors
+   are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
+   too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
+#ifndef CASIM_DEPTH_MAX
+#define CASIM_DEPTH_MAX 52
+#endif
+
+static bool enter(ctx *c)
+{
+    if (c->depth >= CASIM_DEPTH_MAX) {
+        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
+        return false;
+    }
+    c->depth++;
+    return true;
+}
+
+/* The guarded walks (each a wrapper of the body named with a trailing _). */
+static int cmp(const ctx *c, ref a, ref b);
+static ref canon(ctx *c, ref r);
+static ref deriv(ctx *c, ref r);
 
 /* ---- the arena ---- */
 
@@ -377,7 +405,7 @@ static int cmp_lists(const ctx *c, const ref *x, int nx, const ref *y, int ny)
     return nx - ny;
 }
 
-static int cmp(const ctx *c, ref a, ref b)
+static int cmp_(const ctx *c, ref a, ref b)
 {
     const node *x = nd(c, a), *y = nd(c, b);
     int s;
@@ -401,6 +429,15 @@ static int cmp(const ctx *c, ref a, ref b)
         return cmp(c, x->b, y->b);
     default: return cmp_lists(c, list(c, x->a), x->n, list(c, y->a), y->n);
     }
+}
+
+static int cmp(const ctx *c, ref a, ref b)
+{
+    int r;
+    if (!enter((ctx *)c)) return 0;     /* the context is never a const object: only this walk's view */
+    r = cmp_(c, a, b);
+    ((ctx *)c)->depth--;
+    return r;
 }
 
 /* A factor as base^exponent (X is X^1). */
@@ -1205,7 +1242,7 @@ static ref chain(ctx *c, ref r, bool sum)
     return sum ? add(c, list(c, l), m) : mul(c, list(c, l), m);
 }
 
-static ref canon(ctx *c, ref r)
+static ref canon_(ctx *c, ref r)
 {
     const node *x = nd(c, r);
     if (c->st != CASIM_OK) return SPARE;
@@ -1246,6 +1283,15 @@ static ref canon(ctx *c, ref r)
     }
     default: return r;          /* a variable or π */
     }
+}
+
+static ref canon(ctx *c, ref r)
+{
+    ref v;
+    if (!enter(c)) return SPARE;
+    v = canon_(c, r);
+    c->depth--;
+    return v;
 }
 
 /* ---- the derivative, on the canonical tree ---- */
@@ -1296,7 +1342,7 @@ static ref deriv_fn(ctx *c, ref r, ref du)
     return small(c, C_0);       /* not reached: the parser refuses every other function */
 }
 
-static ref deriv(ctx *c, ref r)
+static ref deriv_(ctx *c, ref r)
 {
     const node *x = nd(c, r);
     if (c->st != CASIM_OK) return SPARE;
@@ -1347,6 +1393,15 @@ static ref deriv(ctx *c, ref r)
     }
     default: return small(c, C_0);      /* numbers, π, literals */
     }
+}
+
+static ref deriv(ctx *c, ref r)
+{
+    ref v;
+    if (!enter(c)) return SPARE;
+    v = deriv_(c, r);
+    c->depth--;
+    return v;
 }
 
 /* ---- the printer ---- */
@@ -1700,7 +1755,7 @@ static int level(ctx *c, ref r)
     }
 }
 
-static void print(ctx *c, out_t *w, ref r)
+static void print_(ctx *c, out_t *w, ref r)
 {
     const node *x = nd(c, r);
     if (w->full || r == SPARE) return;
@@ -1735,6 +1790,13 @@ static void print(ctx *c, out_t *w, ref r)
     case K_MUL:
     case K_POW: print_product(c, w, r, false); return;
     }
+}
+
+static void print(ctx *c, out_t *w, ref r)
+{
+    if (!enter(c)) return;              /* stopped: c->st is TOO_LONG, which finish() reports */
+    print_(c, w, r);
+    c->depth--;
 }
 
 /* ---- the API ---- */

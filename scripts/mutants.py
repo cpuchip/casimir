@@ -67,6 +67,10 @@ MUTANTS = {
         ("src/casim.c", "if (is_k(c, t[i], 0, 1)) return small(c, C_0);           /* 0×u is 0 */",
          "if (is_k(c, t[i], 0, 1)) t[i] = small(c, C_1);"),
     ],
+    # 002b: the depth guard off (no limit: deep input then crashes the S3, and returns OK on the host)
+    "depth-guard-off": [
+        ("src/casim.c", "    if (c->depth >= CASIM_DEPTH_MAX) {", "    if (0) {"),
+    ],
     # ours: u-u kept (a zero coefficient left in the sum)
     "u-minus-u-kept": [
         ("src/casim.c", "                if (rat_is(&s, 0, 1)) k--;", "                if (0) k--;"),

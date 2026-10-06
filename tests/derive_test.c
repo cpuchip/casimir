@@ -290,6 +290,35 @@ static void starved(void)
     }
 }
 
+/* CAS 002b: the depth guard. Nesting past it is TOO_LONG, cleanly, for every kind of recursion; nesting
+   under it answers; a walk that is a loop (a long left chain of powers) is not limited by it. */
+static void depth(void)
+{
+    static char t[20000], big[1 << 17];
+    static unsigned char a[1 << 19];
+    static const char *const open_[] = {"X^(", "SIN(", "SQ(", "X+Y×(", "1÷(1+", "SQRT(1+", "-(X+", "ABS(X×"};
+    for (size_t k = 0; k < sizeof open_ / sizeof open_[0]; k++) {
+        int levels[2] = {20, 400};
+        for (int j = 0; j < 2; j++) {
+            casim_status st[2];
+            t[0] = '\0';
+            for (int i = 0; i < levels[j]; i++) strcat(t, open_[k]);
+            strcat(t, "X");
+            for (int i = 0; i < levels[j]; i++) strcat(t, ")");
+            st[0] = casim_simplify(t, CASIM_DEG, big, sizeof big, a, sizeof a);
+            st[1] = casim_derive(t, 'X' - 'A', CASIM_DEG, big, sizeof big, a, sizeof a);
+            if (j == 0)
+                CHECK(st[0] == CASIM_OK && st[1] == CASIM_OK, "%s x20: %d %d, want OK", open_[k], (int)st[0], (int)st[1]);
+            else
+                CHECK(st[0] == CASIM_TOO_LONG && st[1] == CASIM_TOO_LONG, "%s x400: %d %d, want TOO_LONG", open_[k],
+                      (int)st[0], (int)st[1]);
+        }
+    }
+    strcpy(t, "X");
+    for (int i = 0; i < 2000; i++) strcat(t, "^X");
+    CHECK(casim_simplify(t, CASIM_RAD, big, sizeof big, a, sizeof a) == CASIM_OK, "a 2001-term ^ chain: not OK");
+}
+
 /* Simplify keeps the value (to 1E-26: it may reorder the arithmetic) and is a fixed point, on texts that
    lean on the core's precedence (unary minus, ^ left to right, ÷ and - on the right). */
 static void round_trips(void)
@@ -332,6 +361,7 @@ int main(void)
     syntax();
     limits();
     starved();
+    depth();
     round_trips();
     return check_done();
 }
