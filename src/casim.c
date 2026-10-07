@@ -118,6 +118,8 @@ typedef struct {
     bool opaque;                /* the names derive refuses are opaque (every operation but derive) */
     bool no_eq;                 /* an = is SYNTAX (subst's replacement is an expression) */
     bool has_impure;            /* RAND or SEED occurs: impure subtrees exist (CAS 003, #4264 point 2) */
+    bool apart;                 /* something was left apart past 2^62 (numbers, or a run of like terms):
+                                   until then no sum can merge once divided, and no term holds numbers */
     int rand_id, seed_id;       /* their NAMES indexes */
     const char *s2;             /* subst's replacement text (its literals have id 1) */
     int sub_var, sub_count;     /* subst: the variable replaced, and how often */
@@ -258,7 +260,14 @@ static void rat_int(rat *r, int k)
 
 static bool rat_add(rat *r, const rat *x, const rat *y)
 {
-    int64_t g = gcd64(x->q, y->q), a, b, p, q;
+    int64_t g, a, b, p, q;
+    if (x->q == 1 && y->q == 1) {
+        /* whole numbers: no division (a 64-bit division is a library call on the S3) */
+        if (!add64(&p, x->p, y->p) || !fits(p)) return false;
+        r->p = p, r->q = 1;
+        return true;
+    }
+    g = gcd64(x->q, y->q);
     return mul64(&a, x->p, y->q / g) && mul64(&b, y->p, x->q / g) && add64(&p, a, b) &&
            mul64(&q, x->q / g, y->q) && rat_make(r, p, q);
 }
@@ -329,6 +338,7 @@ static int rat_cmp(const rat *x, const rat *y)
 {
     int s;
     if (x->p == y->p && x->q == y->q) return 0;
+    if (x->q == y->q) return x->p < y->p ? -1 : 1;     /* one denominator: by numerator, no division */
     if ((s = frac_cmp(x->p, x->q, y->p, y->q)) != 0) return s;
     return x->p != y->p ? (x->p < y->p ? -1 : 1) : (x->q < y->q ? -1 : 1);
 }
@@ -748,6 +758,7 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
             if ((ok = f(&r, &acc, val(c, t[i])))) acc = r;
         }
     j = first;
+    if (!ok) c->apart = true;
     if (ok) *v = acc;
     else if (f == rat_add) {
         for (int i = first; i < last; i++)
@@ -818,6 +829,7 @@ again:
         sort(c, t + i, j - i, by_coef);
         ok = add_sorted(c, t + i, j - i, &s2);
         if (!ok) {
+            c->apart = true;
             while (i < j) t[k++] = t[i++];
             continue;
         }
@@ -856,7 +868,7 @@ static rat content(ctx *c, ref s)
     ref t0 = list(c, nd(c, s)->a)[0];
     rat k;
     rat_int(&k, 1);
-    for (int i = 0; i < nd(c, s)->n; i++) {
+    for (int i = 0; c->apart && i < nd(c, s)->n; i++) {
         int nf;
         ref t = list(c, nd(c, s)->a)[i];
         const ref *f = is_num(c, t) ? NULL : mono(c, &t, &nf);
@@ -912,7 +924,7 @@ static ref sum_div(ctx *c, ref s, const rat *k)
         }
         list(c, l)[i] = r;
     }
-    return add(c, list(c, l), n);
+    return c->apart ? add(c, list(c, l), n) : flat_node(c, K_ADD, l, n);   /* nothing apart: nothing merges */
 }
 
 /* A product (docs: flattened, coefficient first, factors sorted by base, like factors combined; a sum
@@ -2680,7 +2692,7 @@ static void put_collected(ctx *c, out_t *w, ref r, int var)
     }
     /* a sum c_k as a factor reads back made primitive, which can merge a run its sum left apart: so it is
        printed as that, and collecting again changes nothing (delta review: 547 in 20,000) */
-    for (int i = 0; i < nc; i++)
+    for (int i = 0; c->apart && i < nc; i++)
         if (nd(c, ct[i].c)->kind == K_ADD) ct[i].c = mul(c, &ct[i].c, 1);
     {
         bool first = true;

@@ -40,10 +40,16 @@ MUTANTS = {
          "            if"),
     ],
     "sum-div-unmerged": [
-        ("src/casim.c", "    return add(c, list(c, l), n);\n}", "    return flat_node(c, K_ADD, l, n);\n}"),
+        ("src/casim.c", "    return c->apart ? add(c, list(c, l), n) : flat_node(c, K_ADD, l, n);", "    return flat_node(c, K_ADD, l, n);"),
     ],
     "collect-ck-raw": [
         ("src/casim.c", "if (nd(c, ct[i].c)->kind == K_ADD) ct[i].c = mul(c, &ct[i].c, 1);", "(void)ct;"),
+    ],
+    "apart-not-set-by-run": [
+        ("src/casim.c", "        if (!ok) {\n            c->apart = true;", "        if (!ok) {"),
+    ],
+    "apart-not-set-by-fold": [
+        ("src/casim.c", "    if (!ok) c->apart = true;\n", ""),
     ],
     "content-apart": [
         ("src/casim.c", "        for (int q = 0; f && q < nf; q++)\n            if (is_num(c, f[q])) {", "        for (int q = 0; f && q < nf; q++)\n            if (q < 0) {"),
