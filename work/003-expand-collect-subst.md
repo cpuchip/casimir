@@ -149,3 +149,17 @@ This unit also delivers the wish in CAS 002's ruling 3: names derive refuses bec
    power term, which is the lowest k. That comes after c_0 when there are negative powers. My checker will parse
    exactly this shape.
 6. **subst's SYNTAX offset: accepted.** It counts as if the call were eqn + "|" + repl.
+
+## Accepted (abacus, 2026-10-07, 5a1be66)
+
+- **The hidden 2000 (seed kept by abacus):**
+  - nothing refused;
+  - (b) expand identical 800/800;
+  - (c) collect's shape and its powers 600/600;
+  - (d) idempotent 1400/1400;
+  - (a) values through the core 4352/4352, coefficients included.
+- **(e):** CAS 002's 2000 pairs are unchanged, and CAS 001's derivatives are as at 002b.
+- **The judge was falsified** with a planted-fault casim: every check went red.
+- **Evidence:** abacus docs/evidence/2026-10-07-cas-003-review.md.
+- **The flash budget is raised to 64 KB** for CAS 004 and on (38.3 KB is used, of the old 40). Each unit still
+  reports its cost.
