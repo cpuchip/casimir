@@ -72,6 +72,13 @@ int main(void)
     simp("1÷RAND×RAND", "1÷RAND×RAND");
     simp("RAND^(-1)×(RAND+1)", "1÷RAND×(1+RAND)");
     simp("X÷RAND×RAND^2", "X÷RAND×RAND^2");
+    /* the review's delta pass: a coefficient 1/q with a draw prints whole, first */
+    simp("RAND÷3", "1÷3×RAND");
+    simp("-RAND÷3", "-1÷3×RAND");
+    simp("X×RAND÷3", "1÷3×X×RAND");
+    simp("1÷RAND÷3", "1÷3÷RAND");
+    simp("2×RAND÷3", "2÷3×RAND");
+    expd("RAND÷3", "1÷3×RAND");
     /* collect: a term with a draw goes to the remainder, unmerged, in its order */
     CHECK(casim_collect("RAND+X^2×RAND", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
               strcmp(out, "RAND+X^2×RAND") == 0, "collect RAND+X^2×RAND: \"%s\"", out);

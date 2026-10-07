@@ -28,9 +28,12 @@ MUTANTS = {
         ("src/casim.c", "            while (j < nc && ct[j].k != k) j++;", "            j = nc;"),
     ],
     # 003: subst replacing only the first occurrence
+    "add-one-end": [
+        ("src/casim.c", "term_coef(c, t[acc->p > 0 ? lo++ : hi--])", "term_coef(c, t[lo++])"),
+    ],
     "subst-first-only": [
-        ("src/casim.c", "        if (c->sub_val && x->id == c->sub_var) {",
-         "        if (c->sub_val && x->id == c->sub_var && c->sub_count == 0) {"),
+        ("src/casim.c", "    if (c->sub_val && nd(c, r)->id == c->sub_var) {",
+         "    if (c->sub_val && nd(c, r)->id == c->sub_var && c->sub_count == 0) {"),
     ],
     # 003: RAND+RAND folded to 2×RAND (impurity ignored)
     "rand-folded": [
@@ -46,8 +49,8 @@ MUTANTS = {
     ],
     # 002: a like-term collection that drops a coefficient
     "coefficient-dropped": [
-        ("src/casim.c", "            if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) cq = *val(c, list(c, x->a)[0]);\n            ok = rat_add(&s2, &s2, &cq);",
-         "            (void)x;\n            ok = rat_add(&s2, &s2, &cq);"),
+        ("src/casim.c", "    if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) k = *val(c, list(c, x->a)[0]);\n    return k;",
+         "    (void)x;\n    return k;"),
     ],
     # 002: constant folding through a double
     "fold-through-double": [

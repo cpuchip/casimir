@@ -89,6 +89,10 @@ static void review(void)
     is(t, "33554432×X");
     /* 4: a fold that would overflow folds nothing: every number apart, in order, a fixed point */
     is("(-4E18)+(-4E18)+3E18+X", "X-4000000000000000000-4000000000000000000+3000000000000000000");
+    /* a run of like terms whose sum fits though a partial sum would not: summed in order of value */
+    pair("3E18×X+3E18×X-3E18×X", "-3E18×X+3E18×X+3E18×X", CASIM_RAD);
+    is("3E18×X+3E18×X-3E18×X", "3000000000000000000×X");
+    is("(-3E18)+(-3E18)+3E18+3E18+X", "X");          /* the numbers too: no partial sum past the total */
     is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");
     /* 5: 0 to a negative power stays as it is (undefined; 1÷0^2 would read back as 1÷0) */
     is("0^(-2)", "0^(-2)");

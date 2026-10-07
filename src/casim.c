@@ -663,6 +663,37 @@ static int flatten(ctx *c, const ref *in, int n, int kind, ref *l)
     return m;
 }
 
+/* A term's value in a sum: a number's own, else its coefficient (1 when it has none). */
+static rat term_coef(ctx *c, ref t)
+{
+    const node *x = nd(c, t);
+    rat k;
+    if (is_num(c, t)) return *val(c, t);
+    rat_int(&k, 1);
+    if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) k = *val(c, list(c, x->a)[0]);
+    return k;
+}
+
+static int by_coef(ctx *c, ref a, ref b)
+{
+    rat x = term_coef(c, a), y = term_coef(c, b);
+    return rat_cmp(&x, &y);
+}
+
+/* t[0..n), in order of value, added into *acc: from the low end while the sum is above 0, from the high
+   end otherwise, so a partial sum of integers is never further from 0 than the largest term or the total.
+   The order comes from the values alone: whether it fits does not depend on how the sum was written
+   (3E18×X+3E18×X-3E18×X; third review). */
+static bool add_sorted(ctx *c, const ref *t, int n, rat *acc)
+{
+    int lo = 0, hi = n - 1;
+    while (lo <= hi) {
+        rat v = term_coef(c, t[acc->p > 0 ? lo++ : hi--]);
+        if (!rat_add(acc, acc, &v)) return false;
+    }
+    return true;
+}
+
 /* Sorts t[0..m) with by, then folds its numbers into *v with f, all of them or none. by puts the numbers
    together, in order of value (both orders rank a number after every kind but a literal), so this works
    in place. When any step would not fit, every number stays, in order, the identities (1 in a product, 0
@@ -678,10 +709,12 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
     while (first < m && !is_num(c, t[first])) first++;
     last = first;
     while (last < m && is_num(c, t[last])) last++;
-    for (int i = first; i < last && ok; i++) {
-        rat r;
-        if ((ok = f(&r, &acc, val(c, t[i])))) acc = r;
-    }
+    if (f == rat_add) ok = add_sorted(c, t + first, last - first, &acc);
+    else
+        for (int i = first; i < last && ok; i++) {
+            rat r;
+            if ((ok = f(&r, &acc, val(c, t[i])))) acc = r;
+        }
     j = first;
     if (ok) *v = acc;
     else if (f == rat_add) {
@@ -732,15 +765,10 @@ static ref add(ctx *c, const ref *in, int n)
             continue;
         }
         /* a run of like terms: their coefficients added, one term built (all of them, or the run is left
-           as it is when the sum would not fit); one node for the run, not one for each pair */
+           in order of value when the sum would not fit); one node for the run, not one for each pair */
         rat_int(&s2, 0);
-        for (int q = i; q < j && ok; q++) {
-            const node *x = nd(c, t[q]);
-            rat cq;
-            rat_int(&cq, 1);
-            if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) cq = *val(c, list(c, x->a)[0]);
-            ok = rat_add(&s2, &s2, &cq);
-        }
+        sort(c, t + i, j - i, by_coef);
+        ok = add_sorted(c, t + i, j - i, &s2);
         if (!ok) {
             while (i < j) t[k++] = t[i++];
             continue;
@@ -1837,8 +1865,16 @@ static int factor_level(ctx *c, ref f)
    order they were written (1÷RAND×RAND is not RAND÷RAND; review). Out of line: off print's frame. */
 static __attribute__((noinline)) void print_drawn(ctx *c, out_t *w, const ref *f, int n, int start, bool flip)
 {
-    int items = put_coef(c, w, start ? f[0] : 0, flip, true);
-    put_coef(c, w, start ? f[0] : 0, flip, false);
+    bool top, bottom;
+    int items;
+    /* the coefficient whole and first, p÷q as one item (RAND÷3 prints 1÷3×RAND; review) */
+    coef_parts(c, start ? f[0] : 0, &top, &bottom);
+    items = put_coef(c, w, start ? f[0] : 0, flip, true);
+    if (bottom) {
+        if (!items) puts_(w, "1");
+        put_coef(c, w, start ? f[0] : 0, flip, false);
+        items = 1;
+    }
     for (int i = start; i < n; i++) {
         bool d = below(c, f[i]);
         if (d && !items) puts_(w, "1");
