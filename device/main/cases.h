@@ -8,6 +8,7 @@ typedef struct {
     int var, angle;
     int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst */
     const char *repl;       /* subst's replacement */
+    int model;              /* the text's stamp, the replacement's too (CAS 004: 1 STU, 33, 35) */
     int chars;              /* the equation's length in characters */
     int status;             /* the host's status (0 OK, 3 TOO_LONG, ...) */
     const char *want;       /* the host's text ("" unless OK) */

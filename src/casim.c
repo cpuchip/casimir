@@ -117,6 +117,8 @@ typedef struct {
     int depth;                  /* the recursive walks' nesting, bounded by CASIM_DEPTH_MAX */
     bool opaque;                /* the names derive refuses are opaque (every operation but derive) */
     bool no_eq;                 /* an = is SYNTAX (subst's replacement is an expression) */
+    bool rtl;                   /* the text is read as STU's (CAS 004, unit 031): ^ right to left, and a
+                                   minus starting an exponent covers the chain after it */
     bool has_impure;            /* RAND or SEED occurs: impure subtrees exist (CAS 003, #4264 point 2) */
     bool apart;                 /* something was left apart past 2^62 (numbers, or a run of like terms):
                                    until then no sum can merge once divided, and no term holds numbers */
@@ -1171,10 +1173,17 @@ static void reduce(ctx *c, pstack *p)
     p->val[p->nv - 1] = mk(c, KIND[o.op], p->val[p->nv - 1], p->val[p->nv]);
 }
 
+/* An operator's level in the text's model: in STU (unit 031) a minus starting an exponent ranks as any
+   unary minus, below ^, so 2^-3^2 is 2^-(3^2), where the 33s and 35s bind it to the next operand. */
+static int level_of(const ctx *c, int op)
+{
+    return c->rtl && op == O_PNEG ? LEVEL[O_NEG] : LEVEL[op];
+}
+
 /* Applies the operators that bind at least as tightly as level, down to the nearest opener. */
 static void reduce_to(ctx *c, pstack *p, int level)
 {
-    while (p->no > 0 && p->ops[p->no - 1].op < M_PAREN && LEVEL[p->ops[p->no - 1].op] >= level) reduce(c, p);
+    while (p->no > 0 && p->ops[p->no - 1].op < M_PAREN && level_of(c, p->ops[p->no - 1].op) >= level) reduce(c, p);
 }
 
 static bool any_opener(const pstack *p)
@@ -1416,7 +1425,9 @@ static ref parse(ctx *c)
         else if (*t == '-') op = O_SUB;
         else if (*t == '=' && !eq && !any_opener(&p) && !c->no_eq) op = O_EQ, eq = true;
         if (op >= 0) {
-            reduce_to(c, &p, op == O_EQ ? 1 : LEVEL[op]);
+            /* left to right: apply what binds as tightly first; STU's ^ is right to left, so only what binds
+               more tightly (2^3^2 is 2^(3^2)) */
+            reduce_to(c, &p, op == O_EQ ? 1 : LEVEL[op] + (c->rtl && op == O_POW));
             p.ops[p.no++] = (opent){(uint8_t)op, 0, 0, 0};
             i += op == O_MUL || op == O_DIV ? 2 : 1;
             want = true;
@@ -2179,14 +2190,15 @@ static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_
     }
 }
 
-casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena,
-                          size_t arena_cap)
+static __attribute__((noinline)) casim_status do_derive(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                         void *arena, size_t arena_cap, bool rtl)
 {
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
     c.var = var;
     if (c.st == CASIM_OK) n = parse(&c);
     if (c.st == CASIM_OK) n = canon(&c, n);
@@ -2194,13 +2206,15 @@ casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t
     return finish(&c, n, out, cap);
 }
 
-casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+static __attribute__((noinline)) casim_status do_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena,
+                                                           size_t arena_cap, bool rtl)
 {
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
     c.opaque = true;
     if (c.st == CASIM_OK) n = parse(&c);
     if (c.st == CASIM_OK) n = canon(&c, n);
@@ -2719,13 +2733,15 @@ static void put_collected(ctx *c, out_t *w, ref r, int var)
 
 #define SLOT 192                /* an equation slot with its NUL: expand, collect and subst fit it or stop */
 
-casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+static __attribute__((noinline)) casim_status do_expand(const char *eqn, int angle, char *out, size_t cap, void *arena,
+                                                         size_t arena_cap, bool rtl)
 {
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
     c.opaque = true;
     c.sub_var = -1;
     if (c.st == CASIM_OK) n = parse(&c);
@@ -2734,7 +2750,8 @@ casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, voi
     return finish(&c, n, out, cap < SLOT ? cap : SLOT);
 }
 
-casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+static __attribute__((noinline)) casim_status do_collect(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                          void *arena, size_t arena_cap, bool rtl)
 {
     ctx c;
     ref n = SPARE;
@@ -2742,6 +2759,7 @@ casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_
     if (cap) out[0] = '\0';
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
     c.opaque = true;
     c.sub_var = var;                    /* expand only where var is */
     if (c.st == CASIM_OK) n = parse(&c);
@@ -2758,8 +2776,9 @@ casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_
     return CASIM_OK;
 }
 
-casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
-                         size_t arena_cap)
+static __attribute__((noinline)) casim_status do_subst(const char *eqn, int var, const char *repl, int angle, char *out,
+                                                        size_t cap, void *arena, size_t arena_cap, bool rtl,
+                                                        bool repl_rtl)
 {
     ctx c;
     ref n = SPARE, rr;
@@ -2767,6 +2786,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
     if (cap) out[0] = '\0';
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
     c.opaque = true;
     if (c.st == CASIM_OK) n = parse(&c);
     if (c.st != CASIM_OK) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
@@ -2776,7 +2796,9 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
     c.s2 = repl;
     c.s = repl;
     c.no_eq = true;                     /* a replacement is an expression, not an equation (review) */
+    c.rtl = repl_rtl;                   /* read as its own model (CAS 004) */
     rr = parse(&c);
+    c.rtl = rtl;
     c.s = eqn;
     if (c.st == CASIM_SYNTAX) c.errpos += chars + 1;
     if (c.st != CASIM_OK) return finish(&c, rr, out, cap < SLOT ? cap : SLOT);
@@ -2791,4 +2813,58 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
         c.badlen = 4;
     }
     return finish(&c, n, out, cap < SLOT ? cap : SLOT);
+}
+
+/* ---- the API ---- */
+
+casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    return do_derive(eqn, var, angle, out, cap, arena, arena_cap, false);
+}
+
+casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    return do_simplify(eqn, angle, out, cap, arena, arena_cap, false);
+}
+
+casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    return do_expand(eqn, angle, out, cap, arena, arena_cap, false);
+}
+
+casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    return do_collect(eqn, var, angle, out, cap, arena, arena_cap, false);
+}
+
+casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap)
+{
+    return do_subst(eqn, var, repl, angle, out, cap, arena, arena_cap, false, false);
+}
+
+/* A model the core stamps (unit 031), or 0 (read as 35). */
+static bool model_ok(int m)
+{
+    return m == 0 || m == CASIM_MODEL_STU || m == CASIM_MODEL_33 || m == CASIM_MODEL_35;
+}
+
+/* CAS 004: one call for the calculator's menu, each text read as its stamp. */
+casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    bool rtl;
+    if (cap) out[0] = '\0';
+    if (!rq || !model_ok(rq->model)) return CASIM_BAD_ARG;
+    rtl = rq->model == CASIM_MODEL_STU;
+    switch (rq->op) {
+    case CASIM_DERIVE: return do_derive(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_SIMPLIFY: return do_simplify(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_EXPAND: return do_expand(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_SUBST:
+        if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
+        return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
+                        rq->repl_model == CASIM_MODEL_STU);
+    default: return CASIM_BAD_ARG;
+    }
 }

@@ -238,3 +238,28 @@ What judges CAS 003: tests/expand_test.c, collect_test.c (it parses the printed 
 each c_k is free of var by its value at two points), subst_test.c and opaque_test.c, with the visible
 cases of work/003-examples.txt through the core's evaluator at 1E-24, idempotence over every case, the
 arena starved at every size from 0 to 8,192 bytes, and the mutants in scripts/mutants.py.
+
+## CAS 004: each text read as its stamp
+
+On the calculator an equation carries the model it was typed in (the core's unit 031: 33, 35 or STU), and
+its meaning is that model's. `casim_run` (casim.h) takes the operation, the text and its model, and for
+subst the replacement and its own model. The five older calls read 35, as before.
+
+- **STU** groups ^ right to left: 2^3^2 is 2^(3^2) = 512, and X^Y^Z is X^(Y^Z). A minus that starts an
+  exponent ranks as any unary minus, below ^, so it covers the chain after it: 2^-3^2 is 2^-(3^2), and
+  2^-3×4 is (2^-3)×4. Measured against the core's own eqn_eval at each model before it was built.
+- **33 and 35** group left to right, and an exponent's minus binds to the next operand: 2^-3^2 is
+  (2^-3)^2. On 20,000 strings the core's syntax check and casim's agree under both.
+- **Implied products** (STU's 2A) are not read. A stored STU equation has its × written in (unit 031 rule
+  7), and the firmware writes it into subst's replacement before the call (#4745).
+- **The output is one text under every model.** Each chain of powers has its parentheses (decision 52)
+  and each product its ×, so a result reads alike under STU, 33 and 35. tests/stamp_test.c checks the
+  round trip under all three models over every visible example and seeded power chains, and each result's
+  value against the core reading the input in its own model.
+- **Depth.** A right chain nests through its exponents, so an STU chain X^X^…^X is held by the depth
+  guard: simplify and expand pass 48 levels (TOO_LONG at 49), derive 45 (TOO_LONG at 46), measured
+  with the CLI. A
+  191-byte X^X^… typed in STU is TOO_LONG, where in 35 it is a left chain, printed in a loop, and passes.
+- **Frames.** No function in src/ has a frame over 1 KB: `make test` and scripts/size-s3.sh compile src/
+  under -Wframe-larger-than=1024 -Werror, and each first proves the flag refuses a planted 2 KB frame
+  (tests/frame_control.c). The largest today: literal(), 336 bytes on the host and 320 on the S3.

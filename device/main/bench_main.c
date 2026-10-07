@@ -29,18 +29,14 @@ typedef struct {
 
 static unsigned char arena[ARENA_MAX] __attribute__((aligned(8)));
 static char out[OUT_MAX];
-static result res[512];         /* more than case_count (checked in app_main) */
+static result res[768];         /* more than case_count (checked in app_main) */
 static unsigned stack_free, stack_base;
 
+/* The calculator's own call (CAS 004): op and texts as the case has them, each read as its stamp. */
 static casim_status run(const bench_case *k, size_t arena_cap)
 {
-    switch (k->op) {
-    case 1: return casim_simplify(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
-    case 2: return casim_expand(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
-    case 3: return casim_collect(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
-    case 4: return casim_subst(k->expr, k->var, k->repl, k->angle, out, OUT_MAX, arena, arena_cap);
-    default: return casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
-    }
+    casim_req rq = {(casim_op)k->op, k->expr, k->model, k->var, k->repl, k->model, k->angle};
+    return casim_run(&rq, out, OUT_MAX, arena, arena_cap);
 }
 
 typedef struct {

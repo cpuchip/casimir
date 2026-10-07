@@ -66,6 +66,21 @@ MUTANTS = {
     "no-sign-content": [
         ("src/casim.c", "                if (big.p < 0) rat_int(&k, -1);\n                return k;", "                (void)big;\n                return k;"),
     ],
+    # CAS 004: the stamp ignored, STU's exponent minus as the 35s's, the replacement's stamp ignored,
+    # TOO_LONG truncated instead of refused (the unit's list, casim's side)
+    "stamp-ignored": [
+        ("src/casim.c", "    rtl = rq->model == CASIM_MODEL_STU;", "    rtl = false;"),
+    ],
+    "stu-exponent-minus-tight": [
+        ("src/casim.c", "    return c->rtl && op == O_PNEG ? LEVEL[O_NEG] : LEVEL[op];", "    return (void)c, LEVEL[op];"),
+    ],
+    "repl-stamp-ignored": [
+        ("src/casim.c", "    c.rtl = repl_rtl;                   /* read as its own model (CAS 004) */", "    (void)repl_rtl;"),
+    ],
+    "too-long-truncated": [
+        ("src/casim.c", "        if (w.full) c->st = CASIM_TOO_LONG;\n", ""),
+        ("src/casim.c", "    if (w.full || c->st == CASIM_TOO_LONG) out[0] = '\\0';", "    if (c->st == CASIM_TOO_LONG) out[0] = '\\0';"),
+    ],
     # decision 52: a chain of powers printed bare
     "chain-bare": [
         ("src/casim.c", "    for (int i = 1; i < k; i++) puts_(w, \"(\");", "    (void)0;"),

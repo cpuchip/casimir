@@ -7,6 +7,8 @@
  *   casim subst "<text>" X "<u>" RAD every X replaced by u, simplified
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
+ *   --model STU|33|35                the model the text was typed in, as the core stamps it (CAS 004;
+ *                                    default 35); --repl-model the same for subst's replacement
  *
  * Exit 0 for OK, 1 for a status (printed as SYNTAX <offset>, NOT_DIFFERENTIABLE <name>,
  * TOO_LONG or BAD_ARG), 2 for a usage error. */
@@ -19,17 +21,22 @@
 #define OUT 65536
 static unsigned char arena[1 << 20];
 
-enum { OP_DERIVE, OP_SIMPLIFY, OP_EXPAND, OP_COLLECT, OP_SUBST };
+enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
+       OP_SUBST = CASIM_SUBST };
 
+static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
+
+/* The calculator's own call (casim_run), with the texts' models. */
 static casim_status run(int op, const char *text, int var, const char *repl, int angle, char *out, size_t arena_cap)
 {
-    switch (op) {
-    case OP_DERIVE: return casim_derive(text, var, angle, out, OUT, arena, arena_cap);
-    case OP_EXPAND: return casim_expand(text, angle, out, OUT, arena, arena_cap);
-    case OP_COLLECT: return casim_collect(text, var, angle, out, OUT, arena, arena_cap);
-    case OP_SUBST: return casim_subst(text, var, repl, angle, out, OUT, arena, arena_cap);
-    default: return casim_simplify(text, angle, out, OUT, arena, arena_cap);
-    }
+    casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle};
+    return casim_run(&rq, out, OUT, arena, arena_cap);
+}
+
+static int model_arg(const char *a)
+{
+    return strcmp(a, "STU") == 0 ? CASIM_MODEL_STU : strcmp(a, "33") == 0 ? CASIM_MODEL_33
+         : strcmp(a, "35") == 0 ? CASIM_MODEL_35 : -1;
 }
 
 int main(int argc, char **argv)
@@ -42,6 +49,11 @@ int main(int argc, char **argv)
     for (; i < argc && strncmp(argv[i], "--", 2) == 0; i++) {
         if (strcmp(argv[i], "--min-arena") == 0) min_arena = 1;
         else if (strcmp(argv[i], "--arena") == 0 && i + 1 < argc) cap = strtoul(argv[++i], NULL, 10);
+        else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+            if ((model = model_arg(argv[++i])) < 0) goto usage;
+        } else if (strcmp(argv[i], "--repl-model") == 0 && i + 1 < argc) {
+            if ((repl_model = model_arg(argv[++i])) < 0) goto usage;
+        }
         else goto usage;
     }
     if (cap > sizeof arena || i >= argc) goto usage;
@@ -82,10 +94,11 @@ int main(int argc, char **argv)
     return st == CASIM_OK ? 0 : 1;
 usage:
     fprintf(stderr, "Casimir, computer algebra for the STU-32\n"
-                    "usage: casim [--arena N] [--min-arena] derive \"<text>\" X RAD|DEG|GRAD\n"
+                    "usage: casim [--arena N] [--min-arena] [--model STU|33|35] derive \"<text>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] simplify \"<text>\" RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] expand \"<text>\" RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] collect \"<text>\" X RAD|DEG|GRAD\n"
-                    "       casim [--arena N] [--min-arena] subst \"<text>\" X \"<u>\" RAD|DEG|GRAD\n");
+                    "       casim [--arena N] [--min-arena] subst \"<text>\" X \"<u>\" RAD|DEG|GRAD\n"
+                    "       (every op takes --model; subst also --repl-model; default 35)\n");
     return 2;
 }

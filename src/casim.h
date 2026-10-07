@@ -49,4 +49,29 @@ casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_
 casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
                          size_t arena_cap);
 
+/* Unit CAS 004: the five operations through one call, each text read as the model it was typed in, as the
+   core stamps an equation (unit 031): CASIM_MODEL_STU groups ^ right to left (2^3^2 is 2^(3^2)), and a
+   minus that starts an exponent covers the chain after it (2^-3^2 is 2^-(3^2)); 33 and 35 group left to
+   right; 0 reads as 35, as the core's eqn_eval. Implied products are not read: the core writes their ×
+   into a stored STU equation (unit 031 rule 7). The output reads the same under every model: each chain
+   of powers has its parentheses, each product its ×. The five calls above read 35. */
+#define CASIM_MODEL_STU 1           /* = the core's AB_MODEL_STU */
+#define CASIM_MODEL_33 33
+#define CASIM_MODEL_35 35
+
+typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST } casim_op;
+
+typedef struct {
+    casim_op op;
+    const char *eqn;
+    int model;                  /* eqn's: 33, 35, CASIM_MODEL_STU, or 0 (35) */
+    int var;                    /* derive, collect, subst: 0-25 for A-Z */
+    const char *repl;           /* subst: the replacement */
+    int repl_model;             /* subst: repl's model, as model */
+    int angle;
+} casim_req;
+
+/* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
+casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
+
 #endif

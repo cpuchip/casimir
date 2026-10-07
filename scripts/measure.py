@@ -102,13 +102,14 @@ SHAPES192 = {
 }
 
 
-def cli_args(expr, var, angle, op, repl=None):
-    """The CLI's arguments for one case."""
+def cli_args(expr, var, angle, op, repl=None, model="35"):
+    """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
+    m = ["--model", model, "--repl-model", model]
     if op == "derive" or op == "collect":
-        return [op, expr, var, angle]
+        return m + [op, expr, var, angle]
     if op == "subst":
-        return [op, expr, var, repl, angle]
-    return [op, expr, angle]
+        return m + [op, expr, var, repl, angle]
+    return m + [op, expr, angle]
 
 
 # CAS 003: 191-byte and short-but-heavy inputs for expand, collect and subst (the unit's budgets are for a
@@ -151,8 +152,8 @@ for _n in range(36, 58, 4):
     SHAPES003.append((f"e sweep SIN( {_n}", "SIN(" * _n + "(X+1)^2" + ")" * _n, "X", "RAD", "expand", None))
 
 
-def run(expr, var, angle, op="derive", repl=None):
-    args = cli_args(expr, var, angle, op, repl)
+def run(expr, var, angle, op="derive", repl=None, model="35"):
+    args = cli_args(expr, var, angle, op, repl, model)
     p = subprocess.run([CLI, "--arena", "65536", "--min-arena"] + args,
                        stdout=subprocess.PIPE, text=True)
     lines = p.stdout.splitlines()
@@ -193,7 +194,15 @@ def all_cases():
                 rows.append((p[0], p[2], p[3], p[4], "collect", None))
             elif p[1] == "subst":
                 rows.append((p[0], p[2], p[3], p[5], "subst", p[4]))
-    return rows + SHAPES003
+    rows = [r + ("35",) for r in rows + SHAPES003]
+    # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
+    for r in rows[:]:
+        if r[0].startswith(("192 ", "probe ", "sweep ", "e ", "c ", "u ")):
+            rows.append((r[0] + " STU",) + r[1:6] + ("STU",))
+    for n in range(36, 58, 2):
+        for op in ("simplify", "derive", "expand"):
+            rows.append((f"STU chain X^ {n} {op[0]}", "^".join(["X"] * n), "X", "RAD", op, None, "STU"))
+    return rows
 
 
 def main():
@@ -201,8 +210,8 @@ def main():
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios, worst = [], {"derive": 0, "simplify": 0, "expand": 0, "collect": 0, "subst": 0}
-    for name, expr, var, angle, op, repl in all_cases():
-        arena, out, err = run(expr, var, angle, op, repl)
+    for name, expr, var, angle, op, repl, model in all_cases():
+        arena, out, err = run(expr, var, angle, op, repl, model)
         if err:
             print(f"{name:<26} {op[0]:<3} {len(expr):>5} {len(expr.encode()):>5}  {err}")
             continue
