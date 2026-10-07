@@ -27,10 +27,28 @@ MUTANTS = {
     "collect-power-twice": [
         ("src/casim.c", "            while (j < nc && ct[j].k != k) j++;", "            j = nc;"),
     ],
-    # 003: subst replacing only the first occurrence
+    # 003 review, delta passes: the order-free adder, sums made primitive that merge, collect's c_k
     "add-one-end": [
-        ("src/casim.c", "term_coef(c, t[acc->p > 0 ? lo++ : hi--])", "term_coef(c, t[lo++])"),
+        ("src/casim.c", "term_coef(c, t[s.p > 0 ? lo++ : hi--])", "term_coef(c, t[lo++])"),
     ],
+    "run-unsorted": [
+        ("src/casim.c", "        sort(c, t + i, j - i, by_coef);", "        (void)by_coef;"),
+    ],
+    "one-denominator-group": [
+        ("src/casim.c", "            int64_t d = term_coef(c, t[i]).q;", "            int64_t d = 1;"),
+        ("src/casim.c", "            if (term_coef(c, t[lo]).q != q) lo++;\n            else if (term_coef(c, t[hi]).q != q) hi--;\n            else if",
+         "            if"),
+    ],
+    "sum-div-unmerged": [
+        ("src/casim.c", "    return add(c, list(c, l), n);\n}", "    return flat_node(c, K_ADD, l, n);\n}"),
+    ],
+    "collect-ck-raw": [
+        ("src/casim.c", "if (nd(c, ct[i].c)->kind == K_ADD) ct[i].c = mul(c, &ct[i].c, 1);", "(void)ct;"),
+    ],
+    "content-apart": [
+        ("src/casim.c", "            if (is_num(c, f[q])) return k;", "            if (0) return k;"),
+    ],
+    # 003: subst replacing only the first occurrence
     "subst-first-only": [
         ("src/casim.c", "    if (c->sub_val && nd(c, r)->id == c->sub_var) {",
          "    if (c->sub_val && nd(c, r)->id == c->sub_var && c->sub_count == 0) {"),
@@ -105,7 +123,7 @@ MUTANTS = {
 
 
 def run(cmd, cwd):
-    return subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
 
 
 def main():

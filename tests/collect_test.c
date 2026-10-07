@@ -180,10 +180,45 @@ static void rules(void)
         collect_ok("(Y×SQRT(X+1)+1)^2", &sh, out);
     }
     {
+        /* the delta review: a coefficient made primitive re-merges its run (547 in 20,000 were not fixed points) */
+        shape sh;
+        char out[OUT];
+        collect_ok("0.5×X×Y+3E18×X×Y+(1÷3)×X×Y", &sh, out);
+        collect_ok("-4E18×X×Y-3E18×X×Y+X", &sh, out);
+    }
+    {
         char out[OUT];
         CHECK(casim_collect("(X+SIN(Y)+COS(Y)+TAN(Y)+EXP(Y))^5", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) ==
                   CASIM_TOO_LONG, "a collected form past 191 bytes: \"%.60s\"", out);
     }
+}
+
+/* Sums of c×X^k×Y^j with coefficients large, small and fractional: collect is a fixed point, and so is
+   simplify (the delta review's fuzz shape, ours). */
+static void big_coefficients(void)
+{
+    static const char *const CO[] = {"3E18", "-4E18", "2E18÷7", "0.5", "1÷3", "-1", "5÷6", "4E18", "-3E18", "7"};
+    unsigned long long r = 12345;
+    int fails = 0;
+    for (int n = 0; n < 2000; n++) {
+        char t[OUT], out[OUT], again[OUT];
+        int len = 0, terms = 2 + (int)((r >> 33) % 4);
+        for (int i = 0; i < terms; i++) {
+            r = r * 6364136223846793005ULL + 1442695040888963407ULL;
+            len += snprintf(t + len, sizeof t - (size_t)len, "%s(%s)×X^%d×Y^%d", i ? "+" : "",
+                            CO[(r >> 33) % 10], (int)((r >> 40) % 3), (int)((r >> 45) % 2) + 1);
+        }
+        r = r * 6364136223846793005ULL + 1442695040888963407ULL;
+        if (casim_collect(t, 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+            (casim_collect(out, 'X' - 'A', CASIM_RAD, again, OUT, arena, sizeof arena) != CASIM_OK ||
+             strcmp(again, out) != 0) && fails++ < 3)
+            CHECK(false, "collect not a fixed point: %s -> %s -> %s", t, out, again);
+        if (casim_simplify(t, CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+            (casim_simplify(out, CASIM_RAD, again, OUT, arena, sizeof arena) != CASIM_OK || strcmp(again, out) != 0) &&
+            fails++ < 3)
+            CHECK(false, "simplify not a fixed point: %s -> %s -> %s", t, out, again);
+    }
+    CHECK(fails == 0, "%d of 2000 mixed-coefficient sums not fixed points", fails);
 }
 
 static void visible(void)
@@ -240,6 +275,7 @@ int main(void)
 {
     ce_init();
     rules();
+    big_coefficients();
     visible();
     return check_done();
 }

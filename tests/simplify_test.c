@@ -61,6 +61,18 @@ static void pair(const char *a, const char *b, int angle)
     CHECK(simp(oa, angle, again) == CASIM_OK && strcmp(again, oa) == 0, "not idempotent: %s -> %s", oa, again);
 }
 
+/* in simplifies, and its result is a fixed point (the text itself is not the point). */
+static void fixed(const char *in)
+{
+    char out[OUT], again[OUT];
+    casim_status st = simp(in, CASIM_RAD, out);
+    CHECK(st == CASIM_OK, "simplify %s: status %d", in, (int)st);
+    if (st != CASIM_OK) return;
+    CHECK(same_value(in, out, CASIM_RAD, -24), "simplify %s = %s changes the value", in, out);
+    CHECK(simp(out, CASIM_RAD, again) == CASIM_OK && strcmp(again, out) == 0, "not idempotent: %s -> %s -> %s", in,
+          out, again);
+}
+
 /* The fresh-eyes review's findings (2026-10-06), each now a test. */
 static void review(void)
 {
@@ -93,6 +105,22 @@ static void review(void)
     pair("3E18×X+3E18×X-3E18×X", "-3E18×X+3E18×X+3E18×X", CASIM_RAD);
     is("3E18×X+3E18×X-3E18×X", "3000000000000000000×X");
     is("(-3E18)+(-3E18)+3E18+3E18+X", "X");          /* the numbers too: no partial sum past the total */
+    /* the delta review: the order of value is what decides (deleting the sort must fail) */
+    is("3E18×X+3E18×X-3E18×X-3E18×X+3E18×X", "3000000000000000000×X");
+    pair("4E18×X+(-4E18)×X+4E18×X+4E18×X", "4E18×X+4E18×X+4E18×X-4E18×X", CASIM_RAD);
+    is("4E18×X+(-4E18)×X+4E18×X+4E18×X",
+       "-4000000000000000000×X+4000000000000000000×X+4000000000000000000×X+4000000000000000000×X");
+    /* ... and a denominator's terms are added together first: 2E18÷7-2E18÷7 cancels before 3E18 meets it */
+    is("2E18÷7×X-2E18÷7×X+3E18×X", "3000000000000000000×X");
+    is("2E18÷7-2E18÷7+3E18+X", "X+3000000000000000000");
+    is("1÷3037000499-1÷3037000499+1÷3037000493+X", "X+1÷3037000493");
+    pair("3E18×X+2E18÷7×X-2E18÷7×X", "-2E18÷7×X+3E18×X+2E18÷7×X", CASIM_RAD);
+    /* a sum made primitive is a sum again: a run left apart that fits after the division merges, so
+       simplifying the result changes nothing */
+    fixed("(-4E18×Y-3E18×Y)×X");
+    fixed("(5×Y÷6+3000000000000000000×Y)×X");
+    fixed("(-4E18×Y-3E18×Y)^2");
+    fixed("(4E18×Y+4E18×Y+1)×X");
     is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");
     /* 5: 0 to a negative power stays as it is (undefined; 1÷0^2 would read back as 1÷0) */
     is("0^(-2)", "0^(-2)");

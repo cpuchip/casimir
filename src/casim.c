@@ -680,25 +680,40 @@ static int by_coef(ctx *c, ref a, ref b)
     return rat_cmp(&x, &y);
 }
 
-/* t[0..n), in order of value, added into *acc: from the low end while the sum is above 0, from the high
-   end otherwise, so a partial sum of integers is never further from 0 than the largest term or the total.
-   The order comes from the values alone: whether it fits does not depend on how the sum was written
-   (3E18×X+3E18×X-3E18×X; third review). */
+/* t[0..n), in order of value, added into *acc, one denominator at a time (the smallest first): within
+   each, from the low end while its sum is above 0 and from the high end otherwise. So no partial sum of a
+   denominator's terms is further from 0 than its largest term or its total, and terms that cancel exactly
+   meet before anything else does (2E18÷7−2E18÷7+3E18). The order comes from the values alone: whether it
+   fits does not depend on how the sum was written (3E18×X+3E18×X−3E18×X; third review, and its delta). */
 static bool add_sorted(ctx *c, const ref *t, int n, rat *acc)
 {
-    int lo = 0, hi = n - 1;
-    while (lo <= hi) {
-        rat v = term_coef(c, t[acc->p > 0 ? lo++ : hi--]);
-        if (!rat_add(acc, acc, &v)) return false;
+    int64_t q = 0;
+    for (;;) {
+        int64_t g = 0;
+        int lo = 0, hi = n - 1;
+        rat s;
+        for (int i = 0; i < n; i++) {
+            int64_t d = term_coef(c, t[i]).q;
+            if (d > q && (g == 0 || d < g)) g = d;
+        }
+        if (g == 0) return true;
+        q = g;
+        rat_int(&s, 0);
+        while (lo <= hi) {
+            rat v;
+            if (term_coef(c, t[lo]).q != q) lo++;
+            else if (term_coef(c, t[hi]).q != q) hi--;
+            else if (v = term_coef(c, t[s.p > 0 ? lo++ : hi--]), !rat_add(&s, &s, &v)) return false;
+        }
+        if (!rat_add(acc, acc, &s)) return false;
     }
-    return true;
 }
 
 /* Sorts t[0..m) with by, then folds its numbers into *v with f, all of them or none. by puts the numbers
    together, in order of value (both orders rank a number after every kind but a literal), so this works
    in place. When any step would not fit, every number stays, in order, the identities (1 in a product, 0
-   in a sum) dropped: the result is the same whatever the grouping that led to it, and simplifying it
-   again changes nothing. Returns the new length. */
+   in a sum) dropped: the result is deterministic, and simplifying it again changes nothing (two
+   groupings of the same mathematics may still differ past 2^62: docs). Returns the new length. */
 static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, const rat *),
                 int (*by)(ctx *, ref, ref))
 {
@@ -740,6 +755,20 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
     return j;
 }
 
+/* A coefficient k (not 0) times a monomial's factors f: one product node, or through mul() when numbers
+   were kept apart in the monomial, so the coefficient joins them (second review). */
+static ref term_of(ctx *c, const rat *k, const ref *f, int nf)
+{
+    ref ml;
+    bool nums = false;
+    for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
+    if (!nums) return mul_node(c, num(c, k), f, nf);
+    if (!(ml = grab(c, (size_t)(nf + 1) * sizeof(ref)))) return SPARE;
+    list(c, ml)[0] = num(c, k);
+    memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
+    return mul(c, list(c, ml), nf + 1);
+}
+
 /* A sum (docs: flattened, sorted by monomial, like terms collected, the constant last). */
 static ref add(ctx *c, const ref *in, int n)
 {
@@ -755,7 +784,7 @@ static ref add(ctx *c, const ref *in, int n)
     for (int i = 0; i < m;) {
         int j = i + 1;
         rat s2;
-        bool ok = true, nums = false;
+        bool ok = true;
         const ref *f;
         int nf;
         if (!is_num(c, t[i]))
@@ -776,16 +805,7 @@ static ref add(ctx *c, const ref *in, int n)
         f = mono(c, &t[i], &nf);
         i = j;
         if (rat_is(&s2, 0, 1)) continue;
-        for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
-        if (!nums) t[k++] = mul_node(c, num(c, &s2), f, nf);
-        else {
-            /* numbers kept apart in the monomial: the coefficient joins them (second review) */
-            ref ml = grab(c, (size_t)(nf + 1) * sizeof(ref));
-            if (!ml) return SPARE;
-            list(c, ml)[0] = num(c, &s2);
-            memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
-            t[k++] = mul(c, list(c, ml), nf + 1);
-        }
+        t[k++] = term_of(c, &s2, f, nf);
     }
     if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
     for (int i = 0; i < ni; i++) t[k++] = list(c, il)[i];   /* impure terms, in order, last */
@@ -796,19 +816,28 @@ static ref add(ctx *c, const ref *in, int n)
 }
 
 /* A sum's content: its first term's coefficient (the constant is last, so the first term has a
-   monomial). */
+   monomial); 1 when any term holds numbers kept apart (past 2^62), since dividing such a term and
+   multiplying it back would not meet again, and each pass would add numbers (delta review). */
 static rat content(ctx *c, ref s)
 {
     ref t0 = list(c, nd(c, s)->a)[0];
     rat k;
     rat_int(&k, 1);
+    for (int i = 0; i < nd(c, s)->n; i++) {
+        int nf;
+        ref t = list(c, nd(c, s)->a)[i];
+        const ref *f = is_num(c, t) ? NULL : mono(c, &t, &nf);
+        for (int q = 0; f && q < nf; q++)
+            if (is_num(c, f[q])) return k;
+    }
     if (nd(c, t0)->kind == K_MUL && has_coef(c, list(c, nd(c, t0)->a), nd(c, t0)->n))
         k = *val(c, list(c, nd(c, t0)->a)[0]);
     return k;
 }
 
-/* The sum s with every term divided by k (k not 0); 0 when a quotient would not fit. The terms keep their
-   order: their monomials do not change. */
+/* The sum s with every term divided by k (k not 0); 0 when a quotient would not fit. Built through add():
+   a run of like terms left apart because its sum did not fit may fit once divided, and a negative k
+   reverses the order of value (delta review), so the result may merge, or not be a sum at all. */
 static ref sum_div(ctx *c, ref s, const rat *k)
 {
     int n = nd(c, s)->n;
@@ -828,11 +857,11 @@ static ref sum_div(ctx *c, ref s, const rat *k)
             if (nd(c, t)->kind == K_MUL && has_coef(c, list(c, nd(c, t)->a), nd(c, t)->n))
                 ct = *val(c, list(c, nd(c, t)->a)[0]);
             if (!rat_mul(&q, &ct, &inv)) return 0;
-            r = mul_node(c, num(c, &q), f, nf);
+            r = mul_node(c, num(c, &q), f, nf);     /* no numbers apart in f: content() is 1 then */
         }
         list(c, l)[i] = r;
     }
-    return flat_node(c, K_ADD, l, n);
+    return add(c, list(c, l), n);
 }
 
 /* A product (docs: flattened, coefficient first, factors sorted by base, like factors combined; a sum
@@ -868,7 +897,10 @@ static ref mul(ctx *c, const ref *in, int n)
             rat k = nd(c, t[i])->kind == K_ADD ? content(c, t[i]) : cv, ck;
             ref p;
             if (nd(c, t[i])->kind != K_ADD || rat_is(&k, 1, 1) || !rat_mul(&ck, &cv, &k)) continue;
-            if ((p = sum_div(c, t[i], &k)) != 0) t[i] = p, cv = ck;
+            if ((p = sum_div(c, t[i], &k)) == 0) continue;
+            if (p == SPARE) return SPARE;
+            t[i] = p, cv = ck;
+            if (nd(c, p)->kind != K_ADD || (k = content(c, p), !rat_is(&k, 1, 1))) again = true;   /* it merged */
         }
         sort(c, t, m, by_factor);
         for (int i = 0; i < m;) {
@@ -2595,6 +2627,10 @@ static void put_collected(ctx *c, out_t *w, ref r, int var)
         while (j > 0 && ct[j - 1].k < v.k) ct[j] = ct[j - 1], j--;
         ct[j] = v;
     }
+    /* a sum c_k as a factor reads back made primitive, which can merge a run its sum left apart: so it is
+       printed as that, and collecting again changes nothing (delta review: 547 in 20,000) */
+    for (int i = 0; i < nc; i++)
+        if (nd(c, ct[i].c)->kind == K_ADD) ct[i].c = mul(c, &ct[i].c, 1);
     {
         bool first = true;
         for (int i = 0; i < nc && c->st == CASIM_OK; i++) {

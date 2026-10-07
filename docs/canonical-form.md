@@ -63,11 +63,13 @@ roots are not part of CAS 002).
 
 **Numbers that do not fold together** (a step past 2^62) are handled all or nothing: when any step of
 folding a sum's or a product's numbers would not fit, none is folded. A sum's numbers, and the coefficients
-of a run of like terms, are added in order of value, from the low end while the sum is above 0 and from the
-high end otherwise. So a partial sum of integers never lies further from 0 than the largest term or the
-total, and whether it fits depends on the values alone, not on the order they were written in
-(3E18×X+3E18×X−3E18×X and −3E18×X+3E18×X+3E18×X are both 3000000000000000000×X; the third review). A run
-that still does not fit stays apart, in that order. They stay apart, after every other
+of a run of like terms, are added one denominator at a time, the smallest first, and each denominator's
+terms in order of value, from the low end while their sum is above 0 and from the high end otherwise. So a
+partial sum of one denominator's terms never lies further from 0 than its largest term or its total, terms
+that cancel exactly meet before anything else (2E18÷7−2E18÷7+3E18 is 3E18), and whether a sum fits depends
+on the values alone, not on the order they were written in (3E18×X+3E18×X−3E18×X and −3E18×X+3E18×X+3E18×X
+are both 3000000000000000000×X; the third review and its delta pass). Whole numbers are one denominator, so
+for them the bound is exact. A run that still does not fit stays apart, in order of value. They stay apart, after every other
 operand, in order of value, the identities dropped (1 in a product, 0 in a sum). In a product they follow
 one sign rule: their absolute values, the product's sign on the first (so X−4E18×4E18 and −4E18×4E18+X
 agree). A product has a coefficient only when it holds exactly one number; numbers kept apart print whole,
@@ -110,7 +112,7 @@ TOO_LONG (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d). A refus
 | number | reduced p/q as above |
 | variable, π | always |
 | sum | flattened; at least two terms; at most one number, which is not 0; no two terms with equal monomials (like terms collected: 2×X + 3×X is 5×X); a numeric coefficient times a single sum is distributed (−(X+Y) is −X−Y) |
-| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); a sum that is a factor is **primitive**: its first term's coefficient is 1, the content moved into the coefficient (2×(X+1)×Y and (2×X+2)×Y are both 2×Y×(X+1)); an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
+| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); a sum that is a factor is **primitive**: its first term's coefficient is 1, the content moved into the coefficient (2×(X+1)×Y and (2×X+2)×Y are both 2×Y×(X+1)), and the divided sum is a sum again, its runs merged where they now fit (so it may stop being a sum); a sum holding a term with numbers kept apart (past 2^62) is left as it is, since dividing that term and multiplying it back would not meet again; an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
 | power u^e | e is not 0 or 1; a number to an integer power is folded; (u^a)^n with an integer n is u^(a×n); an integer power of a sum with content k is k^n × (primitive sum)^n |
 | function | its argument is canonical; LN(EXP(u)) and EXP(LN(u)) are u, and likewise LOG and ALOG; SQ(u) is u^2, INV(u) is u^−1, SQRT(u) is u^(1/2); ABS of a number is folded |
 | L=R | each side canonical |
@@ -201,7 +203,8 @@ a bound, not a proof: a result that had not settled by then would be returned as
 **Collect in a variable** expands only where the variable is, then prints Σ c_k × var^k: each k once, in
 descending k, negative k as c×X^(−k). c_k is simplified, not expanded (X×(Y+1)^2 collects to (Y+1)^2×X),
 and free of var; c_k = 1 prints X^k alone, −1 as −X^k, a sum c_k in parentheses, and a non-sum c_k's sign
-folds into the joining −. Then the remainder: the terms where var is not a whole power (SIN(X), X^0.5),
+folds into the joining −. A sum c_k is printed as it reads back as a factor, made primitive and
+distributed again (a run its sum left apart can merge there), so collecting again changes nothing. Then the remainder: the terms where var is not a whole power (SIN(X), X^0.5),
 simplified, after the lowest power term, so after c_0 when there are negative powers (#4264 point 5). A
 term holding a draw always goes to the remainder, unmerged, in its order.
 
