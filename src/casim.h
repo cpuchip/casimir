@@ -33,4 +33,20 @@ casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t
    returns simplified. A construct casim_derive refuses is refused here too, by name. */
 casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap);
 
+/* Unit CAS 003. Each returns TOO_LONG for a result past 191 bytes, whatever cap is (an equation slot
+   holds 192 with its NUL); L=R treats each side. */
+
+/* eqn expanded: × distributed over +, sums raised to whole powers multiplied out, at every depth (function
+   arguments too), in the canonical form. A sum under a ÷ or to a power not whole stays, expanded inside. */
+casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap);
+
+/* eqn collected in var (0-25): Σ c_k × var^k, each k once, in descending k, each c_k simplified and free of
+   var; terms where var is not a whole power follow, simplified (docs/canonical-form.md, "Collect"). */
+casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena,
+                           size_t arena_cap);
+
+/* eqn with every var (0-25) replaced by repl, as if in parentheses, then simplified. */
+casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap);
+
 #endif

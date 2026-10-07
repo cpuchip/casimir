@@ -1866,3 +1866,26 @@ casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, v
     if (c.st == CASIM_OK) n = canon(&c, n);
     return finish(&c, n, out, cap);
 }
+
+/* CAS 003: stubs until it lands (its tests are written first). */
+casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    (void)eqn, (void)angle, (void)arena, (void)arena_cap;
+    if (cap) out[0] = '\0';
+    return CASIM_TOO_LONG;
+}
+
+casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    (void)eqn, (void)var, (void)angle, (void)arena, (void)arena_cap;
+    if (cap) out[0] = '\0';
+    return CASIM_TOO_LONG;
+}
+
+casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap)
+{
+    (void)eqn, (void)var, (void)repl, (void)angle, (void)arena, (void)arena_cap;
+    if (cap) out[0] = '\0';
+    return CASIM_TOO_LONG;
+}
