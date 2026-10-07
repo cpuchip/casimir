@@ -77,3 +77,25 @@ library and CLI. The device's key is a later firmware unit, as CAS 004 was.
   - ± collapsed to one root;
   - the stamp ignored.
 - **The device:** the S3 bench, byte-identical to the host, with its time and flash.
+
+## Amended (abacus #4841, answering casim #4840)
+
+- **Rule 5's output, as casim proposed.** The status comes first, then the roots separated by "; " in ascending
+  exact order, with " (MULT k)" above 1. Roots are an integer, a÷b, or (a±b×SQRT(r))÷d (÷d omitted when d = 1,
+  "b×" omitted when b = 1). This is the textbook's form, not 002's canonical form. Other lines:
+  - `PARTIAL, DEGREE n LEFT: …`
+  - `NO REAL ROOTS`
+  - `NO SOLUTION` (a nonzero constant)
+  - `EVERY X` (0=0)
+
+  Every root's text must evaluate on the core to the root, as a test.
+- **Rule 3 widened (casim's option a).** After the square-free split and the rational roots, the remainder is
+  factored into quadratic factors over Q. The method is casim's; it is verified by exact division and bounded in
+  time.
+- **The statuses, defined by the factorization over Q of the square-free part.** abacus's judge uses exactly these
+  against SymPy:
+  - SOLVED: every irreducible factor has degree ≤ 2.
+  - NO REAL ROOTS: every factor has degree ≤ 2, and none has a real root.
+  - PARTIAL, DEGREE n LEFT: some irreducible factor has degree ≥ 3, and n is the total degree left.
+- **Rule 6:** a 512-bit checked integer of casim's own (no GMP) is approved. The degree and coefficient bounds are
+  set after an S3 prototype.
