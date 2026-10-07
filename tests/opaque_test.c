@@ -68,6 +68,17 @@ int main(void)
     simp("COS(RAND)+RAND", "COS(RAND)+RAND");       /* the draws' order: COS(RAND) is drawn first */
     simp("RAND+COS(RAND)", "RAND+COS(RAND)");
     expd("(RAND+1)^2", "(1+RAND)^2");              /* pure first: still one draw */
+    /* the review: a product with draws prints its factors in their order, × and ÷ as they come */
+    simp("1÷RAND×RAND", "1÷RAND×RAND");
+    simp("RAND^(-1)×(RAND+1)", "1÷RAND×(1+RAND)");
+    simp("X÷RAND×RAND^2", "X÷RAND×RAND^2");
+    /* collect: a term with a draw goes to the remainder, unmerged, in its order */
+    CHECK(casim_collect("RAND+X^2×RAND", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+              strcmp(out, "RAND+X^2×RAND") == 0, "collect RAND+X^2×RAND: \"%s\"", out);
+    CHECK(casim_collect("RAND×X+X", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+              strcmp(out, "X+X×RAND") == 0, "collect RAND×X+X: \"%s\"", out);
+    CHECK(casim_collect("SIN(X)×RAND+RAND×X", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+              strcmp(out, "SIN(X)×RAND+X×RAND") == 0, "collect SIN(X)×RAND+RAND×X: \"%s\"", out);
     expd("X×(RAND+1)", "X×(1+RAND)");
     expd("RAND×(X+1)", "(X+1)×RAND");               /* pure operands first, impure after, in order */
     expd("(X+1)^2+RAND", "2×X+X^2+1+RAND");          /* the pure part still expands */

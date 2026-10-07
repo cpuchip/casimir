@@ -29,13 +29,18 @@ typedef struct {
 
 static unsigned char arena[ARENA_MAX] __attribute__((aligned(8)));
 static char out[OUT_MAX];
-static result res[256];
+static result res[512];         /* more than case_count (checked in app_main) */
 static unsigned stack_free, stack_base;
 
 static casim_status run(const bench_case *k, size_t arena_cap)
 {
-    if (k->simplify) return casim_simplify(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
-    return casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
+    switch (k->op) {
+    case 1: return casim_simplify(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
+    case 2: return casim_expand(k->expr, k->angle, out, OUT_MAX, arena, arena_cap);
+    case 3: return casim_collect(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
+    case 4: return casim_subst(k->expr, k->var, k->repl, k->angle, out, OUT_MAX, arena, arena_cap);
+    default: return casim_derive(k->expr, k->var, k->angle, out, OUT_MAX, arena, arena_cap);
+    }
 }
 
 typedef struct {
@@ -57,7 +62,11 @@ static void worker(void *arg)
 static unsigned stack_used(const bench_case *k)
 {
     job j = {k, 0, xTaskGetCurrentTaskHandle()};
-    if (xTaskCreate(worker, "casim_w", WSTACK, &j, 5, NULL) != pdPASS) return 0;
+    int tries = 0;
+    /* the idle task frees the last worker's stack: wait for it rather than report nonsense */
+    while (xTaskCreate(worker, "casim_w", WSTACK, &j, 5, NULL) != pdPASS)
+        if (++tries > 50) return WSTACK + 1;    /* shown as more than the stack: a failed measurement */
+        else vTaskDelay(pdMS_TO_TICKS(20));
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     vTaskDelay(pdMS_TO_TICKS(20));          /* the idle task frees the worker */
     return WSTACK - j.free;
@@ -95,7 +104,10 @@ static void run_cases(void)
     }
     stack_free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     stack_base = stack_used(NULL);
-    for (int i = 0; i < case_count; i++) res[i].stack = stack_used(&cases[i]) - stack_base;
+    for (int i = 0; i < case_count; i++) {
+        unsigned u = stack_used(&cases[i]);
+        res[i].stack = u > stack_base ? u - stack_base : 0;    /* a loop-only case uses less than idle's noise */
+    }
 }
 
 static void bench_task(void *arg)
@@ -110,7 +122,7 @@ static void bench_task(void *arg)
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-26s %2s %5d %8lld %8lld %6u %6u %5d %s\n", k->name, k->simplify ? "s" : "d", k->chars,
+            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecu"[k->op], k->chars,
                    (long long)res[i].us_min,
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
                    k->status ? -k->status : (int)strlen(k->want),
@@ -128,5 +140,10 @@ static void bench_task(void *arg)
 void app_main(void)
 {
     vTaskDelay(pdMS_TO_TICKS(1500));
+    if (case_count > (int)(sizeof res / sizeof res[0])) {
+        printf("DEVICE FAIL: %d cases, room for %d\n", case_count, (int)(sizeof res / sizeof res[0]));
+        printf("DEVICE DONE\n");
+        return;
+    }
     if (xTaskCreate(bench_task, "casim_bench", STACK, NULL, 5, NULL) != pdPASS) printf("DEVICE FAIL: no task\n");
 }

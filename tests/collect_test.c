@@ -174,6 +174,12 @@ static void rules(void)
     is("X×(Y+1)^2", "(Y+1)^2×X");                          /* c_k simplified, not expanded: only X is */
     is("X=Y×X^2", "X=Y×X^2");                              /* each side */
     {
+        /* the review: a merge in the expansion that makes another power of X is expanded again */
+        shape sh;
+        char out[OUT];
+        collect_ok("(Y×SQRT(X+1)+1)^2", &sh, out);
+    }
+    {
         char out[OUT];
         CHECK(casim_collect("(X+SIN(Y)+COS(Y)+TAN(Y)+EXP(Y))^5", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) ==
                   CASIM_TOO_LONG, "a collected form past 191 bytes: \"%.60s\"", out);

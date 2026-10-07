@@ -102,8 +102,57 @@ SHAPES192 = {
 }
 
 
-def run(expr, var, angle, op="derive"):
-    args = ["derive", expr, var, angle] if op == "derive" else ["simplify", expr, angle]
+def cli_args(expr, var, angle, op, repl=None):
+    """The CLI's arguments for one case."""
+    if op == "derive" or op == "collect":
+        return [op, expr, var, angle]
+    if op == "subst":
+        return [op, expr, var, repl, angle]
+    return [op, expr, angle]
+
+
+# CAS 003: 191-byte and short-but-heavy inputs for expand, collect and subst (the unit's budgets are for a
+# 192-byte input; a short power can cost more than a long text).
+def _upto(make, limit=191):
+    n = 1
+    while len(make(n + 1).encode()) <= limit:
+        n += 1
+    return make(n)
+
+
+SHAPES003 = [
+    ("e (X+1)^20", "(X+1)^20", "X", "RAD", "expand", None),
+    ("e (X+Y)^10", "(X+Y)^10", "X", "RAD", "expand", None),
+    ("e (X+Y+Z+1)^3", "(X+Y+Z+1)^3", "X", "RAD", "expand", None),
+    ("e 191 binomials", _upto(lambda n: "×".join(f"(X+{i % 9 + 1})" for i in range(n))), "X", "RAD", "expand", None),
+    ("e 191 sum of products", _upto(lambda n: "+".join(f"(X+{i % 9 + 1})×(Y-{i % 7 + 1})" for i in range(n))), "X",
+     "RAD", "expand", None),
+    ("e 191 SIN of squares", _upto(lambda n: "+".join(f"SIN((X+{i % 9 + 1})^2)" for i in range(n))), "X", "RAD",
+     "expand", None),
+    ("e 191 quotients", _upto(lambda n: "+".join(f"X÷((X+{i % 9 + 1})×(X-{i % 7 + 1}))" for i in range(n))), "X",
+     "RAD", "expand", None),
+    ("c (X+SIN(Y))^8", "(X+SIN(Y))^8", "X", "RAD", "collect", None),
+    ("c 191 products", _upto(lambda n: "+".join(f"(X+Y+{i % 9 + 1})×(X-{i % 7 + 1})" for i in range(n))), "X",
+     "RAD", "collect", None),
+    ("c 191 with a remainder", _upto(lambda n: "+".join(f"(X+{i % 9 + 1})^2+SIN(X×{i % 5 + 1})" for i in range(n))),
+     "X", "RAD", "collect", None),
+    ("u 191 powers", _upto(lambda n: "+".join(f"X^{i % 6 + 1}×{i % 9 + 1}" for i in range(n))), "X", "RAD", "subst",
+     "Y+1"),
+    ("u 191 nested", _upto(lambda n: "SIN(" * n + "X" + ")" * n), "X", "RAD", "subst", "X^2+Y"),
+]
+
+
+# CAS 003 review: expand's and collect's walks at depth, swept across the guard (each nest wraps a square
+# of a sum, so the deepest level still has an expansion to do).
+for _n in range(36, 58, 4):
+    SHAPES003.append((f"e sweep IP( {_n}", "IP(" * _n + "(X+1)^2" + ")" * _n, "X", "RAD", "expand", None))
+    SHAPES003.append((f"e sweep X×(Y+ {_n}", "X×(Y+" * _n + "(X+1)^2" + ")" * _n, "X", "RAD", "expand", None))
+    SHAPES003.append((f"c sweep X×(Y+ {_n}", "X×(Y+" * _n + "(X+1)^2" + ")" * _n, "X", "RAD", "collect", None))
+    SHAPES003.append((f"e sweep SIN( {_n}", "SIN(" * _n + "(X+1)^2" + ")" * _n, "X", "RAD", "expand", None))
+
+
+def run(expr, var, angle, op="derive", repl=None):
+    args = cli_args(expr, var, angle, op, repl)
     p = subprocess.run([CLI, "--arena", "65536", "--min-arena"] + args,
                        stdout=subprocess.PIPE, text=True)
     lines = p.stdout.splitlines()
@@ -132,16 +181,28 @@ def all_cases():
     for name, (expr, angle) in list(SHAPES192.items()) + list(PROBES.items()) + list(SWEEP.items()):
         rows.append((name + " S", expr, "X", angle, "simplify"))
         rows.append((name + " D", expr, "X", angle, "derive"))
-    return rows
+    rows = [r + (None,) for r in rows]
+    with open(os.path.join(ROOT, "work", "003-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            if p[1] == "expand":
+                rows.append((p[0], p[2], "X", p[4], "expand", None))
+            elif p[1] == "collect":
+                rows.append((p[0], p[2], p[3], p[4], "collect", None))
+            elif p[1] == "subst":
+                rows.append((p[0], p[2], p[3], p[5], "subst", p[4]))
+    return rows + SHAPES003
 
 
 def main():
     if not os.path.exists(CLI):
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
-    ratios, worst = [], {"derive": 0, "simplify": 0}
-    for name, expr, var, angle, op in all_cases():
-        arena, out, err = run(expr, var, angle, op)
+    ratios, worst = [], {"derive": 0, "simplify": 0, "expand": 0, "collect": 0, "subst": 0}
+    for name, expr, var, angle, op, repl in all_cases():
+        arena, out, err = run(expr, var, angle, op, repl)
         if err:
             print(f"{name:<26} {op[0]:<3} {len(expr):>5} {len(expr.encode()):>5}  {err}")
             continue

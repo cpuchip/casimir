@@ -6,7 +6,8 @@ typedef struct {
     const char *name;
     const char *expr;
     int var, angle;
-    int simplify;           /* 1: casim_simplify; 0: casim_derive */
+    int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst */
+    const char *repl;       /* subst's replacement */
     int chars;              /* the equation's length in characters */
     int status;             /* the host's status (0 OK, 3 TOO_LONG, ...) */
     const char *want;       /* the host's text ("" unless OK) */

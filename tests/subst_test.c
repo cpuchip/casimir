@@ -51,6 +51,8 @@ static void rules(void)
     status("2X", "Y", CASIM_SYNTAX, "1");
     status("X+1", "2Y", CASIM_SYNTAX, "5");
     status("X×π", "(Y", CASIM_SYNTAX, "6");     /* 3 characters, then "|", then (Y's end at 2 */
+    status("X+1", "Y=2", CASIM_SYNTAX, "5");    /* the review: a replacement is not an equation */
+    status("X=1", "Y=2", CASIM_SYNTAX, "5");
 }
 
 static void visible(void)

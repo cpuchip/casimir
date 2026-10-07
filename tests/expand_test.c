@@ -97,6 +97,18 @@ static void rules(void)
         CHECK(ex("(X+Y+Z+1)^30×(X-1)^30", out) == CASIM_TOO_LONG, "a large product: \"%s\"", out);
         CHECK((double)(clock() - t0) / CLOCKS_PER_SEC < 0.05, "the term bound did not stop them early");
     }
+    /* the CAS 003 review: an overflowing multinomial count is TOO_LONG, never OK with empty text */
+    {
+        char out[OUT];
+        static const char *const huge[] = {"(A+B+C+D+E+F+G+H+I+J+K+L)^4000", "(A+B+C+D+E+F+G+H+I+J+K+L)^4000×Y+1",
+                                           "SIN((A+B+C+D+E+F+G+H+I+J+K+L)^4000)", "(A+B+C+D+E+F+G+H+I+J+K+L)^(-4000)"};
+        for (size_t i = 0; i < sizeof huge / sizeof huge[0]; i++)
+            CHECK(ex(huge[i], out) == CASIM_TOO_LONG && out[0] == '\0', "%s: \"%s\", want TOO_LONG", huge[i], out);
+    }
+    /* the review: products made while distributing are expanded again (a fixed point) */
+    pair("(SQRT(X+1)×Y+1)×(SQRT(X+1)+1)", "SQRT(X+1)+Y×SQRT(X+1)+Y×X+Y+1");
+    pair("(X÷(Y+1)+1)×(X÷(Y-1)+1)", "X^2÷(Y^2-1)+X÷(Y+1)+X÷(Y-1)+1");
+    pair("(1÷(Y+1)+X)^2", "1÷(Y^2+2×Y+1)+2×X÷(Y+1)+X^2");
     /* like terms collect; L=R each side */
     pair("(X+1)^2-(X-1)^2", "4×X");
     pair("X×(X+1)=(X+1)^2", "X^2+X=X^2+2×X+1");
@@ -271,9 +283,37 @@ static void visible(void)
     CHECK(n == 16, "%d visible E cases, want 16", n);
 }
 
+/* Every arena size from 0 to 8192 gives TOO_LONG or the one answer, for expand and collect: the arena
+   is compacted between steps (copied, slid down, references rewritten), so a size that runs out mid-copy
+   must still fail cleanly. */
+static void starved(void)
+{
+    static const char *const in[] = {
+        "(X+1)×(Y-2)+(X+3)×(Y-4)+(X+5)×(Y-6)+SIN((X+1)^2)",
+        "X÷((X+1)×(X-1))+(X+Y)^3",
+        "(X+Y+1)^2×(X-1)",
+        "IP((X+1)^2)+RAND×(X+1)+(X+2)!",
+    };
+    for (size_t i = 0; i < sizeof in / sizeof in[0]; i++) {
+        char want[2][OUT], got[OUT];
+        int bad = 0;
+        casim_status s0 = casim_expand(in[i], CASIM_RAD, want[0], OUT, arena, sizeof arena);
+        casim_status s1 = casim_collect(in[i], 'X' - 'A', CASIM_RAD, want[1], OUT, arena, sizeof arena);
+        CHECK(s0 == CASIM_OK && s1 == CASIM_OK, "%s: %d %d with the full arena", in[i], (int)s0, (int)s1);
+        for (size_t n = 0; n <= 8192; n++) {
+            casim_status a = casim_expand(in[i], CASIM_RAD, got, OUT, arena, n);
+            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[0]) == 0))) bad++;
+            a = casim_collect(in[i], 'X' - 'A', CASIM_RAD, got, OUT, arena, n);
+            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[1]) == 0))) bad++;
+        }
+        CHECK(bad == 0, "%s: %d arena sizes gave another answer", in[i], bad);
+    }
+}
+
 int main(void)
 {
     ce_init();
+    starved();
     rules();
     instrument();
     visible();

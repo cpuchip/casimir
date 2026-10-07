@@ -29,7 +29,8 @@ enum {
     /* raw only */
     K_NEG, K_BADD, K_BSUB, K_BMUL, K_BDIV, K_BPOW, K_RFN, K_REQ, K_BAD,
     K_GROUP,                    /* a chain in written parentheses: a chain's walk stops there */
-    K_ROFN                      /* an opaque function as parsed */
+    K_ROFN,                     /* an opaque function as parsed */
+    K_FWD                       /* a node moved by compact(): a is where it went */
 };
 
 /* The ids of the opaque kinds that are not NAMES entries. */
@@ -115,6 +116,7 @@ typedef struct {
     int var, angle;
     int depth;                  /* the recursive walks' nesting, bounded by CASIM_DEPTH_MAX */
     bool opaque;                /* the names derive refuses are opaque (every operation but derive) */
+    bool no_eq;                 /* an = is SYNTAX (subst's replacement is an expression) */
     bool has_impure;            /* RAND or SEED occurs: impure subtrees exist (CAS 003, #4264 point 2) */
     int rand_id, seed_id;       /* their NAMES indexes */
     const char *s2;             /* subst's replacement text (its literals have id 1) */
@@ -149,7 +151,7 @@ static rat *rt(const ctx *c, ref r)
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
 #ifndef CASIM_DEPTH_MAX
-#define CASIM_DEPTH_MAX 52
+#define CASIM_DEPTH_MAX 48
 #endif
 
 static bool enter(ctx *c)
@@ -492,7 +494,7 @@ static int by_factor(ctx *c, ref a, ref b)
 
 /* A product's operand list has a coefficient when its first operand is its only number. (Numbers that
    could not be folded together stay apart, after the other factors; each is then a factor.) */
-static bool has_coef(const ctx *c, const ref *k, int n)
+static __attribute__((noinline)) bool has_coef(const ctx *c, const ref *k, int n)
 {
     return is_num(c, k[0]) && (n == 1 || !is_num(c, k[1]));
 }
@@ -717,36 +719,45 @@ static ref add(ctx *c, const ref *in, int n)
     m = split_impure(c, t, m, &il, &ni);
     rat_int(&sum, 0);
     m = fold(c, t, m, &sum, rat_add, by_mono);
-    for (int i = 0; i < m; i++) {
-        ref prev = k > 0 ? t[k - 1] : 0;
-        if (prev && !is_num(c, prev) && !is_num(c, t[i]) && by_mono(c, prev, t[i]) == 0) {
-            /* like terms: their coefficients added (a merge that would not fit is left alone) */
-            rat s, ca, cb;
-            const ref *f;
-            int nf;
-            const node *pa = nd(c, prev), *pb = nd(c, t[i]);
-            rat_int(&ca, 1);
-            rat_int(&cb, 1);
-            if (pa->kind == K_MUL && has_coef(c, list(c, pa->a), pa->n)) ca = *val(c, list(c, pa->a)[0]);
-            if (pb->kind == K_MUL && has_coef(c, list(c, pb->a), pb->n)) cb = *val(c, list(c, pb->a)[0]);
-            if (rat_add(&s, &ca, &cb)) {
-                bool nums = false;
-                f = mono(c, &t[i], &nf);
-                for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
-                if (rat_is(&s, 0, 1)) k--;
-                else if (!nums) t[k - 1] = mul_node(c, num(c, &s), f, nf);
-                else {
-                    /* numbers kept apart in the monomial: the coefficient joins them (second review) */
-                    ref ml = grab(c, (size_t)(nf + 1) * sizeof(ref));
-                    if (!ml) return SPARE;
-                    list(c, ml)[0] = num(c, &s);
-                    memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
-                    t[k - 1] = mul(c, list(c, ml), nf + 1);
-                }
-                continue;
-            }
+    for (int i = 0; i < m;) {
+        int j = i + 1;
+        rat s2;
+        bool ok = true, nums = false;
+        const ref *f;
+        int nf;
+        if (!is_num(c, t[i]))
+            while (j < m && !is_num(c, t[j]) && by_mono(c, t[i], t[j]) == 0) j++;
+        if (j - i == 1) {
+            t[k++] = t[i++];
+            continue;
         }
-        t[k++] = t[i];
+        /* a run of like terms: their coefficients added, one term built (all of them, or the run is left
+           as it is when the sum would not fit); one node for the run, not one for each pair */
+        rat_int(&s2, 0);
+        for (int q = i; q < j && ok; q++) {
+            const node *x = nd(c, t[q]);
+            rat cq;
+            rat_int(&cq, 1);
+            if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) cq = *val(c, list(c, x->a)[0]);
+            ok = rat_add(&s2, &s2, &cq);
+        }
+        if (!ok) {
+            while (i < j) t[k++] = t[i++];
+            continue;
+        }
+        f = mono(c, &t[i], &nf);
+        i = j;
+        if (rat_is(&s2, 0, 1)) continue;
+        for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
+        if (!nums) t[k++] = mul_node(c, num(c, &s2), f, nf);
+        else {
+            /* numbers kept apart in the monomial: the coefficient joins them (second review) */
+            ref ml = grab(c, (size_t)(nf + 1) * sizeof(ref));
+            if (!ml) return SPARE;
+            list(c, ml)[0] = num(c, &s2);
+            memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
+            t[k++] = mul(c, list(c, ml), nf + 1);
+        }
     }
     if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
     for (int i = 0; i < ni; i++) t[k++] = list(c, il)[i];   /* impure terms, in order, last */
@@ -832,22 +843,26 @@ static ref mul(ctx *c, const ref *in, int n)
             if ((p = sum_div(c, t[i], &k)) != 0) t[i] = p, cv = ck;
         }
         sort(c, t, m, by_factor);
-        for (int i = 0; i < m; i++) {
-            ref prev = k > 0 ? t[k - 1] : 0;
-            if (prev && !is_num(c, prev) && !is_num(c, t[i]) && cmp(c, base_of(c, prev), base_of(c, t[i])) == 0) {
-                /* like factors: one base, the exponents added */
-                ref f = power(c, base_of(c, prev), add2(c, exp_of(c, prev), exp_of(c, t[i])));
-                if (is_k(c, f, 1, 1)) {
-                    k--;
-                    again = true;
-                    continue;
-                }
-                t[k - 1] = f;
-                again = true;       /* a merge can make a number, a product, a power of another base, a
-                                       sum not yet primitive: each needs the steps again */
+        for (int i = 0; i < m;) {
+            int j = i + 1;
+            if (!is_num(c, t[i]))
+                while (j < m && !is_num(c, t[j]) && cmp(c, base_of(c, t[i]), base_of(c, t[j])) == 0) j++;
+            if (j - i == 1) {
+                t[k++] = t[i++];
                 continue;
             }
-            t[k++] = t[i];
+            {
+                /* a run of like factors: one base, all the exponents added at once */
+                ref el = grab(c, (size_t)(j - i) * sizeof(ref)), f;
+                if (!el) return SPARE;
+                for (int q = i; q < j; q++) list(c, el)[q - i] = exp_of(c, t[q]);
+                f = power(c, base_of(c, t[i]), add(c, list(c, el), j - i));
+                i = j;
+                again = true;       /* a merge can make a number, a product, a power of another base, a
+                                       sum not yet primitive: each needs the steps again */
+                if (is_k(c, f, 1, 1)) continue;
+                t[k++] = f;
+            }
         }
         m = k;
         if (!again) break;
@@ -1276,7 +1291,7 @@ static ref parse(ctx *c)
         else if (strncmp(t, DIVIDE, 2) == 0) op = O_DIV;
         else if (*t == '+') op = O_ADD;
         else if (*t == '-') op = O_SUB;
-        else if (*t == '=' && !eq && !any_opener(&p)) op = O_EQ, eq = true;
+        else if (*t == '=' && !eq && !any_opener(&p) && !c->no_eq) op = O_EQ, eq = true;
         if (op >= 0) {
             reduce_to(c, &p, op == O_EQ ? 1 : LEVEL[op]);
             p.ops[p.no++] = (opent){(uint8_t)op, 0, 0, 0};
@@ -1362,6 +1377,23 @@ static ref chain(ctx *c, ref r, bool sum)
     return sum ? add(c, list(c, l), m) : mul(c, list(c, l), m);
 }
 
+/* The rarer cases, out of line: their locals stay out of every recursive frame (S3 stack, CAS 003). */
+static __attribute__((noinline)) ref canon_ofn(ctx *c, ref r)
+{
+    ref a = canon(c, nd(c, r)->a), b = nd(c, r)->b ? canon(c, nd(c, r)->b) : 0, o = mk(c, K_OFN, a, b);
+    if (o != SPARE) nd(c, o)->id = nd(c, r)->id;
+    return o;
+}
+
+static __attribute__((noinline)) ref canon_var(ctx *c, ref r)
+{
+    if (c->sub_val && nd(c, r)->id == c->sub_var) {
+        c->sub_count++;
+        return c->sub_val;                      /* subst: the replacement, whole */
+    }
+    return r;
+}
+
 static ref canon_(ctx *c, ref r)
 {
     const node *x = nd(c, r);
@@ -1396,17 +1428,8 @@ static ref canon_(ctx *c, ref r)
         return b;
     }
     case K_GROUP: return canon(c, x->a);
-    case K_ROFN: {
-        ref a = canon(c, x->a), b = nd(c, r)->b ? canon(c, nd(c, r)->b) : 0, o = mk(c, K_OFN, a, b);
-        if (o != SPARE) nd(c, o)->id = nd(c, r)->id;
-        return o;
-    }
-    case K_VAR:
-        if (c->sub_val && x->id == c->sub_var) {
-            c->sub_count++;
-            return c->sub_val;                  /* subst: the replacement, whole */
-        }
-        return r;
+    case K_ROFN: return canon_ofn(c, r);
+    case K_VAR: return canon_var(c, r);
     case K_RFN: return fn(c, x->id, canon(c, x->a));
     case K_REQ: {
         ref a = canon(c, x->a), b = canon(c, nd(c, r)->b);
@@ -1810,6 +1833,22 @@ static int factor_level(ctx *c, ref f)
     return abs_is(c, x, 1, 2) ? 5 : 4;
 }
 
+/* A product with draws: its factors in their order, × or ÷ as each comes, so the draws happen in the
+   order they were written (1÷RAND×RAND is not RAND÷RAND; review). Out of line: off print's frame. */
+static __attribute__((noinline)) void print_drawn(ctx *c, out_t *w, const ref *f, int n, int start, bool flip)
+{
+    int items = put_coef(c, w, start ? f[0] : 0, flip, true);
+    put_coef(c, w, start ? f[0] : 0, flip, false);
+    for (int i = start; i < n; i++) {
+        bool d = below(c, f[i]);
+        if (d && !items) puts_(w, "1");
+        if (items || d) puts_(w, d ? DIVIDE : TIMES);
+        put_factor(c, w, f[i], d ? 3 : 2);
+        items++;
+    }
+    if (!items) puts_(w, "1");
+}
+
 /* A product (or one power): its sign, the numerator's items joined by ×, then ÷ each denominator item
    (X÷(Y+1): ÷'s right side above level 2); flip prints the negated product. */
 static void print_product(ctx *c, out_t *w, ref r, bool flip)
@@ -1817,6 +1856,10 @@ static void print_product(ctx *c, out_t *w, ref r, bool flip)
     const node *x = nd(c, r);
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
     int n = x->kind == K_MUL ? x->n : 1, start = has_coef(c, f, n), items;
+    if (c->has_impure && impure(c, r)) {
+        print_drawn(c, w, f, n, start, flip);
+        return;
+    }
     items = put_coef(c, w, start ? f[0] : 0, flip, true);
     for (int i = start; i < n; i++) {
         if (below(c, f[i])) continue;
@@ -1886,6 +1929,29 @@ static int level(ctx *c, ref r)
     }
 }
 
+/* An opaque name or function, out of line (its locals stay out of print_'s recursive frame). */
+static __attribute__((noinline)) void print_opaque(ctx *c, out_t *w, ref r)
+{
+    const node *x = nd(c, r);
+    if (x->kind == K_ONAME) {
+        puts_(w, x->id == ID_IND_I ? IND_I : x->id == ID_IND_J ? IND_J : NAMES[x->id].name);
+        return;
+    }
+    if (x->id == ID_FACT) {
+        print_in(c, w, x->a, level(c, x->a) < 5);
+        puts_(w, "!");
+        return;
+    }
+    puts_(w, NAMES[x->id].name);
+    puts_(w, "(");
+    print(c, w, x->a);
+    if (nd(c, r)->b) {
+        puts_(w, ",");
+        print(c, w, nd(c, r)->b);
+    }
+    puts_(w, ")");
+}
+
 static void print_(ctx *c, out_t *w, ref r)
 {
     const node *x = nd(c, r);
@@ -1902,23 +1968,7 @@ static void print_(ctx *c, out_t *w, ref r)
         return;
     case K_PI: puts_(w, PI_UTF8); return;
     case K_ONAME:
-        puts_(w, x->id == ID_IND_I ? IND_I : x->id == ID_IND_J ? IND_J : NAMES[x->id].name);
-        return;
-    case K_OFN:
-        if (x->id == ID_FACT) {
-            print_in(c, w, x->a, level(c, x->a) < 5);
-            puts_(w, "!");
-            return;
-        }
-        puts_(w, NAMES[x->id].name);
-        puts_(w, "(");
-        print(c, w, x->a);
-        if (nd(c, r)->b) {
-            puts_(w, ",");
-            print(c, w, nd(c, r)->b);
-        }
-        puts_(w, ")");
-        return;
+    case K_OFN: print_opaque(c, w, r); return;
     case K_FN:
         puts_(w, FNAME[x->id]);
         print_in(c, w, x->a, true);
@@ -1955,8 +2005,9 @@ static casim_status finish(ctx *c, ref n, char *out, size_t cap)
     out_t w = {out, cap, 0, false};
     if (cap == 0) return CASIM_TOO_LONG;
     out[0] = '\0';
+    if (c->st == CASIM_OK && (n == SPARE || n == 0)) c->st = CASIM_TOO_LONG;    /* never an empty OK */
     if (c->st == CASIM_OK) {
-        print(c, &w, n);
+        print(c, &w, n);                /* the depth guard may stop it: c->st is then TOO_LONG */
         if (w.full) c->st = CASIM_TOO_LONG;
     }
     if (c->st == CASIM_SYNTAX) {
@@ -2069,8 +2120,12 @@ static int blocks(ctx *c, ref s, ref *out)
 {
     const node *x = nd(c, s);
     int n = 0, nr = 0;
-    ref rest = grab(c, (size_t)x->n * sizeof(ref));
-    if (!rest) return 0;
+    ref rest = 0;
+    if (c->sub_var < 0) {                   /* expand: every term (no list for the rest) */
+        memcpy(out, list(c, x->a), (size_t)x->n * sizeof(ref));
+        return x->n;
+    }
+    if (!(rest = grab(c, (size_t)x->n * sizeof(ref)))) return 0;
     for (int i = 0; i < x->n; i++) {
         ref t = list(c, nd(c, s)->a)[i];
         if (c->sub_var < 0 || contains(c, t, c->sub_var)) out[n++] = t;
@@ -2109,15 +2164,20 @@ static int64_t binom(int n, int k)
 
 /* (t1+…+tm)^n by the multinomial theorem: a term for each k1+…+km = n, its coefficient n!/(k1!…km!)
    (a product of binomials), its factors t_i^k_i. The compositions are counted first and walked in a loop. */
-static ref multinomial(ctx *c, ref s, int n)
+static __attribute__((noinline)) ref multinomial(ctx *c, ref s, int n)
 {
-    ref t[EXPAND_TERMS], terms;
-    int m, k[EXPAND_TERMS], nt = 0;
+    ref tl = grab(c, EXPAND_TERMS * sizeof(ref)), kl = grab(c, EXPAND_TERMS * sizeof(int)), terms, *t;
+    int m, *k, nt = 0;
     int64_t count;
-    if (too_many(c, nd(c, s)->n)) return SPARE;
+    if (!tl || !kl || too_many(c, nd(c, s)->n)) return SPARE;
+    t = list(c, tl);                    /* in the arena: off the stack (review: 608 bytes of frame) */
+    k = (int *)(void *)list(c, kl);
     m = blocks(c, s, t);
     count = binom(n + m - 1, m - 1);
-    if (m == 0 || count < 0 || too_many(c, count)) return SPARE;
+    if (m == 0 || count < 0 || too_many(c, count)) {
+        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;      /* a count past 2^62 too (review) */
+        return SPARE;
+    }
     if (!(terms = grab(c, (size_t)count * sizeof(ref)))) return SPARE;
     for (int i = 0; i < m; i++) k[i] = 0;
     k[0] = n;
@@ -2162,7 +2222,7 @@ static ref expand(ctx *c, ref r);
 
 /* A product's expansion: its factors expanded, then every opened sum multiplied out (none when a factor is
    impure: no distribution over a draw, none of a draw over a sum). */
-static ref expand_mul(ctx *c, ref r)
+static __attribute__((noinline)) ref expand_mul(ctx *c, ref r)
 {
     int n = nd(c, r)->n, nterms = 1, nk = 0;
     ref fl = grab(c, (size_t)n * sizeof(ref)), keep, acc;
@@ -2187,11 +2247,11 @@ static ref expand_mul(ctx *c, ref r)
         /* the denominator: every factor with a negative whole exponent, joined and expanded as one (a÷(b+c)
            stays a quotient, its divisor expanded: X÷((Y+1)×(Y-1)) is X÷(Y^2-1)) */
         int nd_ = 0, sums = 0;
-        ref dl = grab(c, (size_t)n * sizeof(ref));
-        if (!dl) return SPARE;
+        ref dl = 0;
         for (int i = 0; i < n; i++) {
             ref f = list(c, fl)[i];
             if (below(c, f)) {
+                if (!dl && !(dl = grab(c, (size_t)n * sizeof(ref)))) return SPARE;
                 rat e = *val(c, nd(c, f)->b);
                 e.p = -e.p;
                 sums += nd(c, nd(c, f)->a)->kind == K_ADD;
@@ -2213,12 +2273,13 @@ static ref expand_mul(ctx *c, ref r)
         if (!opens(c, list(c, fl)[i])) list(c, keep)[nk++] = list(c, fl)[i];
     acc = mul(c, list(c, keep), nk);
     for (int i = 0; i < n && c->st == CASIM_OK; i++) {
-        ref sum = list(c, fl)[i], b[EXPAND_TERMS], nl;
+        ref sum = list(c, fl)[i], bl, *b, nl;
         int nb, na, k = 0;
         const ref *at;
         ref one = acc;
         if (!opens(c, sum)) continue;
-        if (too_many(c, nd(c, sum)->n)) return SPARE;
+        if (too_many(c, nd(c, sum)->n) || !(bl = grab(c, EXPAND_TERMS * sizeof(ref)))) return SPARE;
+        b = list(c, bl);
         nb = blocks(c, sum, b);
         na = nd(c, acc)->kind == K_ADD ? nd(c, acc)->n : 1;
         nterms = na * nb;
@@ -2284,15 +2345,122 @@ static ref expand_(ctx *c, ref r)
     }
 }
 
-/* r expanded (a guarded walk); with c->sub_var set (collect), only where that variable is. */
+/* ---- reclaiming a step's garbage ---- */
+
+/* Copies the part of v allocated since mark to the arena's end, its references already pointing where the
+   block will be once it is slid down to mark (by `shift` units); nodes older than mark stay where they are.
+   A copied node is left as K_FWD pointing at its copy, so a shared node is copied once. */
+static ref copy_up(ctx *c, ref v, ref mark, ref shift)
+{
+    node *x;
+    ref r;
+    if (v == 0 || v == SPARE || v < mark || c->st != CASIM_OK) return v;
+    x = nd(c, v);
+    if (x->kind == K_FWD) return x->a;
+    if (!enter(c)) return SPARE;
+    if ((r = grab(c, sizeof(node))) == 0) {
+        c->depth--;
+        return SPARE;
+    }
+    *nd(c, r) = *nd(c, v);
+    switch (nd(c, v)->kind) {
+    case K_NUM: {
+        ref q = grab(c, sizeof(rat));
+        if (!q) break;
+        *rt(c, q) = *rt(c, nd(c, v)->a);
+        nd(c, r)->a = nd(c, v)->a < mark ? nd(c, v)->a : (ref)(q - shift);
+        break;
+    }
+    case K_FN:
+    case K_OFN:
+    case K_POW:
+    case K_EQ: {
+        ref a = nd(c, v)->a, b = nd(c, v)->b, na, nb;
+        if (nd(c, v)->kind != K_FN) b = nd(c, v)->b;
+        nd(c, v)->kind = K_FWD;             /* forward before the children: a cycle cannot arise, but a
+                                               shared child below must not see a half-copied parent */
+        nd(c, v)->a = (ref)(r - shift);
+        na = copy_up(c, a, mark, shift);
+        nb = b ? copy_up(c, b, mark, shift) : 0;
+        nd(c, r)->a = na;
+        nd(c, r)->b = nb;
+        c->depth--;
+        return (ref)(r - shift);
+    }
+    case K_ADD:
+    case K_MUL: {
+        int n = nd(c, v)->n;
+        ref l = nd(c, v)->a, nl = l < mark ? l : grab(c, (size_t)n * sizeof(ref));
+        if (!nl) break;
+        nd(c, v)->kind = K_FWD;
+        nd(c, v)->a = (ref)(r - shift);
+        if (l >= mark) {
+            for (int i = 0; i < n; i++) {
+                ref k = copy_up(c, list(c, l)[i], mark, shift);
+                list(c, nl)[i] = k;
+            }
+            nd(c, r)->a = (ref)(nl - shift);
+        }
+        c->depth--;
+        return (ref)(r - shift);
+    }
+    default: break;                         /* leaves: VAR, PI, ONAME, LIT (a is a text offset) */
+    }
+    nd(c, v)->kind = K_FWD;
+    nd(c, v)->a = (ref)(r - shift);
+    c->depth--;
+    return (ref)(r - shift);
+}
+
+/* Keeps v and frees everything else allocated since mark (bytes): v's new part is copied up, the caches
+   are moved or dropped, and the copy is slid down to mark. Returns v where it now is. */
+static ref compact(ctx *c, size_t mark, ref v)
+{
+    size_t start = c->used, size;
+    ref m = (ref)(mark / 8u), shift, nv;
+    if (c->st != CASIM_OK || mark >= start || v == 0 || v == SPARE) return v;
+    shift = (ref)((start - mark) / 8u);
+    nv = copy_up(c, v, m, shift);
+    if (c->st != CASIM_OK) return SPARE;
+    /* the caches: a moved constant keeps its place, a dropped one is made again when needed */
+    for (int k = 0; k < SMALL; k++)
+        if (c->small[k] >= m) c->small[k] = nd(c, c->small[k])->kind == K_FWD ? nd(c, c->small[k])->a : 0;
+    if (c->pi >= m) c->pi = nd(c, c->pi)->kind == K_FWD ? nd(c, c->pi)->a : 0;
+    size = c->used - start;
+    memmove(c->mem + mark, c->mem + start, size);
+    c->used = mark + size;
+    return nv;
+}
+
+#define COMPACT_AT 512          /* bytes of garbage a step must leave before it is worth reclaiming */
+
+/* r expanded (a guarded walk); with c->sub_var set (collect), only where that variable is. Each step's
+   garbage is reclaimed: an expansion's intermediate products and sums would otherwise fill the arena. */
 static ref expand(ctx *c, ref r)
 {
     ref v;
+    size_t mark = c->used;
     if (c->st != CASIM_OK) return SPARE;
     if (!enter(c)) return SPARE;
     v = expand_(c, r);
+    if (c->depth > 1 && c->used - mark > COMPACT_AT) v = compact(c, mark, v);    /* not the last step: no gain */
     c->depth--;
     return v;
+}
+
+/* expand until nothing changes: a product made while distributing can merge into a sum or a new
+   denominator (SQRT(X+1)×SQRT(X+1) is X+1), which the next round opens (review: 7-19 in 5,000 were not
+   fixed points). Each round's garbage is reclaimed; a few rounds always settle. */
+static ref expand_fully(ctx *c, ref n)
+{
+    size_t mark = c->used;
+    for (int round = 0; round < 8 && c->st == CASIM_OK; round++) {
+        ref m = expand(c, n);
+        if (c->st != CASIM_OK) return SPARE;
+        if (cmp(c, m, n) == 0) return m;
+        n = compact(c, mark, m);
+    }
+    return n;
 }
 
 /* A term as c×var^k: its k and its coefficient; false when var is in it other than as a whole power. */
@@ -2377,7 +2545,7 @@ static void put_collected(ctx *c, out_t *w, ref r, int var)
     for (int i = 0; i < n; i++) {
         long k;
         ref co;
-        if (as_power(c, terms[i], var, &k, &co)) {
+        if (!impure(c, terms[i]) && as_power(c, terms[i], var, &k, &co)) {     /* a draw is never grouped */
             int j = 0;
             while (j < nc && ct[j].k != k) j++;
             if (j == nc) ct[nc++] = (cterm){k, co};
@@ -2423,8 +2591,8 @@ casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, voi
     c.opaque = true;
     c.sub_var = -1;
     if (c.st == CASIM_OK) n = parse(&c);
-    if (c.st == CASIM_OK) n = canon(&c, n);
-    if (c.st == CASIM_OK) n = expand(&c, n);
+    if (c.st == CASIM_OK) n = compact(&c, 16, canon(&c, n));     /* the raw tree is garbage now */
+    if (c.st == CASIM_OK) n = expand_fully(&c, n);
     return finish(&c, n, out, cap < SLOT ? cap : SLOT);
 }
 
@@ -2439,8 +2607,8 @@ casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_
     c.opaque = true;
     c.sub_var = var;                    /* expand only where var is */
     if (c.st == CASIM_OK) n = parse(&c);
-    if (c.st == CASIM_OK) n = canon(&c, n);
-    if (c.st == CASIM_OK) n = expand(&c, n);
+    if (c.st == CASIM_OK) n = compact(&c, 16, canon(&c, n));     /* the raw tree is garbage now */
+    if (c.st == CASIM_OK) n = expand_fully(&c, n);
     if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
     if (nd(&c, n)->kind == K_EQ) {
         put_collected(&c, &w, nd(&c, n)->a, var);
@@ -2469,6 +2637,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
     for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
     c.s2 = repl;
     c.s = repl;
+    c.no_eq = true;                     /* a replacement is an expression, not an equation (review) */
     rr = parse(&c);
     c.s = eqn;
     if (c.st == CASIM_SYNTAX) c.errpos += chars + 1;

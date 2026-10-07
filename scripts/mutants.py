@@ -46,7 +46,8 @@ MUTANTS = {
     ],
     # 002: a like-term collection that drops a coefficient
     "coefficient-dropped": [
-        ("src/casim.c", "if (rat_add(&s, &ca, &cb)) {", "if (rat_add(&s, &ca, &ca)) {"),
+        ("src/casim.c", "            if (x->kind == K_MUL && has_coef(c, list(c, x->a), x->n)) cq = *val(c, list(c, x->a)[0]);\n            ok = rat_add(&s2, &s2, &cq);",
+         "            (void)x;\n            ok = rat_add(&s2, &s2, &cq);"),
     ],
     # 002: constant folding through a double
     "fold-through-double": [
@@ -90,7 +91,7 @@ MUTANTS = {
     ],
     # ours: u-u kept (a zero coefficient left in the sum)
     "u-minus-u-kept": [
-        ("src/casim.c", "                if (rat_is(&s, 0, 1)) k--;", "                if (0) k--;"),
+        ("src/casim.c", "        if (rat_is(&s2, 0, 1)) continue;", "        if (0) continue;"),
     ],
     # ours: a power's base printed bare when it is a product ((2×X)^1.5 as 2×X^1.5)
     "printer-pow-base": [
