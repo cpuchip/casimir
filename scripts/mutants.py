@@ -66,6 +66,15 @@ MUTANTS = {
     "no-sign-content": [
         ("src/casim.c", "                if (big.p < 0) rat_int(&k, -1);\n                return k;", "                (void)big;\n                return k;"),
     ],
+    # decision 52: a chain of powers printed bare
+    "chain-bare": [
+        ("src/casim.c", "    for (int i = 1; i < k; i++) puts_(w, \"(\");", "    (void)0;"),
+        ("src/casim.c", "        if (i > 0) puts_(w, \")\");\n", ""),
+    ],
+    "chain-base-bare": [
+        ("src/casim.c", "    print_in(c, w, b, level(c, b) < 5);                     /* a base with a ^ of its own: (X^2)^Y */",
+         "    print_in(c, w, b, level(c, b) < 4);"),
+    ],
     # 003: subst replacing only the first occurrence
     "subst-first-only": [
         ("src/casim.c", "    if (c->sub_val && nd(c, r)->id == c->sub_var) {",
@@ -134,8 +143,8 @@ MUTANTS = {
     ],
     # ours: a power's base printed bare when it is a product ((2×X)^1.5 as 2×X^1.5)
     "printer-pow-base": [
-        ("src/casim.c", "        print_in(c, w, b, level(c, b) < 4);\n        puts_(w, \"^\");\n        put_exp(c, w, x);",
-         "        print_in(c, w, b, level(c, b) < 2);\n        puts_(w, \"^\");\n        put_exp(c, w, x);"),
+        ("src/casim.c", "        print_in(c, w, b, level(c, b) < 5);                 /* (X^Y)^0.3 (decision 52) */\n        puts_(w, \"^\");",
+         "        print_in(c, w, b, level(c, b) < 2);\n        puts_(w, \"^\");"),
     ],
 }
 

@@ -177,7 +177,10 @@ Readable and re-readable: printing a canonical tree and parsing it back gives th
 - A product holding a draw (RAND, SEED; see below) prints its coefficient whole and first, p÷q as one item,
   then its factors in their order, each joined by × or ÷ as it comes, so the draws happen in the order they
   were written: RAND÷3 prints as 1÷3×RAND, 1÷RAND×RAND stays (it is not RAND÷RAND).
-- Parentheses are only those the core's precedence needs, as in CAS 001.
+- Parentheses are only those the core's precedence needs, as in CAS 001, with one exception: a chain of
+  powers always has them, (a^b)^c or a^(b^c), never a bare a^b^c (abacus's decision 52, #4293: the STU
+  mode groups powers right to left, the 33s and 35s modes left to right, and the text must read the same
+  in each). A bare chain typed in is still read left to right, as the core reads it now, until unit 031.
 
 ## What judges it
 

@@ -1889,20 +1889,23 @@ static __attribute__((noinline)) void put_exp(const ctx *c, out_t *w, ref x)
     }
 }
 
-/* A power with a symbolic exponent, and the left chain under it, ((b^x)^y)^z, as b^x^y^z, in a loop: the
-   chain's depth does not reach the stack. */
+/* A power with a symbolic exponent, and the left chain under it, ((b^x)^y)^z, printed with its parentheses
+   (decision 52: never a bare b^x^y^z, which a mode grouping powers right to left would read otherwise), in a
+   loop: the chain's depth does not reach the stack. */
 static void put_chain(ctx *c, out_t *w, ref f)
 {
     int k = 0;
     ref b = f;
     while (nd(c, b)->kind == K_POW && !is_num(c, nd(c, b)->b)) k++, b = nd(c, b)->a;
-    print_in(c, w, b, level(c, b) < 4);
+    for (int i = 1; i < k; i++) puts_(w, "(");             /* decision 52: ((b^x)^y)^z, never b^x^y^z */
+    print_in(c, w, b, level(c, b) < 5);                     /* a base with a ^ of its own: (X^2)^Y */
     for (int i = k - 1; i >= 0; i--) {
         ref y = f, x;
         for (int j = 0; j < i; j++) y = nd(c, y)->a;
         x = nd(c, y)->b;
         puts_(w, "^");
         print_in(c, w, x, level(c, x) < 5);
+        if (i > 0) puts_(w, ")");
     }
 }
 
@@ -1928,7 +1931,7 @@ static void put_factor(ctx *c, out_t *w, ref f, int min)
     if (!is_num(c, x)) put_chain(c, w, f);
     else if (num_negative(c, x) && !below(c, f)) {
         /* 0^(-e), in a numerator, as written: 1÷0, SQRT(0) or 0 would each read back as 0 */
-        print_in(c, w, b, level(c, b) < 4);
+        print_in(c, w, b, level(c, b) < 5);
         puts_(w, "^(-");
         put_exp(c, w, x);
         puts_(w, ")");
@@ -1938,7 +1941,7 @@ static void put_factor(ctx *c, out_t *w, ref f, int min)
         print(c, w, b);
         puts_(w, ")");
     } else {
-        print_in(c, w, b, level(c, b) < 4);
+        print_in(c, w, b, level(c, b) < 5);                 /* (X^Y)^0.3 (decision 52) */
         puts_(w, "^");
         put_exp(c, w, x);
     }

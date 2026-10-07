@@ -44,6 +44,7 @@ static void is(const char *in, const char *want)
     CHECK(st == CASIM_OK && strcmp(out, want) == 0, "simplify %s: status %d \"%s\", want \"%s\"", in, (int)st, out,
           want);
     if (st != CASIM_OK) return;
+    CHECK(!bare_chain(out), "simplify %s = %s: a bare chain of powers", in, out);
     CHECK(same_value(in, out, CASIM_RAD, -26), "simplify %s = %s changes the value", in, out);
     CHECK(simp(out, CASIM_RAD, again) == CASIM_OK && strcmp(again, out) == 0, "not idempotent: %s -> %s -> %s", in,
           out, again);
@@ -57,8 +58,62 @@ static void pair(const char *a, const char *b, int angle)
     CHECK(sa == CASIM_OK && sb == CASIM_OK && strcmp(oa, ob) == 0, "pair differs:\n  %s\n  -> %s\n  %s\n  -> %s", a, oa,
           b, ob);
     if (sa != CASIM_OK) return;
+    CHECK(!bare_chain(oa), "simplify %s = %s: a bare chain of powers", a, oa);
     CHECK(same_value(a, oa, angle, -24), "simplify %s = %s changes the value", a, oa);
     CHECK(simp(oa, angle, again) == CASIM_OK && strcmp(again, oa) == 0, "not idempotent: %s -> %s", oa, again);
+}
+
+/* Decision 52 (abacus #4293): a chain of powers prints with explicit parentheses, (a^b)^c or a^(b^c), never
+   a bare a^b^c, so the text reads the same in a mode that groups powers right to left. A bare chain still
+   parses left to right (the core's reading, until unit 031). */
+static void power_chains(void)
+{
+    is("X^Y^Z", "(X^Y)^Z");
+    is("(X^Y)^Z", "(X^Y)^Z");
+    is("X^(Y^Z)", "X^(Y^Z)");
+    is("X^Y^Z^W", "((X^Y)^Z)^W");
+    is("X^(Y^(Z^W))", "X^(Y^(Z^W))");
+    is("(X^2)^Y", "(X^2)^Y");
+    is("(X^Y)^0.3", "(X^Y)^0.3");
+    is("2^X^Y", "(2^X)^Y");
+    is("X^Y^Z×W", "W×(X^Y)^Z");
+    is("SQRT(X)^Y", "SQRT(X)^Y");                 /* no ^ at its top: no parentheses */
+    is("(X^Y^Z)^(W^V)", "((X^Y)^Z)^(W^V)");
+    /* the detector, both ways */
+    CHECK(bare_chain("X^Y^Z") && bare_chain("SIN(X)^2^Y") && bare_chain("X×Y^Z^W") && bare_chain("(X+Y^2^Z)"),
+          "bare_chain misses a chain");
+    CHECK(!bare_chain("(X^Y)^Z") && !bare_chain("X^(Y^Z)") && !bare_chain("X^2×Y^2") && !bare_chain("X^2÷Y^2") &&
+              !bare_chain("X^2+Y^2") && !bare_chain("SIN(X^2)^Y"),
+          "bare_chain fires on no chain");
+    {
+        /* seeded nests of powers through simplify, expand and derive: no bare chain, the value kept */
+        static const char *const AT[] = {"X", "Y", "2", "0.5", "(X+1)", "SIN(X)", "SQRT(Y)", "(-X)", "Z"};
+        unsigned long long r = 52;
+        int bad = 0;
+        for (int n = 0; n < 1500 && bad < 3; n++) {
+            char t[256] = "", out[OUT];
+            int depth = 2 + (int)((r >> 33) % 4), len = 0;
+            for (int i = 0; i < depth; i++) {
+                r = r * 6364136223846793005ULL + 1442695040888963407ULL;
+                switch ((r >> 40) % 3) {
+                case 0: len += snprintf(t + len, sizeof t - (size_t)len, "%s%s", i ? "^" : "", AT[(r >> 33) % 9]); break;
+                case 1: len += snprintf(t + len, sizeof t - (size_t)len, "%s(%s^%s)", i ? "^" : "", AT[(r >> 33) % 9],
+                                        AT[(r >> 45) % 9]); break;
+                default: len += snprintf(t + len, sizeof t - (size_t)len, "%s%s×%s", i ? "^" : "", AT[(r >> 33) % 9],
+                                         AT[(r >> 45) % 9]); break;
+                }
+            }
+            r = r * 6364136223846793005ULL + 1442695040888963407ULL;
+            if (simp(t, CASIM_RAD, out) == CASIM_OK && (bare_chain(out) || !same_value(t, out, CASIM_RAD, -20)) && ++bad)
+                CHECK(false, "simplify %s = %s: a bare chain or another value", t, out);
+            if (casim_expand(t, CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
+                (bare_chain(out) || !same_value(t, out, CASIM_RAD, -20)) && ++bad)
+                CHECK(false, "expand %s = %s: a bare chain or another value", t, out);
+            if (casim_derive(t, 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK && bare_chain(out) && ++bad)
+                CHECK(false, "derive %s = %s: a bare chain", t, out);
+        }
+        CHECK(bad == 0, "%d power nests printed a bare chain or another value", bad);
+    }
 }
 
 /* in simplifies, and its result is a fixed point (the text itself is not the point). */
@@ -334,5 +389,6 @@ int main(void)
     nesting();
     domain();
     visible_pairs();
+    power_chains();
     return check_done();
 }
