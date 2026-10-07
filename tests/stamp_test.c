@@ -98,6 +98,28 @@ static void exact(void)
         rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, NULL, CASIM_MODEL_STU, CASIM_RAD};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "subst without repl accepted");
     }
+    /* the review: 0^(-1/2) prints with its ^ (not SQRT), so a chain through it keeps its parentheses */
+    {
+        static const char *const Z[] = {"Y^(0^-0.5)", "(0^-0.5)^X", "(0^-0.5)^2.5", "(X-X)^(-1÷2)^Y", "Y^(X-X)^(-1÷2)"};
+        for (size_t i = 0; i < sizeof Z / sizeof Z[0]; i++)
+            for (int m = 0; m < 3; m++) {
+                char out[OUT];
+                if (run(CASIM_SIMPLIFY, Z[i], MODELS[m], NULL, 0, out) == CASIM_OK)
+                    CHECK(!bare_chain(out), "%s (model %d) = %s: a bare chain", Z[i], MODELS[m], out);
+                round_trip(CASIM_SIMPLIFY, Z[i], MODELS[m]);
+                round_trip(CASIM_DERIVE, Z[i], MODELS[m]);
+            }
+    }
+    /* the review: no text at all is a bad argument, for every op */
+    for (int op = CASIM_DERIVE; op <= CASIM_SUBST; op++) {
+        char out[OUT];
+        casim_req rq = {(casim_op)op, NULL, CASIM_MODEL_STU, 23, "Y", CASIM_MODEL_STU, CASIM_RAD};
+        CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "op %d: a NULL eqn accepted", op);
+    }
+    {
+        char out[OUT];
+        CHECK(casim_simplify(NULL, CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "casim_simplify(NULL)");
+    }
     /* the old calls read 35 */
     {
         char out[OUT];

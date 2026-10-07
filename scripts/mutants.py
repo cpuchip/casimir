@@ -81,6 +81,10 @@ MUTANTS = {
         ("src/casim.c", "        if (w.full) c->st = CASIM_TOO_LONG;\n", ""),
         ("src/casim.c", "    if (w.full || c->st == CASIM_TOO_LONG) out[0] = '\\0';", "    if (c->st == CASIM_TOO_LONG) out[0] = '\\0';"),
     ],
+    "zero-half-level": [
+        ("src/casim.c", "    return abs_is(c, x, 1, 2) && !(num_negative(c, x) && !below(c, f)) ? 5 : 4;",
+         "    return abs_is(c, x, 1, 2) ? 5 : 4;"),
+    ],
     # decision 52: a chain of powers printed bare
     "chain-bare": [
         ("src/casim.c", "    for (int i = 1; i < k; i++) puts_(w, \"(\");", "    (void)0;"),

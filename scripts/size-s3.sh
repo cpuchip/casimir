@@ -21,7 +21,7 @@ docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" espressif/idf:v5.4
     done
     # the frame guard (CAS 004 rule 3) must refuse its planted 2 KB control, or it checks nothing
     if xtensa-esp32s3-elf-gcc $F -c -o /dev/null tests/frame_control.c 2>/dev/null; then
-        echo "frame guard: the 2 KB control compiled"; exit 1
+        echo "frame guard: the 2 KB control compiled, so the guard checks nothing" >&2; exit 1
     fi
     echo "largest frames (bytes, S3):"
     cat build/s3/*.su | sort -t"$(printf "\t")" -k2 -n -r | head -3 | sed "s/^/  /"

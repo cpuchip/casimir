@@ -18,7 +18,7 @@ CASIM_SRC := $(wildcard src/*.c)
 CASIM_HDRS := $(wildcard src/*.h)
 TESTS := $(patsubst tests/%.c,build/%,$(wildcard tests/*_test.c))
 LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
-FRAME := -Wframe-larger-than=1024
+FRAME := -Werror=frame-larger-than=1024     # an error whatever CFLAGS says (review)
 
 .PHONY: all test size clean
 all: $(TESTS) build/casim
@@ -28,7 +28,7 @@ test: all build/frames.ok
 
 # CAS 004 rule 3: no frame in src/ larger than 1 KB, here as on the S3 (scripts/size-s3.sh). The planted
 # control, a 2 KB frame, must fail the same flags, or the guard checks nothing.
-build/frames.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/frame_control.c build/core/.pin
+build/frames.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/frame_control.c build/core/.pin Makefile
 	for f in $(CASIM_SRC); do $(CC) $(CFLAGS) $(FRAME) -I$(CB)/core -Isrc -c -o /dev/null $$f || exit 1; done
 	if $(CC) $(CFLAGS) $(FRAME) -c -o /dev/null tests/frame_control.c 2>/dev/null; then \
 	    echo "frame guard: the 2 KB control compiled, so the guard checks nothing"; exit 1; fi

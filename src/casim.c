@@ -1967,7 +1967,9 @@ static int factor_level(ctx *c, ref f)
     if (nd(c, f)->kind != K_POW) return (l = level(c, f)) < 2 ? 5 : l;
     x = nd(c, f)->b;
     if (!is_num(c, x)) return 4;
-    return abs_is(c, x, 1, 2) ? 5 : 4;
+    /* ±1/2 prints as SQRT(u), or in a denominator; but 0^(-1/2) prints as written, 0^(-0.5), with its ^
+       (review: Y^(0^-0.5) came out as a bare chain) */
+    return abs_is(c, x, 1, 2) && !(num_negative(c, x) && !below(c, f)) ? 5 : 4;
 }
 
 /* A product with draws: its factors in their order, × or ÷ as each comes, so the draws happen in the
@@ -2196,6 +2198,7 @@ static __attribute__((noinline)) casim_status do_derive(const char *eqn, int var
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
@@ -2212,6 +2215,7 @@ static __attribute__((noinline)) casim_status do_simplify(const char *eqn, int a
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
     if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
@@ -2739,6 +2743,7 @@ static __attribute__((noinline)) casim_status do_expand(const char *eqn, int ang
     ctx c;
     ref n = SPARE;
     if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
     if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
@@ -2757,6 +2762,7 @@ static __attribute__((noinline)) casim_status do_collect(const char *eqn, int va
     ref n = SPARE;
     out_t w = {out, cap < SLOT ? cap : SLOT, 0, false};
     if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
@@ -2784,6 +2790,7 @@ static __attribute__((noinline)) casim_status do_subst(const char *eqn, int var,
     ref n = SPARE, rr;
     int chars = 0;
     if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;

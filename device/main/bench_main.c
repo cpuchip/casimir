@@ -30,7 +30,7 @@ typedef struct {
 static unsigned char arena[ARENA_MAX] __attribute__((aligned(8)));
 static char out[OUT_MAX];
 static result res[768];         /* more than case_count (checked in app_main) */
-static unsigned stack_free, stack_base;
+static unsigned stack_free, stack_base, base_max;
 
 /* The calculator's own call (CAS 004): op and texts as the case has them, each read as its stamp. */
 static casim_status run(const bench_case *k, size_t arena_cap)
@@ -99,7 +99,14 @@ static void run_cases(void)
         res[i].arena = lo;
     }
     stack_free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
-    stack_base = stack_used(NULL);
+    /* the idle worker's own use, the least of several: one sample moved 520-720 bytes between builds, and
+       the least gives the larger, safer figure for casim */
+    stack_base = base_max = stack_used(NULL);
+    for (int i = 0; i < 7; i++) {
+        unsigned b = stack_used(NULL);
+        if (b < stack_base) stack_base = b;
+        if (b > base_max) base_max = b;
+    }
     for (int i = 0; i < case_count; i++) {
         unsigned u = stack_used(&cases[i]);
         res[i].stack = u > stack_base ? u - stack_base : 0;    /* a loop-only case uses less than idle's noise */
@@ -124,8 +131,9 @@ static void bench_task(void *arg)
                    k->status ? -k->status : (int)strlen(k->want),
                    res[i].ok ? "same" : "DIFFERENT");
         }
-        printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u\n", stack_free,
-               (unsigned)STACK, stack_base);
+        printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u (8 samples, %u to "
+               "%u); a case's stack is its worker's use less %u\n",
+               stack_free, (unsigned)STACK, stack_base, stack_base, base_max, stack_base);
         printf(pass ? "DEVICE PASS\n" : "DEVICE FAIL\n");
         printf("DEVICE DONE\n");
         fflush(stdout);
