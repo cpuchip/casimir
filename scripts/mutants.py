@@ -46,7 +46,19 @@ MUTANTS = {
         ("src/casim.c", "if (nd(c, ct[i].c)->kind == K_ADD) ct[i].c = mul(c, &ct[i].c, 1);", "(void)ct;"),
     ],
     "content-apart": [
-        ("src/casim.c", "            if (is_num(c, f[q])) return k;", "            if (0) return k;"),
+        ("src/casim.c", "        for (int q = 0; f && q < nf; q++)\n            if (is_num(c, f[q])) {", "        for (int q = 0; f && q < nf; q++)\n            if (q < 0) {"),
+    ],
+    "no-walk-fallback": [
+        ("src/casim.c", "    if (add_by_den(c, t, n, acc)) return true;\n    *acc = a0;", "    if (add_by_den(c, t, n, acc)) return true;\n    (void)a0;\n    return false;"),
+    ],
+    "no-resort": [
+        ("src/casim.c", "        for (int q = 0; q < nf; q++) resort |= is_num(c, f[q]);\n", ""),
+    ],
+    "sign-from-first": [
+        ("src/casim.c", "if (frac_cmp(a.p, a.q, big.p < 0 ? -big.p : big.p, big.q) > 0) big = v;", "if (big.p == 0) big = v;"),
+    ],
+    "no-sign-content": [
+        ("src/casim.c", "                if (big.p < 0) rat_int(&k, -1);\n                return k;", "                (void)big;\n                return k;"),
     ],
     # 003: subst replacing only the first occurrence
     "subst-first-only": [

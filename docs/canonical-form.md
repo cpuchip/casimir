@@ -65,17 +65,24 @@ roots are not part of CAS 002).
 folding a sum's or a product's numbers would not fit, none is folded. A sum's numbers, and the coefficients
 of a run of like terms, are added one denominator at a time, the smallest first, and each denominator's
 terms in order of value, from the low end while their sum is above 0 and from the high end otherwise. So a
-partial sum of one denominator's terms never lies further from 0 than its largest term or its total, terms
-that cancel exactly meet before anything else (2E18÷7−2E18÷7+3E18 is 3E18), and whether a sum fits depends
-on the values alone, not on the order they were written in (3E18×X+3E18×X−3E18×X and −3E18×X+3E18×X+3E18×X
-are both 3000000000000000000×X; the third review and its delta pass). Whole numbers are one denominator, so
-for them the bound is exact. A run that still does not fit stays apart, in order of value. They stay apart, after every other
+partial sum of one denominator's terms never lies further from 0 than its largest term or its total, and
+terms of one denominator meet each other before any other (2E18÷7−2E18÷7+3E18 is 3E18). The denominators'
+totals have no such bound when they are added together, so when that does not fit, every term is walked
+again in order of value, from both ends (2E18+1E18−4500000000000000001÷2 is 1499999999999999999÷2). Both
+orders come from the values alone, so whether a sum fits depends on the values, not on the order they were
+written in (3E18×X+3E18×X−3E18×X and −3E18×X+3E18×X+3E18×X are both 3000000000000000000×X; the third
+review and its delta passes). Whole numbers are one denominator, so for them the bound is exact. A run that
+still does not fit stays apart, in order of value; when its numbers stay apart in the merged term, that
+term sorts again and can merge with its new neighbour. They stay apart, after every other
 operand, in order of value, the identities dropped (1 in a product, 0 in a sum). In a product they follow
 one sign rule: their absolute values, the product's sign on the first (so X−4E18×4E18 and −4E18×4E18+X
 agree). A product has a coefficient only when it holds exactly one number; numbers kept apart print whole,
 as d, (−d) or (p÷q). Written parentheses around a chain of numbers survive parsing, so (p÷q)×… reads back
 as that one number and not as p×(1/q)×…. Grouped this way the result is deterministic and a fixed point;
 two groupings of the same mathematics may still differ past 2^62 (the folding happens in different places).
+One example: a sum whose like terms were left apart stays a sum on its own, but as a factor it is made
+primitive, and the divided terms may then merge into one product that cannot be distributed back; so
+S and 2×(S)÷2 can print differently, each a fixed point (the CAS 003 review's third pass).
 Two fresh-eyes review passes found each of these cases; each is a test in tests/simplify_test.c.
 
 **0 to a negative power** is undefined and stays as written, in the numerator: 0^(−1), 0^(−0.5).
@@ -112,7 +119,7 @@ TOO_LONG (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d). A refus
 | number | reduced p/q as above |
 | variable, π | always |
 | sum | flattened; at least two terms; at most one number, which is not 0; no two terms with equal monomials (like terms collected: 2×X + 3×X is 5×X); a numeric coefficient times a single sum is distributed (−(X+Y) is −X−Y) |
-| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); a sum that is a factor is **primitive**: its first term's coefficient is 1, the content moved into the coefficient (2×(X+1)×Y and (2×X+2)×Y are both 2×Y×(X+1)), and the divided sum is a sum again, its runs merged where they now fit (so it may stop being a sum); a sum holding a term with numbers kept apart (past 2^62) is left as it is, since dividing that term and multiplying it back would not meet again; an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
+| product | flattened; at most one number (the coefficient), not 0 and not alone with coefficient 1; no two factors with equal bases (X×X^2 is X^3); a sum that is a factor is **primitive**: its first term's coefficient is 1, the content moved into the coefficient (2×(X+1)×Y and (2×X+2)×Y are both 2×Y×(X+1)), and the divided sum is a sum again, its runs merged where they now fit (so it may stop being a sum); a sum holding a term with numbers kept apart (past 2^62) has only its sign taken out (dividing that term by more and multiplying it back would not meet again; by −1 it meets exactly), the sign of the largest coefficient among its first plain terms, which flips exactly when the sum is negated, or 1 when no term is plain; an integer power of a product is distributed ((X×Y)^2 is X^2×Y^2) |
 | power u^e | e is not 0 or 1; a number to an integer power is folded; (u^a)^n with an integer n is u^(a×n); an integer power of a sum with content k is k^n × (primitive sum)^n |
 | function | its argument is canonical; LN(EXP(u)) and EXP(LN(u)) are u, and likewise LOG and ALOG; SQ(u) is u^2, INV(u) is u^−1, SQRT(u) is u^(1/2); ABS of a number is folded |
 | L=R | each side canonical |

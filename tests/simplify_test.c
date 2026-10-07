@@ -121,6 +121,29 @@ static void review(void)
     fixed("(5×Y÷6+3000000000000000000×Y)×X");
     fixed("(-4E18×Y-3E18×Y)^2");
     fixed("(4E18×Y+4E18×Y+1)×X");
+    /* the third pass: groups' totals that overflow fall back to the walk by value over every term */
+    is("2E18+1E18-4500000000000000001÷2+X", "X+1499999999999999999÷2");
+    is("(-1E18)×X+(5÷6)×X+(0.5)×X+(1÷3)×X+(4E18÷3)×X", "333333333333333335×X");
+    is("3E18×X+3E18×X-3E18×X-2E18×X+2E18÷7×X-2E18÷7×X", "1000000000000000000×X");   /* only by denominator, from both ends */
+    /* a merged run whose numbers stay apart sorts again, and merges with its new neighbour */
+    fixed("X×2E18×4E18+X×3E18×4E18+X×3E18×4E18");
+    fixed("X×2×3E18×4E18+X×3E18×4E18+X×3E18×4E18");
+    /* a sum with numbers apart keeps its sign outside, so its printing reads back */
+    fixed("(X+4E18×4E18×Y)÷(-Z)");
+    pair("-Z×(X+4E18×4E18×Y)", "Z×(-X-4E18×4E18×Y)", CASIM_RAD);
+    {
+        /* ... and the sign is a plain term's, which negating does not move: a term whose numbers are
+           apart sorts elsewhere once negated, and a sign taken from it flipped at every pass, filling
+           the arena (fuzz: 10 of 20,000 collects). Within the 8 KB budget: */
+        static unsigned char small_arena[8192];
+        char out[OUT];
+        const char *t = "(-4E18×Y+3×Y÷3037000499+Y×(-3)×4E18+Y×3×3E18+Y×3×4E18)×X";
+        CHECK(casim_simplify(t, CASIM_RAD, out, OUT, small_arena, sizeof small_arena) == CASIM_OK, "simplify %s in 8 KB: %s", t,
+              out);
+        CHECK(casim_collect(t, 'X' - 'A', CASIM_RAD, out, OUT, small_arena, sizeof small_arena) == CASIM_OK,
+              "collect %s in 8 KB: %s", t, out);
+        fixed(t);
+    }
     is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");
     /* 5: 0 to a negative power stays as it is (undefined; 1÷0^2 would read back as 1÷0) */
     is("0^(-2)", "0^(-2)");

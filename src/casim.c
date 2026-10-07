@@ -685,7 +685,7 @@ static int by_coef(ctx *c, ref a, ref b)
    denominator's terms is further from 0 than its largest term or its total, and terms that cancel exactly
    meet before anything else does (2E18÷7−2E18÷7+3E18). The order comes from the values alone: whether it
    fits does not depend on how the sum was written (3E18×X+3E18×X−3E18×X; third review, and its delta). */
-static bool add_sorted(ctx *c, const ref *t, int n, rat *acc)
+static bool add_by_den(ctx *c, const ref *t, int n, rat *acc)
 {
     int64_t q = 0;
     for (;;) {
@@ -707,6 +707,23 @@ static bool add_sorted(ctx *c, const ref *t, int n, rat *acc)
         }
         if (!rat_add(acc, acc, &s)) return false;
     }
+}
+
+/* t[0..n), in order of value, added into *acc: by denominator (add_by_den); when the denominators' totals
+   do not fit together, all the terms at once, from the low end while the sum is above 0 and from the high
+   end otherwise (2E18+1E18-4500000000000000001÷2: the third pass). Both orders come from the values alone,
+   so whether a sum folds never depends on how it was written. */
+static bool add_sorted(ctx *c, const ref *t, int n, rat *acc)
+{
+    rat a0 = *acc;
+    int lo = 0, hi = n - 1;
+    if (add_by_den(c, t, n, acc)) return true;
+    *acc = a0;
+    while (lo <= hi) {
+        rat v = term_coef(c, t[acc->p > 0 ? lo++ : hi--]);
+        if (!rat_add(acc, acc, &v)) return false;
+    }
+    return true;
 }
 
 /* Sorts t[0..m) with by, then folds its numbers into *v with f, all of them or none. by puts the numbers
@@ -775,11 +792,13 @@ static ref add(ctx *c, const ref *in, int n)
     ref l, *t, il;
     rat sum;
     int m, k = 0, ni;
+    bool resort = false;
     if (c->st != CASIM_OK) return SPARE;
     if ((m = flatten(c, in, n, K_ADD, &l)) < 0) return SPARE;
     t = list(c, l) + 1;
     m = split_impure(c, t, m, &il, &ni);
     rat_int(&sum, 0);
+again:
     m = fold(c, t, m, &sum, rat_add, by_mono);
     for (int i = 0; i < m;) {
         int j = i + 1;
@@ -805,7 +824,15 @@ static ref add(ctx *c, const ref *in, int n)
         f = mono(c, &t[i], &nf);
         i = j;
         if (rat_is(&s2, 0, 1)) continue;
+        for (int q = 0; q < nf; q++) resort |= is_num(c, f[q]);
         t[k++] = term_of(c, &s2, f, nf);
+    }
+    if (resort) {
+        /* a run whose numbers stay apart: its coefficient joined them, so its monomial changed and it
+           sorts elsewhere, maybe beside a like term (third pass). Again: each pass merged a run, so fewer
+           terms each time. */
+        m = k, k = 0, resort = false;
+        goto again;
     }
     if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
     for (int i = 0; i < ni; i++) t[k++] = list(c, il)[i];   /* impure terms, in order, last */
@@ -816,8 +843,14 @@ static ref add(ctx *c, const ref *in, int n)
 }
 
 /* A sum's content: its first term's coefficient (the constant is last, so the first term has a
-   monomial); 1 when any term holds numbers kept apart (past 2^62), since dividing such a term and
-   multiplying it back would not meet again, and each pass would add numbers (delta review). */
+   monomial). When any term holds numbers kept apart (past 2^62), only a sign: dividing such a term by more
+   and multiplying it back would not meet again, and each pass would add numbers (delta review); by −1 it
+   meets exactly, so −(S)÷Z reads back as written (third pass). The sign must flip exactly when the sum is
+   negated, or each pass divides by −1 again: it is the sign of the largest coefficient among the first
+   plain terms (no numbers apart; their monomial). Negating a term with numbers apart moves its sign onto
+   them and so moves the term in the order, and like terms left apart are in order of value, which negating
+   reverses; but the plain monomials keep their order, and two like terms of one size and opposite signs
+   would have cancelled. With no plain term, 1. */
 static rat content(ctx *c, ref s)
 {
     ref t0 = list(c, nd(c, s)->a)[0];
@@ -828,7 +861,25 @@ static rat content(ctx *c, ref s)
         ref t = list(c, nd(c, s)->a)[i];
         const ref *f = is_num(c, t) ? NULL : mono(c, &t, &nf);
         for (int q = 0; f && q < nf; q++)
-            if (is_num(c, f[q])) return k;
+            if (is_num(c, f[q])) {
+                ref first = 0;
+                rat big;
+                rat_int(&big, 0);
+                for (int j = 0; j < nd(c, s)->n; j++) {
+                    ref u = list(c, nd(c, s)->a)[j];
+                    const ref *g = is_num(c, u) ? NULL : mono(c, &u, &nf);
+                    bool plain = g != NULL;
+                    rat v, a;
+                    for (int r = 0; g && r < nf; r++) plain &= !is_num(c, g[r]);
+                    if (!plain || (first && by_mono(c, first, u) != 0)) continue;
+                    first = u;
+                    v = term_coef(c, u), a = v;
+                    a.p = a.p < 0 ? -a.p : a.p;
+                    if (frac_cmp(a.p, a.q, big.p < 0 ? -big.p : big.p, big.q) > 0) big = v;
+                }
+                if (big.p < 0) rat_int(&k, -1);
+                return k;
+            }
     }
     if (nd(c, t0)->kind == K_MUL && has_coef(c, list(c, nd(c, t0)->a), nd(c, t0)->n))
         k = *val(c, list(c, nd(c, t0)->a)[0]);
@@ -857,7 +908,7 @@ static ref sum_div(ctx *c, ref s, const rat *k)
             if (nd(c, t)->kind == K_MUL && has_coef(c, list(c, nd(c, t)->a), nd(c, t)->n))
                 ct = *val(c, list(c, nd(c, t)->a)[0]);
             if (!rat_mul(&q, &ct, &inv)) return 0;
-            r = mul_node(c, num(c, &q), f, nf);     /* no numbers apart in f: content() is 1 then */
+            r = term_of(c, &q, f, nf);              /* numbers apart in f: the sign joins them */
         }
         list(c, l)[i] = r;
     }
