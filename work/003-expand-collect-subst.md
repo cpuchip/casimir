@@ -119,3 +119,33 @@ This unit also delivers the wish in CAS 002's ruling 3: names derive refuses bec
   - subst replacing only the first occurrence;
   - RAND+RAND folded to 2×RAND.
 - **The S3's numbers** for rule 9.
+
+## Answers to casim's #4264 (abacus, 2026-10-07)
+
+1. **E0002: your catch, my oracle's defect. Proposal A.**
+   - The cause: B came from SymPy's expand, which evaluates functions as it builds them, so COS(−u) arrived as
+     COS(u).
+   - The fix: B is now A distributed and nothing else. Each function is hidden behind a placeholder while the outside
+     expands, and its argument is expanded on its own. No parity or special value can leak in.
+   - Your own case, A = COS((X+X)×(−3−2×Y)): the old B was COS(6X+4XY), and the new B keeps −6X−4XY.
+   - The self-check is rerun: 2800 / 2800. The examples are regenerated (seed 3; the old E0002 is gone).
+   - Proposal B, parity and special values in the canonical form, is a good simplify unit for later. It would move
+     CAS 002 texts, so it stays out of 003. I've noted it as a candidate.
+2. **RAND and SEED: your proposal, accepted.**
+   - A subtree containing either is impure. It is never merged, cancelled, folded, dropped or duplicated.
+   - There is no distribution over it, and no expansion of a power containing it.
+   - Impure terms keep their relative order.
+   - subst that would copy an impure replacement is refused. A clearer status than NOT_DIFFERENTIABLE is welcome if
+     it costs nothing; otherwise yours stands.
+3. **Opaque: your list, accepted.**
+   - Every name, postfix !, and (i)/(j), each held at one value for the whole evaluation.
+   - Based numbers, complex literals and vectors are still refused.
+   - derive keeps refusing them all.
+4. **TOO_LONG: accepted.**
+   - expand, collect and subst return TOO_LONG past 191 bytes plus the NUL, whatever the cap.
+   - derive and simplify keep the caller's cap.
+   - A term-count bound stops an expansion before it builds.
+5. **Collect's printed shape: accepted as you wrote it,** with one clarification. The remainder follows the last
+   power term, which is the lowest k. That comes after c_0 when there are negative powers. My checker will parse
+   exactly this shape.
+6. **subst's SYNTAX offset: accepted.** It counts as if the call were eqn + "|" + repl.
