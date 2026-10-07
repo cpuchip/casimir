@@ -10,7 +10,7 @@
 
 static abn_status eval(ab_calc *c, const char *text, ab_val *v, int *errpos)
 {
-    return eqn_eval(c, text, false, false, v, errpos);
+    return eqn_eval(c, text, 35, false, false, v, errpos);
 }
 
 int main(void)

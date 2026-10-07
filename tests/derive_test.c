@@ -224,7 +224,7 @@ static void syntax(void)
         char out[OUT], want[16];
         ab_val v;
         int errpos = -1;
-        abn_status cs = eqn_eval(ce_calc, bad[i], false, true, &v, &errpos);
+        abn_status cs = eqn_eval(ce_calc, bad[i], ce_model, false, true, &v, &errpos);
         casim_status st = casim_derive(bad[i], 'X' - 'A', CASIM_RAD, out, sizeof out, arena, sizeof arena);
         CHECK(cs == ABN_SYNTAX, "the core accepts \"%s\" (%d): not a syntax case", bad[i], (int)cs);
         snprintf(want, sizeof want, "%d", errpos);

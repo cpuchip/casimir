@@ -92,7 +92,7 @@ int main(void)
         if (c % 2) shaped(t, sizeof t, 1 + (int)rnd(6));
         else
             for (int i = 0; i < n; i++) cat(t, sizeof t, TOK[rnd(sizeof TOK / sizeof TOK[0])]);
-        cs = eqn_eval(ce_calc, t, false, true, &v, &errpos);
+        cs = eqn_eval(ce_calc, t, ce_model, false, true, &v, &errpos);
         st = casim_simplify(t, CASIM_RAD, out, sizeof out, arena, sizeof arena);
         if (cs == ABN_SYNTAX) {
             syntax++;

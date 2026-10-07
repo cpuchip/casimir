@@ -137,12 +137,26 @@ static void print(g *t, char *o, size_t cap, bool shuffle)
     }
 }
 
+/* Whether text is exactly 0 at the other test point (X and Y each swapped), the point restored after. */
+static bool zero_elsewhere(const char *text, const char *xs, const char *ys)
+{
+    abn v;
+    bool zero;
+    ce_set('X', xs[0] == '0' ? "1.4" : "0.71");
+    ce_set('Y', ys[1] == '.' && ys[0] == '0' ? "1.2" : "0.45");
+    zero = ce_eval(text, &v) == ABN_OK && abn_is_zero(&v);
+    ce_set('X', xs);
+    ce_set('Y', ys);
+    return zero;
+}
+
 int main(void)
 {
     int judged = 0, conditioned = 0;
     ce_init();
     for (int c = 0; c < CASES; c++) {
         char a[OUT] = "", b[OUT] = "", sa[OUT], sb[OUT], again[OUT];
+        const char *xs, *ys;
         int angle = (int)rnd(3);
         abn fa, fb, v;
         casim_status ra, rb;
@@ -153,8 +167,10 @@ int main(void)
         print(t, b, sizeof b, true);
         if (strlen(a) > 3000 || strlen(b) > 3000) continue;
         ce_angle(angle);
-        ce_set('X', rnd(2) ? "0.71" : "1.4");
-        ce_set('Y', rnd(2) ? "0.45" : "1.2");
+        xs = rnd(2) ? "0.71" : "1.4";
+        ys = rnd(2) ? "0.45" : "1.2";
+        ce_set('X', xs);
+        ce_set('Y', ys);
         /* the case, like abacus's: both texts are defined and real here */
         if (ce_eval(a, &fa) != ABN_OK || ce_eval(b, &fb) != ABN_OK) continue;
         if (!ce_close(&fb, &fa, -24)) continue;     /* the two texts' own rounding differs too much */
@@ -168,7 +184,11 @@ int main(void)
            the core rounds the input's arithmetic one way and the simplified text's another, and a function
            of a large argument (SIN of 4.7E15 from nested powers of 1.5) magnifies that past 1E-24 while
            both are right. Beyond 1E-12 a simplification is wrong; more than 1% in the band fails too. */
-        if (ce_eval(sa, &v) == ABN_OK && !ce_close(&v, &fa, -24) && ce_close(&v, &fa, -12)) {
+        if (ce_eval(sa, &v) == ABN_OK && !ce_close(&v, &fa, -24) &&
+            (ce_close(&v, &fa, -12) || (abn_is_zero(&v) && zero_elsewhere(a, xs, ys)))) {
+            /* (or an exact 0 against a rounding residue, which has no scale to be close in: the core gives
+               X-X^0.5×X^0.5 as 1E-33 at X = 1.4 and 0 at 0.71, since core 2f2eff6; the input is exactly 0 at
+               the other point) */
             conditioned++;
             printf("conditioning (angle %d): %s = %s is %s, the input %s\n", angle, a, sa, ce_text(&v), ce_text(&fa));
         } else

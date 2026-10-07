@@ -10,6 +10,7 @@
 #include "eqn.h"
 
 static ab_calc *ce_calc;
+static int ce_model = 35;   /* the model text is read in (unit 031: 33, 35, AB_MODEL_STU); 35 as before 031 */
 
 static inline void ce_init(void)
 {
@@ -45,7 +46,7 @@ static inline abn_status ce_eval(const char *text, abn *out)
 {
     ab_val v;
     int errpos = 0;
-    abn_status st = eqn_eval(ce_calc, text, false, false, &v, &errpos);
+    abn_status st = eqn_eval(ce_calc, text, ce_model, false, false, &v, &errpos);
     if (st != ABN_OK) return st;
     if (v.kind != AB_REAL) return ABN_DOMAIN;
     *out = v.re;
