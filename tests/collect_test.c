@@ -104,6 +104,8 @@ static void parse(const char *s, shape *sh)
     if (sh->remainder_at < 0) sh->remainder_at = sh->n;
 }
 
+static bool collect_ok(const char *text, shape *sh, char *out);
+
 /* text collects in X to the agreed shape, with text's value; c free of X; a fixed point. Returns the
    shape for the caller's own checks. */
 static bool collect_ok(const char *text, shape *sh, char *out)
@@ -113,6 +115,21 @@ static bool collect_ok(const char *text, shape *sh, char *out)
     casim_status st = casim_collect(text, 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena);
     CHECK(st == CASIM_OK, "collect %s: status %d", text, (int)st);
     if (st != CASIM_OK) return false;
+    if (strchr(out, '=')) {
+        /* L=R: each side has the shape (checked by collecting each alone), and the whole is a fixed point */
+        char l[OUT], r[OUT], lo[OUT], ro[OUT];
+        shape ls, rs;
+        size_t at = (size_t)(strchr(out, '=') - out);
+        memcpy(l, out, at);
+        l[at] = '\0';
+        strcpy(r, out + at + 1);
+        CHECK(collect_ok(l, &ls, lo) && strcmp(lo, l) == 0 && collect_ok(r, &rs, ro) && strcmp(ro, r) == 0,
+              "collect %s = %s: a side is not in its collected form", text, out);
+        *sh = ls;
+        CHECK(casim_collect(out, 'X' - 'A', CASIM_RAD, again, OUT, arena, sizeof arena) == CASIM_OK &&
+                  strcmp(again, out) == 0, "collect is not a fixed point: %s -> %s -> %s", text, out, again);
+        return true;
+    }
     parse(out, sh);
     for (int i = 0; i < sh->n; i++) {
         abn a, b;
@@ -156,6 +173,11 @@ static void rules(void)
     is("(X+Y)×(X-Y)", "X^2-Y^2");
     is("X×(Y+1)^2", "(Y+1)^2×X");                          /* c_k simplified, not expanded: only X is */
     is("X=Y×X^2", "X=Y×X^2");                              /* each side */
+    {
+        char out[OUT];
+        CHECK(casim_collect("(X+SIN(Y)+COS(Y)+TAN(Y)+EXP(Y))^5", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) ==
+                  CASIM_TOO_LONG, "a collected form past 191 bytes: \"%.60s\"", out);
+    }
 }
 
 static void visible(void)

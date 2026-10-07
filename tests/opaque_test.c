@@ -52,7 +52,7 @@ int main(void)
     simp("⒤+⒤", "2×⒤");
     simp("SGN(Y+X)-SGN(X+Y)", "0");
     simp("→DEG(X)+→DEG(X)", "2×→DEG(X)");
-    expd("IP((X+1)^2)", "IP(X^2+2×X+1)");
+    expd("IP((X+1)^2)", "IP(2×X+X^2+1)");             /* 002's order: X before X^2 */
     CHECK(casim_collect("IP(X)×X+X", 'X' - 'A', CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
               strcmp(out, "X+X×IP(X)") == 0, "collect IP(X)×X+X: \"%s\"", out);
     CHECK(casim_subst("IP(X)+IP(X)", 'X' - 'A', "Y+1", CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
@@ -67,10 +67,10 @@ int main(void)
     simp("2×RAND+RAND", "2×RAND+RAND");
     simp("COS(RAND)+RAND", "COS(RAND)+RAND");       /* the draws' order: COS(RAND) is drawn first */
     simp("RAND+COS(RAND)", "RAND+COS(RAND)");
-    expd("(RAND+1)^2", "(RAND+1)^2");
-    expd("X×(RAND+1)", "X×(RAND+1)");
+    expd("(RAND+1)^2", "(1+RAND)^2");              /* pure first: still one draw */
+    expd("X×(RAND+1)", "X×(1+RAND)");
     expd("RAND×(X+1)", "(X+1)×RAND");               /* pure operands first, impure after, in order */
-    expd("(X+1)^2+RAND", "X^2+2×X+1+RAND");          /* the pure part still expands */
+    expd("(X+1)^2+RAND", "2×X+X^2+1+RAND");          /* the pure part still expands */
     /* still refused: based numbers, complex literals, vectors; derive refuses every opaque name */
     refused("1Fh+X", "1Fh");
     refused("X+1i2", "1i2");

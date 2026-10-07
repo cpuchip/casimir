@@ -5,6 +5,7 @@
  * the core (1E-24), and be a fixed point; also inside SIN and under a ÷. */
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "casim.h"
 #include "check.h"
@@ -84,6 +85,18 @@ static void rules(void)
     pair("((X+1)×(X-1))^-1", "1÷(X^2-1)");
     pair("SQRT((X+1)^2)", "SQRT(X^2+2×X+1)");
     pair("((X+1)×X)^0.5", "SQRT(X^2+X)");
+    /* too long is a status (rule 8): past 191 bytes, whatever the cap; an expansion that cannot fit stops
+       before it builds (more distinct terms than 64), so (X+1)^1000 returns at once */
+    {
+        char out[OUT];
+        clock_t t0;
+        CHECK(ex("(X+Y+1)^6", out) == CASIM_TOO_LONG && out[0] == '\0', "(X+Y+1)^6: \"%s\"", out);
+        CHECK(ex("(X+Y+1)^2", out) == CASIM_OK, "(X+Y+1)^2: not OK");
+        t0 = clock();
+        CHECK(ex("(X+1)^1000", out) == CASIM_TOO_LONG, "(X+1)^1000: \"%s\"", out);
+        CHECK(ex("(X+Y+Z+1)^30×(X-1)^30", out) == CASIM_TOO_LONG, "a large product: \"%s\"", out);
+        CHECK((double)(clock() - t0) / CLOCKS_PER_SEC < 0.05, "the term bound did not stop them early");
+    }
     /* like terms collect; L=R each side */
     pair("(X+1)^2-(X-1)^2", "4×X");
     pair("X×(X+1)=(X+1)^2", "X^2+X=X^2+2×X+1");

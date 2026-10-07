@@ -42,9 +42,11 @@ static void rules(void)
     is("X^2", "-Y", "Y^2");                     /* (-Y)^2, not -Y^2 */
     is("Y", "X+1", "Y");                        /* no X: simplified alone */
     is("X=X^2", "Y+1", "Y+1=(Y+1)^2");          /* each side */
+    /* too long past 191 bytes, whatever the cap (rule 8) */
+    status("X+X^2+X^3+X^4+X^5+X^6", "SIN(Y)+COS(Y)+TAN(Y)+EXP(Y)+LN(Y)+Y^7", CASIM_TOO_LONG, "");   /* 4 powers fit: 163 bytes */
     /* a draw copied: refused; once is fine */
     status("X-X", "RAND", CASIM_NOT_DIFFERENTIABLE, "RAND");
-    is("X+1", "RAND", "RAND+1");
+    is("X+1", "RAND", "1+RAND");                 /* pure first, the draw after */
     /* SYNTAX: in eqn as usual; in repl at len(eqn) + 1 + its offset ("X+1|2Y": 2Y's error at 1) */
     status("2X", "Y", CASIM_SYNTAX, "1");
     status("X+1", "2Y", CASIM_SYNTAX, "5");

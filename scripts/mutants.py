@@ -19,6 +19,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # name: [(file, old text, new text), ...]: every replacement must apply. The unit CAS 002's four first,
 # then CAS 001's four (rewritten for the canonical-form code), then ours.
 MUTANTS = {
+    # 003: expand not entering function arguments
+    "expand-skips-fn-args": [
+        ("src/casim.c", "        return fn(c, x->id, expand(c, x->a));", "        return r;"),
+    ],
+    # 003: collect printing one power twice (no merge after expanding)
+    "collect-power-twice": [
+        ("src/casim.c", "            while (j < nc && ct[j].k != k) j++;", "            j = nc;"),
+    ],
+    # 003: subst replacing only the first occurrence
+    "subst-first-only": [
+        ("src/casim.c", "        if (c->sub_val && x->id == c->sub_var) {",
+         "        if (c->sub_val && x->id == c->sub_var && c->sub_count == 0) {"),
+    ],
+    # 003: RAND+RAND folded to 2×RAND (impurity ignored)
+    "rand-folded": [
+        ("src/casim.c", "    if (!c->has_impure || r == 0 || r == SPARE) return false;", "    if (1) return false;"),
+    ],
     # 002: sorting skipped inside function arguments
     "sort-in-fn-args": [
         ("src/casim.c", "    case K_RFN: return fn(c, x->id, canon(c, x->a));",
@@ -64,8 +81,8 @@ MUTANTS = {
     ],
     # 001: 0×u folded to u
     "zero-times": [
-        ("src/casim.c", "if (is_k(c, t[i], 0, 1)) return small(c, C_0);           /* 0×u is 0 */",
-         "if (is_k(c, t[i], 0, 1)) t[i] = small(c, C_1);"),
+        ("src/casim.c", "            if (is_k(c, t[i], 0, 1))                                  /* 0×u is 0: but a draw stays */",
+         "            if (is_k(c, t[i], 0, 1) && (t[i] = small(c, C_1), false))"),
     ],
     # 002b: the depth guard off (no limit: deep input then crashes the S3, and returns OK on the host)
     "depth-guard-off": [

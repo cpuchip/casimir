@@ -24,10 +24,19 @@
 enum {
     /* canonical (VAR and PI are raw too) */
     K_NUM, K_VAR, K_PI, K_FN, K_POW, K_MUL, K_ADD, K_EQ, K_LIT,
+    K_ONAME,                    /* an opaque name (CAS 003): id its NAMES index, or (i) and (j) */
+    K_OFN,                      /* an opaque function: id its NAMES index, or ! ; a, b its arguments */
     /* raw only */
     K_NEG, K_BADD, K_BSUB, K_BMUL, K_BDIV, K_BPOW, K_RFN, K_REQ, K_BAD,
-    K_GROUP                     /* a chain in written parentheses: a chain's walk stops there */
+    K_GROUP,                    /* a chain in written parentheses: a chain's walk stops there */
+    K_ROFN                      /* an opaque function as parsed */
 };
+
+/* The ids of the opaque kinds that are not NAMES entries. */
+#define ID_FACT 255             /* postfix ! (an opaque function of one argument) */
+#define ID_IND_I 254            /* the indirect (i) and (j) (opaque names) */
+#define ID_IND_J 253
+#define M_OPAQUE 128            /* an M_FN opener's fn at or past this: an opaque name, fn - M_OPAQUE */
 
 /* The functions casim knows (SGN only appears in a derivative). */
 enum {
@@ -105,6 +114,12 @@ typedef struct {
     size_t cap, used, top;      /* nodes grow up from used; the parser's stacks down from top */
     int var, angle;
     int depth;                  /* the recursive walks' nesting, bounded by CASIM_DEPTH_MAX */
+    bool opaque;                /* the names derive refuses are opaque (every operation but derive) */
+    bool has_impure;            /* RAND or SEED occurs: impure subtrees exist (CAS 003, #4264 point 2) */
+    int rand_id, seed_id;       /* their NAMES indexes */
+    const char *s2;             /* subst's replacement text (its literals have id 1) */
+    int sub_var, sub_count;     /* subst: the variable replaced, and how often */
+    ref sub_val;                /* its canonical replacement */
     ref small[SMALL], pi;
 } ctx;
 
@@ -387,11 +402,13 @@ static bool num_negative(const ctx *c, ref r)
 
 /* ---- the order (docs/canonical-form.md, "The order") ---- */
 
+#define R_MUL 6                 /* a product's rank, which a monomial of several factors takes */
+
 static int rank(const ctx *c, ref r)
 {
-    static const int8_t R[] = {[K_VAR] = 0, [K_PI] = 1, [K_FN] = 2, [K_POW] = 3, [K_MUL] = 4, [K_ADD] = 5,
-                               [K_NUM] = 6, [K_LIT] = 7, [K_EQ] = 8};
-    return r == SPARE ? 9 : R[nd(c, r)->kind];
+    static const int8_t R[] = {[K_VAR] = 0, [K_PI] = 1, [K_ONAME] = 2, [K_FN] = 3, [K_OFN] = 4, [K_POW] = 5,
+                               [K_MUL] = R_MUL, [K_ADD] = 7, [K_NUM] = 8, [K_LIT] = 9, [K_EQ] = 10};
+    return r == SPARE ? 11 : R[nd(c, r)->kind];
 }
 
 static int cmp(const ctx *c, ref a, ref b);
@@ -403,6 +420,12 @@ static int cmp_lists(const ctx *c, const ref *x, int nx, const ref *y, int ny)
         if (s) return s;
     }
     return nx - ny;
+}
+
+/* A literal's text: the main text, or subst's replacement when its id is 1. */
+static const char *lit_text(const ctx *c, const node *x)
+{
+    return (x->id ? c->s2 : c->s) + x->a;
 }
 
 static int cmp_(const ctx *c, ref a, ref b)
@@ -417,12 +440,18 @@ static int cmp_(const ctx *c, ref a, ref b)
     case K_NUM: return rat_cmp(val(c, a), val(c, b));
     case K_LIT: {
         int m = x->n < y->n ? x->n : y->n;
-        if ((s = memcmp(c->s + x->a, c->s + y->a, (size_t)m)) != 0) return s;
+        if ((s = memcmp(lit_text(c, x), lit_text(c, y), (size_t)m)) != 0) return s;
         return x->n - y->n;
     }
     case K_FN:
         if (x->id != y->id) return x->id - y->id;
         return cmp(c, x->a, y->a);
+    case K_ONAME: return x->id - y->id;
+    case K_OFN:
+        if (x->id != y->id) return x->id - y->id;
+        if ((s = cmp(c, x->a, y->a)) != 0 || (!x->b && !y->b)) return s;
+        if (!x->b || !y->b) return x->b ? 1 : -1;
+        return cmp(c, x->b, y->b);
     case K_POW:
     case K_EQ:
         if ((s = cmp(c, x->a, y->a)) != 0) return s;
@@ -487,8 +516,8 @@ static int by_mono(ctx *c, ref a, ref b)
     int na, nb, s;
     const ref *x = mono(c, &a, &na), *y = mono(c, &b, &nb);
     if (na == 1 && nb == 1) return cmp(c, x[0], y[0]);
-    if (na == 1) return (s = rank(c, x[0]) - 4) != 0 ? s : -1;
-    if (nb == 1) return (s = 4 - rank(c, y[0])) != 0 ? s : 1;
+    if (na == 1) return (s = rank(c, x[0]) - R_MUL) != 0 ? s : -1;
+    if (nb == 1) return (s = R_MUL - rank(c, y[0])) != 0 ? s : 1;
     return cmp_lists(c, x, na, y, nb);
 }
 
@@ -504,6 +533,56 @@ static void sort(ctx *c, ref *k, int n, int (*by)(ctx *, ref, ref))
         }
         k[j] = x;
     }
+}
+
+/* ---- impurity (CAS 003, #4264 point 2) ---- */
+
+/* Whether r holds RAND or SEED: a draw, or a change to the draws. An impure subtree is never merged,
+   cancelled, folded, dropped or duplicated, never distributed over or expanded, and impure operands keep
+   their order (after the pure ones). Free when the input has neither. */
+static bool impure(const ctx *c, ref r);
+
+static bool impure_(const ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    switch (x->kind) {
+    case K_ONAME: return x->id == c->rand_id;
+    case K_OFN: return x->id == c->seed_id || impure(c, x->a) || (x->b && impure(c, x->b));
+    case K_FN: return impure(c, x->a);
+    case K_POW:
+    case K_EQ: return impure(c, x->a) || impure(c, x->b);
+    case K_ADD:
+    case K_MUL:
+        for (int i = 0; i < x->n; i++)
+            if (impure(c, list(c, x->a)[i])) return true;
+        return false;
+    default: return false;
+    }
+}
+
+static bool impure(const ctx *c, ref r)
+{
+    bool v;
+    if (!c->has_impure || r == 0 || r == SPARE) return false;
+    if (!enter((ctx *)c)) return false;
+    v = impure_(c, r);
+    ((ctx *)c)->depth--;
+    return v;
+}
+
+/* Moves t[0..m)'s impure operands, in order, to a new list (*l, *n); returns the pure ones' count. */
+static int split_impure(ctx *c, ref *t, int m, ref *l, int *n)
+{
+    int j = 0;
+    *n = 0;
+    *l = 0;
+    if (!c->has_impure) return m;
+    for (int i = 0; i < m; i++)
+        if (impure(c, t[i])) {
+            if (!*l && !(*l = grab(c, (size_t)m * sizeof(ref)))) return m;
+            list(c, *l)[(*n)++] = t[i];
+        } else t[j++] = t[i];
+    return j;
 }
 
 /* ---- the canonical constructors ---- */
@@ -629,12 +708,13 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
 /* A sum (docs: flattened, sorted by monomial, like terms collected, the constant last). */
 static ref add(ctx *c, const ref *in, int n)
 {
-    ref l, *t;
+    ref l, *t, il;
     rat sum;
-    int m, k = 0;
+    int m, k = 0, ni;
     if (c->st != CASIM_OK) return SPARE;
     if ((m = flatten(c, in, n, K_ADD, &l)) < 0) return SPARE;
     t = list(c, l) + 1;
+    m = split_impure(c, t, m, &il, &ni);
     rat_int(&sum, 0);
     m = fold(c, t, m, &sum, rat_add, by_mono);
     for (int i = 0; i < m; i++) {
@@ -669,6 +749,7 @@ static ref add(ctx *c, const ref *in, int n)
         t[k++] = t[i];
     }
     if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
+    for (int i = 0; i < ni; i++) t[k++] = list(c, il)[i];   /* impure terms, in order, last */
     if (k == 0) return small(c, C_0);
     if (k == 1) return t[0];
     list(c, l)[0] = 0;
@@ -720,9 +801,9 @@ static ref sum_div(ctx *c, ref s, const rat *k)
    number times a single sum distributed). */
 static ref mul(ctx *c, const ref *in, int n)
 {
-    ref l, *t, co, reuse = 0;
+    ref l, *t, co, reuse = 0, il = 0;
     rat cv;
-    int m = 0;
+    int m = 0, ni = 0;
     if (c->st != CASIM_OK) return SPARE;
     rat_int(&cv, 1);
     for (int i = 0; i < n; i++) {
@@ -736,11 +817,13 @@ static ref mul(ctx *c, const ref *in, int n)
         int k = 0;
         if ((m = flatten(c, in, n, K_MUL, &l)) < 0) return SPARE;
         t = list(c, l) + 1;
+        if (pass == 0) m = split_impure(c, t, m, &il, &ni);     /* impure factors: apart, in order */
         if (!rat_is(&cv, 1, 1)) t[m++] = num(c, &cv), rat_int(&cv, 1);    /* the last pass's coefficient */
         for (int i = 0; i < m; i++)
-            if (is_k(c, t[i], 0, 1)) return small(c, C_0);           /* 0×u is 0 */
+            if (is_k(c, t[i], 0, 1))                                  /* 0×u is 0: but a draw stays */
+                return ni ? mul_node(c, small(c, C_0), list(c, il), ni) : small(c, C_0);
         m = fold(c, t, m, &cv, rat_mul, by_factor);
-        if (rat_is(&cv, 0, 1)) return small(c, C_0);
+        if (rat_is(&cv, 0, 1)) return ni ? mul_node(c, small(c, C_0), list(c, il), ni) : small(c, C_0);
         for (int i = 0; i < m; i++) {
             /* a sum as a factor: primitive, so 2×(X+1) and (2×X+2) are one product */
             rat k = nd(c, t[i])->kind == K_ADD ? content(c, t[i]) : cv, ck;
@@ -774,6 +857,14 @@ static ref mul(ctx *c, const ref *in, int n)
         n = m;
     }
     co = rat_is(&cv, 1, 1) ? small(c, C_1) : reuse == 0 || rat_cmp(&cv, val(c, reuse)) != 0 ? num(c, &cv) : reuse;
+    if (ni) {
+        /* the impure factors, in order, after the pure ones */
+        ref fl = grab(c, (size_t)(m + ni) * sizeof(ref));
+        if (!fl) return SPARE;
+        memcpy(list(c, fl), t, (size_t)m * sizeof(ref));
+        memcpy(list(c, fl) + m, list(c, il), (size_t)ni * sizeof(ref));
+        return mul_node(c, co, list(c, fl), m + ni);
+    }
     if (m == 1 && !rat_is(&cv, 1, 1) && nd(c, t[0])->kind == K_ADD) {
         /* a number times one sum: distributed */
         const node *s = nd(c, t[0]);
@@ -798,6 +889,7 @@ static ref power(ctx *c, ref b, ref e)
     long k_ = 0;
     bool w;
     if (c->st != CASIM_OK) return SPARE;
+    if (c->has_impure && impure(c, b)) return is_k(c, e, 1, 1) ? b : mk(c, K_POW, b, e);    /* as written */
     w = is_num(c, e) && rat_whole(val(c, e), &k_);
     if (is_k(c, e, 0, 1)) return small(c, C_1);
     if (is_k(c, e, 1, 1) || is_k(c, b, 1, 1)) return b;
@@ -992,7 +1084,10 @@ static int operand(ctx *c, pstack *p, int i, bool parg, bool *done)
             p->val[p->nv++] = leaf(c, K_BAD, 0);
         } else {
             ref r = mk(c, K_LIT, (ref)i, 0);
-            if (r != SPARE) nd(c, r)->n = (uint16_t)n;
+            if (r != SPARE) {
+                nd(c, r)->n = (uint16_t)n;
+                nd(c, r)->id = c->s2 && c->s == c->s2;      /* subst's replacement: its own text */
+            }
             p->val[p->nv++] = r;
         }
         return j - i;
@@ -1017,23 +1112,35 @@ static int operand(ctx *c, pstack *p, int i, bool parg, bool *done)
             }
         }
         if (best && best->args == 0) {
+            int id = (int)(best - NAMES);
             if (strcmp(best->name, PI_UTF8) == 0) p->val[p->nv++] = leaf(c, K_PI, 0);
-            else {
+            else if (c->opaque) {
+                /* an opaque name (CAS 003): held at one value for the evaluation, but RAND draws */
+                p->val[p->nv++] = leaf(c, K_ONAME, id);
+                if (id == c->rand_id) c->has_impure = true;
+            } else {
                 refuse(c, t, (int)bl);
                 p->val[p->nv++] = leaf(c, K_BAD, 0);
             }
             return (int)bl;
         }
         if (best) {
-            if (best->fn == F_REFUSED) refuse(c, t, (int)bl);
-            p->ops[p->no++] = (opent){M_FN, best->fn, 1, best->args};
+            int fn_ = best->fn;
+            if (fn_ == F_REFUSED && c->opaque) {
+                fn_ = M_OPAQUE + (int)(best - NAMES);       /* an opaque function (CAS 003) */
+                if (best - NAMES == c->seed_id) c->has_impure = true;
+            } else if (fn_ == F_REFUSED) refuse(c, t, (int)bl);
+            p->ops[p->no++] = (opent){M_FN, (uint8_t)fn_, 1, best->args};
             *done = false;
             return (int)bl + 1;     /* and its "(" */
         }
     }
     if (strncmp(t, IND_I, 3) == 0 || strncmp(t, IND_J, 3) == 0) {
-        refuse(c, t, 3);
-        p->val[p->nv++] = leaf(c, K_BAD, 0);
+        if (c->opaque) p->val[p->nv++] = leaf(c, K_ONAME, t[2] == IND_I[2] ? ID_IND_I : ID_IND_J);
+        else {
+            refuse(c, t, 3);
+            p->val[p->nv++] = leaf(c, K_BAD, 0);
+        }
         return 3;
     }
     if ((*t >= 'A' && *t <= 'Z') || *t == 'i') {
@@ -1085,6 +1192,15 @@ static bool closer(ctx *c, pstack *p, int *i)
     if (o && t == ')' && o->op == M_FN && o->args == o->need) {
         p->no--;
         (*i)++;
+        if (o->fn >= M_OPAQUE) {
+            /* an opaque function: one argument or two */
+            ref a = p->val[p->nv - o->need], b = o->need == 2 ? p->val[p->nv - 1] : 0, r;
+            p->nv -= o->need - 1;
+            r = mk(c, K_ROFN, a, b);
+            if (r != SPARE) nd(c, r)->id = (uint8_t)(o->fn - M_OPAQUE);
+            p->val[p->nv - 1] = r;
+            return true;
+        }
         if (o->need == 2) p->nv--;
         if (o->need == 2 || o->fn == F_REFUSED) p->val[p->nv - 1] = leaf(c, K_BAD, 0);
         else {
@@ -1147,7 +1263,11 @@ static ref parse(ctx *c)
             continue;
         }
         if (*t == '!') {
-            refuse(c, t, 1);
+            if (c->opaque && p.nv > 0) {
+                ref r = mk(c, K_ROFN, p.val[p.nv - 1], 0);    /* postfix !: an opaque function */
+                if (r != SPARE) nd(c, r)->id = ID_FACT;
+                p.val[p.nv - 1] = r;
+            } else refuse(c, t, 1);
             i++;
             continue;
         }
@@ -1249,7 +1369,7 @@ static ref canon_(ctx *c, ref r)
     switch (x->kind) {
     case K_LIT: {
         rat v;
-        if (literal(&v, c->s + x->a, x->n)) return num(c, &v);
+        if (literal(&v, lit_text(c, x), x->n)) return num(c, &v);
         return r;               /* kept as typed */
     }
     case K_NEG: {
@@ -1276,6 +1396,17 @@ static ref canon_(ctx *c, ref r)
         return b;
     }
     case K_GROUP: return canon(c, x->a);
+    case K_ROFN: {
+        ref a = canon(c, x->a), b = nd(c, r)->b ? canon(c, nd(c, r)->b) : 0, o = mk(c, K_OFN, a, b);
+        if (o != SPARE) nd(c, o)->id = nd(c, r)->id;
+        return o;
+    }
+    case K_VAR:
+        if (c->sub_val && x->id == c->sub_var) {
+            c->sub_count++;
+            return c->sub_val;                  /* subst: the replacement, whole */
+        }
+        return r;
     case K_RFN: return fn(c, x->id, canon(c, x->a));
     case K_REQ: {
         ref a = canon(c, x->a), b = canon(c, nd(c, r)->b);
@@ -1761,7 +1892,7 @@ static void print_(ctx *c, out_t *w, ref r)
     if (w->full || r == SPARE) return;
     switch (x->kind) {
     case K_NUM: put_signed(c, w, r, false); return;
-    case K_LIT: put(w, c->s + x->a, x->n); return;
+    case K_LIT: put(w, lit_text(c, x), x->n); return;
     case K_VAR:
         if (x->id == 26) puts_(w, "i");
         else {
@@ -1770,6 +1901,24 @@ static void print_(ctx *c, out_t *w, ref r)
         }
         return;
     case K_PI: puts_(w, PI_UTF8); return;
+    case K_ONAME:
+        puts_(w, x->id == ID_IND_I ? IND_I : x->id == ID_IND_J ? IND_J : NAMES[x->id].name);
+        return;
+    case K_OFN:
+        if (x->id == ID_FACT) {
+            print_in(c, w, x->a, level(c, x->a) < 5);
+            puts_(w, "!");
+            return;
+        }
+        puts_(w, NAMES[x->id].name);
+        puts_(w, "(");
+        print(c, w, x->a);
+        if (nd(c, r)->b) {
+            puts_(w, ",");
+            print(c, w, nd(c, r)->b);
+        }
+        puts_(w, ")");
+        return;
     case K_FN:
         puts_(w, FNAME[x->id]);
         print_in(c, w, x->a, true);
@@ -1838,6 +1987,11 @@ static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_
     memset(c->mem, 0, 16);
     nd(c, SPARE)->kind = K_PI;
     c->used = 16;
+    c->rand_id = c->seed_id = -1;
+    for (int i = 0; i < (int)(sizeof NAMES / sizeof NAMES[0]); i++) {
+        if (strcmp(NAMES[i].name, "RAND") == 0) c->rand_id = i;
+        if (strcmp(NAMES[i].name, "SEED") == 0) c->seed_id = i;
+    }
 }
 
 casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena,
@@ -1862,30 +2016,472 @@ casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, v
     if (cap) out[0] = '\0';
     if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
+    c.opaque = true;
     if (c.st == CASIM_OK) n = parse(&c);
     if (c.st == CASIM_OK) n = canon(&c, n);
     return finish(&c, n, out, cap);
 }
 
-/* CAS 003: stubs until it lands (its tests are written first). */
+/* ---- expand and collect (unit CAS 003) ---- */
+
+#define EXPAND_TERMS 64     /* more distinct terms than this cannot print in 191 bytes: stop before building */
+
+static bool contains(const ctx *c, ref r, int var);
+
+static bool contains_(const ctx *c, ref r, int var)
+{
+    const node *x = nd(c, r);
+    switch (x->kind) {
+    case K_VAR: return x->id == var;
+    case K_FN: return contains(c, x->a, var);
+    case K_OFN: return contains(c, x->a, var) || (x->b && contains(c, x->b, var));
+    case K_POW:
+    case K_EQ: return contains(c, x->a, var) || contains(c, x->b, var);
+    case K_ADD:
+    case K_MUL:
+        for (int i = 0; i < x->n; i++)
+            if (contains(c, list(c, x->a)[i], var)) return true;
+        return false;
+    default: return false;
+    }
+}
+
+/* Whether var occurs in r (a guarded walk). */
+static bool contains(const ctx *c, ref r, int var)
+{
+    bool v;
+    if (r == 0 || r == SPARE) return false;
+    if (!enter((ctx *)c)) return false;
+    v = contains_(c, r, var);
+    ((ctx *)c)->depth--;
+    return v;
+}
+
+/* Whether expand opens r (a sum): every sum, or with collect's variable, a sum that holds it. */
+static bool opens(ctx *c, ref r)
+{
+    return nd(c, r)->kind == K_ADD && !impure(c, r) && (c->sub_var < 0 || contains(c, r, c->sub_var));
+}
+
+/* A sum's terms as expand multiplies them: each term, or with collect's variable, the terms that hold it
+   and one block of the rest (so (X+Y+1)^2 is X^2+2×X×(Y+1)+(Y+1)^2, the coefficients not expanded). */
+static int blocks(ctx *c, ref s, ref *out)
+{
+    const node *x = nd(c, s);
+    int n = 0, nr = 0;
+    ref rest = grab(c, (size_t)x->n * sizeof(ref));
+    if (!rest) return 0;
+    for (int i = 0; i < x->n; i++) {
+        ref t = list(c, nd(c, s)->a)[i];
+        if (c->sub_var < 0 || contains(c, t, c->sub_var)) out[n++] = t;
+        else list(c, rest)[nr++] = t;
+    }
+    if (nr) out[n++] = add(c, list(c, rest), nr);
+    return n;
+}
+
+static bool too_many(ctx *c, long terms)
+{
+    if (terms <= EXPAND_TERMS) return false;
+    if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
+    return true;
+}
+
+/* C(n, k) exactly, or -1 past 2^62. */
+static int64_t binom(int n, int k)
+{
+    int64_t r = 1;
+    if (k < 0 || k > n) return 0;
+    if (k > n - k) k = n - k;
+    for (int i = 0; i < k; i++) {
+        int64_t t, g;
+        if (!mul64(&t, r, n - i)) {
+            /* divide first where it divides: r × (n-i) / (i+1) */
+            g = gcd64(r, i + 1);
+            if (!mul64(&t, r / g, (n - i) / ((i + 1) / g)) || (n - i) % ((i + 1) / g)) return -1;
+            r = t;
+            continue;
+        }
+        r = t / (i + 1);
+    }
+    return r;
+}
+
+/* (t1+…+tm)^n by the multinomial theorem: a term for each k1+…+km = n, its coefficient n!/(k1!…km!)
+   (a product of binomials), its factors t_i^k_i. The compositions are counted first and walked in a loop. */
+static ref multinomial(ctx *c, ref s, int n)
+{
+    ref t[EXPAND_TERMS], terms;
+    int m, k[EXPAND_TERMS], nt = 0;
+    int64_t count;
+    if (too_many(c, nd(c, s)->n)) return SPARE;
+    m = blocks(c, s, t);
+    count = binom(n + m - 1, m - 1);
+    if (m == 0 || count < 0 || too_many(c, count)) return SPARE;
+    if (!(terms = grab(c, (size_t)count * sizeof(ref)))) return SPARE;
+    for (int i = 0; i < m; i++) k[i] = 0;
+    k[0] = n;
+    for (;;) {
+        /* the term for k[0..m) */
+        ref f = grab(c, (size_t)(m + 1) * sizeof(ref));
+        int left = n, nf = 0;
+        rat co;
+        rat_int(&co, 1);
+        if (!f) return SPARE;
+        for (int i = 0; i < m; i++) {
+            int64_t b = binom(left, k[i]);
+            rat br;
+            if (b < 0 || !rat_make(&br, b, 1) || !rat_mul(&co, &co, &br)) {
+                if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
+                return SPARE;
+            }
+            left -= k[i];
+            if (k[i]) {
+                rat e;
+                rat_int(&e, k[i]);
+                list(c, f)[nf++] = power(c, t[i], num(c, &e));
+            }
+        }
+        list(c, f)[nf++] = num(c, &co);
+        list(c, terms)[nt++] = mul(c, list(c, f), nf);
+        /* the next composition: move one from the last nonzero place but the final one onward */
+        {
+            int j = m - 2;
+            while (j >= 0 && k[j] == 0) j--;
+            if (j < 0) break;
+            k[j]--;
+            k[j + 1] = k[m - 1] + 1;
+            if (j + 1 != m - 1) k[m - 1] = 0;
+        }
+        if (c->st != CASIM_OK || nt >= count) break;
+    }
+    return add(c, list(c, terms), nt);
+}
+
+static ref expand(ctx *c, ref r);
+
+/* A product's expansion: its factors expanded, then every opened sum multiplied out (none when a factor is
+   impure: no distribution over a draw, none of a draw over a sum). */
+static ref expand_mul(ctx *c, ref r)
+{
+    int n = nd(c, r)->n, nterms = 1, nk = 0;
+    ref fl = grab(c, (size_t)n * sizeof(ref)), keep, acc;
+    bool pure = true;
+    if (!fl) return SPARE;
+    for (int i = 0; i < n; i++) {
+        ref e = expand(c, list(c, nd(c, r)->a)[i]);
+        list(c, fl)[i] = e;
+        if (impure(c, e)) pure = false;
+    }
+    if (!pure) return mul(c, list(c, fl), n);
+    {
+        /* the expanded factors, products opened (an expanded power can be a coefficient times a power) */
+        ref ff;
+        int m = flatten(c, list(c, fl), n, K_MUL, &ff);
+        if (m < 0) return SPARE;
+        fl = ff;
+        memmove(list(c, fl), list(c, fl) + 1, (size_t)m * sizeof(ref));
+        n = m;
+    }
+    if (c->sub_var < 0) {
+        /* the denominator: every factor with a negative whole exponent, joined and expanded as one (a÷(b+c)
+           stays a quotient, its divisor expanded: X÷((Y+1)×(Y-1)) is X÷(Y^2-1)) */
+        int nd_ = 0, sums = 0;
+        ref dl = grab(c, (size_t)n * sizeof(ref));
+        if (!dl) return SPARE;
+        for (int i = 0; i < n; i++) {
+            ref f = list(c, fl)[i];
+            if (below(c, f)) {
+                rat e = *val(c, nd(c, f)->b);
+                e.p = -e.p;
+                sums += nd(c, nd(c, f)->a)->kind == K_ADD;
+                list(c, dl)[nd_++] = power(c, nd(c, f)->a, num(c, &e));
+            }
+        }
+        if (sums && !(nd_ == 1 && n == 1)) {
+            ref den = power(c, expand(c, mul(c, list(c, dl), nd_)), small(c, C_M1));
+            int k = 0;
+            for (int i = 0; i < n; i++)
+                if (!below(c, list(c, fl)[i])) list(c, fl)[k++] = list(c, fl)[i];
+            list(c, fl)[k++] = den;
+            n = k;
+        }
+    }
+    /* the factors that stay, and the sums opened */
+    if (!(keep = grab(c, (size_t)n * sizeof(ref)))) return SPARE;
+    for (int i = 0; i < n; i++)
+        if (!opens(c, list(c, fl)[i])) list(c, keep)[nk++] = list(c, fl)[i];
+    acc = mul(c, list(c, keep), nk);
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref sum = list(c, fl)[i], b[EXPAND_TERMS], nl;
+        int nb, na, k = 0;
+        const ref *at;
+        ref one = acc;
+        if (!opens(c, sum)) continue;
+        if (too_many(c, nd(c, sum)->n)) return SPARE;
+        nb = blocks(c, sum, b);
+        na = nd(c, acc)->kind == K_ADD ? nd(c, acc)->n : 1;
+        nterms = na * nb;
+        if (too_many(c, nterms)) return SPARE;
+        if (!(nl = grab(c, (size_t)nterms * sizeof(ref)))) return SPARE;
+        at = nd(c, acc)->kind == K_ADD ? list(c, nd(c, acc)->a) : &one;
+        for (int p = 0; p < na; p++)
+            for (int q = 0; q < nb; q++) {
+                ref t = mul2(c, at[p], b[q]);
+                list(c, nl)[k++] = t;
+            }
+        acc = add(c, list(c, nl), k);
+    }
+    return acc;
+}
+
+static ref expand_(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    switch (x->kind) {
+    case K_ADD: {
+        int n = x->n;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (!l) return SPARE;
+        for (int i = 0; i < n; i++) {
+            ref e = expand(c, list(c, nd(c, r)->a)[i]);
+            list(c, l)[i] = e;
+        }
+        return add(c, list(c, l), n);
+    }
+    case K_MUL: return expand_mul(c, r);
+    case K_POW: {
+        ref b = expand(c, x->a), e = nd(c, r)->b, p;
+        long k = 0;
+        if (is_num(c, e) && rat_whole(val(c, e), &k) && k >= 2 && opens(c, b)) return multinomial(c, b, (int)k);
+        if (k <= -1 && c->sub_var < 0 && is_num(c, e) && rat_whole(val(c, e), &k) && opens(c, b)) {
+            /* a sum to a negative whole power: the inverse of its positive power, expanded */
+            ref pos = k == -1 ? b : multinomial(c, b, (int)-k);
+            return power(c, pos, small(c, C_M1));
+        }
+        p = power(c, b, e);
+        /* a whole power of a product distributes: its factors may be sums to open */
+        if (nd(c, p)->kind == K_MUL && p != r) return expand(c, p);
+        return p;
+    }
+    case K_FN:
+        if (c->sub_var >= 0) return r;          /* collect: a function's argument is the remainder's */
+        return fn(c, x->id, expand(c, x->a));
+    case K_OFN: {
+        ref a, b, o;
+        if (c->sub_var >= 0) return r;
+        a = expand(c, x->a);
+        b = nd(c, r)->b ? expand(c, nd(c, r)->b) : 0;
+        o = mk(c, K_OFN, a, b);
+        if (o != SPARE) nd(c, o)->id = nd(c, r)->id;
+        return o;
+    }
+    case K_EQ: {
+        ref a = expand(c, x->a), b = expand(c, nd(c, r)->b);
+        return mk(c, K_EQ, a, b);
+    }
+    default: return r;
+    }
+}
+
+/* r expanded (a guarded walk); with c->sub_var set (collect), only where that variable is. */
+static ref expand(ctx *c, ref r)
+{
+    ref v;
+    if (c->st != CASIM_OK) return SPARE;
+    if (!enter(c)) return SPARE;
+    v = expand_(c, r);
+    c->depth--;
+    return v;
+}
+
+/* A term as c×var^k: its k and its coefficient; false when var is in it other than as a whole power. */
+static bool as_power(ctx *c, ref t, int var, long *k, ref *co)
+{
+    const node *x = nd(c, t);
+    if (!contains(c, t, var)) {
+        *k = 0, *co = t;
+        return true;
+    }
+    if (x->kind == K_VAR) {
+        *k = 1, *co = small(c, C_1);
+        return true;
+    }
+    if (x->kind == K_POW && nd(c, x->a)->kind == K_VAR && is_num(c, x->b) && rat_whole(val(c, x->b), k)) {
+        *co = small(c, C_1);
+        return true;
+    }
+    if (x->kind == K_MUL) {
+        int n = x->n, at = -1, nr = 0;
+        ref rest;
+        for (int i = 0; i < n; i++)
+            if (contains(c, list(c, x->a)[i], var)) {
+                if (at >= 0) return false;
+                at = i;
+            }
+        if (!as_power(c, list(c, x->a)[at], var, k, co) || !is_k(c, *co, 1, 1)) return false;
+        if (!(rest = grab(c, (size_t)n * sizeof(ref)))) return false;
+        for (int i = 0; i < n; i++)
+            if (i != at) list(c, rest)[nr++] = list(c, nd(c, t)->a)[i];
+        *co = mul(c, list(c, rest), nr);
+        return true;
+    }
+    return false;
+}
+
+typedef struct {
+    long k;
+    ref c;
+} cterm;
+
+/* var^k (k not 0): X, X^2, X^(-2). */
+static void put_power(out_t *w, int var, long k)
+{
+    char ch = (char)('A' + var), buf[24];
+    put(w, &ch, 1);
+    if (k == 1) return;
+    puts_(w, k < 0 ? "^(-" : "^");
+    put(w, buf, (size_t)i64_text(buf, k < 0 ? -k : k));
+    if (k < 0) puts_(w, ")");
+}
+
+/* One c×var^k term of the collected form (#4264 point 5): first is whether it leads the output. */
+static void put_cterm(ctx *c, out_t *w, const cterm *t, int var, bool first)
+{
+    bool sum = nd(c, t->c)->kind == K_ADD, neg_ = !sum && negative(c, t->c);
+    if (!first || neg_) puts_(w, neg_ ? "-" : "+");      /* no leading + */
+    if (sum) {
+        puts_(w, "(");
+        print(c, w, t->c);
+        puts_(w, ")");
+    } else if (t->k != 0 && (is_k(c, t->c, 1, 1) || is_k(c, t->c, -1, 1))) {
+        put_power(w, var, t->k);
+        return;
+    } else print_term(c, w, t->c, neg_);
+    if (t->k != 0) {
+        puts_(w, TIMES);
+        put_power(w, var, t->k);
+    }
+}
+
+/* The collected form of one side: Σ c_k × var^k in descending k, then the remainder after the lowest k. */
+static void put_collected(ctx *c, out_t *w, ref r, int var)
+{
+    const node *x = nd(c, r);
+    int n = x->kind == K_ADD ? x->n : 1, nc = 0, nr = 0;
+    ref one = r, cl = grab(c, (size_t)n * sizeof(cterm) + 8), rl = grab(c, (size_t)n * sizeof(ref));
+    cterm *ct;
+    const ref *terms = x->kind == K_ADD ? list(c, x->a) : &one;
+    if (!cl || !rl || c->st != CASIM_OK) return;
+    ct = (cterm *)(void *)list(c, cl);
+    for (int i = 0; i < n; i++) {
+        long k;
+        ref co;
+        if (as_power(c, terms[i], var, &k, &co)) {
+            int j = 0;
+            while (j < nc && ct[j].k != k) j++;
+            if (j == nc) ct[nc++] = (cterm){k, co};
+            else ct[j].c = add2(c, ct[j].c, co);
+        } else list(c, rl)[nr++] = terms[i];
+    }
+    /* descending k (insertion sort: few terms) */
+    for (int i = 1; i < nc; i++) {
+        cterm v = ct[i];
+        int j = i;
+        while (j > 0 && ct[j - 1].k < v.k) ct[j] = ct[j - 1], j--;
+        ct[j] = v;
+    }
+    {
+        bool first = true;
+        for (int i = 0; i < nc && c->st == CASIM_OK; i++) {
+            if (is_k(c, ct[i].c, 0, 1)) continue;
+            put_cterm(c, w, &ct[i], var, first);
+            first = false;
+        }
+        if (nr) {
+            ref rem = add(c, list(c, rl), nr);
+            const node *y = nd(c, rem);
+            if (!first && !(y->kind == K_ADD ? negative(c, list(c, y->a)[0]) : negative(c, rem))) puts_(w, "+");
+            print(c, w, rem);
+            first = false;
+        }
+        if (first) puts_(w, "0");
+    }
+}
+
+/* ---- the API: CAS 003 ---- */
+
+#define SLOT 192                /* an equation slot with its NUL: expand, collect and subst fit it or stop */
+
 casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    (void)eqn, (void)angle, (void)arena, (void)arena_cap;
+    ctx c;
+    ref n = SPARE;
     if (cap) out[0] = '\0';
-    return CASIM_TOO_LONG;
+    if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.opaque = true;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
+    if (c.st == CASIM_OK) n = expand(&c, n);
+    return finish(&c, n, out, cap < SLOT ? cap : SLOT);
 }
 
 casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    (void)eqn, (void)var, (void)angle, (void)arena, (void)arena_cap;
+    ctx c;
+    ref n = SPARE;
+    out_t w = {out, cap < SLOT ? cap : SLOT, 0, false};
     if (cap) out[0] = '\0';
-    return CASIM_TOO_LONG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.opaque = true;
+    c.sub_var = var;                    /* expand only where var is */
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
+    if (c.st == CASIM_OK) n = expand(&c, n);
+    if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
+    if (nd(&c, n)->kind == K_EQ) {
+        put_collected(&c, &w, nd(&c, n)->a, var);
+        puts_(&w, "=");
+        put_collected(&c, &w, nd(&c, n)->b, var);
+    } else put_collected(&c, &w, n, var);
+    if (w.full && c.st == CASIM_OK) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
+    return CASIM_OK;
 }
 
 casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
                          size_t arena_cap)
 {
-    (void)eqn, (void)var, (void)repl, (void)angle, (void)arena, (void)arena_cap;
+    ctx c;
+    ref n = SPARE, rr;
+    int chars = 0;
     if (cap) out[0] = '\0';
-    return CASIM_TOO_LONG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.opaque = true;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st != CASIM_OK) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
+    /* the replacement: a second text, its literals marked (id 1), its SYNTAX offset counted as if the call
+       were eqn + "|" + repl (#4264 point 6) */
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    c.s2 = repl;
+    c.s = repl;
+    rr = parse(&c);
+    c.s = eqn;
+    if (c.st == CASIM_SYNTAX) c.errpos += chars + 1;
+    if (c.st != CASIM_OK) return finish(&c, rr, out, cap < SLOT ? cap : SLOT);
+    rr = canon(&c, rr);
+    c.sub_var = var;
+    c.sub_val = rr;
+    n = canon(&c, n);
+    if (c.st == CASIM_OK && c.sub_count > 1 && impure(&c, rr)) {
+        /* a draw copied: refused (#4264 point 2) */
+        c.st = CASIM_NOT_DIFFERENTIABLE;
+        c.bad = strstr(repl, "SEED(") ? "SEED" : "RAND";
+        c.badlen = 4;
+    }
+    return finish(&c, n, out, cap < SLOT ? cap : SLOT);
 }
