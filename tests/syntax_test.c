@@ -101,7 +101,7 @@ int main(void)
                   (int)st, st == CASIM_SYNTAX ? out : "", want);
         } else {
             parsed++;
-            CHECK(st != CASIM_SYNTAX && st != CASIM_TOO_LONG, "\"%s\": the core parses it, casim says %d \"%s\"", t,
+            CHECK(st != CASIM_SYNTAX && st != CASIM_TOO_LONG && st != CASIM_NO_ROOM, "\"%s\": the core parses it, casim says %d \"%s\"", t,
                   (int)st, out);
         }
     }

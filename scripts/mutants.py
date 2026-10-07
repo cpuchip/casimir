@@ -79,7 +79,14 @@ MUTANTS = {
     ],
     "too-long-truncated": [
         ("src/casim.c", "        if (w.full) c->st = CASIM_TOO_LONG;\n", ""),
-        ("src/casim.c", "    if (w.full || c->st == CASIM_TOO_LONG) out[0] = '\\0';", "    if (c->st == CASIM_TOO_LONG) out[0] = '\\0';"),
+        ("src/casim.c", "    if (w.full || c->st == CASIM_TOO_LONG || c->st == CASIM_NO_ROOM) out[0] = '\\0';",
+         "    if (c->st == CASIM_TOO_LONG || c->st == CASIM_NO_ROOM) out[0] = '\\0';"),
+    ],
+    "no-room-as-too-long": [
+        ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */",
+         "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;"),
+        ("src/casim.c", "        if (c->st == CASIM_OK) c->st = CASIM_NO_ROOM;          /* the stack's bound (CAS 004: not TOO_LONG) */",
+         "        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;"),
     ],
     "zero-half-level": [
         ("src/casim.c", "    return abs_is(c, x, 1, 2) && !(num_negative(c, x) && !below(c, f)) ? 5 : 4;",

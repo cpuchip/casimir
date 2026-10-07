@@ -11,7 +11,7 @@
  *                                    default 35); --repl-model the same for subst's replacement
  *
  * Exit 0 for OK, 1 for a status (printed as SYNTAX <offset>, NOT_DIFFERENTIABLE <name>,
- * TOO_LONG or BAD_ARG), 2 for a usage error. */
+ * TOO_LONG, BAD_ARG or NO_ROOM), 2 for a usage error. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,6 +79,7 @@ int main(int argc, char **argv)
     case CASIM_NOT_DIFFERENTIABLE: printf("NOT_DIFFERENTIABLE %s\n", out); break;
     case CASIM_TOO_LONG: printf("TOO_LONG\n"); break;
     case CASIM_BAD_ARG: printf("BAD_ARG\n"); break;
+    case CASIM_NO_ROOM: printf("NO_ROOM\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */

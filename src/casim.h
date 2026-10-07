@@ -14,8 +14,11 @@ typedef enum {
     CASIM_OK = 0,
     CASIM_SYNTAX,               /* out: the character offset of the first error, in decimal */
     CASIM_NOT_DIFFERENTIABLE,   /* out: what was refused: a function's name, "!", "[", or the literal */
-    CASIM_TOO_LONG,             /* out or the arena too small for this equation; out is "" */
-    CASIM_BAD_ARG               /* var outside 0-25 or angle outside 0-2 (ours); out is "" */
+    CASIM_TOO_LONG,             /* the result does not fit: past 191 bytes (expand, collect, subst), past cap,
+                                   or more terms than 191 bytes can hold; out is "" */
+    CASIM_BAD_ARG,              /* var outside 0-25 or angle outside 0-2 (ours); out is "" */
+    CASIM_NO_ROOM               /* CAS 004: the arena ran out, or the depth guard stopped a walk (the stack's
+                                   bound); out is "". TOO_LONG before CAS 004 */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */

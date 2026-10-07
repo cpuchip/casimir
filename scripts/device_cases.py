@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import measure  # noqa: E402
 
 ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
-STATUS = {"TOO_LONG": 3}          # the statuses a case may expect besides OK (casim.h)
+STATUS = {"TOO_LONG": 3, "NO_ROOM": 5}    # the statuses a case may expect besides OK (casim.h)
 
 
 def c_str(s):

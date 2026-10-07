@@ -120,6 +120,22 @@ static void exact(void)
         char out[OUT];
         CHECK(casim_simplify(NULL, CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "casim_simplify(NULL)");
     }
+    /* CAS 004 rule 5: TOO_LONG only for a result past 191 bytes; the arena and the depth guard are NO_ROOM */
+    {
+        static char chain[400];
+        char out[OUT];
+        int len = 0;
+        unsigned char small_[64];
+        casim_req rq = {CASIM_SIMPLIFY, chain, CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD};
+        for (int i = 0; i < 95; i++) len += snprintf(chain + len, sizeof chain - (size_t)len, "%sX", i ? "^" : "");
+        CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_NO_ROOM, "a 95-level STU chain: not NO_ROOM");
+        rq.model = CASIM_MODEL_35;
+        CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_OK, "the same chain read as 35: not OK");
+        rq = (casim_req){CASIM_EXPAND, "(X+Y+1)^6", CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD};
+        CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_TOO_LONG, "(X+Y+1)^6: not TOO_LONG");
+        rq.eqn = "SIN(X)";
+        CHECK(casim_run(&rq, out, OUT, small_, sizeof small_) == CASIM_NO_ROOM, "a 64-byte arena: not NO_ROOM");
+    }
     /* the old calls read 35 */
     {
         char out[OUT];

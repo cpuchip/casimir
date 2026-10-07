@@ -239,15 +239,15 @@ static void limits(void)
     unsigned char tiny[16];
     CHECK(casim_derive("SIN(X×X)", 'X' - 'A', CASIM_RAD, small, sizeof small, arena, sizeof arena) == CASIM_TOO_LONG &&
           small[0] == '\0', "a 4-byte out: not TOO_LONG");
-    CHECK(casim_derive("SIN(X×X)", 'X' - 'A', CASIM_RAD, out, sizeof out, tiny, sizeof tiny) == CASIM_TOO_LONG &&
-          out[0] == '\0', "a 16-byte arena: not TOO_LONG");
+    CHECK(casim_derive("SIN(X×X)", 'X' - 'A', CASIM_RAD, out, sizeof out, tiny, sizeof tiny) == CASIM_NO_ROOM &&
+          out[0] == '\0', "a 16-byte arena: not NO_ROOM");      /* CAS 004: the arena, not the result */
     {
-        /* 6 (review): a text past 65,535 bytes is TOO_LONG (offsets are 16 bits), never misread */
+        /* 6 (review): a text past 65,535 bytes is refused (offsets are 16 bits), never misread: NO_ROOM since CAS 004 */
         static char big[70010], bigout[80000];
         static unsigned char huge[1 << 19];
         memset(big, '0', 70000);
         strcpy(big + 70000, "5+X");
-        CHECK(casim_simplify(big, CASIM_RAD, bigout, sizeof bigout, huge, sizeof huge) == CASIM_TOO_LONG,
+        CHECK(casim_simplify(big, CASIM_RAD, bigout, sizeof bigout, huge, sizeof huge) == CASIM_NO_ROOM,
               "a 70,003-byte text: \"%.40s...\"", bigout);
     }
     CHECK(casim_derive("X", 26, CASIM_RAD, out, sizeof out, arena, sizeof arena) == CASIM_BAD_ARG, "var 26 accepted");
@@ -264,7 +264,7 @@ static void limits(void)
     } else CHECK(false, "SIN(X) did not derive");
 }
 
-/* An arena of every size from 0 up gives TOO_LONG until it is enough, then the one answer, for derive
+/* An arena of every size from 0 up gives NO_ROOM (TOO_LONG before CAS 004) until it is enough, then the one answer, for derive
    and simplify: never a crash, never another text. */
 static void starved(void)
 {
@@ -283,14 +283,14 @@ static void starved(void)
         for (size_t n = 0; n <= 8192; n++) {
             casim_status a = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, got, sizeof got, arena, n);
             casim_status r = casim_simplify(eqs[i], CASIM_DEG, gotr, sizeof gotr, arena, n);
-            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want) == 0))) bad++;
-            if (!((r == CASIM_TOO_LONG && gotr[0] == '\0') || (r == CASIM_OK && strcmp(gotr, wantr) == 0))) badr++;
+            if (!((a == CASIM_NO_ROOM && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want) == 0))) bad++;
+            if (!((r == CASIM_NO_ROOM && gotr[0] == '\0') || (r == CASIM_OK && strcmp(gotr, wantr) == 0))) badr++;
         }
         CHECK(bad == 0 && badr == 0, "%s: %d derive and %d simplify arena sizes gave another answer", eqs[i], bad, badr);
     }
 }
 
-/* CAS 002b: the depth guard. Nesting past it is TOO_LONG, cleanly, for every kind of recursion; nesting
+/* CAS 002b: the depth guard. Nesting past it is NO_ROOM (TOO_LONG before CAS 004), cleanly, for every kind of recursion; nesting
    under it answers; a walk that is a loop (a long left chain of powers) is not limited by it. */
 static void depth(void)
 {
@@ -310,9 +310,27 @@ static void depth(void)
             if (j == 0)
                 CHECK(st[0] == CASIM_OK && st[1] == CASIM_OK, "%s x20: %d %d, want OK", open_[k], (int)st[0], (int)st[1]);
             else
-                CHECK(st[0] == CASIM_TOO_LONG && st[1] == CASIM_TOO_LONG, "%s x400: %d %d, want TOO_LONG", open_[k],
+                CHECK(st[0] == CASIM_NO_ROOM && st[1] == CASIM_NO_ROOM, "%s x400: %d %d, want NO_ROOM", open_[k],
                       (int)st[0], (int)st[1]);
         }
+    }
+    /* the guard's edge, planted (CAS 004, abacus #4797: the guard at 47): measured with the CLI, so a move
+       of the guard shows here first. SIN( nests: simplify answers 46 levels, refuses 47; X^( nests: derive
+       answers 44, refuses 45. */
+    {
+        static const struct { const char *open_; int ok; bool derive; } edge[] = {{"SIN(", 46, false}, {"X^(", 44, true}};
+        for (int e = 0; e < 2; e++)
+            for (int n = edge[e].ok; n <= edge[e].ok + 1; n++) {
+                casim_status s;
+                t[0] = '\0';
+                for (int i = 0; i < n; i++) strcat(t, edge[e].open_);
+                strcat(t, "X");
+                for (int i = 0; i < n; i++) strcat(t, ")");
+                s = edge[e].derive ? casim_derive(t, 'X' - 'A', CASIM_RAD, big, sizeof big, a, sizeof a)
+                                   : casim_simplify(t, CASIM_RAD, big, sizeof big, a, sizeof a);
+                CHECK(s == (n == edge[e].ok ? CASIM_OK : CASIM_NO_ROOM), "%s x%d (%s): %d, want %s", edge[e].open_, n,
+                      edge[e].derive ? "derive" : "simplify", (int)s, n == edge[e].ok ? "OK" : "NO_ROOM");
+            }
     }
     strcpy(t, "X");
     for (int i = 0; i < 2000; i++) strcat(t, "^X");

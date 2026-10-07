@@ -283,7 +283,7 @@ static void visible(void)
     CHECK(n == 16, "%d visible E cases, want 16", n);
 }
 
-/* Every arena size from 0 to 8192 gives TOO_LONG or the one answer, for expand and collect: the arena
+/* Every arena size from 0 to 8192 gives NO_ROOM (TOO_LONG before CAS 004) or the one answer, for expand and collect: the arena
    is compacted between steps (copied, slid down, references rewritten), so a size that runs out mid-copy
    must still fail cleanly. */
 static void starved(void)
@@ -302,9 +302,9 @@ static void starved(void)
         CHECK(s0 == CASIM_OK && s1 == CASIM_OK, "%s: %d %d with the full arena", in[i], (int)s0, (int)s1);
         for (size_t n = 0; n <= 8192; n++) {
             casim_status a = casim_expand(in[i], CASIM_RAD, got, OUT, arena, n);
-            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[0]) == 0))) bad++;
+            if (!((a == CASIM_NO_ROOM && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[0]) == 0))) bad++;
             a = casim_collect(in[i], 'X' - 'A', CASIM_RAD, got, OUT, arena, n);
-            if (!((a == CASIM_TOO_LONG && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[1]) == 0))) bad++;
+            if (!((a == CASIM_NO_ROOM && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[1]) == 0))) bad++;
         }
         CHECK(bad == 0, "%s: %d arena sizes gave another answer", in[i], bad);
     }

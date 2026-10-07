@@ -88,29 +88,35 @@ Two fresh-eyes review passes found each of these cases; each is a test in tests/
 **0 to a negative power** is undefined and stays as written, in the numerator: 0^(−1), 0^(−0.5).
 (Written as 1÷0, SQRT(0) or 0 under a ÷, it would read back as something else.)
 
-## The depth guard (units CAS 002b and 003)
+## The depth guard (units CAS 002b, 003 and 004)
 
 Every structural walk (canonical form, derivative, expansion, comparison, printing, compaction) counts its
-nesting; past 48 the call returns TOO_LONG. So the stack is bounded by construction (abacus's ruling: at
-most 12 KB). The limit was 52 in CAS 002b. CAS 003's walks made deeper frames, and the limit was calibrated
-again on the S3 at the trip point: 49 measured 12,464 bytes worst and 48 measures 12,064, across every case
-of the bench. The parser is a loop and a left chain of powers prints in one, so neither counts. The
-constructors (sum, product, power) are not counted: they recurse one level on their own, under a walk that
-is.
+nesting; past 47 the call returns NO_ROOM (TOO_LONG before CAS 004, which split the two: TOO_LONG is now only
+a result that does not fit). So the stack is bounded by construction (abacus's ruling: at most 12 KB). The
+limit was 52 in CAS 002b. CAS 003's walks made deeper frames, and it was calibrated again on the S3 at the
+trip point: 49 measured 12,464 bytes worst and 48 measured 12,064. In CAS 004 the bench's idle baseline was
+found to move with the build (520 or 720 bytes; stable within a run), which put 48's worst at 12,272 against
+the 12,288 ceiling: no margin, so abacus moved the guard to 47 (#4797). The parser is a loop and a left chain
+of powers prints in one, so neither counts. The constructors (sum, product, power) are not counted: they
+recurse one level on their own, under a walk that is.
 
-What 48 refuses, measured on the host with the CLI (the count is the same on the chip):
+What 47 refuses, measured on the host with the CLI (the count is the same on the chip):
 
-| Nest | Passes to | TOO_LONG from |
+| Nest | Answers to | NO_ROOM from |
 |---|---|---|
-| powers X^(X^(… , simplify and expand | every 191-byte text (47 levels) | — |
+| powers X^(X^(… , simplify and expand | 46 levels | 47 (189 bytes) |
 | powers X^(X^(… , derive | 44 levels | 45 (181 bytes) |
-| functions SIN(SIN(… | every 191-byte text (38 levels) | — |
+| functions SIN(SIN(… , simplify | every 191-byte text (38 levels) | — |
 | sums and products alternating: X+Y×(X+Y×(… , X×(Y+X×(… , 1÷(1+1÷(1+… | 23 levels | 24 (169 bytes) |
 | −(X+−(X+… | 23 levels | 24 (121 bytes) |
+| STU's X^X^…^X (a right chain) , simplify and expand | 47 levels | 48 (95 bytes) |
+| STU's X^X^…^X , derive | 45 levels | 46 |
 
-A nest that alternates sums and products costs two levels for each written one (each is a sum node and a
-product node). At 52 such nests passed to 25 levels; at 48, some texts that simplified in CAS 002 are now
-TOO_LONG (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d). A refusal, not a wrong answer.
+tests/derive_test.c pins two edges (SIN( simplify 46 and 47; X^( derive 44 and 45), so a move of the guard
+shows there first. A nest that alternates sums and products costs two levels for each written one (each is a
+sum node and a product node). At 52 such nests passed to 25 levels; at 48 and 47, some texts that simplified
+in CAS 002 are refused (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d), and at 47 a 189-byte power
+nest X^(X^(… of 47 levels is too. A refusal, not a wrong answer.
 
 ## The forms
 
@@ -257,9 +263,13 @@ subst the replacement and its own model. The five older calls read 35, as before
   round trip under all three models over every visible example and seeded power chains, and each result's
   value against the core reading the input in its own model.
 - **Depth.** A right chain nests through its exponents, so an STU chain X^X^…^X is held by the depth
-  guard: simplify and expand pass 48 levels (TOO_LONG at 49), derive 45 (TOO_LONG at 46), measured
-  with the CLI. A
-  191-byte X^X^… typed in STU is TOO_LONG, where in 35 it is a left chain, printed in a loop, and passes.
+  guard (above: 47 levels for simplify and expand, 45 for derive). A 191-byte X^X^… typed in STU is NO_ROOM,
+  where in 35 it is a left chain, printed in a loop, and passes.
+- **Statuses, and the calculator's messages** (rule 5, the texts approved in #4797): TOO_LONG only when
+  the result does not fit, RESULT TOO LONG; NO_ROOM (new, value 5) when the arena runs out or the depth
+  guard stops a walk, TOO COMPLEX; NOT_DIFFERENTIABLE, UNSUPPORTED with the refused name (out) on a second
+  line where the screen has one, or from subst copying a draw, CAN'T COPY RAND (or SEED); SYNTAX, the core's
+  SYNTAX ERROR; BAD_ARG, INVALID DATA. The firmware maps them; casim returns the status and out.
 - **Frames.** No function in src/ has a frame over 1 KB: `make test` and scripts/size-s3.sh compile src/
   under -Wframe-larger-than=1024 -Werror, and each first proves the flag refuses a planted 2 KB frame
   (tests/frame_control.c). The largest today: literal(), 336 bytes on the host and 320 on the S3.

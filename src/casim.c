@@ -149,19 +149,19 @@ static rat *rt(const ctx *c, ref r)
 /* ---- the depth guard ---- */
 
 /* Every structural walk (canonical form, derivative, comparison, printing) enters through enter(): past
-   CASIM_DEPTH_MAX nested entries the call returns TOO_LONG. So the stack is bounded by construction, not
+   CASIM_DEPTH_MAX nested entries the call returns NO_ROOM (TOO_LONG before CAS 004). So the stack is bounded by construction, not
    by the inputs measured: the limit was set on the S3 so that the deepest case of every kind of nesting
    stays within 12 KB (unit CAS 002b; abacus's ruling, #4236). The sum, product and power constructors
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
 #ifndef CASIM_DEPTH_MAX
-#define CASIM_DEPTH_MAX 48
+#define CASIM_DEPTH_MAX 47
 #endif
 
 static bool enter(ctx *c)
 {
     if (c->depth >= CASIM_DEPTH_MAX) {
-        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
+        if (c->st == CASIM_OK) c->st = CASIM_NO_ROOM;          /* the stack's bound (CAS 004: not TOO_LONG) */
         return false;
     }
     c->depth++;
@@ -180,7 +180,7 @@ static ref grab(ctx *c, size_t bytes)
     size_t need = (bytes + 7u) & ~(size_t)7u;
     ref r;
     if (need == 0) need = 8;
-    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;
+    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */
     if (c->st != CASIM_OK) return 0;
     r = (ref)(c->used / 8u);
     memset(c->mem + c->used, 0, need);
@@ -1391,7 +1391,7 @@ static ref parse(ctx *c)
     bool want = true, parg = false, eq = false;
     ref out = SPARE;
     if (len > 65535u || c->top < c->used + need) {     /* a literal's offset and length are 16 bits */
-        c->st = CASIM_TOO_LONG;
+        c->st = CASIM_NO_ROOM;
         return SPARE;
     }
     c->top -= need;                     /* the stacks, at the top of the arena */
@@ -2140,7 +2140,7 @@ static void print_(ctx *c, out_t *w, ref r)
 
 static void print(ctx *c, out_t *w, ref r)
 {
-    if (!enter(c)) return;              /* stopped: c->st is TOO_LONG, which finish() reports */
+    if (!enter(c)) return;              /* stopped: c->st is NO_ROOM, which finish() reports */
     print_(c, w, r);
     c->depth--;
 }
@@ -2152,9 +2152,9 @@ static casim_status finish(ctx *c, ref n, char *out, size_t cap)
     out_t w = {out, cap, 0, false};
     if (cap == 0) return CASIM_TOO_LONG;
     out[0] = '\0';
-    if (c->st == CASIM_OK && (n == SPARE || n == 0)) c->st = CASIM_TOO_LONG;    /* never an empty OK */
+    if (c->st == CASIM_OK && (n == SPARE || n == 0)) c->st = CASIM_NO_ROOM;     /* never an empty OK */
     if (c->st == CASIM_OK) {
-        print(c, &w, n);                /* the depth guard may stop it: c->st is then TOO_LONG */
+        print(c, &w, n);                /* the depth guard may stop it: c->st is then NO_ROOM */
         if (w.full) c->st = CASIM_TOO_LONG;
     }
     if (c->st == CASIM_SYNTAX) {
@@ -2163,7 +2163,7 @@ static casim_status finish(ctx *c, ref n, char *out, size_t cap)
         do d[k++] = (char)('0' + e % 10); while ((e /= 10) && k < 11);
         while (k) put(&w, &d[--k], 1);
     } else if (c->st == CASIM_NOT_DIFFERENTIABLE) put(&w, c->bad, (size_t)c->badlen);
-    if (w.full || c->st == CASIM_TOO_LONG) out[0] = '\0';
+    if (w.full || c->st == CASIM_TOO_LONG || c->st == CASIM_NO_ROOM) out[0] = '\0';
     return c->st;
 }
 
@@ -2179,7 +2179,7 @@ static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_
     c->cap = c->top = cap & ~(size_t)7u;
     /* unit 0 is "none"; unit 1 is the spare leaf */
     if (c->cap < 16) {
-        c->st = CASIM_TOO_LONG;
+        c->st = CASIM_NO_ROOM;
         return;
     }
     memset(c->mem, 0, 16);
