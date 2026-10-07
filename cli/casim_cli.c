@@ -7,6 +7,9 @@
  *   casim subst "<text>" X "<u>" RAD every X replaced by u, simplified
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
+ *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
+ *                                    the calculator's equation slot, which derive and simplify keep as
+ *                                    the caller's cap (CAS 004, soroban #4831)
  *   --model STU|33|35                the model the text was typed in, as the core stamps it (CAS 004;
  *                                    default 35); --repl-model the same for subst's replacement
  *
@@ -25,12 +28,13 @@ enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM
        OP_SUBST = CASIM_SUBST };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
+static size_t out_cap = OUT;
 
 /* The calculator's own call (casim_run), with the texts' models. */
 static casim_status run(int op, const char *text, int var, const char *repl, int angle, char *out, size_t arena_cap)
 {
     casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle};
-    return casim_run(&rq, out, OUT, arena, arena_cap);
+    return casim_run(&rq, out, out_cap, arena, arena_cap);
 }
 
 static int model_arg(const char *a)
@@ -49,7 +53,10 @@ int main(int argc, char **argv)
     for (; i < argc && strncmp(argv[i], "--", 2) == 0; i++) {
         if (strcmp(argv[i], "--min-arena") == 0) min_arena = 1;
         else if (strcmp(argv[i], "--arena") == 0 && i + 1 < argc) cap = strtoul(argv[++i], NULL, 10);
-        else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
+        else if (strcmp(argv[i], "--cap") == 0 && i + 1 < argc) {
+            out_cap = strtoul(argv[++i], NULL, 10);
+            if (out_cap == 0 || out_cap > OUT) goto usage;
+        } else if (strcmp(argv[i], "--model") == 0 && i + 1 < argc) {
             if ((model = model_arg(argv[++i])) < 0) goto usage;
         } else if (strcmp(argv[i], "--repl-model") == 0 && i + 1 < argc) {
             if ((repl_model = model_arg(argv[++i])) < 0) goto usage;
@@ -100,6 +107,6 @@ usage:
                     "       casim [--arena N] [--min-arena] expand \"<text>\" RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] collect \"<text>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] subst \"<text>\" X \"<u>\" RAD|DEG|GRAD\n"
-                    "       (every op takes --model; subst also --repl-model; default 35)\n");
+                    "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }
