@@ -3665,26 +3665,49 @@ static ref integ_poly(ctx *c, const rat *p, int var)
 
 static bool linear(ctx *c, ref u, int var, rat **lin);
 
-/* Whether f is X^r as typed (SQRT(X), X^r) with r > 0 rational and not whole; r into *e. */
-static bool monomial_power(ctx *c, ref f, int var, rat *e)
+/* Whether f, as typed, is a power of X alone, X^e with e rational, into *e (rule 6a, bd37a0b): X; X^n; SQRT(X);
+   SQ(u), INV(u) and u^n (n whole) of such a u; products and quotients of them. *neg_seen is set when any
+   factor's own exponent is negative (an X in a denominator, or X^-k): combining may then hide X = 0. A
+   fractional power of anything but X itself is not one ((X^2)^(1/2) is ABS(X)). */
+static bool mono_pow(ctx *c, ref f, int var, rat *e, bool *neg_seen)
 {
     const node *x = nd(c, f);
-    rat *lin, *ex;
+    bool ok = false;
+    rat *ex;
     long w;
+    if (!enter(c)) return false;
     while (x->kind == K_GROUP) f = x->a, x = nd(c, f);
-    if (x->kind == K_RFN && x->id == F_SQRT) {
-        if (!linear(c, x->a, var, &lin) || !rat_is(&lin[1], 1, 1) || lin[0].p != 0) return false;
-        rat_make(e, 1, 2);
-        return true;
+    if (x->kind == K_VAR && x->id == var) rat_int(e, 1), ok = true;
+    else if (x->kind == K_RFN && x->id == F_SQRT) {
+        const node *u = nd(c, x->a);
+        while (u->kind == K_GROUP) u = nd(c, u->a);
+        if (u->kind == K_VAR && u->id == var) rat_make(e, 1, 2), ok = true;
+    } else if (x->kind == K_RFN && (x->id == F_SQ || x->id == F_INV)) {
+        if ((ok = mono_pow(c, x->a, var, e, neg_seen))) {
+            rat k;
+            rat_int(&k, x->id == F_SQ ? 2 : -1);
+            ok = rat_mul(e, e, &k);
+            if (x->id == F_INV) *neg_seen = true;
+        }
+    } else if (x->kind == K_BPOW && !raw_has_var(c, x->b, var) && poly_of(c, x->b, var, &ex) && pdeg(ex) == 0) {
+        const node *b = nd(c, x->a);
+        rat n = ex[0];
+        while (b->kind == K_GROUP) b = nd(c, b->a);
+        if (b->kind == K_VAR && b->id == var) *e = n, ok = true;
+        else if (rat_whole(&n, &w) && (ok = mono_pow(c, x->a, var, e, neg_seen))) ok = rat_mul(e, e, &n);
+        if (ok && n.p < 0) *neg_seen = true;
+    } else if (x->kind == K_BMUL || x->kind == K_BDIV) {
+        rat l, r;
+        if ((ok = mono_pow(c, x->a, var, &l, neg_seen) && mono_pow(c, x->b, var, &r, neg_seen))) {
+            if (x->kind == K_BDIV) r.p = -r.p, *neg_seen = true;
+            ok = rat_add(e, &l, &r);
+        }
     }
-    if (x->kind != K_BPOW || nd(c, x->a)->kind == K_BPOW || raw_has_var(c, x->b, var)) return false;
-    if (!linear(c, x->a, var, &lin) || !rat_is(&lin[1], 1, 1) || lin[0].p != 0) return false;
-    if (!poly_of(c, x->b, var, &ex) || pdeg(ex) != 0) return false;
-    *e = ex[0];
-    return e->p > 0 && !rat_whole(e, &w);
+    c->depth--;
+    return ok && c->st == CASIM_OK;
 }
 
-/* ∫ of X^r times a polynomial: c_k X^(k+r+1) / (k+r+1), r > 0. */
+/* ∫ of X^R times a polynomial: c_k X^(k+R+1) / (k+R+1), and c_k LN(ABS(X)) where k + R is -1. */
 static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
 {
     ref acc = small(c, C_0), x = leaf(c, K_VAR, var);
@@ -3692,7 +3715,12 @@ static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
         if (p[k].p != 0) {
             rat e, ck, one = {1, 1};
             rat_int(&e, k);
-            if (!rat_add(&e, &e, r) || !rat_add(&e, &e, &one) || !rat_make(&ck, e.q, e.p) || !rat_mul(&ck, &ck, &p[k]))
+            if (!rat_add(&e, &e, r)) return not_integrable(c), SPARE;
+            if (rat_is(&e, -1, 1)) {
+                acc = add2(c, acc, mul2(c, num(c, &p[k]), fn(c, F_LN, fn(c, F_ABS, x))));
+                continue;
+            }
+            if (!rat_add(&e, &e, &one) || !rat_make(&ck, e.q, e.p) || !rat_mul(&ck, &ck, &p[k]))
                 return not_integrable(c), SPARE;
             acc = add2(c, acc, mul2(c, num(c, &ck), power(c, x, num(c, &e))));
         }
@@ -3821,7 +3849,6 @@ static ref integ_term(ctx *c, ref r, int var, const rat **poly)
 {
     int m = 0, nv = 0, last = -1, sl_s = 0;
     ref y = r, sl, k = small(c, C_1);
-    bool div_var = false;
     if (c->st != CASIM_OK) return SPARE;
     if (!raw_has_var(c, r, var)) return mul2(c, canon(c, r), leaf(c, K_VAR, var));      /* ∫ k = k X */
     while (nd(c, y)->kind == K_BMUL || nd(c, y)->kind == K_BDIV) m++, y = nd(c, y)->a;
@@ -3840,32 +3867,40 @@ static ref integ_term(ctx *c, ref r, int var, const rat **poly)
         int sgn = list(c, sl)[2 * i + 1] == 1 ? 1 : -1;
         if (raw_has_var(c, o, var)) {
             nv++, last = i, sl_s = sgn;
-            if (sgn < 0) div_var = true;
         } else {
             ref oc = canon(c, o);
             k = mul2(c, k, sgn > 0 ? oc : power(c, oc, small(c, C_M1)));
         }
     }
-    if (nv == 1) return mul2(c, k, integ_factor(c, list(c, sl)[2 * last], sl_s, var));
-    if (div_var) return not_integrable(c), SPARE;               /* as typed: X^2÷X is not a table form */
     {
-        /* polynomials multiplied out (a polynomial times a polynomial, expanded) */
-        rat *acc = NULL, *f, *tmp, r;
+        /* powers of X and polynomials multiplied out: P(X) X^R (rule 2's polynomial times a form; rule 6a's
+           powers combining). A single factor that is neither goes to the table's forms. */
+        rat *acc = NULL, *f, *tmp, R;
+        bool neg_seen = false;
         ref tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
         if (!tr) return SPARE;
         tmp = (rat *)(void *)nd(c, tr);
-        rat_int(&r, 0);
+        rat_int(&R, 0);
+        if (nv == 1) {
+            rat e;
+            bool ns = false;
+            if (!mono_pow(c, list(c, sl)[2 * last], var, &e, &ns)) {
+                if (c->st != CASIM_OK) return SPARE;
+                return mul2(c, k, integ_factor(c, list(c, sl)[2 * last], sl_s, var));
+            }
+        }
         for (int i = 0; i <= m; i++) {
             ref o = list(c, sl)[2 * i];
+            bool den = list(c, sl)[2 * i + 1] != 1;
             rat e;
             if (!raw_has_var(c, o, var)) continue;
-            if (monomial_power(c, o, var, &e)) {
-                /* X^r, r > 0 not whole: its exponent joins the product's (X×SQRT(X) is X^(3÷2): the review) */
-                if (!rat_add(&r, &r, &e)) return not_integrable(c), SPARE;
+            if (mono_pow(c, o, var, &e, &neg_seen)) {
+                if (den) e.p = -e.p, neg_seen = true;
+                if (!rat_add(&R, &R, &e)) return not_integrable(c), SPARE;
                 continue;
             }
             if (c->st != CASIM_OK) return SPARE;
-            if (!poly_of(c, o, var, &f)) return not_integrable(c), SPARE;
+            if (den || !poly_of(c, o, var, &f)) return not_integrable(c), SPARE;
             if (!acc) acc = f;
             else {
                 pmul(c, acc, f, tmp);
@@ -3873,10 +3908,22 @@ static ref integ_term(ctx *c, ref r, int var, const rat **poly)
             }
         }
         if (!acc) {
-            acc = tmp;
+            ref ar = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+            if (!ar) return SPARE;
+            acc = (rat *)(void *)nd(c, ar);
             pzero(acc), rat_int(&acc[0], 1);
         }
-        if (r.p != 0) return mul2(c, k, integ_poly_r(c, acc, &r, var));
+        if (neg_seen) {
+            /* as typed: refused when combining would hide X = 0 (every term's exponent >= 0: X^2÷X) */
+            bool hides = true;
+            for (int i = 0; i <= SOLVE_DEG; i++) {
+                rat ei;
+                rat_int(&ei, i);
+                if (acc[i].p != 0 && rat_add(&ei, &ei, &R) && ei.p < 0) hides = false;
+            }
+            if (hides) return not_integrable(c), SPARE;
+        }
+        if (R.p != 0) return mul2(c, k, integ_poly_r(c, acc, &R, var));
         *poly = acc;
         return mul2(c, k, integ_poly(c, acc, var));
     }

@@ -188,6 +188,24 @@ static void review(void)
     is("X^2×X^(1÷3)", CASIM_RAD, "3×X^(10÷3)÷10");
     is("SQRT(X)×X^(1÷3)", CASIM_RAD, "6×X^(11÷6)÷11");
     refused("X×X^(-1÷2)", CASIM_NOT_INTEGRABLE);             /* a negative power in a product, as X^2÷X */
+    /* rule 6a (bd37a0b): powers of X combine; refused only where combining hides a point where the typed
+       function is undefined (an X with a negative exponent, every combined term's exponent >= 0) */
+    is("SQRT(X)^3", CASIM_RAD, "2×X^(5÷2)÷5");
+    is("X^(1÷2)^3", CASIM_RAD, "2×X^(5÷2)÷5");               /* 35: (X^(1/2))^3 */
+    is("INV(X^2)", CASIM_RAD, "-1÷X");
+    is("1÷X÷X", CASIM_RAD, "-1÷X");
+    is("X÷X^3", CASIM_RAD, "-1÷X");
+    is("SQRT(X)÷X", CASIM_RAD, "2×SQRT(X)");
+    is("3×X^2÷X^4", CASIM_RAD, "-3÷X");
+    is("1÷(X×X)", CASIM_RAD, "-1÷X");
+    is("(X+1)÷X", CASIM_RAD, "LN(ABS(X))+X");                /* rule 2: 1 + 1/X, X = 0 still undefined */
+    is("(X^2+1)÷X^3", CASIM_RAD, "LN(ABS(X))-1÷(2×X^2)");
+    refused("X^2÷X", CASIM_NOT_INTEGRABLE);
+    refused("X^2÷SQRT(X)", CASIM_NOT_INTEGRABLE);
+    refused("(X^2)^(1÷2)", CASIM_NOT_INTEGRABLE);            /* a fractional outer power: ABS(X) */
+    refused("X^2×X^(-1)", CASIM_NOT_INTEGRABLE);
+    refused("(X^2+X)÷X", CASIM_NOT_INTEGRABLE);              /* every term's exponent >= 0: X = 0 would vanish */
+    refused("COS(π×X)", CASIM_NOT_INTEGRABLE);
     /* a product inside a minus or parentheses, as a term of its own (the review's fuzz) */
     is("-(1÷(2×X+1)^2)÷A", CASIM_RAD, "1÷(2×(2×X+1)×A)");
     is("2×(3×X^2)", CASIM_RAD, "2×X^3");
