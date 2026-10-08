@@ -5,7 +5,7 @@ core's equation engine and number type. Derivatives (unit CAS 001) and simplific
 (CAS 002, docs/canonical-form.md) so far; expand, substitute, exact polynomial solving and integration
 later. Portable C11, small enough to run on the ESP32-S3 beside the firmware. Named by Michael ("I like
 casimir related to kasimir: proclaimer of peace"); the repository and the seat that writes it are casim.
-Intended MIT; PRIVATE until Michael opens it.
+MIT (LICENSE). PRIVATE until Michael opens it, after V1.0 and a sweep.
 
 ## Clean room
 
