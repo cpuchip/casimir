@@ -17,8 +17,15 @@ library and CLI. The device's key is a later firmware unit, as CAS 004 was.
      CASIM_SOLVE;
    - the CLI: `casim [--model …] [--cap N] solve "<t>" X RAD`.
    - `L=R` is solved as L − R = 0. An expression with no `=` is solved as expr = 0.
-2. **What counts as solvable:** after canonicalizing (002), the equation must be a polynomial in var with numeric
-   coefficients.
+2. **What counts as solvable:** the equation **as typed** must be a polynomial in var with numeric coefficients.
+   The coefficients are read from the parsed tree, not from 002's canonical form, by multiplying exact rational
+   coefficient lists (amended 2026-10-08, abacus, on casim's CAS 005 review, #5040: canonicalizing first printed
+   roots where the typed equation is undefined, e.g. X^2÷X gave X=0, LN(X)×0+X gave X=0, SQRT(X)^2+4 gave X=−4).
+   - So the refusals below apply to what the user typed: X^2÷X is NOT_POLYNOMIAL (var in a denominator), and so
+     is X^-1×X^2. A root is never printed where the typed equation is undefined.
+   - Division is allowed only by a numeric constant (X÷2 is fine). Division by a constant that is exactly 0 is
+     NOT_NUMERIC, since 1÷0 is not an exact rational.
+   - A degree past 12 at any step is NO_ROOM, even if it cancels later (X^13−X^13+X). The user can simplify first.
    - Decimals become exact rationals (0.25 is 1/4). Every coefficient is cleared to integers, exactly.
    - Otherwise there are two new statuses:
      - NOT_POLYNOMIAL: var inside a function, under a root, in a denominator, or a negative or fractional power;
