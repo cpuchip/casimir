@@ -105,7 +105,7 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
-    if op == "derive" or op == "collect" or op == "solve" or op == "integrate":
+    if op in ("derive", "collect", "solve", "integrate", "factor"):
         return m + [op, expr, var, angle]
     if op == "subst":
         return m + [op, expr, var, repl, angle]
@@ -221,6 +221,24 @@ def all_cases():
                               ("i seven forms DEG", "SIN(2×X)+COS(3×X+1)+TAN(X÷2)+EXP(X)+ALOG(2×X)+SINH(X)+1÷(2×X+1)", "DEG"),
                               ("i (2X+1)^(5÷3)", "(2×X+1)^(5÷3)", "RAD")]:
         rows.append((name, expr, "X", angle, "integrate", None, "35"))
+    # CAS 007: factor, its visible examples and the heaviest forms (the exhaustive monic degree 12, a
+    # twelve-real-root input that spends the whole budget, repeated factors of every degree)
+    with open(os.path.join(ROOT, "work", "007-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], "RAD", "factor", None, p[4]))
+    for name, expr in [("f prod(X-i)-1, i=-5..6", "×".join(f"(X{-i:+d})" if i else "X" for i in range(-5, 7)) + "-1"),
+                       ("f budget spent", "129600×X^12-440640×X^11-696096×X^10+3529728×X^9-155628×X^8-9280476×X^7"
+                        "+5112900×X^6+9705420×X^5-7759512×X^4-3970224×X^3+3990816×X^2+456192×X-622083"),
+                       ("f window decides", "1152000×X^12+960000×X^11-3160320×X^10-2505600×X^9+3068160×X^8+2248320×X^7"
+                        "-1278720×X^6-827520×X^5+234240×X^4+132480×X^3-15360×X^2-7680×X-2"),
+                       ("f divisor-rich lead", "8648640×X^12+873×X^10-747×X^4+2"),
+                       ("f X^12-1", "X^12-1"), ("f (X-1)^12", "(X-1)^12"), ("f (X^3-2)^4", "(X^3-2)^4"),
+                       ("f (X^2+X+6)^6", "(X^2+X+6)^6"), ("f (X^6+X+1)^2", "(X^6+X+1)^2"),
+                       ("f 12 linear", "×".join(f"(X{-i:+d})" if i else "X" for i in range(-5, 7)))]:
+        rows.append((name, expr, "X", "RAD", "factor", None, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))
@@ -240,7 +258,7 @@ def main():
     if not os.path.exists(CLI):
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
-    ratios, worst = [], {"derive": 0, "simplify": 0, "expand": 0, "collect": 0, "subst": 0}
+    ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:

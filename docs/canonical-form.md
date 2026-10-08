@@ -377,3 +377,62 @@ NOT_INTEGRABLE, never printed. The check cannot see a dropped ABS on x > 0; test
 judge) compare F(b) − F(a) with a quadrature of f on intervals on both sides of 0 with no singularity.
 
 TOO_LONG past 191 bytes, whatever cap is.
+
+## CAS 007: factor
+
+`casim_factor` (casim_run's CASIM_FACTOR; the CLI's `factor "<t>" X RAD`) factors a polynomial in var over Q,
+read as typed by CAS 005's walk with the same refusals (NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM past degree 12 or
+past |coefficient| 10^7 once cleared). An equation is BAD_ARG.
+
+**The text:** the rational content first when it is not 1 (`2×…`, `1÷2×…`, never a decimal; `-1×…` for a
+negative leading coefficient), then each irreducible factor once, primitive, with integers and a positive
+leading coefficient, in 002's canonical form, `^k` for a multiplicity above 1. Factors run in ascending degree,
+ties in 002's order of the factor (the order 002's own product would give them). A sum is parenthesised when it
+stands among other items or carries ^k; a polynomial that does not factor prints as itself, cleared, with its
+content; a constant prints as itself. TOO_LONG past 191 bytes.
+
+**How the factors are found:**
+
+1. The roots at 0 come out first (X^k).
+2. Repeated factors: an m-fold root's approximations (Aberth) ring it, so solve's clusters, at its three radii,
+   tightest first, give centroids, each polished by Newton on the (m−1)th derivative. Every subset of centroids
+   of one multiplicity, times every d dividing the leading coefficient, gives a candidate with rounded
+   coefficients, taken out as often as it divides exactly. This is a finder, not a proof.
+3. What is left, and each factor the finder took out, goes to the complete search (rule 5a, abacus #5192):
+   - the roots, Newton-polished, are enclosed in disks of radius n|W_i| (Weierstrass corrections, |h(z_i)|
+     inflated by Horner's running-error bound, the radius by 1.01). The inclusion theorem is Braess and
+     Hadeler, Numer. Math. 21 (1973) 161–165; abacus checked the record, and nobody here has read the
+     paper's text, so the constant n|W_i| rests on memory and the papers citing it. Disjoint disks hold one
+     root each.
+   - a root is real when no other disk meets its disk's mirror; otherwise its conjugate is the one disk that
+     does.
+   - every conjugation-closed subset of size 1 to n/2, in ascending size, and every d dividing the leading
+     coefficient that passes the constant-term window: d·e_k is a nonzero integer that divides a_0, so
+     1 ≤ d·|e_k| ≤ |a_0|. |e_k| lies between the product of the |z| − ρ and the product of the |z| + ρ, so only the
+     divisors in that window can give a factor (10^-9 of slack for the products' rounding). Then each d·e_j lies within d·E_j of its computed value, E_j = e_j(|z|+ρ) − e_j(|z|) +
+     10^-13·e_j(|z|+ρ). No integer there rejects the subset. A half-width under 0.25 holds one integer at most,
+     which gives a candidate, kept only if it divides exactly. The first factor found is irreducible, because
+     nothing smaller divides.
+   - after a split, the quotient keeps its roots (no second Aberth), with fresh disks.
+   - overlapping disks, a conjugate that isn't unique, an interval 0.5 or wider, or 80,000 divisor checks in
+     one call: **PARTIAL**, never a guess. The budget is a count, so the host and the S3 agree, and a divisor
+     outside the window is neither checked nor counted. Rule 5a accepted 150,000, but on the S3 a check costs
+     about 4.3 µs, not the prototype's 3, and 150,000 checks ran 1.13 s; 80,000 keeps the worst case under 1 s.
+     A NaN anywhere (a radius, a bound) counts as unproven.
+
+**Every answer is checked exactly before it prints:** the text is parsed back and walked to its coefficients,
+and they must equal the input's exactly. Otherwise nothing is printed (NO_ROOM).
+
+**CASIM_PARTIAL** prints the factorization with every proven factor in it, and the unproven ones multiplied
+back into one factor left whole. The firmware shows a note beside it, such as MAY FACTOR FURTHER. It falls
+where roots crowd too closely for the disks to separate (work/007-examples.txt F0021), or with many real
+roots, a divisor-rich leading coefficient and a large |a_0|, which together spend the budget. Before the window,
+4 of 10,000 random products of Eisenstein factors came back PARTIAL; with it, none of about 9,800. A fresh-eyes
+review (89,000 inputs against SymPy as a black box, no wrong answer) found two more places it falls:
+
+- **a repeated factor beside a nearly equal simple root**, about 1 in 10,000 random products: the cluster takes in
+  the neighbour, the finder fails, and the overlapping disks leave the whole polynomial unsplit, linear factors
+  included (`(11×X^3+6)^3×(3×X^2-2)`, roots −0.817 and −0.816). A square-free decomposition (Yun's, in casim's
+  512-bit integers) would decide these; it is the next step if they matter.
+- **Mignotte-type polynomials**, X^n − p(aX−1)^2 with a in the tens to hundreds: two roots within about 1/a^2, too
+  close for the disks.

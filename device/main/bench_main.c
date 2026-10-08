@@ -81,7 +81,7 @@ static void run_cases(void)
         int64_t t[REPS];
         size_t lo = 0, hi = ARENA_MAX;
         casim_status st = run(k, ARENA_MAX);
-        res[i].ok = (int)st == k->status && (st != CASIM_OK || strcmp(out, k->want) == 0);
+        res[i].ok = (int)st == k->status && ((st != CASIM_OK && st != CASIM_PARTIAL) || strcmp(out, k->want) == 0);
         for (int r = 0; r < REPS; r++) {
             int64_t t0 = esp_timer_get_time();
             run(k, ARENA_MAX);
@@ -90,10 +90,10 @@ static void run_cases(void)
         qsort(t, REPS, sizeof t[0], cmp64);
         res[i].us_min = t[0];
         res[i].us_med = t[REPS / 2];
-        if (k->status != CASIM_OK) lo = hi = 0;       /* no arena gives OK: nothing to find */
+        if (k->status != CASIM_OK && k->status != CASIM_PARTIAL) lo = hi = 0;   /* no arena gives its answer */
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
-            if (run(k, mid) == CASIM_OK) hi = mid;
+            if ((int)run(k, mid) == k->status) hi = mid;
             else lo = mid + 1;
         }
         res[i].arena = lo;
@@ -125,7 +125,7 @@ static void bench_task(void *arg)
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvi"[k->op], k->chars,
+            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvif"[k->op], k->chars,
                    (long long)res[i].us_min,
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
                    k->status ? -k->status : (int)strlen(k->want),

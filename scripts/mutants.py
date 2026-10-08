@@ -140,6 +140,45 @@ MUTANTS = {
         ("src/casim.c", "        if (x->id == F_TAN) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));",
          "        if (0) v = a;"),
     ],
+    # CAS 007: the unit's list, then the search's own parts (the disks' pairing, a wide interval, the finder)
+    "factor-dropped": [
+        ("src/casim.c", "                if (times && *ni <= SOLVE_DEG) {\n                    it[(*ni)++] = (fitem){g, times, false};",
+         "                if (times && *ni <= SOLVE_DEG) {\n                    (void)it;"),
+    ],
+    "factor-multiplicity-lost": [
+        ("src/casim.c", "            if (it[i].mult > 1) puts_(&o, \"^\"), put_int(&o, it[i].mult);", "            (void)0;"),
+    ],
+    "factor-content-lost": [
+        ("src/casim.c", "        else if (!rat_is(&content, 1, 1)) put_content(&o, &content);", "        (void)put_content;"),
+    ],
+    "factor-content-sign-flipped": [
+        ("src/casim.c", "        if (rat_is(&content, -1, 1)) puts_(&o, \"-1\");", "        if (content.p < 0) content.p = -content.p;\n        if (rat_is(&content, -1, 1)) puts_(&o, \"-1\");"),
+    ],
+    "factor-check-skipped-wrong-factor": [
+        ("src/casim.c", "    return same;\n}", "    return same || 1;\n}"),
+        ("src/casim.c", "    if (zero) it[ni++] = (fitem){{1, {0, 1}}, zero, true};", "    if (zero) it[ni++] = (fitem){{1, {1, 1}}, zero, true};"),
+    ],
+    "factor-unproven-reported-ok": [
+        ("src/casim.c", "        partial = partial || r == 1;", "        partial = partial && r == 1;"),
+    ],
+    "factor-stamp-ignored": [
+        ("src/casim.c", "    return do_factor(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
+         "    return do_factor(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
+    ],
+    # (every root taken as real only widens the search, an equivalent mutant; pairing real roots hides a factor)
+    "factor-real-roots-paired": [
+        ("src/casim.c", "        if (count == 0) pair[i] = i;", "        if (count == 0) pair[i] = (i ^ 1) < n ? i ^ 1 : i;"),
+    ],
+    # (an interval 0.5 or wider taken as a rejection survives: since the constant-term window, no search in about
+    # 344,000 probes, Eisenstein products, dense and real-rooted inputs with divisor-rich leads, left one unproven by
+    # a wide interval. The branch stays, as the proof needs it; the mutant is equivalent on everything reached.)
+    "factor-window-too-narrow": [
+        ("src/casim.c", "            dmin = (1 - 1e-9) / hi, dmax = lo > 0 ? a0 * (1 + 1e-9) / lo : 1e300;",
+         "            dmin = (1 - 1e-9) / hi, dmax = lo > 0 ? a0 * (1 + 1e-9) / lo / 2 : 1e300;"),
+    ],
+    "factor-finder-off": [
+        ("src/casim.c", "    repeated_factors(&f, s, w, dq, it, &ni);", "    (void)repeated_factors;"),
+    ],
     # CAS 005 rule 2 as amended: the equation as typed
     "solve-denominator-allowed": [
         ("src/casim.c", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var) && 0) {"),

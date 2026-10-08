@@ -2871,6 +2871,7 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
     case CASIM_SOLVE: return casim_solve(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_INTEGRATE: return casim_integrate(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_FACTOR: return casim_factor(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -3002,45 +3003,57 @@ static __attribute__((noinline)) void aberth(const ipoly *f, solve_ws *s)
     s->count = n;
 }
 
+static const double RADIUS2[3] = {1e-6, 1e-3, 0.06};        /* squared distance, relative to |z|^2 */
+
+/* The cluster of approximation i at squared radius r2 (relative to |z|^2), its members marked in grp, and its
+   centroid, polished by Newton on the (m-1)th derivative, where an m-fold root is simple. Returns m. */
+static int centroid(const ipoly *f, const solve_ws *s, int i, int *grp, double r2, double *cr, double *ci)
+{
+    double gr = s->re[i], gi = s->im[i], scale = s->re[i] * s->re[i] + s->im[i] * s->im[i], d[SOLVE_DEG + 1];
+    int m = 1, nd;
+    grp[i] = i;
+    if (scale < 1) scale = 1;
+    for (int j = i + 1; j < f->n; j++) {
+        double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j];
+        if (grp[j] < 0 && ar * ar + ai * ai < r2 * scale) grp[j] = i, gr += s->re[j], gi += s->im[j], m++;
+    }
+    if (m > 1) {
+        gr /= m, gi /= m;
+        nd = f->n - (m - 1);
+        for (int j = 0; j <= nd; j++) {
+            double v = (double)f->a[j + m - 1];
+            for (int t = 1; t <= m - 1; t++) v *= (double)(j + t);
+            d[j] = v;
+        }
+        for (int it = 0; it < 8 && nd >= 1; it++) {
+            double pr = d[nd], pi = 0, dr = 0, di = 0, t, den;
+            for (int j = nd - 1; j >= 0; j--) {
+                t = dr * gr - di * gi + pr, di = dr * gi + di * gr + pi, dr = t;
+                t = pr * gr - pi * gi + d[j], pi = pr * gi + pi * gr, pr = t;
+            }
+            den = dr * dr + di * di;
+            if (den == 0) break;
+            gr -= (pr * dr + pi * di) / den, gi -= (pi * dr - pr * di) / den;
+        }
+    }
+    *cr = gr, *ci = gi;
+    return m;
+}
+
 /* Clusters of approximations (a multiple root's ring): each centroid, polished by Newton on the (m-1)th
    derivative, where an m-fold root is simple, added as a candidate beside the approximations. An m-fold
    root's ring has a radius near eps^(1/m) of its size, so clusters are formed at three radii, the widest for
    m up to 12 (the review of 93daf60: one radius missed m >= 7). */
 static __attribute__((noinline)) void clusters(const ipoly *f, solve_ws *s)
 {
-    static const double RADIUS2[3] = {1e-6, 1e-3, 0.06};     /* squared distance, relative to |z|^2 */
     int n = f->n;
     for (int pass = 0; pass < 3; pass++) {
         int grp[SOLVE_DEG];
         for (int i = 0; i < n; i++) grp[i] = -1;
         for (int i = 0; i < n; i++) {
-            double gr = s->re[i], gi = s->im[i], scale = s->re[i] * s->re[i] + s->im[i] * s->im[i], d[SOLVE_DEG + 1];
-            int m = 1, nd;
+            double gr, gi;
             if (grp[i] >= 0) continue;
-            grp[i] = i;
-            if (scale < 1) scale = 1;
-            for (int j = i + 1; j < n; j++) {
-                double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j];
-                if (grp[j] < 0 && ar * ar + ai * ai < RADIUS2[pass] * scale) grp[j] = i, gr += s->re[j], gi += s->im[j], m++;
-            }
-            if (m == 1 || s->count >= 3 * SOLVE_DEG) continue;
-            gr /= m, gi /= m;
-            nd = f->n - (m - 1);
-            for (int j = 0; j <= nd; j++) {
-                double v = (double)f->a[j + m - 1];
-                for (int t = 1; t <= m - 1; t++) v *= (double)(j + t);
-                d[j] = v;
-            }
-            for (int it = 0; it < 8 && nd >= 1; it++) {
-                double pr = d[nd], pi = 0, dr = 0, di = 0, t, den;
-                for (int j = nd - 1; j >= 0; j--) {
-                    t = dr * gr - di * gi + pr, di = dr * gi + di * gr + pi, dr = t;
-                    t = pr * gr - pi * gi + d[j], pi = pr * gi + pi * gr, pr = t;
-                }
-                den = dr * dr + di * di;
-                if (den == 0) break;
-                gr -= (pr * dr + pi * di) / den, gi -= (pi * dr - pr * di) / den;
-            }
+            if (centroid(f, s, i, grp, RADIUS2[pass], &gr, &gi) == 1 || s->count >= 3 * SOLVE_DEG) continue;
             s->re[s->count] = gr, s->im[s->count] = gi, s->count++;
         }
     }
@@ -4060,4 +4073,461 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- factor (unit CAS 007) ----
+   The polynomial as typed (CAS 005's walk), cleared to a primitive integer f, its roots at 0 taken out. Repeated
+   factors are found from the clusters' centroids and taken out by exact division; then each of them, and what is
+   left, is split into irreducible factors or proven irreducible by a complete search (rule 5a, abacus #5192):
+   its roots enclosed in disks, every conjugation-closed subset of size 1..n/2 and every positive d | lc tried
+   with exact interval bounds. What the search cannot decide is printed whole, with CASIM_PARTIAL. */
+
+#define FACTOR_BUDGET 80000L            /* divisor checks in one call: a count, so host and S3 agree (rule 5a said 150,000;
+                                           at 4.3 us a check on the S3 that ran 1.13 s, so 80,000 keeps it under 1 s) */
+
+typedef struct {
+    ipoly p;
+    int mult;
+    bool proven;
+} fitem;
+
+/* The search's work, in the arena (off the stack). */
+typedef struct {
+    union {
+        struct {                            /* the search */
+            double rho[SOLVE_DEG];          /* the disks' radii */
+            double az[SOLVE_DEG], bz[SOLVE_DEG];    /* |z| and |z| + rho */
+            int pair[SOLVE_DEG];            /* each root's conjugate */
+        };
+        struct {                            /* the finder */
+            double cr[SOLVE_DEG], ci[SOLVE_DEG];    /* the centroids */
+            int cm[SOLVE_DEG];              /* and their multiplicities */
+        };
+    };
+    double er[SOLVE_DEG + 1], ei[SOLVE_DEG + 1], ea[SOLVE_DEG + 1], eb[SOLVE_DEG + 1];
+    int64_t co[SOLVE_DEG + 1];              /* a candidate's rounded coefficients */
+} fwork;
+
+/* h / g exactly into q (g's leading coefficient positive); false when it does not divide or a step overflows. */
+static bool div_poly(const ipoly *h, const ipoly *g, ipoly *q)
+{
+    ipoly r = *h;
+    int n = h->n, k = g->n;
+    if (k < 1 || n < k || g->a[k] == 0) return false;
+    q->n = n - k;
+    for (int i = n; i >= k; i--) {
+        int64_t qc, t;
+        if (r.a[i] % g->a[k]) return false;
+        qc = r.a[i] / g->a[k];
+        q->a[i - k] = qc;
+        for (int j = 0; j <= k; j++)
+            if (__builtin_mul_overflow(qc, g->a[j], &t) || __builtin_sub_overflow(r.a[i - k + j], t, &r.a[i - k + j]))
+                return false;
+    }
+    for (int i = 0; i < k; i++)
+        if (r.a[i] != 0) return false;
+    return true;
+}
+
+/* a *= b exactly; false past degree 12 or on overflow */
+static __attribute__((noinline)) bool ipmul(ipoly *a, const ipoly *b)
+{
+    ipoly r = {a->n + b->n, {0}};
+    if (r.n > SOLVE_DEG) return false;
+    for (int i = 0; i <= a->n; i++)
+        for (int j = 0; j <= b->n; j++) {
+            int64_t t;
+            if (__builtin_mul_overflow(a->a[i], b->a[j], &t) || __builtin_add_overflow(r.a[i + j], t, &r.a[i + j])) return false;
+        }
+    *a = r;
+    return true;
+}
+
+static double cmod(double re, double im)
+{
+    return __builtin_sqrt(re * re + im * im);
+}
+
+/* h(z) and h'(z) by Horner (complex), and the running-error bound's magnitude sum |a_k||z|^k. */
+static __attribute__((noinline)) void horner(const ipoly *h, double zr, double zi, double *pr, double *pi, double *dr, double *di, double *mag)
+{
+    double az = cmod(zr, zi), zk = 1;
+    *pr = *pi = *dr = *di = 0, *mag = 0;
+    for (int k = h->n; k >= 0; k--) {
+        double t;
+        t = *dr * zr - *di * zi + *pr, *di = *dr * zi + *di * zr + *pi, *dr = t;
+        t = *pr * zr - *pi * zi + (double)h->a[k], *pi = *pr * zi + *pi * zr, *pr = t;
+    }
+    for (int k = 0; k <= h->n; k++) *mag += __builtin_fabs((double)h->a[k]) * zk, zk *= az;
+}
+
+/* The roots' inclusion disks: Weierstrass corrections W_i = h(z_i) / (lc prod_{j != i} (z_i - z_j)), radius
+   n |W_i|, |h(z_i)| inflated by Horner's running-error bound 4(n+2) u sum|a_k||z_i|^k and the radius by 1.01
+   for the denominator's rounding. The inclusion theorem: the disks' union holds every root, and a component of
+   m disks holds m roots (D. Braess and K. P. Hadeler, "Simultaneous Inclusion of the Zeros of a Polynomial",
+   Numerische Mathematik 21 (1973), 161-165; abacus checked the record but could not read the paper, and the
+   constant n|W_i| is from casim's memory and the papers citing it, not verified against the text). So
+   pairwise disjoint disks hold one root each; false when two meet. */
+static __attribute__((noinline)) bool incl_disks(const ipoly *h, const solve_ws *s, double *rho)
+{
+    int n = h->n;
+    for (int i = 0; i < n; i++) {
+        double pr, pi, dr, di, mag, denr = 1, deni = 0;
+        horner(h, s->re[i], s->im[i], &pr, &pi, &dr, &di, &mag);
+        for (int j = 0; j < n; j++)
+            if (j != i) {
+                double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j], t = denr * ar - deni * ai;
+                deni = denr * ai + deni * ar, denr = t;
+            }
+        if (denr == 0 && deni == 0) return false;
+        rho[i] = n * (cmod(pr, pi) + 4.0 * (n + 2) * 1.2e-16 * mag) / (__builtin_fabs((double)h->a[n]) * cmod(denr, deni));
+        rho[i] = rho[i] * 1.01 + 1e-300;
+        if (!(rho[i] < 1e300)) return false;            /* a NaN or infinite radius proves nothing */
+    }
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (!(cmod(s->re[i] - s->re[j], s->im[i] - s->im[j]) > rho[i] + rho[j])) return false;  /* NaN: meets */
+    return true;
+}
+
+/* Each root's conjugate: itself when no other disk meets the mirror of its disk (the conjugate root lies in the
+   mirror and in some disk: then in its own, which holds one root, so the root is real); else the one other disk
+   that meets the mirror. False when that is not unique or not mutual. */
+static __attribute__((noinline)) bool conj_pairs(const ipoly *h, const solve_ws *s, const double *rho, int *pair)
+{
+    int n = h->n;
+    for (int i = 0; i < n; i++) {
+        int found = -1, count = 0;
+        for (int j = 0; j < n; j++)
+            if (j != i && cmod(s->re[j] - s->re[i], s->im[j] + s->im[i]) <= rho[i] + rho[j]) found = j, count++;
+        if (count == 0) pair[i] = i;
+        else if (count == 1 && cmod(0, 2 * s->im[i]) > 2 * rho[i]) pair[i] = found;
+        else return false;
+    }
+    for (int i = 0; i < n; i++)
+        if (pair[pair[i]] != i) return false;
+    return true;
+}
+
+/* e_1..e_k of the points in mask m (k its size), complex, into w->er, w->ei; with bounds (the search), the
+   bound E_j = e_j(|z|+rho) - e_j(|z|) + 1E-13 e_j(|z|+rho) on each one's error into w->ea. */
+static __attribute__((noinline)) int esym(const double *re, const double *im, int n, unsigned m, bool bounds, fwork *w)
+{
+    int k = 0;
+    for (int j = 0; j <= SOLVE_DEG; j++) w->er[j] = w->ea[j] = w->eb[j] = j == 0, w->ei[j] = 0;
+    for (int i = 0; i < n; i++)
+        if (m >> i & 1) {
+            k++;
+            for (int j = k; j >= 1; j--) {
+                double tr = w->er[j - 1] * re[i] - w->ei[j - 1] * im[i], ti = w->er[j - 1] * im[i] + w->ei[j - 1] * re[i];
+                w->er[j] += tr, w->ei[j] += ti;
+                if (bounds) w->ea[j] += w->ea[j - 1] * w->az[i], w->eb[j] += w->eb[j - 1] * w->bz[i];
+            }
+        }
+    for (int j = 1; j <= k && bounds; j++) w->ea[j] = (w->eb[j] - w->ea[j]) + 1e-13 * w->eb[j];
+    return k;
+}
+
+/* The complete search on a square-free h (degree n >= 2): 1 with a factor g of degree 1..n/2 and h / g in q
+   (g the first found in ascending size: irreducible; the roots left in s are q's), 0 when none exists (proven:
+   h is irreducible), -1 when it cannot be proven (disks meet, a conjugate is not unique, an interval is 0.5 or
+   wider, or the budget ran out). fresh: s does not yet hold h's roots. */
+static __attribute__((noinline)) int factor_search(const ipoly *h, solve_ws *s, fwork *w, int32_t *dq, long *budget, bool fresh,
+                                                   ipoly *g, ipoly *q)
+{
+    int n = h->n, nd, unproven = 0, u0, u1;
+    double a0 = __builtin_fabs((double)h->a[0]), lo, hi, dmin, dmax;
+    if (fresh) aberth(h, s);
+    for (int i = 0; i < n; i++)
+        for (int it = 0; it < 4; it++) {
+            double pr, pi, dr, di, mag, den;
+            horner(h, s->re[i], s->im[i], &pr, &pi, &dr, &di, &mag);
+            den = dr * dr + di * di;
+            if (den == 0) break;
+            s->re[i] -= (pr * dr + pi * di) / den, s->im[i] -= (pi * dr - pr * di) / den;
+        }
+    if (!incl_disks(h, s, w->rho) || !conj_pairs(h, s, w->rho, w->pair)) return -1;
+    for (int i = 0; i < n; i++) w->az[i] = cmod(s->re[i], s->im[i]), w->bz[i] = w->az[i] + w->rho[i];
+    nd = divisors_of(h->a[n], dq, SOLVE_DIVS);
+    for (int i = 1; i < nd; i++) {
+        int32_t t = dq[i];
+        int j = i;
+        for (; j > 0 && dq[j - 1] > t; j--) dq[j] = dq[j - 1];
+        dq[j] = t;
+    }
+    for (int k = 1; k <= n / 2; k++) {
+        for (unsigned m = 1; m < (1u << n); m++) {
+            bool closed = true;
+            if (__builtin_popcount(m) != (unsigned)k) continue;
+            for (int i = 0; i < n && closed; i++)
+                if (m >> i & 1) closed = (m >> w->pair[i] & 1) != 0;
+            if (!closed) continue;
+            /* the constant term: d e_k is a nonzero integer dividing a_0, so 1 <= d |e_k| <= |a_0|, and |e_k| lies
+               between the products of |z| - rho and of |z| + rho: only the divisors in that window (dq ascending) */
+            lo = hi = 1;
+            for (int i = 0; i < n; i++)
+                if (m >> i & 1) lo *= w->az[i] > w->rho[i] ? w->az[i] - w->rho[i] : 0, hi *= w->bz[i];
+            dmin = (1 - 1e-9) / hi, dmax = lo > 0 ? a0 * (1 + 1e-9) / lo : 1e300;
+            for (u0 = 0, u1 = nd; u0 < u1;) {
+                int mid = (u0 + u1) / 2;
+                if (dq[mid] < dmin) u0 = mid + 1;
+                else u1 = mid;
+            }
+            if (u0 >= nd || dq[u0] > dmax) continue;
+            esym(s->re, s->im, n, m, true, w);
+            for (int u = u0; u < nd && dq[u] <= dmax; u++) {
+                double d = dq[u];
+                bool reject = false, wide = false;
+                if (--*budget < 0) return -1;
+                for (int j = 1; j <= k && !reject; j++) {
+                    /* d e_j lies within d E_j of the computed value, E_j = e_j(|z|+rho) - e_j(|z|) + 1E-13 e_j(|z|+rho):
+                       no integer there rejects; a half-width under 0.25 holds at most one */
+                    double v = d * w->er[j], e = d * w->ea[j];
+                    if (!(e < 0.25) || !round64(v, &w->co[j])) wide = true;   /* unproven (NaN too), unless another rejects */
+                    else if (__builtin_fabs(v - (double)w->co[j]) > e || __builtin_fabs(d * w->ei[j]) > e) reject = true;
+                }
+                if (reject) continue;
+                if (wide) {
+                    unproven = 1;
+                    continue;
+                }
+                g->n = k, g->a[k] = dq[u];
+                for (int j = 1; j <= k; j++) g->a[k - j] = j % 2 ? -w->co[j] : w->co[j];
+                if (g->a[0] != 0 && h->a[0] % g->a[0] == 0 && div_poly(h, g, q)) {
+                    int t = 0;
+                    for (int i = 0; i < n; i++)
+                        if (!(m >> i & 1)) s->re[t] = s->re[i], s->im[t] = s->im[i], t++;
+                    return 1;
+                }
+            }
+        }
+        if (unproven) return -1;
+    }
+    return 0;
+}
+
+/* Repeated factors (abacus: (X^3-2)^2): an m-fold root's approximations ring it, so the clusters' centroids
+   (solve's, at its three radii, the tightest first) stand for the distinct roots. A subset of centroids of one
+   multiplicity, with d | lc and its coefficients rounded, is a candidate, taken out of h as often as it divides.
+   A finder, not a proof: what it finds is split or proven by the search like any other factor. */
+static __attribute__((noinline)) void repeated_factors(ipoly *h, solve_ws *s, fwork *w, int32_t *dq, fitem *it, int *ni)
+{
+    bool fresh = false;
+    for (int pass = 0; pass < 3 && h->n >= 2; pass++) {
+        int grp[SOLVE_DEG], nc = 0, nd;
+        if (!fresh) aberth(h, s), fresh = true;
+        for (int i = 0; i < h->n; i++) grp[i] = -1;
+        for (int i = 0; i < h->n; i++) {
+            int m;
+            if (grp[i] >= 0) continue;
+            m = centroid(h, s, i, grp, RADIUS2[pass], &w->cr[nc], &w->ci[nc]);
+            if (m > 1) w->cm[nc++] = m;
+        }
+        nd = divisors_of(h->a[h->n], dq, SOLVE_DIVS);
+        for (unsigned msk = 1; msk < (1u << nc) && fresh; msk++) {
+            int k, mult = 0;
+            bool one = true;
+            for (int i = 0; i < nc; i++)
+                if (msk >> i & 1) one = one && (mult == 0 || w->cm[i] == mult), mult = w->cm[i];
+            if (!one) continue;
+            k = esym(w->cr, w->ci, nc, msk, false, w);
+            for (int u = 0; u < nd; u++) {
+                ipoly g, q;
+                int times = 0;
+                bool fits = true;
+                g.n = k, g.a[k] = dq[u];
+                for (int j = 1; j <= k && fits; j++) {
+                    double v = (double)dq[u] * w->er[j];
+                    fits = __builtin_fabs((double)dq[u] * w->ei[j]) <= 1e-3 * (1 + __builtin_fabs(v)) && round64(v, &g.a[k - j]);
+                    if (j % 2) g.a[k - j] = -g.a[k - j];
+                }
+                if (!fits || g.a[0] == 0) continue;
+                while (h->n >= k && div_poly(h, &g, &q)) *h = q, times++;
+                if (times && *ni <= SOLVE_DEG) {
+                    it[(*ni)++] = (fitem){g, times, false};
+                    fresh = false;              /* h changed: its roots again, from the tightest radius */
+                    break;
+                }
+            }
+        }
+        if (!fresh) pass = -1;
+    }
+}
+
+/* The factor's canonical tree, for ordering and printing. */
+static __attribute__((noinline)) ref ipoly_tree(ctx *c, const ipoly *p, int var)
+{
+    rat r[SOLVE_DEG + 1];
+    for (int k = 0; k <= SOLVE_DEG; k++) rat_int(&r[k], 0);
+    for (int k = 0; k <= p->n; k++) rat_make(&r[k], p->a[k], 1);
+    return poly_tree(c, r, var);
+}
+
+/* content p/q as text: an integer or p÷q (the example's 1÷2), never a decimal */
+static __attribute__((noinline)) void put_content(out_t *w, const rat *v)
+{
+    put_int(w, v->p);
+    if (v->q != 1) puts_(w, DIVIDE), put_int(w, v->q);
+}
+
+/* Item i split by the search into irreducible factors, its first piece in its place and the rest appended: 0
+   all proven, 1 the last piece left whole (unproven), 2 no room for the pieces. */
+static __attribute__((noinline)) int split(fitem *it, int i, int *ni, solve_ws *s, fwork *w, int32_t *dq, long *budget)
+{
+    ipoly h = it[i].p, g, q;
+    int slot = i, r;
+    bool fresh = true;
+    for (;;) {
+        r = h.n >= 2 ? factor_search(&h, s, w, dq, budget, fresh, &g, &q) : 0;
+        if (slot < 0) {
+            if (*ni > SOLVE_DEG) return 2;
+            slot = (*ni)++, it[slot].mult = it[i].mult;
+        }
+        it[slot].p = r == 1 ? g : h, it[slot].proven = r >= 0;
+        if (r != 1) return r < 0;
+        slot = -1, h = q, fresh = false;
+    }
+}
+
+/* Rule 4: the text, read back (in its own arena), is the input's polynomial co exactly. */
+static __attribute__((noinline)) bool read_back(const char *text, int var, const rat *co, void *arena, size_t arena_cap)
+{
+    ctx r;
+    ref rn;
+    rat back[SOLVE_DEG + 1];
+    bool same;
+    start(&r, text, CASIM_RAD, arena, arena_cap);
+    r.opaque = true;
+    rn = parse(&r);
+    if (r.st == CASIM_OK) pw(&r, rn, var, back);
+    same = r.st == CASIM_OK;
+    for (int k = 0; k <= SOLVE_DEG && same; k++) same = rat_cmp(&back[k], &co[k]) == 0;
+    return same;
+}
+
+static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                         void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, cr, ws, wr, dqr, itr;
+    size_t ocap = cap < SLOT ? cap : SLOT, mark0, mark;
+    out_t o = {out, ocap, 0, false};
+    ipoly f;
+    rat *co, content, inv;
+    fitem *it;
+    solve_ws *s;
+    fwork *w;
+    int32_t *dq;
+    int ni = 0, n0, zero = 0, items = 0;
+    bool partial = false;
+    long budget = FACTOR_BUDGET;
+    if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    /* the arena: the coefficients, then the work areas, then the input's tree, dropped after the walk */
+    cr = grab(&c, (SOLVE_DEG + 1) * sizeof(rat));
+    mark0 = c.used;
+    ws = grab(&c, sizeof(solve_ws));
+    wr = grab(&c, sizeof(fwork));
+    dqr = grab(&c, SOLVE_DIVS * sizeof(int32_t));
+    itr = grab(&c, (SOLVE_DEG + 1) * sizeof(fitem));   /* distinct factors: their degrees sum to <= 12 */
+    mark = c.used;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;
+    if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, ocap);
+    co = (rat *)(void *)nd(&c, cr);
+    pw(&c, n, var, co);
+    if (c.st != CASIM_OK || !clear(&c, co, &f)) return finish(&c, SPARE, out, ocap);
+    c.used = mark;
+    if (f.n <= 0) {
+        put_content(&o, &co[0]);        /* a constant: itself */
+        if (o.full) c.st = CASIM_TOO_LONG;
+        return c.st == CASIM_OK ? CASIM_OK : finish(&c, SPARE, out, ocap);
+    }
+    if (!rat_make(&inv, 1, f.a[f.n]) || !rat_mul(&content, &co[f.n], &inv)) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    s = (solve_ws *)(void *)nd(&c, ws);
+    w = (fwork *)(void *)nd(&c, wr);
+    dq = (int32_t *)(void *)nd(&c, dqr);
+    it = (fitem *)(void *)nd(&c, itr);
+    while (f.a[0] == 0) {
+        memmove(f.a, f.a + 1, (size_t)f.n * sizeof f.a[0]);
+        f.n--, zero++;
+    }
+    if (zero) it[ni++] = (fitem){{1, {0, 1}}, zero, true};
+    repeated_factors(&f, s, w, dq, it, &ni);
+    if (f.n >= 1) it[ni++] = (fitem){f, 1, false};
+    /* each unproven item split by the search into irreducible factors (its first piece in its place, the rest
+       after), or left whole when the search cannot decide */
+    n0 = ni;
+    for (int i = 0; i < n0; i++) {
+        int r = it[i].proven ? 0 : split(it, i, &ni, s, w, dq, &budget);
+        if (r == 2) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+        partial = partial || r == 1;
+    }
+    if (partial) {
+        /* PARTIAL leaves one factor whole (rule 5's contract): the unproven ones multiplied back into it */
+        int w0 = -1;
+        for (int i = 0; i < ni; i++) {
+            ipoly base = it[i].p;
+            if (it[i].proven) continue;
+            if (w0 < 0) w0 = i;
+            for (int m = (w0 == i); m < it[i].mult; m++)
+                if (!ipmul(&it[w0].p, &base)) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+            if (w0 != i) it[i].mult = 0;
+        }
+        it[w0].mult = 1;
+    }
+    {
+        /* equal factors merged; then ascending degree, ties in 002's order of the canonical factor */
+        ref tl = grab(&c, (size_t)ni * sizeof(ref));
+        if (!tl) return finish(&c, SPARE, out, ocap);
+        for (int i = 0; i < ni; i++)
+            for (int j = i + 1; j < ni; j++)
+                if (it[i].mult && it[j].mult && it[i].p.n == it[j].p.n &&
+                    memcmp(it[i].p.a, it[j].p.a, (size_t)(it[i].p.n + 1) * sizeof(int64_t)) == 0)
+                    it[i].mult += it[j].mult, it[j].mult = 0;
+        for (int i = 0; i < ni; i++)
+            if (it[i].mult) it[items] = it[i], list(&c, tl)[items++] = ipoly_tree(&c, &it[i].p, var);
+        for (int i = 1; i < items; i++) {
+            fitem t = it[i];
+            ref tt = list(&c, tl)[i];
+            int j = i;
+            while (j > 0 && (it[j - 1].p.n > t.p.n || (it[j - 1].p.n == t.p.n && cmp(&c, list(&c, tl)[j - 1], tt) > 0))) {
+                it[j] = it[j - 1], list(&c, tl)[j] = list(&c, tl)[j - 1];
+                j--;
+            }
+            it[j] = t, list(&c, tl)[j] = tt;
+        }
+        if (rat_is(&content, -1, 1)) puts_(&o, "-1");
+        else if (!rat_is(&content, 1, 1)) put_content(&o, &content);
+        for (int i = 0; i < items; i++) {
+            ref t = list(&c, tl)[i];
+            bool paren = nd(&c, t)->kind == K_ADD && (items > 1 || it[i].mult > 1 || o.n > 0);
+            if (o.n > 0) puts_(&o, TIMES);
+            if (paren) puts_(&o, "(");
+            print(&c, &o, t);
+            if (paren) puts_(&o, ")");
+            if (it[i].mult > 1) puts_(&o, "^"), put_int(&o, it[i].mult);
+        }
+    }
+    if (o.full) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if (!read_back(out, var, co, c.mem + mark0, c.cap - mark0)) {   /* everything after the coefficients is done with */
+        out[0] = '\0';
+        return CASIM_NO_ROOM;           /* never printed unverified (a defect if it happens; the arena if it is short) */
+    }
+    return partial ? CASIM_PARTIAL : CASIM_OK;
+}
+
+/* ---- the API: CAS 007 ---- */
+
+casim_status casim_factor(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_factor(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }

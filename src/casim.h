@@ -23,8 +23,11 @@ typedef enum {
                                    power not a whole number >= 0; out is "" */
     CASIM_NOT_NUMERIC,          /* CAS 005, solve: a coefficient not an exact rational number (another letter,
                                    π, SQRT(2), a draw); out is "" */
-    CASIM_NOT_INTEGRABLE        /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
+    CASIM_NOT_INTEGRABLE,       /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
                                    derive-back check could not close; out is "" */
+    CASIM_PARTIAL               /* CAS 007, factor: out holds a correct factorization (it reads back as the
+                                   input exactly), but a factor of degree >= 4 is not proven irreducible (rule 5a);
+                                   the firmware shows MAY FACTOR FURTHER beside it */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -68,7 +71,8 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_33 33
 #define CASIM_MODEL_35 35
 
-typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE } casim_op;
+typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
+               CASIM_FACTOR } casim_op;
 
 typedef struct {
     casim_op op;
@@ -103,5 +107,15 @@ casim_status casim_solve(const char *eqn, int var, int model, int angle, char *o
    before it prints; anything else is NOT_INTEGRABLE. An equation is BAD_ARG. TOO_LONG past 191 bytes. */
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                              size_t arena_cap);
+
+/* Unit CAS 007: the polynomial eqn (in var, as typed, CAS 005's rule 2) factored over Q: the rational content first
+   (when not 1), then each irreducible factor once, primitive with integer coefficients and a positive leading
+   coefficient, in 002's canonical form, ^k for a multiplicity, in ascending degree (ties in 002's order). Every
+   factor of degree >= 2 is proven irreducible (degree 2: its discriminant is not a square; degree >= 3: a complete
+   search, docs and rule 5a); the text is read back and must be the input's polynomial exactly. PARTIAL when a
+   factor could not be proven irreducible (out is still a correct factorization). An equation is BAD_ARG; TOO_LONG
+   past 191 bytes. */
+casim_status casim_factor(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap);
 
 #endif
