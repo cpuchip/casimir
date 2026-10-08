@@ -397,7 +397,9 @@ content; a constant prints as itself. TOO_LONG past 191 bytes.
 2. Repeated factors: an m-fold root's approximations (Aberth) ring it, so solve's clusters, at its three radii,
    tightest first, give centroids, each polished by Newton on the (m−1)th derivative. Every subset of centroids
    of one multiplicity, times every d dividing the leading coefficient, gives a candidate with rounded
-   coefficients, taken out as often as it divides exactly. This is a finder, not a proof.
+   coefficients, taken out as often as it divides exactly. Each factor it takes out gets the finder again,
+   multiplicities multiplied, because a factor found this way may itself be a power: a 9-fold root's ring can
+   split into two clusters whose pair gives (X+2)^2, four times (abacus #5203). This is a finder, not a proof.
 3. What is left, and each factor the finder took out, goes to the complete search (rule 5a, abacus #5192):
    - the roots, Newton-polished, are enclosed in disks of radius n|W_i| (Weierstrass corrections, |h(z_i)|
      inflated by Horner's running-error bound, the radius by 1.01). The inclusion theorem is Braess and

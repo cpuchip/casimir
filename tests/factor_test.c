@@ -279,11 +279,39 @@ static void visible(void)
     CHECK(n >= 15, "%d visible examples", n);
 }
 
+/* abacus #5203: (X+2)^9 printed PARTIAL (the ring split into two clusters, (X+2)^2 found four times). Every
+   linear (aX+b)^m within the bound prints as its own text to the m. */
+static void linear_powers(void)
+{
+    int n = 0;
+    for (int a = 1; a <= 3; a++)
+        for (int b = -3; b <= 3; b++) {
+            char base[64], one[OUT];
+            if (b == 0 || (a % 2 == 0 && b % 2 == 0) || (a == 3 && b % 3 == 0)) continue;
+            snprintf(base, sizeof base, "%d×X%+d", a, b);
+            if (factor(base, CASIM_MODEL_35, one, sizeof arena) != CASIM_OK) continue;
+            for (int m = 2; m <= 12; m++) {
+                char text[96], want[OUT + 16], out[OUT];
+                double big = 1;
+                for (int k = 0; k < m; k++) big *= a + abs(b);
+                if (big > 1e7 * 4) break;       /* past the bound somewhere: NO_ROOM, judged elsewhere */
+                snprintf(text, sizeof text, "(%s)^%d", base, m);
+                snprintf(want, sizeof want, "(%s)^%d", one, m);
+                casim_status st = factor(text, CASIM_MODEL_35, out, sizeof arena);
+                if (st == CASIM_NO_ROOM) continue;
+                n++;
+                CHECK(st == CASIM_OK && strcmp(out, want) == 0, "factor %s: %d \"%s\", want \"%s\"", text, (int)st, out, want);
+            }
+        }
+    CHECK(n > 100, "%d linear powers judged", n);
+}
+
 int main(void)
 {
     ce_init();
     exact();
     seeded();
+    linear_powers();
     visible();
     return check_done();
 }

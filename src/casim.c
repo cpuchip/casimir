@@ -4460,6 +4460,14 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
     }
     if (zero) it[ni++] = (fitem){{1, {0, 1}}, zero, true};
     repeated_factors(&f, s, w, dq, it, &ni);
+    /* a factor the finder took out may itself be a power (a 9-fold root's ring split in two clusters gives
+       (X+2)^2 four times, abacus #5203): the finder again on each, multiplicities multiplied */
+    for (int j = zero ? 1 : 0; j < ni; j++) {
+        int k0 = ni;
+        repeated_factors(&it[j].p, s, w, dq, it, &ni);
+        for (int t = k0; t < ni; t++) it[t].mult *= it[j].mult;
+        if (it[j].p.n == 0) it[j].mult = 0, it[j].proven = true;     /* all of it taken out */
+    }
     if (f.n >= 1) it[ni++] = (fitem){f, 1, false};
     /* each unproven item split by the search into irreducible factors (its first piece in its place, the rest
        after), or left whole when the search cannot decide */

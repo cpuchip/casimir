@@ -176,6 +176,9 @@ MUTANTS = {
         ("src/casim.c", "            dmin = (1 - 1e-9) / hi, dmax = lo > 0 ? a0 * (1 + 1e-9) / lo : 1e300;",
          "            dmin = (1 - 1e-9) / hi, dmax = lo > 0 ? a0 * (1 + 1e-9) / lo / 2 : 1e300;"),
     ],
+    "factor-finder-not-reapplied": [
+        ("src/casim.c", "        repeated_factors(&it[j].p, s, w, dq, it, &ni);\n", ""),
+    ],
     "factor-finder-off": [
         ("src/casim.c", "    repeated_factors(&f, s, w, dq, it, &ni);", "    (void)repeated_factors;"),
     ],
