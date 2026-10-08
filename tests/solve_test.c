@@ -135,6 +135,53 @@ static void edges(void)
     is("(X^4-10×X^2+1)×(2×X+1)×(X^2-3)", "PARTIAL, DEGREE 4 LEFT: X=-SQRT(3); X=-1÷2; X=SQRT(3)");
 }
 
+/* The review of 93daf60: every multiplicity. (q X - p)^m for m = 1..12, exact text wherever its expanded
+   coefficients stay within 10^7 (NO_ROOM where they do not); quadratic factors to the 6th power; a
+   twice-repeated root found as a quadratic (its discriminant 0) gives the one root, twice. */
+static void multiplicities(void)
+{
+    static const int R[][2] = {{-2, 1}, {3, 1}, {1, 2}, {-7, 3}, {9, 4}, {0, 1}};
+    for (size_t i = 0; i < sizeof R / sizeof R[0]; i++)
+        for (int m = 1; m <= 12; m++) {
+            char t[64], want[96], out[OUT];
+            long long q = R[i][1], p = R[i][0], big = 0, c = 1;
+            casim_status st;
+            /* the largest coefficient of (q X - p)^m: max over k of C(m,k) q^k |p|^(m-k) */
+            for (int k = 0; k <= m; k++) {
+                long long v = 1;
+                for (int j = 0; j < k; j++) v *= q;
+                for (int j = 0; j < m - k; j++) v *= llabs(p);
+                v *= c, c = c * (m - k) / (k + 1);
+                if (v > big) big = v;
+            }
+            snprintf(t, sizeof t, "(%lld×X-(%lld))^%d", q, p, m);
+            if (q == 1) snprintf(want, sizeof want, "SOLVED: X=%lld", p);
+            else snprintf(want, sizeof want, "SOLVED: X=%lld÷%lld", p, q);
+            if (m > 1) snprintf(want + strlen(want), sizeof want - strlen(want), " (MULT %d)", m);
+            st = solve(t, 'X' - 'A', CASIM_MODEL_35, out);
+            if (big > 10000000LL) CHECK(st == CASIM_NO_ROOM, "%s: %d \"%s\", want NO_ROOM", t, (int)st, out);
+            else CHECK(st == CASIM_OK && strcmp(out, want) == 0, "%s: %d \"%s\", want \"%s\"", t, (int)st, out, want);
+        }
+    for (int m = 1; m <= 6; m++) {
+        char t[64], want[128], mult[16] = "";
+        if (m > 1) snprintf(mult, sizeof mult, " (MULT %d)", m);
+        snprintf(t, sizeof t, "(X^2-2)^%d", m);
+        snprintf(want, sizeof want, "SOLVED: X=-SQRT(2)%s; X=SQRT(2)%s", mult, mult);
+        is(t, want);
+        snprintf(t, sizeof t, "(X^2-X-1)^%d", m);
+        snprintf(want, sizeof want, "SOLVED: X=(1-SQRT(5))÷2%s; X=(1+SQRT(5))÷2%s", mult, mult);
+        is(t, want);
+        snprintf(t, sizeof t, "(X^2+1)^%d", m);
+        is(t, "NO REAL ROOTS");
+    }
+    is("(X-2)^9×(X^3-2×X-5)", "PARTIAL, DEGREE 3 LEFT: X=2 (MULT 9)");
+    is("(X-1)^8×(X^2-2)^2", "SOLVED: X=-SQRT(2) (MULT 2); X=1 (MULT 8); X=SQRT(2) (MULT 2)");
+    /* the review: literals past 2^62 are too large, not "not numeric"; clear() reduces before it scales */
+    refused("1E20×X-1", CASIM_NO_ROOM);
+    refused("X-1E-30", CASIM_NO_ROOM);
+    is("4000000000000000001×X^2÷3+4000000000000000001×X÷2", "SOLVED: X=-3÷2; X=0");
+}
+
 /* ---- seeded polynomials from known factors ---- */
 
 typedef struct { int deg; long long a, b, c; } fac;     /* deg 1: a X - b; deg 2: a X^2 + b X + c; deg 3: X^3 - c */
@@ -200,7 +247,8 @@ static void seeded(void)
         bool fail = false;
         /* factors with multiplicities, degree <= 12 */
         while (deg < 12 && nf < 8 && !fail) {
-            int kind = rnd(10), m = 1 + (rnd(4) == 0) + (rnd(8) == 0);
+            /* multiplicities to 12 (the review: the old 3 hid the clustering's limit at 7) */
+            int kind = rnd(10), m = rnd(3) ? 1 + (rnd(4) == 0) + (rnd(8) == 0) : 1 + rnd(12);
             fac f;
             long long q[4];
             int qn;
@@ -358,6 +406,7 @@ int main(void)
     ce_init();
     visible();
     exact();
+    multiplicities();
     edges();
     seeded();
     roots_are_roots();
