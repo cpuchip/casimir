@@ -205,8 +205,14 @@ def all_cases():
     for name, expr in [("v (X^2+X+6)^6", "(X^2+X+6)^6"), ("v (X-1)^12", "(X-1)^12"),
                        ("v (2X-3)^4(X^2-2)^4", "(2×X-3)^4×(X^2-2)^4"),
                        ("v divisor-rich lead", "8648640×X^12+X^11+X+8648640"),
-                       ("v X^12-1", "X^12-1"), ("v X^12-2", "X^12-2"), ("v X^4-10X^2+1", "X^4-10×X^2+1")]:
+                       ("v X^12-1", "X^12-1"), ("v X^12-2", "X^12-2"), ("v X^4-10X^2+1", "X^4-10×X^2+1"),
+                       ("v (X-1)..(X-9)", "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9)"),
+                       ("v (2X^2+X+3)^6", "(2×X^2+X+3)^6")]:
         rows.append((name, expr, "X", "RAD", "solve", None, "35"))
+    # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
+    for n in range(20, 58, 4):
+        rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))
+    rows.append(("v STU chain X^1^1^...", "X^" + "^".join(["1"] * 40) + "-2", "X", "RAD", "solve", None, "STU"))
     rows = [r if len(r) == 7 else r + ("35",) for r in rows + SHAPES003]
     # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
     for r in rows[:]:

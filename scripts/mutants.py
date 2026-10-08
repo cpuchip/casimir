@@ -105,6 +105,14 @@ MUTANTS = {
         ("src/casim.c", "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
          "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
     ],
+    # CAS 005 rule 2 as amended: the equation as typed
+    "solve-denominator-allowed": [
+        ("src/casim.c", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var) && 0) {"),
+    ],
+    "solve-function-of-var-numeric": [
+        ("src/casim.c", "        c->st = raw_has_var(c, r, var) ? CASIM_NOT_POLYNOMIAL : CASIM_NOT_NUMERIC;",
+         "        c->st = (raw_has_var(c, r, var), CASIM_NOT_NUMERIC);"),
+    ],
     "no-room-as-too-long": [
         ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */",
          "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;"),

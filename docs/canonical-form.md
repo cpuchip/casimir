@@ -277,11 +277,25 @@ subst the replacement and its own model. The five older calls read 35, as before
 ## CAS 005: solve
 
 `casim_solve` (and casim_run's CASIM_SOLVE; the CLI's `solve "<t>" X RAD`) gives the real roots of an
-equation, L=R as L−R=0 and an expression as expr=0, read as its model, in var. The text is canonicalized and
-expanded where var is (as collect does); every term must be c×var^k with k a whole number ≥ 0 and c an exact
-rational, or the call is refused: NOT_POLYNOMIAL when var is inside a function, under a root, in a
-denominator or to a power that is not a whole number ≥ 0; NOT_NUMERIC when a coefficient is anything but a
-rational number (another letter, π, SQRT(2), a draw); NO_ROOM past the bounds.
+equation, L=R as L−R=0 and an expression as expr=0, read as its model, in var.
+
+**The equation as typed** (rule 2, amended b1a8a66 on the CAS 005 review). The coefficients come from the
+parsed tree, not from the canonical form: each node's polynomial in var as 13 exact rationals in the arena,
+sums and products multiplied out, left chains of + − × ÷ ^ walked in a loop. So the refusals apply to what
+was typed, and no root is printed where the typed equation is undefined (canonicalizing first had X^2÷X
+solve to X=0, LN(X)×0+X to X=0, SQRT(X)^2+4 to X=−4):
+
+- NOT_POLYNOMIAL: var in a denominator, inside a function, or to a power that is not a whole number ≥ 0,
+  even where it would cancel (X^2÷X, X^-1×X^2, (X^2−1)÷(X−1), 2^X).
+- NOT_NUMERIC: a coefficient that is not an exact rational (another letter, π, SQRT(2), 2^0.5, a draw), or a
+  division by a constant that is exactly 0.
+- NO_ROOM: a degree past 12 at any step, even if it cancels later (X^13−X^13+X), or a number past 2^62.
+- Division by a nonzero constant is fine (X÷2), and an exponent may be any constant expression with a whole
+  value (X^(4÷2), X^2.0); a constant to an integer power is exact (2^(−1) is 1/2).
+- Walking the typed tree also costs far less arena than expanding: (X−1)…(X−9) needed 10.8 KB expanded and
+  now solves in the 8 KB device arena. Each level of nesting that alternates × and + holds one polynomial
+  (208 bytes) while its inside is walked, so such a nest fits the 8 KB arena to about 16 levels
+  (1×(0+1×(0+…X…)): 15 levels take 7,632 bytes) and is NO_ROOM past it; the depth guard stops it at 23.
 
 **The polynomial.** The coefficients are cleared to integers (decimals are exact rationals: 0.25 is 1/4),
 made primitive, the leading one positive. Degree ≤ 12 and every coefficient ≤ 10^7, or NO_ROOM, up front.

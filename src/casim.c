@@ -3239,43 +3239,238 @@ static void put_root(out_t *w, const iroot *x)
     if (x->mult > 1) puts_(w, " (MULT "), put_int(w, x->mult), puts_(w, ")");
 }
 
-/* Whether a product holds a literal: a number past 2^62, kept as typed. */
-static bool has_lit(const ctx *c, ref r)
+/* ---- the polynomial as typed (rule 2, amended b1a8a66 on #5040) ----
+   The coefficients come from the parsed tree, not from 002's canonical form: each node's polynomial in var,
+   SOLVE_DEG + 1 exact rationals in the arena, sums and products multiplied out. So the refusals apply to
+   what was typed: var in a denominator, inside a function, or to a power not a whole number >= 0 is
+   NOT_POLYNOMIAL even where it would cancel (X^2÷X), and no root is printed where the typed equation is
+   undefined. Left chains of + - × ÷ ^ are walked in a loop, as canon walks them; a degree past 12 at any
+   step is NO_ROOM. */
+
+static bool raw_has_var(ctx *c, ref r, int var);
+
+/* Whether the raw subtree r holds var: left spines in a loop, right sides through the depth guard. */
+static bool raw_has_var(ctx *c, ref r, int var)
 {
-    const node *x = nd(c, r);
-    if (x->kind == K_LIT) return true;
-    if (x->kind != K_MUL) return false;
-    for (int j = 0; j < x->n; j++)
-        if (nd(c, list(c, x->a)[j])->kind == K_LIT) return true;
-    return false;
+    for (;;) {
+        const node *x = nd(c, r);
+        switch (x->kind) {
+        case K_VAR: return x->id == var;
+        case K_NEG:
+        case K_GROUP:
+        case K_RFN: r = x->a; continue;
+        case K_BADD:
+        case K_BSUB:
+        case K_BMUL:
+        case K_BDIV:
+        case K_BPOW:
+        case K_REQ:
+        case K_ROFN:
+            if (x->b) {
+                bool h;
+                if (!enter(c)) return false;
+                h = raw_has_var(c, x->b, var);
+                c->depth--;
+                if (h) return true;
+            }
+            r = x->a;
+            continue;
+        default: return false;
+        }
+    }
 }
 
-/* The polynomial's coefficients from the canonical, expanded form of eqn's L - R (or expr): each term c×var^k
-   with c an exact rational; NOT_POLYNOMIAL, NOT_NUMERIC or NO_ROOM otherwise. */
-static __attribute__((noinline)) void coefficients(ctx *c, ref n, int var, rat *co)
+static int pdeg(const rat *p)
 {
-    int count = nd(c, n)->kind == K_ADD ? nd(c, n)->n : 1;
-    for (int k = 0; k <= SOLVE_DEG; k++) rat_int(&co[k], 0);
-    for (int i = 0; i < count && c->st == CASIM_OK; i++) {
-        ref t = nd(c, n)->kind == K_ADD ? list(c, nd(c, n)->a)[i] : n, cf;
-        long k;
-        if (is_k(c, t, 0, 1)) continue;
-        if (!as_power(c, t, var, &k, &cf) || k < 0) c->st = CASIM_NOT_POLYNOMIAL;
-        else if (k > SOLVE_DEG) c->st = CASIM_NO_ROOM;
-        else if (impure(c, cf)) c->st = CASIM_NOT_NUMERIC;
-        else if (nd(c, cf)->kind == K_LIT || has_lit(c, cf)) c->st = CASIM_NO_ROOM;    /* a number past 2^62 (review) */
-        else if (!is_num(c, cf)) {
-            /* numbers kept apart past 2^62 are too large; anything else is not a rational number */
-            const node *x = nd(c, cf);
-            bool nums = x->kind == K_MUL;
-            for (int j = 0; nums && j < x->n; j++) nums = is_num(c, list(c, x->a)[j]);
-            c->st = nums ? CASIM_NO_ROOM : CASIM_NOT_NUMERIC;
-        } else if (!rat_add(&co[k], &co[k], val(c, cf))) c->st = CASIM_NO_ROOM;
+    int d = SOLVE_DEG;
+    while (d > 0 && p[d].p == 0) d--;
+    return d;
+}
+
+static void pzero(rat *p)
+{
+    for (int k = 0; k <= SOLVE_DEG; k++) rat_int(&p[k], 0);
+}
+
+/* out *= t (both polynomials): NO_ROOM past degree 12 or 2^62. tmp is room for one more polynomial. */
+static void pmul(ctx *c, rat *out, const rat *t, rat *tmp)
+{
+    int da = pdeg(out), db = pdeg(t);
+    if (da + db > SOLVE_DEG) {
+        c->st = CASIM_NO_ROOM;
+        return;
     }
-    /* a coefficient past 2^62 in its own right: a number canon kept apart, or a literal */
-    if (c->st == CASIM_OK)
-        for (int k = 0; k <= SOLVE_DEG; k++)
-            if (co[k].q == 0) c->st = CASIM_NO_ROOM;
+    pzero(tmp);
+    for (int i = 0; i <= da; i++)
+        for (int j = 0; j <= db; j++) {
+            rat m;
+            if (!rat_mul(&m, &out[i], &t[j]) || !rat_add(&tmp[i + j], &tmp[i + j], &m)) {
+                c->st = CASIM_NO_ROOM;
+                return;
+            }
+        }
+    memcpy(out, tmp, (SOLVE_DEG + 1) * sizeof(rat));
+}
+
+static void pw(ctx *c, ref r, int var, rat *out);
+
+/* A chain of + and - (or of × and ÷) from its leftmost operand up, in a loop. */
+static void pw_chain(ctx *c, ref r, int var, rat *out, bool sum)
+{
+    int m = 0;
+    ref y = r, sl;
+    rat *t, *tmp;
+    while (sum ? (nd(c, y)->kind == K_BADD || nd(c, y)->kind == K_BSUB)
+               : (nd(c, y)->kind == K_BMUL || nd(c, y)->kind == K_BDIV))
+        m++, y = nd(c, y)->a;
+    if (!(sl = grab(c, (size_t)m * sizeof(ref)))) return;
+    y = r;
+    for (int k = m - 1; k >= 0; k--) list(c, sl)[k] = y, y = nd(c, y)->a;
+    {
+        /* one buffer held across the recursion (the right operand's); a product's scratch is taken only
+           after it returns, so a nest that alternates × and + costs one polynomial a level */
+        ref tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+        if (!tr) return;
+        t = (rat *)(void *)nd(c, tr);
+    }
+    pw(c, y, var, out);
+    for (int k = 0; k < m && c->st == CASIM_OK; k++) {
+        const node *z = nd(c, list(c, sl)[k]);
+        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {
+            c->st = CASIM_NOT_POLYNOMIAL;                   /* var in a denominator, as typed */
+            return;
+        }
+        pw(c, z->b, var, t);
+        if (c->st != CASIM_OK) return;
+        if (z->kind == K_BADD || z->kind == K_BSUB) {
+            for (int i = 0; i <= SOLVE_DEG; i++) {
+                rat v = t[i];
+                if (z->kind == K_BSUB) v.p = -v.p;
+                if (!rat_add(&out[i], &out[i], &v)) c->st = CASIM_NO_ROOM;
+            }
+        } else if (z->kind == K_BMUL) {
+            size_t m2 = c->used;
+            ref sr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+            if (!sr) return;
+            tmp = (rat *)(void *)nd(c, sr);
+            pmul(c, out, t, tmp);
+            if (c->st == CASIM_OK) c->used = m2;
+        } else {
+            /* ÷ a constant: not 0 (1÷0 is no exact rational) */
+            rat inv;
+            if (t[0].p == 0 || !rat_make(&inv, t[0].q, t[0].p)) {
+                c->st = t[0].p == 0 ? CASIM_NOT_NUMERIC : CASIM_NO_ROOM;
+                return;
+            }
+            for (int i = 0; i <= SOLVE_DEG; i++)
+                if (!rat_mul(&out[i], &out[i], &inv)) c->st = CASIM_NO_ROOM;
+        }
+    }
+}
+
+/* A chain of ^, its base raised to each exponent in turn (left to right as parsed; STU's right chains
+   arrive as one exponent that is itself a chain). An exponent must be a constant; on var's polynomial a
+   whole number >= 0 (else NOT_POLYNOMIAL), on a constant an integer (else NOT_NUMERIC). */
+static void pw_power(ctx *c, ref r, int var, rat *out)
+{
+    int m = 0;
+    ref y = r, sl, tr;
+    rat *t, *tmp, *base;
+    while (nd(c, y)->kind == K_BPOW) m++, y = nd(c, y)->a;
+    if (!(sl = grab(c, (size_t)m * sizeof(ref))) || !(tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat)))) return;
+    t = (rat *)(void *)nd(c, tr);                   /* the exponent's, held across its walk */
+    y = r;
+    for (int k = m - 1; k >= 0; k--) list(c, sl)[k] = nd(c, y)->b, y = nd(c, y)->a;
+    pw(c, y, var, out);
+    for (int k = 0; k < m && c->st == CASIM_OK; k++) {
+        ref e = list(c, sl)[k];
+        int d = pdeg(out);
+        long w;
+        if (raw_has_var(c, e, var)) {
+            c->st = CASIM_NOT_POLYNOMIAL;                   /* 2^X, X^X */
+            return;
+        }
+        pw(c, e, var, t);
+        if (c->st == CASIM_NOT_NUMERIC && d >= 1) c->st = CASIM_NOT_POLYNOMIAL;     /* X^SQRT(2) */
+        if (c->st != CASIM_OK) return;
+        if (!rat_whole(&t[0], &w)) {
+            c->st = d >= 1 ? CASIM_NOT_POLYNOMIAL : CASIM_NOT_NUMERIC;            /* X^0.5, 2^0.5 */
+            return;
+        }
+        if (d >= 1) {
+            if (w < 0) {
+                c->st = CASIM_NOT_POLYNOMIAL;               /* X^-1 */
+                return;
+            }
+            if ((long)d * w > SOLVE_DEG) {
+                c->st = CASIM_NO_ROOM;
+                return;
+            }
+            {
+                /* the base and the product's scratch, off the stack (pw recurses) and only for now */
+                size_t m2 = c->used;
+                ref br = grab(c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
+                if (!br) return;
+                base = (rat *)(void *)nd(c, br), tmp = base + SOLVE_DEG + 1;
+                memcpy(base, out, (SOLVE_DEG + 1) * sizeof(rat));
+                pzero(out), rat_int(&out[0], 1);
+                for (long i = 0; i < w && c->st == CASIM_OK; i++) pmul(c, out, base, tmp);
+                if (c->st == CASIM_OK) c->used = m2;
+            }
+        } else {
+            rat v;
+            if (out[0].p == 0 && w < 0) {
+                c->st = CASIM_NOT_NUMERIC;                   /* 0^-1 */
+                return;
+            }
+            if (!rat_pow(&v, &out[0], w)) {
+                c->st = CASIM_NO_ROOM;
+                return;
+            }
+            out[0] = v;
+        }
+    }
+}
+
+/* r's polynomial in var, into out (SOLVE_DEG + 1 rationals); the arena r's walk used is given back. */
+static void pw(ctx *c, ref r, int var, rat *out)
+{
+    const node *x;
+    size_t mark = c->used;
+    pzero(out);
+    if (c->st != CASIM_OK || !enter(c)) return;
+    x = nd(c, r);
+    switch (x->kind) {
+    case K_LIT:
+        if (!literal(&out[0], lit_text(c, x), x->n)) c->st = CASIM_NO_ROOM;       /* past 2^62 */
+        break;
+    case K_NUM: out[0] = *val(c, r); break;
+    case K_VAR:
+        if (x->id == var) rat_int(&out[1], 1);
+        else c->st = CASIM_NOT_NUMERIC;                     /* another letter */
+        break;
+    case K_GROUP: pw(c, x->a, var, out); break;
+    case K_NEG: {
+        int k = 0;
+        ref y = r;
+        while (nd(c, y)->kind == K_NEG) k++, y = nd(c, y)->a;
+        pw(c, y, var, out);
+        if (k % 2)
+            for (int i = 0; i <= SOLVE_DEG; i++) out[i].p = -out[i].p;
+        break;
+    }
+    case K_BADD:
+    case K_BSUB: pw_chain(c, r, var, out, true); break;
+    case K_BMUL:
+    case K_BDIV: pw_chain(c, r, var, out, false); break;
+    case K_BPOW: pw_power(c, r, var, out); break;
+    default:
+        /* a function, π, a name, a draw: of var not a polynomial, else not a rational number */
+        c->st = raw_has_var(c, r, var) ? CASIM_NOT_POLYNOMIAL : CASIM_NOT_NUMERIC;
+        break;
+    }
+    c->depth--;
+    if (c->st == CASIM_OK) c->used = mark;
 }
 
 /* co cleared to a primitive integer polynomial, its leading coefficient positive; NO_ROOM past the bounds. */
@@ -3364,20 +3559,24 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
-    c.sub_var = var;                    /* expand only where var is */
-    cr = grab(&c, (SOLVE_DEG + 1) * sizeof(rat));
+    cr = grab(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
     mark = c.used;
     if (c.st == CASIM_OK) n = parse(&c);
-    if (c.st == CASIM_OK) n = canon(&c, n);
-    if (c.st == CASIM_OK && nd(&c, n)->kind == K_EQ) n = add2(&c, nd(&c, n)->a, neg(&c, nd(&c, n)->b));
-    if (c.st == CASIM_OK) n = compact(&c, mark, n);
-    if (c.st == CASIM_OK) n = expand_fully(&c, n);
     if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
-    coefficients(&c, n, var, (rat *)(void *)nd(&c, cr));
-    /* the tree is done with: its arena goes to the search (the constants' caches with it) */
-    for (int k = 0; k < SMALL; k++)
-        if ((size_t)c.small[k] * 8u >= mark) c.small[k] = 0;
-    if ((size_t)c.pi * 8u >= mark) c.pi = 0;
+    {
+        /* L - R, or the expression, as typed */
+        rat *co = (rat *)(void *)nd(&c, cr), *r2 = co + SOLVE_DEG + 1;
+        if (nd(&c, n)->kind == K_REQ) {
+            pw(&c, nd(&c, n)->a, var, co);
+            pw(&c, nd(&c, n)->b, var, r2);
+            for (int k = 0; k <= SOLVE_DEG && c.st == CASIM_OK; k++) {
+                r2[k].p = -r2[k].p;
+                if (!rat_add(&co[k], &co[k], &r2[k])) c.st = CASIM_NO_ROOM;
+            }
+        } else pw(&c, n, var, co);
+    }
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
+    /* the tree is done with: its arena goes to the search */
     c.used = mark;
     ws = grab(&c, sizeof(solve_ws));
     dq = grab(&c, SOLVE_DIVS * sizeof(int32_t));
