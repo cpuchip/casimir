@@ -41,6 +41,8 @@ static bool by_value(const char *f, const char *F, int angle, char *why, size_t 
     static const double PTS[3] = {0.37, 1.3, -0.81}, IV[4][2] = {{0.4, 1.7}, {-1.6, -0.3}, {0.05, 0.25}, {-0.2, -0.05}};
     int judged = 0;
     ce_angle(angle);
+    ce_set('A', "1.7");                 /* the constants other letters stand for */
+    ce_set('B', "-0.6");
     for (int i = 0; i < 3; i++) {
         char xs[40], lo[40], hi[40];
         double fx, a, b, h = 1e-6, d;
@@ -160,6 +162,45 @@ static void table(void)
     is("X^2+EXP(2×X)+SIN(X)", CASIM_RAD, "X^3÷3+EXP(2×X)÷2-COS(X)");
 }
 
+/* The review of the first build: in-scope forms it refused. A minus on any factor; a constant times a
+   parenthesized sum; a polynomial times X^r (r > 0, not whole), as rule 2's "a polynomial times one of these,
+   where expanding makes every term a form". */
+static void review(void)
+{
+    is("-COS(2×X)÷2", CASIM_RAD, "-SIN(2×X)÷4");
+    is("-EXP(X)÷2", CASIM_RAD, "-EXP(X)÷2");
+    is("-SIN(X)×2", CASIM_RAD, "2×COS(X)");
+    is("2×-SIN(X)", CASIM_DEG, "2×COS(X)×180÷π");
+    is("X+-EXP(X)", CASIM_RAD, "X^2÷2-EXP(X)");
+    is("-(EXP(X))÷2", CASIM_RAD, "-EXP(X)÷2");
+    is("-SQRT(X)÷3", CASIM_RAD, "-2×X^(3÷2)÷9");
+    is("-ALOG(X)×5", CASIM_RAD, "-5×ALOG(X)÷LN(10)");
+    is("-INV(X)×2", CASIM_RAD, "-2×LN(ABS(X))");
+    is("(EXP(X)+EXP(-X))÷2", CASIM_RAD, "(EXP(X)-EXP(-X))÷2");
+    is("(SIN(X)+COS(X))÷2", CASIM_RAD, "(SIN(X)-COS(X))÷2");
+    is("2×(SIN(X)+COS(X))", CASIM_GRAD, "400×SIN(X)÷π-400×COS(X)÷π");     /* 002 keeps no symbolic common factor */
+    is("3×(X+SIN(X))", CASIM_RAD, "3×X^2÷2-3×COS(X)");
+    is("X+(SIN(X)+1)", CASIM_RAD, "X^2÷2-COS(X)+X");
+    is("-(X+COS(X))", CASIM_RAD, "-X^2÷2-SIN(X)");
+    is("X×SQRT(X)", CASIM_RAD, "2×X^(5÷2)÷5");
+    is("SQRT(X)×X", CASIM_RAD, "2×X^(5÷2)÷5");
+    is("(X+1)×SQRT(X)", CASIM_RAD, "2×X^(5÷2)÷5+2×X^(3÷2)÷3");
+    is("X^2×X^(1÷3)", CASIM_RAD, "3×X^(10÷3)÷10");
+    is("SQRT(X)×X^(1÷3)", CASIM_RAD, "6×X^(11÷6)÷11");
+    refused("X×X^(-1÷2)", CASIM_NOT_INTEGRABLE);             /* a negative power in a product, as X^2÷X */
+    /* a product inside a minus or parentheses, as a term of its own (the review's fuzz) */
+    is("-(1÷(2×X+1)^2)÷A", CASIM_RAD, "1÷(2×(2×X+1)×A)");
+    is("2×(3×X^2)", CASIM_RAD, "2×X^3");
+    is("-(3×SIN(X))", CASIM_RAD, "3×COS(X)");
+    /* an arena too small for the walk is NO_ROOM, not NOT_INTEGRABLE */
+    {
+        char out[OUT];
+        static unsigned char small[1000];
+        casim_req rq = {CASIM_INTEGRATE, "(X+1)×(X+2)×(X+3)×(X+4)", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD};
+        CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_NO_ROOM, "a 1000-byte arena: not NO_ROOM");
+    }
+}
+
 static void outside(void)
 {
     refused("X×LN(X)", CASIM_NOT_INTEGRABLE);               /* by parts */
@@ -228,6 +269,8 @@ static void visible(void)
         st = casim_run(&rq, out, OUT, small, sizeof small);
         if (strcmp(f[6], "NOT_INTEGRABLE") == 0) CHECK(st == CASIM_NOT_INTEGRABLE, "%s: %d \"%s\"", f[0], (int)st, out);
         else if (strcmp(f[6], "BAD_ARG") == 0) CHECK(st == CASIM_BAD_ARG, "%s: %d \"%s\"", f[0], (int)st, out);
+        else if (strcmp(f[6], "SYNTAX") == 0) CHECK(st == CASIM_SYNTAX, "%s: %d \"%s\"", f[0], (int)st, out);
+        else if (strcmp(f[6], "TOO_LONG") == 0) CHECK(st == CASIM_TOO_LONG, "%s: %d \"%s\"", f[0], (int)st, out);
         else {
             rq.op = CASIM_SIMPLIFY, rq.eqn = f[6];
             CHECK(casim_run(&rq, want, OUT, arena, sizeof arena) == CASIM_OK, "%s: the hand-written %s", f[0], f[6]);
@@ -236,7 +279,7 @@ static void visible(void)
         }
     }
     fclose(fp);
-    CHECK(n == 28, "%d visible examples, want 28", n);
+    CHECK(n == 35, "%d visible examples, want 35", n);
 }
 
 /* Every angle, every function form: by value. */
@@ -256,6 +299,7 @@ int main(void)
 {
     ce_init();
     table();
+    review();
     outside();
     stamp();
     visible();

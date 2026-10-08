@@ -149,7 +149,7 @@ MUTANTS = {
          "        c->st = (raw_has_var(c, r, var), CASIM_NOT_NUMERIC);"),
     ],
     "no-room-as-too-long": [
-        ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */",
+        ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM, c->starved = true;   /* the arena */",
          "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;"),
         ("src/casim.c", "        if (c->st == CASIM_OK) c->st = CASIM_NO_ROOM;          /* the stack's bound (CAS 004: not TOO_LONG) */",
          "        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;"),

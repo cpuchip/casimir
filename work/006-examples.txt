@@ -30,3 +30,10 @@ I0025 | integrate | SIN(X)^2 | X | RAD | 35 | NOT_INTEGRABLE
 I0026 | integrate | X^2÷X | X | RAD | 35 | NOT_INTEGRABLE
 I0027 | integrate | 2^X | X | RAD | 35 | NOT_INTEGRABLE
 I0028 | integrate | X=1 | X | RAD | 35 | BAD_ARG
+I0029 | integrate | SQ(2×X+1) | X | RAD | 35 | (2×X+1)^3÷6
+I0030 | integrate | INV(3×X) | X | RAD | 35 | LN(ABS(3×X))÷3
+I0031 | integrate | -COS(2×X)÷2 | X | RAD | 35 | -SIN(2×X)÷4
+I0032 | integrate | (EXP(X)+EXP(-X))÷2 | X | RAD | 35 | (EXP(X)-EXP(-X))÷2
+I0033 | integrate | X×SQRT(X) | X | RAD | 35 | 2×X^(5÷2)÷5
+I0034 | integrate | 2X | X | RAD | 35 | SYNTAX
+I0035 | integrate | X^11+X^10+X^9+X^8+X^7+X^6+X^5+X^4+X^3+X^2+X+1+SIN(2×X)+COS(3×X)+TAN(X)+EXP(4×X)+SIN(5×X)+COS(7×X) | X | DEG | 35 | TOO_LONG

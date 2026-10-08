@@ -120,6 +120,7 @@ typedef struct {
     bool rtl;                   /* the text is read as STU's (CAS 004, unit 031): ^ right to left, and a
                                    minus starting an exponent covers the chain after it */
     bool has_impure;            /* RAND or SEED occurs: impure subtrees exist (CAS 003, #4264 point 2) */
+    bool starved;               /* the arena ran out (grab): integrate's walks keep NO_ROOM for it (review) */
     bool apart;                 /* something was left apart past 2^62 (numbers, or a run of like terms):
                                    until then no sum can merge once divided, and no term holds numbers */
     int rand_id, seed_id;       /* their NAMES indexes */
@@ -180,7 +181,7 @@ static ref grab(ctx *c, size_t bytes)
     size_t need = (bytes + 7u) & ~(size_t)7u;
     ref r;
     if (need == 0) need = 8;
-    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */
+    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM, c->starved = true;   /* the arena */
     if (c->st != CASIM_OK) return 0;
     r = (ref)(c->used / 8u);
     memset(c->mem + c->used, 0, need);
@@ -3625,6 +3626,7 @@ static bool poly_of(ctx *c, ref r, int var, rat **out)
     if (!pr) return false;
     *out = (rat *)(void *)nd(c, pr);
     pw(c, r, var, *out);
+    if (c->st == CASIM_NO_ROOM && c->starved) return false;        /* the arena: stays NO_ROOM */
     if (c->st == CASIM_NOT_POLYNOMIAL || c->st == CASIM_NOT_NUMERIC || c->st == CASIM_NO_ROOM) {
         c->st = CASIM_OK;
         return false;
@@ -3661,6 +3663,42 @@ static ref integ_poly(ctx *c, const rat *p, int var)
     return acc;
 }
 
+static bool linear(ctx *c, ref u, int var, rat **lin);
+
+/* Whether f is X^r as typed (SQRT(X), X^r) with r > 0 rational and not whole; r into *e. */
+static bool monomial_power(ctx *c, ref f, int var, rat *e)
+{
+    const node *x = nd(c, f);
+    rat *lin, *ex;
+    long w;
+    while (x->kind == K_GROUP) f = x->a, x = nd(c, f);
+    if (x->kind == K_RFN && x->id == F_SQRT) {
+        if (!linear(c, x->a, var, &lin) || !rat_is(&lin[1], 1, 1) || lin[0].p != 0) return false;
+        rat_make(e, 1, 2);
+        return true;
+    }
+    if (x->kind != K_BPOW || nd(c, x->a)->kind == K_BPOW || raw_has_var(c, x->b, var)) return false;
+    if (!linear(c, x->a, var, &lin) || !rat_is(&lin[1], 1, 1) || lin[0].p != 0) return false;
+    if (!poly_of(c, x->b, var, &ex) || pdeg(ex) != 0) return false;
+    *e = ex[0];
+    return e->p > 0 && !rat_whole(e, &w);
+}
+
+/* ∫ of X^r times a polynomial: c_k X^(k+r+1) / (k+r+1), r > 0. */
+static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
+{
+    ref acc = small(c, C_0), x = leaf(c, K_VAR, var);
+    for (int k = 0; k <= SOLVE_DEG; k++)
+        if (p[k].p != 0) {
+            rat e, ck, one = {1, 1};
+            rat_int(&e, k);
+            if (!rat_add(&e, &e, r) || !rat_add(&e, &e, &one) || !rat_make(&ck, e.q, e.p) || !rat_mul(&ck, &ck, &p[k]))
+                return not_integrable(c), SPARE;
+            acc = add2(c, acc, mul2(c, num(c, &ck), power(c, x, num(c, &e))));
+        }
+    return acc;
+}
+
 /* ∫ (u)^n, u = aX + b linear (a, b rational, a != 0): (u)^(n+1)/((n+1) a), or LN(ABS(u))/a for n = -1. */
 static ref integ_linpow(ctx *c, ref u, const rat *lin, const rat *n)
 {
@@ -3678,11 +3716,29 @@ static bool linear(ctx *c, ref u, int var, rat **lin)
 }
 
 /* ∫ of one factor holding var, to the power s (+1, or -1 for a divisor): the table's forms. */
+static ref integ(ctx *c, ref r, int var);
+
 static ref integ_factor(ctx *c, ref f, int s, int var)
 {
     const node *x = nd(c, f);
     rat *lin, *p, n;
-    while (x->kind == K_GROUP) f = x->a, x = nd(c, f);
+    int negs = 0;
+    /* a minus through, and parentheses (the review: -COS(2×X)÷2 was refused) */
+    while (x->kind == K_GROUP || x->kind == K_NEG) {
+        if (x->kind == K_NEG) negs++;
+        f = x->a, x = nd(c, f);
+    }
+    if (negs % 2) {
+        ref r = integ_factor(c, f, s, var);
+        return c->st == CASIM_OK ? neg(c, r) : SPARE;
+    }
+    /* a constant times a sum (linearity): the sum term by term, each checked (the review) */
+    if (s > 0 && (x->kind == K_BADD || x->kind == K_BSUB)) return integ(c, f, var);
+    /* a product inside a minus or parentheses: a term of its own (the review's fuzz: -(1÷(2X+1)^2)÷A) */
+    if (s > 0 && (x->kind == K_BMUL || x->kind == K_BDIV)) {
+        const rat *inner = NULL;
+        return integ_term(c, f, var, &inner);
+    }
     if (x->kind == K_RFN) {
         int id = x->id;
         ref u = x->a, uc, a_inv, r;
@@ -3691,6 +3747,17 @@ static ref integ_factor(ctx *c, ref f, int s, int var)
             if (id == F_SQRT) rat_make(&n, 1, 2);
             if (s < 0) n.p = -n.p;
             if (linear(c, u, var, &lin)) return integ_linpow(c, u, lin, &n);
+            if (id == F_SQ && s > 0 && poly_of(c, u, var, &p)) {
+                /* SQ of a polynomial: squared out */
+                ref tr = grab(c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
+                rat *q;
+                if (!tr) return SPARE;
+                q = (rat *)(void *)nd(c, tr);
+                memcpy(q, p, (SOLVE_DEG + 1) * sizeof(rat));
+                pmul(c, q, p, q + SOLVE_DEG + 1);
+                if (c->st != CASIM_OK) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+                return integ_poly(c, q, var);
+            }
             return not_integrable(c), SPARE;
         }
         if (s < 0 || !linear(c, u, var, &lin)) return not_integrable(c), SPARE;
@@ -3783,13 +3850,21 @@ static ref integ_term(ctx *c, ref r, int var, const rat **poly)
     if (div_var) return not_integrable(c), SPARE;               /* as typed: X^2÷X is not a table form */
     {
         /* polynomials multiplied out (a polynomial times a polynomial, expanded) */
-        rat *acc = NULL, *f, *tmp;
+        rat *acc = NULL, *f, *tmp, r;
         ref tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
         if (!tr) return SPARE;
         tmp = (rat *)(void *)nd(c, tr);
+        rat_int(&r, 0);
         for (int i = 0; i <= m; i++) {
             ref o = list(c, sl)[2 * i];
+            rat e;
             if (!raw_has_var(c, o, var)) continue;
+            if (monomial_power(c, o, var, &e)) {
+                /* X^r, r > 0 not whole: its exponent joins the product's (X×SQRT(X) is X^(3÷2): the review) */
+                if (!rat_add(&r, &r, &e)) return not_integrable(c), SPARE;
+                continue;
+            }
+            if (c->st != CASIM_OK) return SPARE;
             if (!poly_of(c, o, var, &f)) return not_integrable(c), SPARE;
             if (!acc) acc = f;
             else {
@@ -3797,6 +3872,11 @@ static ref integ_term(ctx *c, ref r, int var, const rat **poly)
                 if (c->st != CASIM_OK) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
             }
         }
+        if (!acc) {
+            acc = tmp;
+            pzero(acc), rat_int(&acc[0], 1);
+        }
+        if (r.p != 0) return mul2(c, k, integ_poly_r(c, acc, &r, var));
         *poly = acc;
         return mul2(c, k, integ_poly(c, acc, var));
     }
@@ -3813,11 +3893,11 @@ static ref integ_checked(ctx *c, ref t, int var, int sign)
     ref F = integ_term(c, t, var, &poly), f;
     if (c->st != CASIM_OK) return SPARE;
     f = poly ? mul2(c, canon_const(c, t, var), poly_tree(c, poly, var)) : canon(c, t);
+    if (sign < 0) F = neg(c, F), f = neg(c, f);                 /* the sign checked too (the review) */
     if (!closes(c, F, f)) {
         if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;   /* never an unchecked answer */
         return SPARE;
     }
-    if (sign < 0) F = neg(c, F);
     return compact(c, mark, F);
 }
 
