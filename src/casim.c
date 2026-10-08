@@ -2905,7 +2905,7 @@ typedef struct {
 
 /* The numeric work, in the arena (off the stack): roots and candidates. */
 typedef struct {
-    double re[2 * SOLVE_DEG], im[2 * SOLVE_DEG], cf[SOLVE_DEG + 1];  /* n roots, then <= n/2 centroids */
+    double re[3 * SOLVE_DEG], im[3 * SOLVE_DEG], cf[SOLVE_DEG + 1];  /* n roots, then centroids */
     int count;
     ifac fac[SOLVE_DEG];                /* each factor divides f: at most its degree of them */
     int nfac;
@@ -3001,40 +3001,46 @@ static __attribute__((noinline)) void aberth(const ipoly *f, solve_ws *s)
 }
 
 /* Clusters of approximations (a multiple root's ring): each centroid, polished by Newton on the (m-1)th
-   derivative, where an m-fold root is simple, added as a candidate beside the approximations. */
+   derivative, where an m-fold root is simple, added as a candidate beside the approximations. An m-fold
+   root's ring has a radius near eps^(1/m) of its size, so clusters are formed at three radii, the widest for
+   m up to 12 (the review of 93daf60: one radius missed m >= 7). */
 static __attribute__((noinline)) void clusters(const ipoly *f, solve_ws *s)
 {
-    int n = s->count, grp[SOLVE_DEG];
-    for (int i = 0; i < n; i++) grp[i] = -1;
-    for (int i = 0; i < n; i++) {
-        double gr = s->re[i], gi = s->im[i], scale = s->re[i] * s->re[i] + s->im[i] * s->im[i], d[SOLVE_DEG + 1];
-        int m = 1, nd;
-        if (grp[i] >= 0) continue;
-        grp[i] = i;
-        if (scale < 1) scale = 1;
-        for (int j = i + 1; j < n; j++) {
-            double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j];
-            if (grp[j] < 0 && ar * ar + ai * ai < 1e-4 * scale) grp[j] = i, gr += s->re[j], gi += s->im[j], m++;
-        }
-        if (m == 1 || s->count >= 2 * SOLVE_DEG) continue;
-        gr /= m, gi /= m;
-        nd = f->n - (m - 1);
-        for (int j = 0; j <= nd; j++) {
-            double v = (double)f->a[j + m - 1];
-            for (int t = 1; t <= m - 1; t++) v *= (double)(j + t);
-            d[j] = v;
-        }
-        for (int it = 0; it < 8 && nd >= 1; it++) {
-            double pr = d[nd], pi = 0, dr = 0, di = 0, t, den;
-            for (int j = nd - 1; j >= 0; j--) {
-                t = dr * gr - di * gi + pr, di = dr * gi + di * gr + pi, dr = t;
-                t = pr * gr - pi * gi + d[j], pi = pr * gi + pi * gr, pr = t;
+    static const double RADIUS2[3] = {1e-6, 1e-3, 0.06};     /* squared distance, relative to |z|^2 */
+    int n = f->n;
+    for (int pass = 0; pass < 3; pass++) {
+        int grp[SOLVE_DEG];
+        for (int i = 0; i < n; i++) grp[i] = -1;
+        for (int i = 0; i < n; i++) {
+            double gr = s->re[i], gi = s->im[i], scale = s->re[i] * s->re[i] + s->im[i] * s->im[i], d[SOLVE_DEG + 1];
+            int m = 1, nd;
+            if (grp[i] >= 0) continue;
+            grp[i] = i;
+            if (scale < 1) scale = 1;
+            for (int j = i + 1; j < n; j++) {
+                double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j];
+                if (grp[j] < 0 && ar * ar + ai * ai < RADIUS2[pass] * scale) grp[j] = i, gr += s->re[j], gi += s->im[j], m++;
             }
-            den = dr * dr + di * di;
-            if (den == 0) break;
-            gr -= (pr * dr + pi * di) / den, gi -= (pi * dr - pr * di) / den;
+            if (m == 1 || s->count >= 3 * SOLVE_DEG) continue;
+            gr /= m, gi /= m;
+            nd = f->n - (m - 1);
+            for (int j = 0; j <= nd; j++) {
+                double v = (double)f->a[j + m - 1];
+                for (int t = 1; t <= m - 1; t++) v *= (double)(j + t);
+                d[j] = v;
+            }
+            for (int it = 0; it < 8 && nd >= 1; it++) {
+                double pr = d[nd], pi = 0, dr = 0, di = 0, t, den;
+                for (int j = nd - 1; j >= 0; j--) {
+                    t = dr * gr - di * gi + pr, di = dr * gi + di * gr + pi, dr = t;
+                    t = pr * gr - pi * gi + d[j], pi = pr * gi + pi * gr, pr = t;
+                }
+                den = dr * dr + di * di;
+                if (den == 0) break;
+                gr -= (pr * dr + pi * di) / den, gi -= (pi * dr - pr * di) / den;
+            }
+            s->re[s->count] = gr, s->im[s->count] = gi, s->count++;
         }
-        s->re[s->count] = gr, s->im[s->count] = gi, s->count++;
     }
 }
 
@@ -3171,16 +3177,35 @@ static void rational_root(iroot *rs, int *n, int64_t p, int64_t q, int mult)
     add_root(rs, n, x);
 }
 
-/* The roots of a x^2 + b x + c (a > 0): none, two rationals, or (-b ± k√r)/(2a) in lowest terms. */
-static void quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
+/* Whether p/q is a root of a x^2 + b x + c, exactly (a p^2 + b p q + c q^2 = 0; false on an overflow). */
+static bool quad_root_ok(int64_t a, int64_t b, int64_t c, int64_t p, int64_t q)
+{
+    int64_t t1, t2, t3;
+    return !__builtin_mul_overflow(p, p, &t1) && !__builtin_mul_overflow(t1, a, &t1) &&
+           !__builtin_mul_overflow(p, q, &t2) && !__builtin_mul_overflow(t2, b, &t2) &&
+           !__builtin_mul_overflow(q, q, &t3) && !__builtin_mul_overflow(t3, c, &t3) &&
+           !__builtin_add_overflow(t1, t2, &t1) && !__builtin_add_overflow(t1, t3, &t1) && t1 == 0;
+}
+
+/* The roots of a x^2 + b x + c (a > 0): none, one twice (discriminant 0), two rationals, or (-b ± k√r)/(2a)
+   in lowest terms. A rational root is checked exactly against the quadratic before it is kept (the review
+   of 93daf60: a discriminant of 0 printed two wrong roots); false when a check fails, so the caller counts
+   the factor as unsolved rather than print anything. */
+static bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
 {
     int64_t d = b * b - 4 * a * c, k, r, g;
-    if (d < 0) return;
+    if (d < 0) return true;
+    if (d == 0) {
+        if (!quad_root_ok(a, b, c, -b, 2 * a)) return false;
+        rational_root(rs, n, -b, 2 * a, 2 * mult);
+        return true;
+    }
     square_free(d, &k, &r);
     if (r == 1) {
+        if (!quad_root_ok(a, b, c, -b - k, 2 * a) || !quad_root_ok(a, b, c, -b + k, 2 * a)) return false;
         rational_root(rs, n, -b - k, 2 * a, mult);
         rational_root(rs, n, -b + k, 2 * a, mult);
-        return;
+        return true;
     }
     g = gcd64(gcd64(b, k), 2 * a);
     for (int s = -1; s <= 1; s += 2) {
@@ -3191,6 +3216,7 @@ static void quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int m
             x.v = abn_zero();
         add_root(rs, n, x);
     }
+    return true;
 }
 
 static void put_root(out_t *w, const iroot *x)
@@ -3213,6 +3239,17 @@ static void put_root(out_t *w, const iroot *x)
     if (x->mult > 1) puts_(w, " (MULT "), put_int(w, x->mult), puts_(w, ")");
 }
 
+/* Whether a product holds a literal: a number past 2^62, kept as typed. */
+static bool has_lit(const ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    if (x->kind == K_LIT) return true;
+    if (x->kind != K_MUL) return false;
+    for (int j = 0; j < x->n; j++)
+        if (nd(c, list(c, x->a)[j])->kind == K_LIT) return true;
+    return false;
+}
+
 /* The polynomial's coefficients from the canonical, expanded form of eqn's L - R (or expr): each term c×var^k
    with c an exact rational; NOT_POLYNOMIAL, NOT_NUMERIC or NO_ROOM otherwise. */
 static __attribute__((noinline)) void coefficients(ctx *c, ref n, int var, rat *co)
@@ -3226,6 +3263,7 @@ static __attribute__((noinline)) void coefficients(ctx *c, ref n, int var, rat *
         if (!as_power(c, t, var, &k, &cf) || k < 0) c->st = CASIM_NOT_POLYNOMIAL;
         else if (k > SOLVE_DEG) c->st = CASIM_NO_ROOM;
         else if (impure(c, cf)) c->st = CASIM_NOT_NUMERIC;
+        else if (nd(c, cf)->kind == K_LIT || has_lit(c, cf)) c->st = CASIM_NO_ROOM;    /* a number past 2^62 (review) */
         else if (!is_num(c, cf)) {
             /* numbers kept apart past 2^62 are too large; anything else is not a rational number */
             const node *x = nd(c, cf);
@@ -3243,17 +3281,19 @@ static __attribute__((noinline)) void coefficients(ctx *c, ref n, int var, rat *
 /* co cleared to a primitive integer polynomial, its leading coefficient positive; NO_ROOM past the bounds. */
 static bool clear(ctx *c, const rat *co, ipoly *f)
 {
-    int64_t l = 1, g = 0;
+    int64_t l = 1, g = 0, gp = 0;
     f->n = -1;
     for (int k = 0; k <= SOLVE_DEG; k++)
         if (co[k].p != 0) {
             int64_t q = co[k].q / gcd64(l, co[k].q);
             if (!mul64(&l, l, q)) return c->st = CASIM_NO_ROOM, false;
+            gp = gcd64(gp, co[k].p);
             f->n = k;
         }
+    /* the numerators' gcd out before scaling: (p/gp)·(l/q) (review: 4000000000000000001/3 X^2 + ...÷2) */
     for (int k = 0; k <= SOLVE_DEG; k++) {
         f->a[k] = 0;
-        if (k <= f->n && !mul64(&f->a[k], co[k].p, l / co[k].q)) return c->st = CASIM_NO_ROOM, false;
+        if (k <= f->n && co[k].p != 0 && !mul64(&f->a[k], co[k].p / gp, l / co[k].q)) return c->st = CASIM_NO_ROOM, false;
         g = gcd64(g, f->a[k]);
     }
     if (f->n < 0) return true;
@@ -3292,7 +3332,7 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
     for (int i = 0; i < s->nfac; i++) {
         const ifac *x = &s->fac[i];
         if (x->deg == 1) rational_root(rs, &nr, x->b, x->a, x->mult);
-        else quad_roots(rs, &nr, x->a, x->b, x->c, x->mult);
+        else if (!quad_roots(rs, &nr, x->a, x->b, x->c, x->mult)) f->n += 2 * x->mult;     /* unsolved: left */
     }
     /* ascending, by value in decimal128 (34 digits) */
     for (int i = 1; i < nr; i++) {
