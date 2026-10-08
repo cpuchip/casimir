@@ -345,3 +345,35 @@ stays checked: an overflow means "not a factor", which a true factor never cause
   is the textbook's form, not 002's canonical one (which would print 2.5−SQRT(13)÷2): abacus amended rule 5
   for it. Every root's text evaluates on the core to the root.
 - Past 191 bytes, TOO_LONG.
+
+## CAS 006: integrate
+
+`casim_integrate` (casim_run's CASIM_INTEGRATE; the CLI's `integrate "<t>" X RAD|DEG|GRAD`) gives an
+antiderivative of an expression in var, read as its model, in 002's canonical form, **without "+C"**: C is a
+register on the calculator, so "+C" in the text would be read as the stored C. The firmware shows "+C" beside the
+answer. An equation is BAD_ARG.
+
+**The table's forms, recognised as typed** (as CAS 005's rule 2):
+
+- a sum term by term, a minus through; in a product, every factor free of var is one constant (it may hold other
+  letters: ∫A×X^2 is A×X^3÷3), and what holds var must be one form below, or polynomials multiplied out (a
+  polynomial times a polynomial);
+- x^n and (aX+b)^n for any rational n ≠ −1, as (aX+b)^(n+1)÷((n+1)a), SQRT, SQ and INV included; n = −1 (1÷X,
+  1÷(aX+b), INV) as LN(ABS(aX+b))÷a;
+- EXP, SIN, COS, TAN, ALOG, SINH, COSH of a linear argument aX+b, by the linear substitution (÷a): −COS, SIN,
+  −LN(ABS(COS)), ALOG÷LN(10), COSH, SINH;
+- a and b come from CAS 005's walk of the typed tree, so they are rational numbers (SIN(A×X) is refused);
+- SIN, COS and TAN carry the angle mode's factor (CAS 001 rule 3): 180÷π in DEG, 200÷π in GRAD; SINH, COSH, EXP
+  and ALOG carry none;
+- anything else is NOT_INTEGRABLE: by parts (X×LN(X), X×EXP(X)), a substitution that is not linear
+  (X×EXP(X^2), SIN(X^2)), partial fractions (1÷(X^2−1)), SIN(X)^2, ABS(X), 2^X, and a quotient that would only
+  become a form by simplifying (X^2÷X: as typed).
+
+**Every answer is checked exactly before it prints:** F is differentiated by casim's derive in the angle mode,
+and F′ − f, canonical and expanded, must be exactly 0. Two rewrites live in the check only (abacus #5124), never
+in an answer or in 002's form: SGN(u)×ABS(u)^(−1) is u^(−1) (the derivative of LN(ABS(u)); both undefined at
+u = 0), and TAN(u) is SIN(u)×COS(u)^(−1) (undefined exactly where COS is 0). An answer the check cannot close is
+NOT_INTEGRABLE, never printed. The check cannot see a dropped ABS on x > 0; tests/integrate_test.c (and abacus's
+judge) compare F(b) − F(a) with a quadrature of f on intervals on both sides of 0 with no singularity.
+
+TOO_LONG past 191 bytes, whatever cap is.

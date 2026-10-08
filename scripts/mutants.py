@@ -105,6 +105,41 @@ MUTANTS = {
         ("src/casim.c", "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
          "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
     ],
+    # CAS 006: the unit's list, and each of the check's two rewrites (abacus #5124)
+    "integ-substitution-a-dropped": [
+        ("src/casim.c", "        return mul2(c, r, a_inv);\n    }", "        (void)a_inv;\n        return r;\n    }"),
+    ],
+    "integ-sin-sign-lost": [
+        ("src/casim.c", "        case F_SIN: r = neg(c, mul2(c, fn(c, F_COS, uc), angle_factor(c, true))); break;",
+         "        case F_SIN: r = mul2(c, fn(c, F_COS, uc), angle_factor(c, true)); break;"),
+    ],
+    "integ-abs-dropped": [
+        ("src/casim.c", "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, num(c, &lin[1]), small(c, C_M1)));",
+         "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, uc), power(c, num(c, &lin[1]), small(c, C_M1)));"),
+    ],
+    "integ-deg-factor-lost": [
+        ("src/casim.c", "        case F_COS: r = mul2(c, fn(c, F_SIN, uc), angle_factor(c, true)); break;",
+         "        case F_COS: r = fn(c, F_SIN, uc); break;"),
+    ],
+    "integ-verification-skipped": [
+        ("src/casim.c", "    return c->st == CASIM_OK && is_k(c, t, 0, 1);\n}", "    return c->st == CASIM_OK || is_k(c, t, 0, 1);\n}"),
+        ("src/casim.c", "        case F_EXP: r = fn(c, F_EXP, uc); break;", "        case F_EXP: r = fn(c, F_EXP, mul2(c, uc, small(c, C_2))); break;"),
+    ],
+    "integ-stamp-ignored": [
+        ("src/casim.c", "    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
+         "    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
+    ],
+    "integ-plus-c": [
+        ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);", "    if (c.st == CASIM_OK) F = add2(&c, integ(&c, n, var), leaf(&c, K_VAR, 2));"),
+    ],
+    "integ-check-no-sgn-abs": [
+        ("src/casim.c", "                    list(c, l)[i] = power(c, g->a, small(c, C_M1));\n                    list(c, l)[j] = small(c, C_1);",
+         "                    (void)l;"),
+    ],
+    "integ-check-no-tan": [
+        ("src/casim.c", "        if (x->id == F_TAN) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));",
+         "        if (0) v = a;"),
+    ],
     # CAS 005 rule 2 as amended: the equation as typed
     "solve-denominator-allowed": [
         ("src/casim.c", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var) && 0) {"),

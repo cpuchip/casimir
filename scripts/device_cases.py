@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import measure  # noqa: E402
 
 ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
-STATUS = {"TOO_LONG": 3, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7}    # besides OK (casim.h)
+STATUS = {"TOO_LONG": 3, "BAD_ARG": 4, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7, "NOT_INTEGRABLE": 8}
 
 
 def c_str(s):
@@ -31,7 +31,7 @@ def main(path):
         if len(want.encode()) >= 16000:
             print(f"skipped {name}: its {len(want.encode())}-byte text exceeds the bench's buffer")
             continue
-        ops = ["derive", "simplify", "expand", "collect", "subst", "solve"]
+        ops = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate"]
         rows.append(f"    {{{c_str(name)}, {c_str(expr)}, {ord(var) - ord('A')}, {ANGLES[angle]}, "
                     f"{ops.index(op)}, {c_str(repl or '')}, {models[model]}, {len(expr)}, {status}, {c_str(want)}}},")
     os.makedirs(os.path.dirname(path), exist_ok=True)

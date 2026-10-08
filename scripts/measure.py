@@ -105,7 +105,7 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
-    if op == "derive" or op == "collect" or op == "solve":
+    if op == "derive" or op == "collect" or op == "solve" or op == "integrate":
         return m + [op, expr, var, angle]
     if op == "subst":
         return m + [op, expr, var, repl, angle]
@@ -209,6 +209,18 @@ def all_cases():
                        ("v (X-1)..(X-9)", "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9)"),
                        ("v (2X^2+X+3)^6", "(2×X^2+X+3)^6")]:
         rows.append((name, expr, "X", "RAD", "solve", None, "35"))
+    # CAS 006: integrate, its visible examples and the heaviest forms
+    with open(os.path.join(ROOT, "work", "006-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], p[4], "integrate", None, p[5]))
+    for name, expr, angle in [("i poly deg 11", "+".join(f"{k + 1}×X^{k}" for k in range(12)), "RAD"),
+                              ("i (X+1)^5×(X-1)^6", "(X+1)^5×(X-1)^6", "RAD"),
+                              ("i seven forms DEG", "SIN(2×X)+COS(3×X+1)+TAN(X÷2)+EXP(X)+ALOG(2×X)+SINH(X)+1÷(2×X+1)", "DEG"),
+                              ("i (2X+1)^(5÷3)", "(2×X+1)^(5÷3)", "RAD")]:
+        rows.append((name, expr, "X", angle, "integrate", None, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))

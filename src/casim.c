@@ -2869,6 +2869,7 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_EXPAND: return do_expand(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
     case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
     case CASIM_SOLVE: return casim_solve(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_INTEGRATE: return casim_integrate(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -3599,4 +3600,337 @@ casim_status casim_solve(const char *eqn, int var, int model, int angle, char *o
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- integrate (unit CAS 006) ----
+   The table's forms, recognised on the typed tree (rule 6: as typed, as CAS 005's rule 2): a sum term by term; in
+   a product, the factors free of var are one constant, and what holds var must be one form of the table, or
+   polynomials multiplied out. A linear argument's a and b come from CAS 005's walk (pw): rational numbers.
+   Every answer is differentiated back (deriv, in the angle mode) and F' - f, with two check-only rewrites
+   (abacus #5124), must expand to exactly 0 before it prints; otherwise NOT_INTEGRABLE. */
+
+static ref integ_term(ctx *c, ref r, int var, const rat **poly);
+
+static ref canon_const(ctx *c, ref r, int var);
+
+static void not_integrable(ctx *c)
+{
+    if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
+}
+
+/* r's polynomial in var (pw), into a fresh arena list; false (and no status) when r is not one. */
+static bool poly_of(ctx *c, ref r, int var, rat **out)
+{
+    ref pr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+    if (!pr) return false;
+    *out = (rat *)(void *)nd(c, pr);
+    pw(c, r, var, *out);
+    if (c->st == CASIM_NOT_POLYNOMIAL || c->st == CASIM_NOT_NUMERIC || c->st == CASIM_NO_ROOM) {
+        c->st = CASIM_OK;
+        return false;
+    }
+    return c->st == CASIM_OK;
+}
+
+/* The canonical sum of p's terms, c_k X^k: what a polynomial term is checked against (flat, so F' - p cancels
+   without expanding a typed product). */
+static ref poly_tree(ctx *c, const rat *p, int var)
+{
+    ref acc = small(c, C_0), x = leaf(c, K_VAR, var);
+    for (int k = SOLVE_DEG; k >= 0; k--)
+        if (p[k].p != 0) {
+            rat e;
+            rat_int(&e, k);
+            acc = add2(c, acc, mul2(c, num(c, &p[k]), power(c, x, num(c, &e))));
+        }
+    return acc;
+}
+
+/* ∫ of a polynomial, term by term: c_k X^(k+1) / (k+1). */
+static ref integ_poly(ctx *c, const rat *p, int var)
+{
+    ref acc = small(c, C_0), x = leaf(c, K_VAR, var);
+    if (pdeg(p) >= SOLVE_DEG) return not_integrable(c), SPARE;
+    for (int k = 0; k <= SOLVE_DEG; k++)
+        if (p[k].p != 0) {
+            rat e, ck;
+            rat_int(&e, k + 1);
+            if (!rat_make(&ck, 1, k + 1) || !rat_mul(&ck, &ck, &p[k])) return not_integrable(c), SPARE;
+            acc = add2(c, acc, mul2(c, num(c, &ck), power(c, x, num(c, &e))));
+        }
+    return acc;
+}
+
+/* ∫ (u)^n, u = aX + b linear (a, b rational, a != 0): (u)^(n+1)/((n+1) a), or LN(ABS(u))/a for n = -1. */
+static ref integ_linpow(ctx *c, ref u, const rat *lin, const rat *n)
+{
+    rat np1, k;
+    ref uc = canon(c, u);
+    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, num(c, &lin[1]), small(c, C_M1)));
+    if (!rat_add(&np1, n, &(rat){1, 1}) || !rat_mul(&k, &np1, &lin[1])) return not_integrable(c), SPARE;
+    return mul2(c, power(c, uc, num(c, &np1)), power(c, num(c, &k), small(c, C_M1)));
+}
+
+/* u's linear coefficients (a in lin[1], b in lin[0]); false unless u is aX + b with a != 0, as typed. */
+static bool linear(ctx *c, ref u, int var, rat **lin)
+{
+    return poly_of(c, u, var, lin) && pdeg(*lin) == 1 && (*lin)[1].p != 0;
+}
+
+/* ∫ of one factor holding var, to the power s (+1, or -1 for a divisor): the table's forms. */
+static ref integ_factor(ctx *c, ref f, int s, int var)
+{
+    const node *x = nd(c, f);
+    rat *lin, *p, n;
+    while (x->kind == K_GROUP) f = x->a, x = nd(c, f);
+    if (x->kind == K_RFN) {
+        int id = x->id;
+        ref u = x->a, uc, a_inv, r;
+        if (id == F_SQRT || id == F_SQ || id == F_INV) {
+            rat_int(&n, id == F_SQ ? 2 : -1);
+            if (id == F_SQRT) rat_make(&n, 1, 2);
+            if (s < 0) n.p = -n.p;
+            if (linear(c, u, var, &lin)) return integ_linpow(c, u, lin, &n);
+            return not_integrable(c), SPARE;
+        }
+        if (s < 0 || !linear(c, u, var, &lin)) return not_integrable(c), SPARE;
+        uc = canon(c, u);
+        a_inv = power(c, num(c, &lin[1]), small(c, C_M1));
+        switch (id) {
+        case F_EXP: r = fn(c, F_EXP, uc); break;
+        case F_SINH: r = fn(c, F_COSH, uc); break;
+        case F_COSH: r = fn(c, F_SINH, uc); break;
+        case F_ALOG: r = mul2(c, fn(c, F_ALOG, uc), power(c, fn(c, F_LN, small(c, C_10)), small(c, C_M1))); break;
+        case F_SIN: r = neg(c, mul2(c, fn(c, F_COS, uc), angle_factor(c, true))); break;
+        case F_COS: r = mul2(c, fn(c, F_SIN, uc), angle_factor(c, true)); break;
+        case F_TAN: r = neg(c, mul2(c, fn(c, F_LN, fn(c, F_ABS, fn(c, F_COS, uc))), angle_factor(c, true))); break;
+        default: return not_integrable(c), SPARE;
+        }
+        return mul2(c, r, a_inv);
+    }
+    if (x->kind == K_BPOW && nd(c, x->a)->kind != K_BPOW) {
+        /* base^e, e a constant: (aX+b)^n, or a polynomial to a whole power */
+        rat *e;
+        if (raw_has_var(c, x->b, var) || !poly_of(c, x->b, var, &e) || pdeg(e) != 0) return not_integrable(c), SPARE;
+        n = e[0];
+        if (s < 0) n.p = -n.p;
+        if (linear(c, x->a, var, &lin)) return integ_linpow(c, x->a, lin, &n);
+    }
+    /* a polynomial factor (×), or 1/(aX+b) (÷) */
+    if (s < 0) {
+        rat m1 = {-1, 1};
+        if (linear(c, f, var, &lin)) return integ_linpow(c, f, lin, &m1);
+        return not_integrable(c), SPARE;
+    }
+    if (poly_of(c, f, var, &p)) {
+        if (pdeg(p) == 1) {
+            rat one = {1, 1};
+            return integ_linpow(c, f, p, &one);
+        }
+        return integ_poly(c, p, var);
+    }
+    return not_integrable(c), SPARE;
+}
+
+/* A product term's factors free of var, as one canonical constant (1 when there are none). */
+static ref canon_const(ctx *c, ref r, int var)
+{
+    ref k = small(c, C_1), z = r;
+    while (nd(c, z)->kind == K_BMUL || nd(c, z)->kind == K_BDIV) {
+        ref o = nd(c, z)->b;
+        if (!raw_has_var(c, o, var)) {
+            ref oc = canon(c, o);
+            k = mul2(c, k, nd(c, z)->kind == K_BMUL ? oc : power(c, oc, small(c, C_M1)));
+        }
+        z = nd(c, z)->a;
+    }
+    if (!raw_has_var(c, z, var)) k = mul2(c, k, canon(c, z));
+    return k;
+}
+
+/* ∫ of one term (no + or - at its top): its constant factors times the ∫ of the rest. *poly is set to the
+   exact polynomial (as typed, without the constant) when the term was integrated through one. */
+static ref integ_term(ctx *c, ref r, int var, const rat **poly)
+{
+    int m = 0, nv = 0, last = -1, sl_s = 0;
+    ref y = r, sl, k = small(c, C_1);
+    bool div_var = false;
+    if (c->st != CASIM_OK) return SPARE;
+    if (!raw_has_var(c, r, var)) return mul2(c, canon(c, r), leaf(c, K_VAR, var));      /* ∫ k = k X */
+    while (nd(c, y)->kind == K_BMUL || nd(c, y)->kind == K_BDIV) m++, y = nd(c, y)->a;
+    if (!(sl = grab(c, (size_t)(2 * m + 2) * sizeof(ref)))) return SPARE;
+    /* the operands, each with its sign of exponent: the leftmost, then each right side */
+    list(c, sl)[0] = y, list(c, sl)[1] = 1;
+    {
+        ref z = r;
+        for (int i = m; i >= 1; i--) {
+            list(c, sl)[2 * i] = nd(c, z)->b, list(c, sl)[2 * i + 1] = nd(c, z)->kind == K_BDIV ? (ref)-1 : 1;
+            z = nd(c, z)->a;
+        }
+    }
+    for (int i = 0; i <= m; i++) {
+        ref o = list(c, sl)[2 * i];
+        int sgn = list(c, sl)[2 * i + 1] == 1 ? 1 : -1;
+        if (raw_has_var(c, o, var)) {
+            nv++, last = i, sl_s = sgn;
+            if (sgn < 0) div_var = true;
+        } else {
+            ref oc = canon(c, o);
+            k = mul2(c, k, sgn > 0 ? oc : power(c, oc, small(c, C_M1)));
+        }
+    }
+    if (nv == 1) return mul2(c, k, integ_factor(c, list(c, sl)[2 * last], sl_s, var));
+    if (div_var) return not_integrable(c), SPARE;               /* as typed: X^2÷X is not a table form */
+    {
+        /* polynomials multiplied out (a polynomial times a polynomial, expanded) */
+        rat *acc = NULL, *f, *tmp;
+        ref tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+        if (!tr) return SPARE;
+        tmp = (rat *)(void *)nd(c, tr);
+        for (int i = 0; i <= m; i++) {
+            ref o = list(c, sl)[2 * i];
+            if (!raw_has_var(c, o, var)) continue;
+            if (!poly_of(c, o, var, &f)) return not_integrable(c), SPARE;
+            if (!acc) acc = f;
+            else {
+                pmul(c, acc, f, tmp);
+                if (c->st != CASIM_OK) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+            }
+        }
+        *poly = acc;
+        return mul2(c, k, integ_poly(c, acc, var));
+    }
+}
+
+static bool closes(ctx *c, ref F, ref f);
+
+/* ∫ of one term, checked: F' must be the term exactly (a polynomial term against its flat form). The term's
+   garbage (its walks, its check) is given back: what is kept is compacted down to where the term began. */
+static ref integ_checked(ctx *c, ref t, int var, int sign)
+{
+    size_t mark = c->used;
+    const rat *poly = NULL;
+    ref F = integ_term(c, t, var, &poly), f;
+    if (c->st != CASIM_OK) return SPARE;
+    f = poly ? mul2(c, canon_const(c, t, var), poly_tree(c, poly, var)) : canon(c, t);
+    if (!closes(c, F, f)) {
+        if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;   /* never an unchecked answer */
+        return SPARE;
+    }
+    if (sign < 0) F = neg(c, F);
+    return compact(c, mark, F);
+}
+
+/* ∫ of r: a chain of + and - term by term, a minus through. */
+static ref integ(ctx *c, ref r, int var)
+{
+    int m = 0, sign = 1;
+    ref y = r, acc;
+    while (nd(c, y)->kind == K_GROUP || nd(c, y)->kind == K_NEG) {
+        if (nd(c, y)->kind == K_NEG) sign = -sign;
+        y = nd(c, y)->a;
+    }
+    r = y;
+    if (nd(c, r)->kind != K_BADD && nd(c, r)->kind != K_BSUB) return integ_checked(c, r, var, sign);
+    while (nd(c, y)->kind == K_BADD || nd(c, y)->kind == K_BSUB) m++, y = nd(c, y)->a;
+    acc = integ_checked(c, y, var, sign);
+    for (int i = m - 1; i >= 0 && c->st == CASIM_OK; i--) {
+        ref z = r, t;
+        for (int j = 0; j < i; j++) z = nd(c, z)->a;
+        t = integ_checked(c, nd(c, z)->b, var, nd(c, z)->kind == K_BSUB ? -sign : sign);
+        acc = add2(c, acc, t);
+    }
+    return acc;
+}
+
+/* The check's two rewrites (abacus #5124), never in an answer: SGN(u)×ABS(u)^-1 is u^-1 (both undefined at
+   u = 0), and TAN(u) is SIN(u)×COS(u)^-1 (undefined exactly where COS is 0). */
+static ref check_rewrite(ctx *c, ref r)
+{
+    const node *x;
+    ref v = r;
+    if (c->st != CASIM_OK || !enter(c)) return SPARE;
+    x = nd(c, r);
+    switch (x->kind) {
+    case K_FN: {
+        ref a = check_rewrite(c, x->a);
+        x = nd(c, r);
+        if (x->id == F_TAN) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));
+        else v = fn(c, x->id, a);
+        break;
+    }
+    case K_POW: {
+        ref b = check_rewrite(c, x->a), e = check_rewrite(c, nd(c, r)->b);
+        v = power(c, b, e);
+        break;
+    }
+    case K_ADD:
+    case K_MUL: {
+        int n = x->n, kind = x->kind;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (!l) break;
+        for (int i = 0; i < n; i++) {
+            ref t = check_rewrite(c, list(c, nd(c, r)->a)[i]);
+            list(c, l)[i] = t;
+        }
+        if (kind == K_MUL)
+            for (int i = 0; i < n; i++) {
+                const node *g = nd(c, list(c, l)[i]);
+                if (g->kind != K_FN || g->id != F_SGN) continue;
+                for (int j = 0; j < n; j++) {
+                    const node *h = nd(c, list(c, l)[j]);
+                    if (j == i || h->kind != K_POW || !is_k(c, h->b, -1, 1)) continue;
+                    if (nd(c, h->a)->kind != K_FN || nd(c, h->a)->id != F_ABS || cmp(c, nd(c, h->a)->a, g->a) != 0) continue;
+                    list(c, l)[i] = power(c, g->a, small(c, C_M1));
+                    list(c, l)[j] = small(c, C_1);
+                    break;
+                }
+            }
+        v = kind == K_ADD ? add(c, list(c, l), n) : mul(c, list(c, l), n);
+        break;
+    }
+    default: break;
+    }
+    c->depth--;
+    return v;
+}
+
+/* Whether F differentiates back to f exactly: F' - f, rewritten, expanded, is 0. */
+static __attribute__((noinline)) bool closes(ctx *c, ref F, ref f)
+{
+    ref d = deriv(c, F), t;
+    if (c->st != CASIM_OK) return false;
+    t = add2(c, d, neg(c, f));
+    t = check_rewrite(c, t);
+    c->sub_var = -1;
+    t = expand_fully(c, t);
+    return c->st == CASIM_OK && is_k(c, t, 0, 1);
+}
+
+static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                            void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, F = SPARE;
+    if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.var = var;                        /* the check's deriv differentiates in it */
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;         /* an equation */
+    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */
+    return finish(&c, F, out, cap < SLOT ? cap : SLOT);
+}
+
+/* ---- the API: CAS 006 ---- */
+
+casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                             size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }

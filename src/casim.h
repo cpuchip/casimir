@@ -21,8 +21,10 @@ typedef enum {
                                    bound); out is "". TOO_LONG before CAS 004. CAS 005: past solve's bounds */
     CASIM_NOT_POLYNOMIAL,       /* CAS 005, solve: var inside a function, under a root, in a denominator, or to a
                                    power not a whole number >= 0; out is "" */
-    CASIM_NOT_NUMERIC           /* CAS 005, solve: a coefficient not an exact rational number (another letter,
+    CASIM_NOT_NUMERIC,          /* CAS 005, solve: a coefficient not an exact rational number (another letter,
                                    π, SQRT(2), a draw); out is "" */
+    CASIM_NOT_INTEGRABLE        /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
+                                   derive-back check could not close; out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -66,7 +68,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_33 33
 #define CASIM_MODEL_35 35
 
-typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE } casim_op;
+typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE } casim_op;
 
 typedef struct {
     casim_op op;
@@ -91,5 +93,15 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
    root is verified by exact division. TOO_LONG past 191 bytes, whatever cap is. */
 casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                          size_t arena_cap);
+
+/* Unit CAS 006: an antiderivative of the expression eqn in var (0-25), read as model, in the angle mode, in 002's
+   canonical form and without "+C" (C is a register: the firmware shows "+C" beside the answer). The table's
+   forms only, as typed: linearity (constants may hold other letters); x^n (n rational, not -1); 1÷X and
+   1÷(aX+b) as LN(ABS(...)); EXP, SIN, COS, TAN, ALOG, SINH, COSH and (aX+b)^n of a linear argument with
+   rational a and b; a polynomial times a polynomial, expanded. SIN, COS and TAN carry the angle's factor
+   (180÷π, 200÷π). Every answer is differentiated back and must equal the integrand exactly (002, expanded)
+   before it prints; anything else is NOT_INTEGRABLE. An equation is BAD_ARG. TOO_LONG past 191 bytes. */
+casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                             size_t arena_cap);
 
 #endif
