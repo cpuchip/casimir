@@ -100,4 +100,4 @@ library and CLI. The device's key is a later firmware unit, as CAS 004 was.
 - **Rule 6:** a 512-bit checked integer of casim's own (no GMP) is approved. The degree and coefficient bounds are
   set after an S3 prototype.
 
-- **n counts multiplicity** (abacus #5033, on casim #5031): "PARTIAL, DEGREE n LEFT" gives the degree still unsolved in the student's own equation, so (X^3−2)^2 says 6. The statuses stay defined on the square-free part.
+- **n counts multiplicity** (abacus #5035, on casim #5031): "PARTIAL, DEGREE n LEFT" gives the degree still unsolved in the student's own equation, so (X^3−2)^2 says 6. The statuses stay defined on the square-free part.
