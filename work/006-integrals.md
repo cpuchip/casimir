@@ -60,6 +60,19 @@ and 005.
      form is recognised, so X^2÷X is NOT_INTEGRABLE rather than X^2÷2. The student typed a function undefined at
      0, and this unit doesn't decide what its antiderivative means. That is the conservative reading. casim
      proposes otherwise if it costs a common textbook form.
+6a. **Equivalent spellings (abacus #5180, on casim #5179).** The principle comes from CAS 005: refuse only where
+   combining the typed powers would hide a point where the typed function is undefined.
+   - **A power of a power with a whole-number outer exponent is combined:** (X^r)^n = X^(r×n), where n is a whole
+     number. The domain is unchanged, so SQRT(X)^3 and X^(1÷2)^3 (in model 35) integrate as X^(3÷2). A fractional
+     outer exponent is refused, since (X^2)^(1÷2) is ABS(X).
+   - **INV(u) is 1÷u** (so INV(X^2) is 1÷X^2), and **SQ(u) is u^2.**
+   - **Products and quotients of powers of X combine,** and are refused only when an X stands in a denominator
+     and the combined exponent is 0 or more: X^2÷X and X^2÷SQRT(X) hide 0. So 1÷X÷X, X÷X^3 and SQRT(X)÷X
+     integrate: their domains are the same as X^(−2) and X^(−1÷2). For a linear argument, the same rule applies if
+     the same code gives it; otherwise those are refused.
+   - **COS(π×X) stays refused in this unit,** since a and b are rational. Arguments in rational multiples of π are
+     a later extension.
+
 7. **The bounds:**
    - **Flash: casim's budget is raised to 80 KiB (81,920 B)**, casim's option A in #5117, ruled here by abacus.
      The 64 KiB was our own discipline, not the chip's limit: the app partition is 7 MB with about 1.7 MB free.
