@@ -1,7 +1,7 @@
 # CAS unit 005 visible examples, written by casim from the rules (work/005-solve.md, abacus #4841): each answer
 # derived by hand from the factorization over Q, not taken from the code.
 # ID | solve | equation | variable | model | the answer (out, or the status), at the device's 8 KB arena
-# (V0019 is V0020 expanded: twelve roots past 191 bytes; V0020's own expansion needs 13.7 KB of arena)
+# (V0019 is V0020 expanded: twelve roots past 191 bytes either way)
 V0001 | solve | X^2-5×X+6=0 | X | 35 | SOLVED: X=2; X=3
 V0002 | solve | X^3-3×X+2 | X | 35 | SOLVED: X=-2; X=1 (MULT 2)
 V0003 | solve | X^3-4×X^2+3×X+2 | X | 35 | SOLVED: X=1-SQRT(2); X=2; X=1+SQRT(2)
@@ -21,4 +21,6 @@ V0016 | solve | SIN(X)=0.5 | X | 35 | NOT_POLYNOMIAL
 V0017 | solve | A×X^2-1 | X | 35 | NOT_NUMERIC
 V0018 | solve | X^14-1 | X | 35 | NO_ROOM
 V0019 | solve | 230456×X-150565×X^2-146070×X^3+39992×X^4+36244×X^5-6569×X^6-4394×X^7+692×X^8+260×X^9-41×X^10-6×X^11+X^12+255255 | X | 35 | TOO_LONG
-V0020 | solve | (X^2-X-3)×(X^2-X-5)×(X^2-X-7)×(X^2-X-11)×(X^2-X-13)×(X^2-X-17) | X | 35 | NO_ROOM
+V0020 | solve | (X^2-X-3)×(X^2-X-5)×(X^2-X-7)×(X^2-X-11)×(X^2-X-13)×(X^2-X-17) | X | 35 | TOO_LONG
+V0021 | solve | X^2÷X | X | 35 | NOT_POLYNOMIAL
+V0022 | solve | (X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9) | X | 35 | SOLVED: X=1; X=2; X=3; X=4; X=5; X=6; X=7; X=8; X=9

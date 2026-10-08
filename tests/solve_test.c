@@ -182,6 +182,61 @@ static void multiplicities(void)
     is("4000000000000000001×X^2÷3+4000000000000000001×X÷2", "SOLVED: X=-3÷2; X=0");
 }
 
+/* Rule 2 as amended (b1a8a66, on #5040): the coefficients come from the equation as typed, so a root is
+   never printed where the typed equation is undefined; division only by a nonzero constant; a degree past
+   12 at any step is NO_ROOM. */
+static void as_typed(void)
+{
+    static unsigned char small[8192];
+    char out[OUT];
+    refused("X^2÷X", CASIM_NOT_POLYNOMIAL);               /* X in a denominator, though it cancels */
+    refused("X^(-1)×X^2", CASIM_NOT_POLYNOMIAL);
+    refused("LN(X)×0+X", CASIM_NOT_POLYNOMIAL);           /* X inside a function, though times 0 */
+    refused("SQRT(X)^2+4", CASIM_NOT_POLYNOMIAL);
+    refused("(X^2-1)÷(X-1)", CASIM_NOT_POLYNOMIAL);
+    refused("2^X-1", CASIM_NOT_POLYNOMIAL);
+    refused("X÷0+1", CASIM_NOT_NUMERIC);                  /* 1÷0 is no exact rational */
+    refused("2^0.5×X-1", CASIM_NOT_NUMERIC);              /* a constant, but not a rational */
+    refused("X^13-X^13+X", CASIM_NO_ROOM);                /* degree 13 midway */
+    is("X÷2-1", "SOLVED: X=2");
+    is("X^(4÷2)-4", "SOLVED: X=-2; X=2");
+    is("X^2.0-4", "SOLVED: X=-2; X=2");
+    is("2^(-1)×X-1", "SOLVED: X=2");
+    is("-(-X)-3", "SOLVED: X=3");
+    is("(X+1)^2-(X-1)^2", "SOLVED: X=0");
+    /* a long chain of terms is a loop, not depth: 60 X's */
+    {
+        char t[512];
+        int len = 0;
+        for (int i = 0; i < 60; i++) len += snprintf(t + len, sizeof t - (size_t)len, "%sX", i ? "+" : "");
+        snprintf(t + len, sizeof t - (size_t)len, "-120");
+        is(t, "SOLVED: X=2");
+    }
+    /* (X-1)...(X-9) at the device's 8 KB arena (it needed 10.8 KB expanded: the review) */
+    {
+        casim_req rq = {CASIM_SOLVE, "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9)", CASIM_MODEL_35, 'X' - 'A',
+                        NULL, 0, CASIM_RAD};
+        CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK &&
+                  strcmp(out, "SOLVED: X=1; X=2; X=3; X=4; X=5; X=6; X=7; X=8; X=9") == 0,
+              "(X-1)...(X-9) in 8 KB: \"%s\"", out);
+        {
+            /* nesting that alternates × and +: each level recurses, so its temporaries must be few (15 levels) */
+            static char t[256];
+            int len = 0;
+            for (int i = 0; i < 15; i++) len += snprintf(t + len, sizeof t - (size_t)len, "1×(0+");
+            len += snprintf(t + len, sizeof t - (size_t)len, "X");
+            for (int i = 0; i < 15; i++) len += snprintf(t + len, sizeof t - (size_t)len, ")");
+            snprintf(t + len, sizeof t - (size_t)len, "-2");
+            rq.eqn = t;
+            CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK && strcmp(out, "SOLVED: X=2") == 0,
+                  "a 15-level nest in 8 KB: \"%s\"", out);
+        }
+        rq.eqn = "(2×X^2+X+3)^6";
+        CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK && strcmp(out, "NO REAL ROOTS") == 0,
+              "(2X^2+X+3)^6 in 8 KB: \"%s\"", out);
+    }
+}
+
 /* ---- seeded polynomials from known factors ---- */
 
 typedef struct { int deg; long long a, b, c; } fac;     /* deg 1: a X - b; deg 2: a X^2 + b X + c; deg 3: X^3 - c */
@@ -398,7 +453,7 @@ static void visible(void)
         CHECK(strcmp(name, f[5]) == 0, "%s: solve %s: \"%s\", want \"%s\"", f[0], f[2], name, f[5]);
     }
     fclose(fp);
-    CHECK(n == 20, "%d visible examples, want 20", n);
+    CHECK(n == 22, "%d visible examples, want 22", n);
 }
 
 int main(void)
@@ -407,6 +462,7 @@ int main(void)
     visible();
     exact();
     multiplicities();
+    as_typed();
     edges();
     seeded();
     roots_are_roots();
