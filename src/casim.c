@@ -4166,8 +4166,10 @@ static __attribute__((noinline)) void horner(const ipoly *h, double zr, double z
    for the denominator's rounding. The inclusion theorem: the disks' union holds every root, and a component of
    m disks holds m roots (D. Braess and K. P. Hadeler, "Simultaneous Inclusion of the Zeros of a Polynomial",
    Numerische Mathematik 21 (1973), 161-165; abacus checked the record but could not read the paper, and the
-   constant n|W_i| is from casim's memory and the papers citing it, not verified against the text). So
-   pairwise disjoint disks hold one root each; false when two meet. */
+   constant n|W_i| is from casim's memory and the papers citing it, not verified against the text). A second
+   argument for the constant, by casim's fresh-eyes reviewer (abacus #5199: keep both): the matrix
+   diag(z) - W 1^T has characteristic polynomial h/lc, and its Gerschgorin disks lie within |x - z_i| <= n|W_i|.
+   So pairwise disjoint disks hold one root each; false when two meet. */
 static __attribute__((noinline)) bool incl_disks(const ipoly *h, const solve_ws *s, double *rho)
 {
     int n = h->n;
