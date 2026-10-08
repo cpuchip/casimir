@@ -45,6 +45,22 @@ says plainly when it can't prove that a factor won't factor further.
      (rule 4) but not proven complete. The firmware shows it with a note, such as MAY FACTOR FURTHER, outside the
      text. casim may propose a better name.
    - Over Q only: X^2 − 2 stays whole. Factoring over the reals, or with complex factors, is out of scope.
+5a. **The completeness argument, accepted (casim #5191, abacus #5192):**
+   - Rigorous disks: Aberth, then the Weierstrass corrections, with Horner's running-error bound and a 1.01 radius
+     inflation. Disks of radius n|W_i|, by the inclusion theorem of Braess and Hadeler, Numer. Math. 21 (1973)
+     161-165. abacus verified that bibliographic record; abacus did not read the theorem's text.
+   - Real roots by conjugate disks.
+   - A subset search over sizes 1 to n/2, closed under conjugation, for every d dividing lc. Each e_j is bounded
+     by e_j(|z|+ρ) − e_j(|z|) plus a 10^-13 rounding margin. An interval holding no integer rejects; one under 0.5
+     wide holding one integer gives a single candidate, decided by exact division.
+   - **Any overlap, any non-unique conjugate, or any interval 0.5 or wider is PARTIAL, never a guess.**
+   - **A work budget of 150,000 divisor checks:** past it, PARTIAL. It's a count, so the host and the S3 agree.
+   - **Repeated factors:** taken out before the proof. Cluster centroids only reach linear and quadratic repeated
+     factors, so a repeated irreducible factor of degree 3 or more, such as (X^3−2)^2, leaves overlapping disks and
+     prints PARTIAL. casim either removes repeated factors exactly by a square-free decomposition (Yun's, with
+     gcd(f, f′) in casim's 512-bit integers), or keeps PARTIAL for those and says so. Either way, (X^3−2)^2 is a
+     visible example.
+
 6. **The bounds,** as for CAS 006:
    - flash within the 80 KiB budget (15.7 KB left at c7f01d3);
    - the worst S3 case under 1 s;
