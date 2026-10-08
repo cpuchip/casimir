@@ -4,7 +4,8 @@
 # ID | factor | polynomial | variable | model | the answer, or the status
 # F0019 is two irreducible factors (reversed Eisenstein, (X-3)^5-2 and (X-3)^6-2) whose roots crowd each other;
 # the constant-term window decides it. F0021's roots crowd too closely for the disks to separate: it is printed
-# whole with PARTIAL, never a guess.
+# whole with PARTIAL, never a guess. F0021 is the only PARTIAL left in either test set (abacus #5207): if a change
+# turns it OK, that is a finding to explain, not an expected-text update.
 F0001 | factor | X^2-5×X+6 | X | 35 | (X-3)×(X-2)
 F0002 | factor | X^4-5×X^2+6 | X | 35 | (X^2-3)×(X^2-2)
 F0003 | factor | 2×X^3-2×X | X | 35 | 2×X×(X-1)×(X+1)
