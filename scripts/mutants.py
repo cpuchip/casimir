@@ -82,6 +82,29 @@ MUTANTS = {
         ("src/casim.c", "    if (w.full || c->st == CASIM_TOO_LONG || c->st == CASIM_NO_ROOM) out[0] = '\\0';",
          "    if (c->st == CASIM_TOO_LONG || c->st == CASIM_NO_ROOM) out[0] = '\\0';"),
     ],
+    # CAS 005: the unit's list
+    "solve-root-dropped": [
+        ("src/casim.c", "        if (x->deg == 1) rational_root(rs, &nr, x->b, x->a, x->mult);",
+         "        if (x->deg == 1 && x->mult > 1) rational_root(rs, &nr, x->b, x->a, x->mult);"),
+    ],
+    "solve-multiplicity-lost": [
+        ("src/casim.c", "    if (x->mult > 1) puts_(w, \" (MULT \"), put_int(w, x->mult), puts_(w, \")\");",
+         "    if (x->mult > 9) puts_(w, \" (MULT \"), put_int(w, x->mult), puts_(w, \")\");"),
+    ],
+    "solve-verification-skipped": [
+        ("src/casim.c", "    return !__builtin_mul_overflow(p, r, &t) && !__builtin_add_overflow(h->a[0], t, &t) && t == 0;",
+         "    return !__builtin_mul_overflow(p, r, &t) && !__builtin_add_overflow(h->a[0], t, &t);"),
+    ],
+    "solve-partial-as-solved": [
+        ("src/casim.c", "    if (f->n >= 3) {\n        puts_(w, \"PARTIAL, DEGREE \")", "    if (f->n >= 30) {\n        puts_(w, \"PARTIAL, DEGREE \")"),
+    ],
+    "solve-plus-minus-collapsed": [
+        ("src/casim.c", "    for (int s = -1; s <= 1; s += 2) {\n        iroot x", "    for (int s = 1; s <= 1; s += 2) {\n        iroot x"),
+    ],
+    "solve-stamp-ignored": [
+        ("src/casim.c", "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
+         "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
+    ],
     "no-room-as-too-long": [
         ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;     /* the arena */",
          "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_TOO_LONG;"),

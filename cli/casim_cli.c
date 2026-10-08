@@ -5,6 +5,7 @@
  *   casim expand "<text>" RAD        expanded (CAS 003)
  *   casim collect "<text>" X RAD     collected in X
  *   casim subst "<text>" X "<u>" RAD every X replaced by u, simplified
+ *   casim solve "<text>" X RAD       the real roots in X, exactly, its status first (CAS 005)
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
@@ -25,7 +26,7 @@
 static unsigned char arena[1 << 20];
 
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
-       OP_SUBST = CASIM_SUBST };
+       OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
@@ -66,10 +67,10 @@ int main(int argc, char **argv)
     if (cap > sizeof arena || i >= argc) goto usage;
     op = strcmp(argv[i], "derive") == 0 ? OP_DERIVE : strcmp(argv[i], "simplify") == 0 ? OP_SIMPLIFY
        : strcmp(argv[i], "expand") == 0 ? OP_EXPAND : strcmp(argv[i], "collect") == 0 ? OP_COLLECT
-       : strcmp(argv[i], "subst") == 0 ? OP_SUBST : -1;
-    args = op == OP_DERIVE || op == OP_COLLECT ? 4 : op == OP_SUBST ? 5 : 3;
+       : strcmp(argv[i], "subst") == 0 ? OP_SUBST : strcmp(argv[i], "solve") == 0 ? OP_SOLVE : -1;
+    args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE ? 4 : op == OP_SUBST ? 5 : 3;
     if (op < 0 || argc - i != args) goto usage;
-    if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST) {
+    if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
@@ -87,6 +88,8 @@ int main(int argc, char **argv)
     case CASIM_TOO_LONG: printf("TOO_LONG\n"); break;
     case CASIM_BAD_ARG: printf("BAD_ARG\n"); break;
     case CASIM_NO_ROOM: printf("NO_ROOM\n"); break;
+    case CASIM_NOT_POLYNOMIAL: printf("NOT_POLYNOMIAL\n"); break;
+    case CASIM_NOT_NUMERIC: printf("NOT_NUMERIC\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */
@@ -107,6 +110,7 @@ usage:
                     "       casim [--arena N] [--min-arena] expand \"<text>\" RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] collect \"<text>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] subst \"<text>\" X \"<u>\" RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--min-arena] solve \"<text>\" X RAD|DEG|GRAD\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

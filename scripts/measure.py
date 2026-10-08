@@ -105,7 +105,7 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
-    if op == "derive" or op == "collect":
+    if op == "derive" or op == "collect" or op == "solve":
         return m + [op, expr, var, angle]
     if op == "subst":
         return m + [op, expr, var, repl, angle]
@@ -194,7 +194,20 @@ def all_cases():
                 rows.append((p[0], p[2], p[3], p[4], "collect", None))
             elif p[1] == "subst":
                 rows.append((p[0], p[2], p[3], p[5], "subst", p[4]))
-    rows = [r + ("35",) for r in rows + SHAPES003]
+    # CAS 005: solve, its visible examples and the prototype's slow shapes (high multiplicities, a divisor-rich
+    # leading coefficient, twelve quadratic roots)
+    with open(os.path.join(ROOT, "work", "005-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], "RAD", "solve", None, p[4]))
+    for name, expr in [("v (X^2+X+6)^6", "(X^2+X+6)^6"), ("v (X-1)^12", "(X-1)^12"),
+                       ("v (2X-3)^4(X^2-2)^4", "(2×X-3)^4×(X^2-2)^4"),
+                       ("v divisor-rich lead", "8648640×X^12+X^11+X+8648640"),
+                       ("v X^12-1", "X^12-1"), ("v X^12-2", "X^12-2"), ("v X^4-10X^2+1", "X^4-10×X^2+1")]:
+        rows.append((name, expr, "X", "RAD", "solve", None, "35"))
+    rows = [r if len(r) == 7 else r + ("35",) for r in rows + SHAPES003]
     # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
     for r in rows[:]:
         if r[0].startswith(("192 ", "probe ", "sweep ", "e ", "c ", "u ")):

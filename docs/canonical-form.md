@@ -273,3 +273,58 @@ subst the replacement and its own model. The five older calls read 35, as before
 - **Frames.** No function in src/ has a frame over 1 KB: `make test` and scripts/size-s3.sh compile src/
   under -Wframe-larger-than=1024 -Werror, and each first proves the flag refuses a planted 2 KB frame
   (tests/frame_control.c). The largest today: literal(), 336 bytes on the host and 320 on the S3.
+
+## CAS 005: solve
+
+`casim_solve` (and casim_run's CASIM_SOLVE; the CLI's `solve "<t>" X RAD`) gives the real roots of an
+equation, L=R as L−R=0 and an expression as expr=0, read as its model, in var. The text is canonicalized and
+expanded where var is (as collect does); every term must be c×var^k with k a whole number ≥ 0 and c an exact
+rational, or the call is refused: NOT_POLYNOMIAL when var is inside a function, under a root, in a
+denominator or to a power that is not a whole number ≥ 0; NOT_NUMERIC when a coefficient is anything but a
+rational number (another letter, π, SQRT(2), a draw); NO_ROOM past the bounds.
+
+**The polynomial.** The coefficients are cleared to integers (decimals are exact rationals: 0.25 is 1/4),
+made primitive, the leading one positive. Degree ≤ 12 and every coefficient ≤ 10^7, or NO_ROOM, up front.
+
+**The factors over Q.** Linear and quadratic factors, each with its multiplicity:
+
+- Candidates are numeric: every complex root by Aberth's method in double (at most 150 rounds), and for a
+  cluster of k approximations (a k-fold root) its centroid polished by Newton on the (k−1)th derivative,
+  where the root is simple. A real candidate x and each q dividing the leading coefficient give p =
+  round(q·x); a pair of candidates (two real, or a conjugate pair) and each a dividing the leading
+  coefficient give b = −round(a·sum) and c = round(a·product).
+- The only verification is exact division by the candidate, repeated for the multiplicity. A candidate the
+  numbers miss can only leave a factor undivided, so the answer can only weaken from SOLVED to PARTIAL; it
+  never prints a root that is not one.
+- What is left after the search: degree 1 or 2 is a factor itself; degree 3 or more is reported.
+- The prototype (throwaway, measured before the design): 270,000 polynomials built from known factors
+  (rational roots to 20/20, real and complex irreducible quadratics, cubics x³−k; multiplicities to 3),
+  degree ≤ 12, coefficients ≤ 10^7: no factor missed. tests/solve_test.c keeps a seeded set of that kind.
+
+**int64 is enough** (abacus #4843–#4845). Mignotte's bound: a factor g of degree m of f has |g_j| ≤
+C(m−1, j)·‖f‖₂ + C(m−1, j−1)·|lc f|. At these bounds ‖f‖₂ ≤ √13·10^7 ≈ 3.61×10^7 and |lc f| ≤ 10^7, so a
+factor of degree ≤ 11 has coefficients ≤ 252·4.61×10^7 ≈ 1.16×10^10, and one of degree ≤ 10 ≤ 5.8×10^9.
+Every polynomial divided is a factor of f. A linear factor qx−p has |p|, |q| ≤ 10^7 (p | a₀, q | lc), and
+each intermediate of its division is q times a quotient coefficient: ≤ 1.2×10^17. A quadratic factor has
+|a|, |c| ≤ 10^7 and |b| ≤ ‖f‖₂ + |lc| ≈ 4.61×10^7; its quotient's coefficients are ≤ 5.8×10^9, so each
+product is ≤ 2.7×10^17 and each running remainder < 3.3×10^17. All under 2^63 ≈ 9.2×10^18. The arithmetic
+stays checked: an overflow means "not a factor", which a true factor never causes.
+
+**The answer** (approved in #4841): one line, its status first.
+
+    SOLVED: X=2; X=3
+    SOLVED: X=-2; X=1 (MULT 2)
+    SOLVED: X=(1-SQRT(13))÷2; X=(1+SQRT(13))÷2
+    PARTIAL, DEGREE 3 LEFT: X=1
+    NO REAL ROOTS        NO SOLUTION        EVERY X
+
+- **SOLVED:** every irreducible factor over Q has degree ≤ 2 (a quadratic without real roots adds none).
+  **NO REAL ROOTS:** the same, with no real root. **PARTIAL, DEGREE n LEFT:** a factor of degree ≥ 3 is
+  left, n the degree left in all (an irreducible quartic is PARTIAL even without real roots: it is not
+  solved). NO SOLUTION for a nonzero constant, EVERY X for 0.
+- Each distinct root once, ascending by value (compared in decimal128, 34 digits), "; " between, its
+  multiplicity above 1 as " (MULT k)". A rational root as an integer or a÷b in lowest terms; an irrational
+  one as (a±b×SQRT(r))÷d in lowest terms, r square-free, ÷d left out when d is 1 and b× when b is 1. This
+  is the textbook's form, not 002's canonical one (which would print 2.5−SQRT(13)÷2): abacus amended rule 5
+  for it. Every root's text evaluates on the core to the root.
+- Past 191 bytes, TOO_LONG.

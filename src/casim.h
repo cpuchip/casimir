@@ -17,8 +17,12 @@ typedef enum {
     CASIM_TOO_LONG,             /* the result does not fit: past 191 bytes (expand, collect, subst), past cap,
                                    or more terms than 191 bytes can hold; out is "" */
     CASIM_BAD_ARG,              /* var outside 0-25 or angle outside 0-2 (ours); out is "" */
-    CASIM_NO_ROOM               /* CAS 004: the arena ran out, or the depth guard stopped a walk (the stack's
-                                   bound); out is "". TOO_LONG before CAS 004 */
+    CASIM_NO_ROOM,              /* CAS 004: the arena ran out, or the depth guard stopped a walk (the stack's
+                                   bound); out is "". TOO_LONG before CAS 004. CAS 005: past solve's bounds */
+    CASIM_NOT_POLYNOMIAL,       /* CAS 005, solve: var inside a function, under a root, in a denominator, or to a
+                                   power not a whole number >= 0; out is "" */
+    CASIM_NOT_NUMERIC           /* CAS 005, solve: a coefficient not an exact rational number (another letter,
+                                   π, SQRT(2), a draw); out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -62,7 +66,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_33 33
 #define CASIM_MODEL_35 35
 
-typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST } casim_op;
+typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE } casim_op;
 
 typedef struct {
     casim_op op;
@@ -76,5 +80,16 @@ typedef struct {
 
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
+
+/* Unit CAS 005: the real roots of eqn (L=R as L-R=0, an expression as expr=0), a polynomial in var (0-25)
+   with exact rational coefficients, read as model. out is one line, its status first (abacus #4841):
+     SOLVED: X=2; X=3            every irreducible factor over Q has degree <= 2 (a root's multiplicity
+                                  above 1 follows it as " (MULT k)"; ascending; a÷b or (a±b×SQRT(r))÷d)
+     PARTIAL, DEGREE n LEFT: ... a factor of degree >= 3 is left (n: the degree left in all)
+     NO REAL ROOTS, NO SOLUTION (a nonzero constant), EVERY X (0)
+   Degree <= 12 and, cleared to a primitive integer polynomial, coefficients <= 10^7, else NO_ROOM. Every
+   root is verified by exact division. TOO_LONG past 191 bytes, whatever cap is. */
+casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap);
 
 #endif

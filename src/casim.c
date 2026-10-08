@@ -2868,10 +2868,492 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_SIMPLIFY: return do_simplify(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
     case CASIM_EXPAND: return do_expand(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
     case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_SOLVE: return casim_solve(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
                         rq->repl_model == CASIM_MODEL_STU);
     default: return CASIM_BAD_ARG;
     }
+}
+
+/* ---- solve (unit CAS 005) ---- */
+
+/* The real roots of a polynomial in var with exact rational coefficients, cleared to a primitive integer
+   polynomial f (degree <= 12, |coefficients| <= 10^7, else NO_ROOM). Its linear and quadratic factors over Q
+   are found from numeric candidates (Aberth's method in double, a cluster's centroid polished by Newton on a
+   derivative) and verified only by exact division, which also gives each factor's multiplicity; a candidate
+   the numbers miss can only weaken SOLVED to PARTIAL, never print a wrong root. int64 is enough: every
+   polynomial divided is a factor of f, so by Mignotte's bound its coefficients are at most 1.16E10, and
+   every intermediate of a division by a true factor stays under 3.3E17 (docs; abacus #4844, #4845). The
+   checks stay: an overflow means "not a factor". */
+
+#define SOLVE_DEG 12
+#define SOLVE_COEF 10000000LL
+#define SOLVE_DIVS 448                  /* the most divisors of any n <= 10^7 (8,648,640 has 448) */
+
+typedef struct {
+    int n;
+    int64_t a[SOLVE_DEG + 1];               /* a[0] + a[1] x + ... + a[n] x^n */
+} ipoly;
+
+typedef struct {
+    int deg;                                /* 1: q x - p; 2: a x^2 + b x + c */
+    int64_t a, b, c;                        /* deg 1: a = q, b = p */
+    int mult;
+} ifac;
+
+/* The numeric work, in the arena (off the stack): roots and candidates. */
+typedef struct {
+    double re[2 * SOLVE_DEG], im[2 * SOLVE_DEG], cf[SOLVE_DEG + 1];  /* n roots, then <= n/2 centroids */
+    int count;
+    ifac fac[SOLVE_DEG];                /* each factor divides f: at most its degree of them */
+    int nfac;
+} solve_ws;
+
+/* h / (q x - p) exactly, into g; false when it does not divide or a step would overflow. */
+static bool div_lin(const ipoly *h, int64_t q, int64_t p, ipoly *g)
+{
+    int64_t r, t;
+    int n = h->n;
+    if (n < 1 || q == 0 || h->a[n] % q) return false;
+    g->n = n - 1;
+    r = h->a[n] / q;
+    g->a[n - 1] = r;
+    for (int i = n - 1; i >= 1; i--) {
+        if (__builtin_mul_overflow(p, r, &t) || __builtin_add_overflow(h->a[i], t, &t) || t % q) return false;
+        r = t / q;
+        g->a[i - 1] = r;
+    }
+    return !__builtin_mul_overflow(p, r, &t) && !__builtin_add_overflow(h->a[0], t, &t) && t == 0;
+}
+
+/* h / (a x^2 + b x + c) exactly, into g. */
+static bool div_quad(const ipoly *h, int64_t a, int64_t b, int64_t c, ipoly *g)
+{
+    ipoly r = *h;
+    int n = h->n;
+    if (n < 2 || a == 0) return false;
+    g->n = n - 2;
+    for (int i = n; i >= 2; i--) {
+        int64_t qc, t;
+        if (r.a[i] % a) return false;
+        qc = r.a[i] / a;
+        g->a[i - 2] = qc;
+        if (__builtin_mul_overflow(qc, b, &t) || __builtin_sub_overflow(r.a[i - 1], t, &r.a[i - 1])) return false;
+        if (__builtin_mul_overflow(qc, c, &t) || __builtin_sub_overflow(r.a[i - 2], t, &r.a[i - 2])) return false;
+    }
+    return r.a[1] == 0 && r.a[0] == 0;
+}
+
+/* cos and sin of 2π/n, n = 1..12: Aberth's starting circle without a trigonometric library. */
+static const double ROT[13][2] = {
+    {1, 0}, {1, 0}, {-1, 0}, {-0.5, 0.86602540378443865}, {0, 1}, {0.30901699437494742, 0.95105651629515357},
+    {0.5, 0.86602540378443865}, {0.62348980185873353, 0.78183148246802981}, {0.70710678118654752, 0.70710678118654752},
+    {0.76604444311897804, 0.64278760968653933}, {0.80901699437494742, 0.58778525229247313},
+    {0.84125353283118117, 0.54064081745559756}, {0.86602540378443865, 0.5},
+};
+
+/* All n complex roots of f (n >= 1), Aberth-Ehrlich in double, at most 150 rounds (measured on the S3: 0.44 s
+   at worst with the search). */
+static __attribute__((noinline)) void aberth(const ipoly *f, solve_ws *s)
+{
+    int n = f->n;
+    double mx = 0, rad, wr = 0.92106099400288508, wi = 0.38941834230865049;     /* e^(0.4i): off the axes */
+    for (int i = 0; i <= n; i++) s->cf[i] = (double)f->a[i] / (double)f->a[n];
+    for (int i = 0; i < n; i++) mx = s->cf[i] < 0 ? (-s->cf[i] > mx ? -s->cf[i] : mx) : (s->cf[i] > mx ? s->cf[i] : mx);
+    rad = 0.5 * (1 + mx);
+    for (int i = 0; i < n; i++) {
+        double t;
+        s->re[i] = rad * wr, s->im[i] = rad * wi;
+        t = wr * ROT[n][0] - wi * ROT[n][1];
+        wi = wr * ROT[n][1] + wi * ROT[n][0], wr = t;
+    }
+    for (int it = 0; it < 150; it++) {
+        double worst = 0;
+        for (int i = 0; i < n; i++) {
+            double pr = 1, pi = 0, dr = 0, di = 0, zr = s->re[i], zi = s->im[i], t, den, nr, ni, sr = 0, si = 0;
+            for (int j = n - 1; j >= 0; j--) {
+                t = dr * zr - di * zi + pr, di = dr * zi + di * zr + pi, dr = t;
+                t = pr * zr - pi * zi + s->cf[j], pi = pr * zi + pi * zr, pr = t;
+            }
+            den = dr * dr + di * di;
+            if (den == 0) continue;
+            nr = (pr * dr + pi * di) / den, ni = (pi * dr - pr * di) / den;          /* f/f' */
+            for (int j = 0; j < n; j++)
+                if (j != i) {
+                    double ar = zr - s->re[j], ai = zi - s->im[j], d2 = ar * ar + ai * ai;
+                    if (d2 != 0) sr += ar / d2, si -= ai / d2;                       /* 1/(z - z_j) */
+                }
+            {
+                double tr = 1 - (nr * sr - ni * si), ti = -(nr * si + ni * sr), td = tr * tr + ti * ti, xr, xi, m;
+                if (td == 0) continue;
+                xr = (nr * tr + ni * ti) / td, xi = (ni * tr - nr * ti) / td;
+                s->re[i] -= xr, s->im[i] -= xi;
+                m = s->re[i] * s->re[i] + s->im[i] * s->im[i];
+                t = (xr * xr + xi * xi) / (m > 1 ? m : 1);
+                if (t > worst) worst = t;
+            }
+        }
+        if (worst < 1e-30) break;
+    }
+    s->count = n;
+}
+
+/* Clusters of approximations (a multiple root's ring): each centroid, polished by Newton on the (m-1)th
+   derivative, where an m-fold root is simple, added as a candidate beside the approximations. */
+static __attribute__((noinline)) void clusters(const ipoly *f, solve_ws *s)
+{
+    int n = s->count, grp[SOLVE_DEG];
+    for (int i = 0; i < n; i++) grp[i] = -1;
+    for (int i = 0; i < n; i++) {
+        double gr = s->re[i], gi = s->im[i], scale = s->re[i] * s->re[i] + s->im[i] * s->im[i], d[SOLVE_DEG + 1];
+        int m = 1, nd;
+        if (grp[i] >= 0) continue;
+        grp[i] = i;
+        if (scale < 1) scale = 1;
+        for (int j = i + 1; j < n; j++) {
+            double ar = s->re[i] - s->re[j], ai = s->im[i] - s->im[j];
+            if (grp[j] < 0 && ar * ar + ai * ai < 1e-4 * scale) grp[j] = i, gr += s->re[j], gi += s->im[j], m++;
+        }
+        if (m == 1 || s->count >= 2 * SOLVE_DEG) continue;
+        gr /= m, gi /= m;
+        nd = f->n - (m - 1);
+        for (int j = 0; j <= nd; j++) {
+            double v = (double)f->a[j + m - 1];
+            for (int t = 1; t <= m - 1; t++) v *= (double)(j + t);
+            d[j] = v;
+        }
+        for (int it = 0; it < 8 && nd >= 1; it++) {
+            double pr = d[nd], pi = 0, dr = 0, di = 0, t, den;
+            for (int j = nd - 1; j >= 0; j--) {
+                t = dr * gr - di * gi + pr, di = dr * gi + di * gr + pi, dr = t;
+                t = pr * gr - pi * gi + d[j], pi = pr * gi + pi * gr, pr = t;
+            }
+            den = dr * dr + di * di;
+            if (den == 0) break;
+            gr -= (pr * dr + pi * di) / den, gi -= (pi * dr - pr * di) / den;
+        }
+        s->re[s->count] = gr, s->im[s->count] = gi, s->count++;
+    }
+}
+
+/* The nearest integer to x, or false past 9E18. */
+static bool round64(double x, int64_t *r)
+{
+    if (x > 9e18 || x < -9e18 || x != x) return false;
+    *r = (int64_t)(x < 0 ? x - 0.5 : x + 0.5);
+    return true;
+}
+
+/* The positive divisors of v (|v| <= 10^7: at most 448), into d; returns how many. */
+static int divisors_of(int64_t v, int32_t *d, int cap)
+{
+    int k = 0;
+    if (v < 0) v = -v;
+    for (int64_t i = 1; i * i <= v && k < cap; i++)
+        if (v % i == 0) {
+            d[k++] = (int32_t)i;
+            if (i != v / i && k < cap) d[k++] = (int32_t)(v / i);
+        }
+    return k;
+}
+
+static void add_fac(solve_ws *s, int deg, int64_t a, int64_t b, int64_t c, int mult)
+{
+    if (s->nfac < SOLVE_DEG) s->fac[s->nfac++] = (ifac){deg, a, b, c, mult};
+}
+
+/* The linear and quadratic factors of f (no root 0), divided out of it, each with its multiplicity. dq is
+   room for lc's divisors. */
+static __attribute__((noinline)) void factors(ctx *c, ipoly *f, solve_ws *s, int32_t *dq)
+{
+    ipoly g;
+    int nq;
+    (void)c;
+    if (f->n < 1) return;
+    aberth(f, s);
+    clusters(f, s);
+    nq = divisors_of(f->a[f->n], dq, SOLVE_DIVS);
+    /* rational roots: a real candidate x and q | lc give p = round(q x), p | a_0 */
+    for (int r = 0; r < s->count && f->n >= 1; r++) {
+        double ax = s->re[r] < 0 ? -s->re[r] : s->re[r], ai = s->im[r] < 0 ? -s->im[r] : s->im[r];
+        if (ai > 1e-3 * (ax > 1 ? ax : 1)) continue;
+        for (int i = 0; i < nq && f->n >= 1; i++) {
+            int64_t q = dq[i], p;
+            int m = 0;
+            if (!round64(s->re[r] * (double)q, &p) || p == 0 || f->a[f->n] % q || f->a[0] % p || gcd64(p, q) != 1) continue;
+            while (f->n >= 1 && div_lin(f, q, p, &g)) *f = g, m++;
+            if (m) add_fac(s, 1, q, p, 0, m);
+        }
+    }
+    /* quadratic factors: a pair of candidates (real, or conjugate) gives sum and product; a | lc gives
+       b = -round(a sum), c = round(a product), c | a_0 */
+    for (int i = 0; i < s->count && f->n >= 2; i++)
+        for (int j = i + 1; j < s->count && f->n >= 2; j++) {
+            double sum = s->re[i] + s->re[j], pim = s->im[i] + s->im[j];
+            double prod = s->re[i] * s->re[j] - s->im[i] * s->im[j], qim = s->re[i] * s->im[j] + s->im[i] * s->re[j];
+            double as = sum < 0 ? -sum : sum, ap = prod < 0 ? -prod : prod;
+            if ((pim < 0 ? -pim : pim) > 1e-3 * (as > 1 ? as : 1) || (qim < 0 ? -qim : qim) > 1e-3 * (ap > 1 ? ap : 1)) continue;
+            nq = divisors_of(f->a[f->n], dq, SOLVE_DIVS);
+            for (int u = 0; u < nq && f->n >= 2; u++) {
+                int64_t a = dq[u], b, cc;
+                int m = 0;
+                if (!round64(-sum * (double)a, &b) || !round64(prod * (double)a, &cc) || cc == 0 || f->a[0] % cc) continue;
+                while (f->n >= 2 && div_quad(f, a, b, cc, &g)) *f = g, m++;
+                if (m) add_fac(s, 2, a, b, cc, m);
+            }
+        }
+    /* what is left: degree 1 or 2 is a factor itself */
+    if (f->n == 1 || f->n == 2) {
+        int64_t sg = f->a[f->n] < 0 ? -1 : 1;
+        if (f->n == 1) add_fac(s, 1, sg * f->a[1], -sg * f->a[0], 0, 1);
+        else add_fac(s, 2, sg * f->a[2], sg * f->a[1], sg * f->a[0], 1);
+        f->n = 0, f->a[0] = 1;
+    }
+}
+
+/* A root: rational p/q (q > 0), or (A + B√r)/D with r square-free > 1, D > 0, B != 0 (its sign the root's). */
+typedef struct {
+    bool irr;
+    int64_t p, q, A, B, r, D;
+    int mult;
+    abn v;
+} iroot;
+
+/* v as an abn, exactly (|v| < 10^18). */
+static abn abn_of(int64_t v)
+{
+    abn hi = abn_from_int((int32_t)(v / 1000000000)), lo = abn_from_int((int32_t)(v % 1000000000)), g = abn_from_int(1000000000), r;
+    if (abn_mul(&r, &hi, &g) != ABN_OK || abn_add(&r, &r, &lo) != ABN_OK) return abn_zero();
+    return r;
+}
+
+/* d = k^2 r with r square-free: trial division to d's cube root, then what is left is 1, a prime, a prime
+   squared or two primes (d <= 2.5E15: a quadratic factor's discriminant). */
+static void square_free(int64_t d, int64_t *k, int64_t *r)
+{
+    *k = 1, *r = 1;
+    for (int64_t p = 2; p * p * p <= d; p += p == 2 ? 1 : 2) {
+        while (d % (p * p) == 0) d /= p * p, *k *= p;
+        if (d % p == 0) d /= p, *r *= p;
+    }
+    if (d > 1) {
+        int64_t s = (int64_t)__builtin_sqrt((double)d);
+        while (s * s > d) s--;
+        while ((s + 1) * (s + 1) <= d) s++;
+        if (s * s == d) *k *= s;
+        else *r *= d;
+    }
+}
+
+static void add_root(iroot *rs, int *n, iroot x)
+{
+    for (int i = 0; i < *n; i++)
+        if (rs[i].irr == x.irr && rs[i].p == x.p && rs[i].q == x.q && rs[i].A == x.A && rs[i].B == x.B &&
+            rs[i].r == x.r && rs[i].D == x.D) {
+            rs[i].mult += x.mult;
+            return;
+        }
+    if (*n < SOLVE_DEG) rs[(*n)++] = x;
+}
+
+static void rational_root(iroot *rs, int *n, int64_t p, int64_t q, int mult)
+{
+    int64_t g = gcd64(p, q);
+    iroot x = {false, 0, 1, 0, 0, 0, 1, mult, {{0}}};
+    abn ap, aq;
+    if (q < 0) p = -p, q = -q;
+    if (g > 1) p /= g, q /= g;
+    x.p = p, x.q = q;
+    ap = abn_of(p), aq = abn_of(q);
+    if (abn_div(&x.v, &ap, &aq) != ABN_OK) x.v = abn_zero();
+    add_root(rs, n, x);
+}
+
+/* The roots of a x^2 + b x + c (a > 0): none, two rationals, or (-b ± k√r)/(2a) in lowest terms. */
+static void quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
+{
+    int64_t d = b * b - 4 * a * c, k, r, g;
+    if (d < 0) return;
+    square_free(d, &k, &r);
+    if (r == 1) {
+        rational_root(rs, n, -b - k, 2 * a, mult);
+        rational_root(rs, n, -b + k, 2 * a, mult);
+        return;
+    }
+    g = gcd64(gcd64(b, k), 2 * a);
+    for (int s = -1; s <= 1; s += 2) {
+        iroot x = {true, 0, 1, -b / g, s * (k / g), r, 2 * a / g, mult, {{0}}};
+        abn A = abn_of(x.A), B = abn_of(x.B), R = abn_of(x.r), D = abn_of(x.D), t;
+        if (abn_sqrt(&t, &R) != ABN_OK || abn_mul(&t, &t, &B) != ABN_OK || abn_add(&t, &t, &A) != ABN_OK ||
+            abn_div(&x.v, &t, &D) != ABN_OK)
+            x.v = abn_zero();
+        add_root(rs, n, x);
+    }
+}
+
+static void put_root(out_t *w, const iroot *x)
+{
+    if (!x->irr) {
+        put_int(w, x->p);
+        if (x->q != 1) puts_(w, DIVIDE), put_int(w, x->q);
+    } else {
+        int64_t b = x->B < 0 ? -x->B : x->B;
+        bool paren = x->A != 0 && x->D != 1;
+        if (paren) puts_(w, "(");
+        if (x->A != 0) put_int(w, x->A);
+        if (x->B < 0) puts_(w, "-");
+        else if (x->A != 0) puts_(w, "+");
+        if (b != 1) put_int(w, b), puts_(w, TIMES);
+        puts_(w, "SQRT("), put_int(w, x->r), puts_(w, ")");
+        if (paren) puts_(w, ")");
+        if (x->D != 1) puts_(w, DIVIDE), put_int(w, x->D);
+    }
+    if (x->mult > 1) puts_(w, " (MULT "), put_int(w, x->mult), puts_(w, ")");
+}
+
+/* The polynomial's coefficients from the canonical, expanded form of eqn's L - R (or expr): each term c×var^k
+   with c an exact rational; NOT_POLYNOMIAL, NOT_NUMERIC or NO_ROOM otherwise. */
+static __attribute__((noinline)) void coefficients(ctx *c, ref n, int var, rat *co)
+{
+    int count = nd(c, n)->kind == K_ADD ? nd(c, n)->n : 1;
+    for (int k = 0; k <= SOLVE_DEG; k++) rat_int(&co[k], 0);
+    for (int i = 0; i < count && c->st == CASIM_OK; i++) {
+        ref t = nd(c, n)->kind == K_ADD ? list(c, nd(c, n)->a)[i] : n, cf;
+        long k;
+        if (is_k(c, t, 0, 1)) continue;
+        if (!as_power(c, t, var, &k, &cf) || k < 0) c->st = CASIM_NOT_POLYNOMIAL;
+        else if (k > SOLVE_DEG) c->st = CASIM_NO_ROOM;
+        else if (impure(c, cf)) c->st = CASIM_NOT_NUMERIC;
+        else if (!is_num(c, cf)) {
+            /* numbers kept apart past 2^62 are too large; anything else is not a rational number */
+            const node *x = nd(c, cf);
+            bool nums = x->kind == K_MUL;
+            for (int j = 0; nums && j < x->n; j++) nums = is_num(c, list(c, x->a)[j]);
+            c->st = nums ? CASIM_NO_ROOM : CASIM_NOT_NUMERIC;
+        } else if (!rat_add(&co[k], &co[k], val(c, cf))) c->st = CASIM_NO_ROOM;
+    }
+    /* a coefficient past 2^62 in its own right: a number canon kept apart, or a literal */
+    if (c->st == CASIM_OK)
+        for (int k = 0; k <= SOLVE_DEG; k++)
+            if (co[k].q == 0) c->st = CASIM_NO_ROOM;
+}
+
+/* co cleared to a primitive integer polynomial, its leading coefficient positive; NO_ROOM past the bounds. */
+static bool clear(ctx *c, const rat *co, ipoly *f)
+{
+    int64_t l = 1, g = 0;
+    f->n = -1;
+    for (int k = 0; k <= SOLVE_DEG; k++)
+        if (co[k].p != 0) {
+            int64_t q = co[k].q / gcd64(l, co[k].q);
+            if (!mul64(&l, l, q)) return c->st = CASIM_NO_ROOM, false;
+            f->n = k;
+        }
+    for (int k = 0; k <= SOLVE_DEG; k++) {
+        f->a[k] = 0;
+        if (k <= f->n && !mul64(&f->a[k], co[k].p, l / co[k].q)) return c->st = CASIM_NO_ROOM, false;
+        g = gcd64(g, f->a[k]);
+    }
+    if (f->n < 0) return true;
+    if (f->a[f->n] < 0) g = -g;
+    for (int k = 0; k <= f->n; k++) {
+        f->a[k] /= g;
+        if (f->a[k] > SOLVE_COEF || f->a[k] < -SOLVE_COEF) return c->st = CASIM_NO_ROOM, false;
+    }
+    return true;
+}
+
+/* The answer's text (abacus #4841): its status first, then each root once, ascending, "; " between. */
+static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, int var, solve_ws *s, int32_t *dq)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    iroot *rs;
+    int nr = 0, zero = 0;
+    ref room = grab(c, SOLVE_DEG * sizeof(iroot));
+    if (!room) return;
+    rs = (iroot *)(void *)nd(c, room);
+    if (f->n < 0) {
+        puts_(w, "EVERY "), puts_(w, name);
+        return;
+    }
+    if (f->n == 0) {
+        puts_(w, "NO SOLUTION");
+        return;
+    }
+    while (f->n >= 1 && f->a[0] == 0) {                 /* the root 0, and its multiplicity */
+        memmove(f->a, f->a + 1, (size_t)f->n * sizeof f->a[0]);
+        f->n--, zero++;
+    }
+    s->nfac = 0;
+    factors(c, f, s, dq);
+    if (zero) rational_root(rs, &nr, 0, 1, zero);
+    for (int i = 0; i < s->nfac; i++) {
+        const ifac *x = &s->fac[i];
+        if (x->deg == 1) rational_root(rs, &nr, x->b, x->a, x->mult);
+        else quad_roots(rs, &nr, x->a, x->b, x->c, x->mult);
+    }
+    /* ascending, by value in decimal128 (34 digits) */
+    for (int i = 1; i < nr; i++) {
+        iroot t = rs[i];
+        int j = i;
+        while (j > 0 && abn_cmp(&rs[j - 1].v, &t.v) > 0) rs[j] = rs[j - 1], j--;
+        rs[j] = t;
+    }
+    if (f->n >= 3) {
+        puts_(w, "PARTIAL, DEGREE "), put_int(w, f->n), puts_(w, " LEFT");
+    } else puts_(w, nr ? "SOLVED" : "NO REAL ROOTS");
+    for (int i = 0; i < nr; i++) {
+        puts_(w, i ? "; " : ": "), puts_(w, name), puts_(w, "=");
+        put_root(w, &rs[i]);
+    }
+}
+
+static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                        void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, ws, cr, dq;
+    out_t w = {out, cap < SLOT ? cap : SLOT, 0, false};
+    ipoly f;
+    if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    size_t mark;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.sub_var = var;                    /* expand only where var is */
+    cr = grab(&c, (SOLVE_DEG + 1) * sizeof(rat));
+    mark = c.used;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_EQ) n = add2(&c, nd(&c, n)->a, neg(&c, nd(&c, n)->b));
+    if (c.st == CASIM_OK) n = compact(&c, mark, n);
+    if (c.st == CASIM_OK) n = expand_fully(&c, n);
+    if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, cap < SLOT ? cap : SLOT);
+    coefficients(&c, n, var, (rat *)(void *)nd(&c, cr));
+    /* the tree is done with: its arena goes to the search (the constants' caches with it) */
+    for (int k = 0; k < SMALL; k++)
+        if ((size_t)c.small[k] * 8u >= mark) c.small[k] = 0;
+    if ((size_t)c.pi * 8u >= mark) c.pi = 0;
+    c.used = mark;
+    ws = grab(&c, sizeof(solve_ws));
+    dq = grab(&c, SOLVE_DIVS * sizeof(int32_t));
+    if (c.st == CASIM_OK && clear(&c, (rat *)(void *)nd(&c, cr), &f))
+        put_solution(&c, &w, &f, var, (solve_ws *)(void *)nd(&c, ws), (int32_t *)(void *)nd(&c, dq));
+    if (w.full && c.st == CASIM_OK) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
+    return CASIM_OK;
+}
+
+/* ---- the API: CAS 005 ---- */
+
+casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }
