@@ -41,8 +41,14 @@ and 005.
    - the result must simplify to exactly the integrand's canonical form (002).
    - If it doesn't, the answer is NOT_INTEGRABLE and nothing is printed. A correct antiderivative that the check
      can't close is a refusal, never a wrong answer.
-   - **Settle by prototype before the build:** does derive of LN(ABS(u)) close back to 1÷u under 002, and does
-     the DEG factor close? If not, propose the narrowest special case, verified the same way.
+   - **Settled by prototype (casim #5123, accepted #5124).** The comparison is (F′ − f), canonicalized and
+     expanded, which must be exactly 0. The DEG and GRAD factors close. Two rewrites apply **inside this comparison
+     only**, never in 002's canonical form or any operation's output:
+     - SGN(u)×ABS(u)^(−1) → u^(−1), for the same canonical u. Both sides are undefined at u = 0, and the identity
+       holds everywhere else.
+     - TAN(u) → SIN(u)×COS(u)^(−1), on both sides. They are undefined at the same points.
+     - Each rewrite is a mutant: without it, LN and TAN answers are refused. A dropped ABS passes the derivative
+       check on x > 0, so abacus's quadrature judges ABS.
 5. **The output:**
    - one expression, F, in 002's canonical form, **with no "+C"**. On the calculator C is a variable register, so
      "+C" in the text would be read as the stored C when the result is evaluated or stored. The firmware unit
