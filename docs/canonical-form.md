@@ -296,6 +296,9 @@ solve to X=0, LN(X)×0+X to X=0, SQRT(X)^2+4 to X=−4):
   now solves in the 8 KB device arena. Each level of nesting that alternates × and + holds one polynomial
   (208 bytes) while its inside is walked, so such a nest fits the 8 KB arena to about 16 levels
   (1×(0+1×(0+…X…)): 15 levels take 7,632 bytes) and is NO_ROOM past it; the depth guard stops it at 23.
+  STU's right chains of ^ recurse through their exponents the same way: X^1^1^…^1 fits to 32 levels
+  (8,096 bytes) and is NO_ROOM by 35. Left chains (sums, products, 35's powers) are loops and cost nothing
+  a level.
 
 **The polynomial.** The coefficients are cleared to integers (decimals are exact rationals: 0.25 is 1/4),
 made primitive, the leading one positive. Degree ≤ 12 and every coefficient ≤ 10^7, or NO_ROOM, up front.

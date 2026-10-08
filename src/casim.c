@@ -3196,6 +3196,10 @@ static bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int m
     int64_t d = b * b - 4 * a * c, k, r, g;
     if (d < 0) return true;
     if (d == 0) {
+        /* defensive (abacus #5077: no input reaches it): a repeated rational root leaves as a linear factor
+           before any quadratic is formed, so (q x - p)^2 arrives here only if the numbers missed it as
+           linear. Without this branch, the exact check below would refuse the derived roots: PARTIAL, never
+           a wrong root. */
         if (!quad_root_ok(a, b, c, -b, 2 * a)) return false;
         rational_root(rs, n, -b, 2 * a, 2 * mult);
         return true;
