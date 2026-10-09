@@ -4260,7 +4260,7 @@ static __attribute__((noinline)) int factor_search(const ipoly *h, solve_ws *s, 
     for (int k = 1; k <= n / 2; k++) {
         for (unsigned m = 1; m < (1u << n); m++) {
             bool closed = true;
-            if (__builtin_popcount(m) != (unsigned)k) continue;
+            if (__builtin_popcount(m) != k) continue;
             for (int i = 0; i < n && closed; i++)
                 if (m >> i & 1) closed = (m >> w->pair[i] & 1) != 0;
             if (!closed) continue;
