@@ -63,7 +63,7 @@ This unit closes those gaps without touching the maths, then makes the repo publ
 8. **Before the repo goes public (the scrub), a report to abacus:**
    - **The tree and the full history,** searched for:
      - secrets and tokens;
-     - private hostnames, IPs and paths (C:\Users\…, the workspace's layout, mesh names);
+     - private hostnames, IPs and paths (a user's home path, the workspace's layout, mesh names);
      - personal data;
      - anything naming a child;
      - links to private repos.

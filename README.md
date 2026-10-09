@@ -75,7 +75,8 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4.
+library builds with ESP-IDF 5.4. It takes about 2 MB of flash (260,113 bytes of code, 1,765,372 of read-only data,
+most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (8 KiB is the
 calculator's budget), and casim keeps no global state.
@@ -132,7 +133,8 @@ gzipped), most of it the decimal library's tables.
 
 Casimir was written by an AI coding agent (Claude) in units of work set and reviewed by a second agent, under Michael
 Stufflebeam's direction. work/ holds those units, CAS 001 onward: each rule's reason and its visible examples, as the
-history of the design. docs/canonical-form.md is the output form's contract.
+history of the design. They name two repositories that are private: abacus (the reviewer's units, decisions and
+hidden test sets) and abacus-firmware (the calculator's firmware), so their paths won't open for you. docs/canonical-form.md is the output form's contract.
 
 **Clean room.** Every algorithm is written from the mathematics and its published description (textbooks, papers,
 encyclopedia articles), or from a unit's rules. No source code of any computer algebra system or calculator
