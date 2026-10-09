@@ -81,7 +81,7 @@ int main(int argc, char **argv)
         return 2;
     }
     while (fgets(line, sizeof line, f)) {
-        char *field[12];
+        char *field[12] = {0};
         int k = 0, op, st;
         size_t len = strlen(line), arena_cap, cap;
         casim_req rq;
