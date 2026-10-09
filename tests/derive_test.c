@@ -314,11 +314,11 @@ static void depth(void)
                       (int)st[0], (int)st[1]);
         }
     }
-    /* the guard's edge, planted (CAS 004, abacus #4797: the guard at 47): measured with the CLI, so a move
-       of the guard shows here first. SIN( nests: simplify answers 46 levels, refuses 47; X^( nests: derive
-       answers 44, refuses 45. */
+    /* the guard's edge, planted (CAS 004, abacus #4797: the guard at 47; abacus #5634: at 46 since CAS 010's
+       build): measured with the CLI, so a move of the guard shows here first. SIN( nests: simplify answers 45
+       levels, refuses 46; X^( nests: derive answers 43, refuses 44. */
     {
-        static const struct { const char *open_; int ok; bool derive; } edge[] = {{"SIN(", 46, false}, {"X^(", 44, true}};
+        static const struct { const char *open_; int ok; bool derive; } edge[] = {{"SIN(", 45, false}, {"X^(", 43, true}};
         for (int e = 0; e < 2; e++)
             for (int n = edge[e].ok; n <= edge[e].ok + 1; n++) {
                 casim_status s;

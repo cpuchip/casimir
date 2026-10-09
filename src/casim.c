@@ -156,7 +156,7 @@ static rat *rt(const ctx *c, ref r)
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
 #ifndef CASIM_DEPTH_MAX
-#define CASIM_DEPTH_MAX 47
+#define CASIM_DEPTH_MAX 46              /* 47 until CAS 010's build left 240 B of the 12,288 (abacus #5634) */
 #endif
 
 static bool enter(ctx *c)

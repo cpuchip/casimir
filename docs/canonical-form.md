@@ -91,28 +91,32 @@ Two fresh-eyes review passes found each of these cases; each is a test in tests/
 ## The depth guard (units CAS 002b, 003 and 004)
 
 Every structural walk (canonical form, derivative, expansion, comparison, printing, compaction) counts its
-nesting; past 47 the call returns NO_ROOM (TOO_LONG before CAS 004, which split the two: TOO_LONG is now only
+nesting; past 46 the call returns NO_ROOM (TOO_LONG before CAS 004, which split the two: TOO_LONG is now only
 a result that does not fit). So the stack is bounded by construction (abacus's ruling: at most 12 KB). The
 limit was 52 in CAS 002b. CAS 003's walks made deeper frames, and it was calibrated again on the S3 at the
 trip point: 49 measured 12,464 bytes worst and 48 measured 12,064. In CAS 004 the bench's idle baseline was
 found to move with the build (520 or 720 bytes; stable within a run), which put 48's worst at 12,272 against
-the 12,288 ceiling: no margin, so abacus moved the guard to 47 (#4797). The parser is a loop and a left chain
+the 12,288 ceiling: no margin, so abacus moved the guard to 47 (#4797). CAS 009 and 010 brought the worst to 12,048
+(measured: +32 was the bench's own run() frame, no longer inlined once casim_req gained repl2; +16 was casim_run's
+frame, 48 to 64 bytes, with CAS 010's three cases), 240 bytes of margin, so abacus moved it to 46 (#5634). The parser
+is a loop and a left chain
 of powers prints in one, so neither counts. The constructors (sum, product, power) are not counted: they
 recurse one level on their own, under a walk that is.
 
-What 47 refuses, measured on the host with the CLI (the count is the same on the chip):
+What 46 refuses, measured on the host with the CLI (the count is the same on the chip); each edge is one level below
+47's:
 
 | Nest | Answers to | NO_ROOM from |
 |---|---|---|
-| powers X^(X^(… , simplify and expand | 46 levels | 47 (189 bytes) |
-| powers X^(X^(… , derive | 44 levels | 45 (181 bytes) |
-| functions SIN(SIN(… , simplify | every 191-byte text (38 levels) | — |
-| sums and products alternating: X+Y×(X+Y×(… , X×(Y+X×(… , 1÷(1+1÷(1+… | 23 levels | 24 (169 bytes) |
-| −(X+−(X+… | 23 levels | 24 (121 bytes) |
-| STU's X^X^…^X (a right chain) , simplify and expand | 47 levels | 48 (95 bytes) |
-| STU's X^X^…^X , derive | 45 levels | 46 |
+| powers X^(X^(… , simplify and expand | 45 levels | 46 (185 bytes) |
+| powers X^(X^(… , derive | 43 levels | 44 (177 bytes) |
+| functions SIN(SIN(… , simplify | every 191-byte text (38 levels) | — (46 levels is 231 bytes) |
+| sums and products alternating: X+Y×(X+Y×(… , X×(Y+X×(… , 1÷(1+1÷(1+… | 22 levels | 23 (162 bytes) |
+| −(X+−(X+… | 22 levels | 23 (116 bytes) |
+| STU's X^X^…^X (a right chain) , simplify and expand | 46 levels | 47 (93 bytes) |
+| STU's X^X^…^X , derive | 44 levels | 45 (89 bytes) |
 
-tests/derive_test.c pins two edges (SIN( simplify 46 and 47; X^( derive 44 and 45), so a move of the guard
+tests/derive_test.c pins two edges (SIN( simplify 45 and 46; X^( derive 43 and 44), so a move of the guard
 shows there first. A nest that alternates sums and products costs two levels for each written one (each is a
 sum node and a product node). At 52 such nests passed to 25 levels; at 48 and 47, some texts that simplified
 in CAS 002 are refused (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d), and at 47 a 189-byte power
