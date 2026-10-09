@@ -8,6 +8,7 @@
  *   casim solve "<text>" X RAD       the real roots in X, exactly, its status first (CAS 005)
  *   casim integrate "<text>" X RAD   an antiderivative in X, without +C (CAS 006)
  *   casim factor "<text>" X RAD      the factors over Q; PARTIAL <text> when one is unproven (CAS 007)
+ *   casim defint "<text>" X LO HI RAD  the exact definite integral from LO to HI; IMPROPER on a pole (CAS 009)
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
@@ -28,15 +29,18 @@
 static unsigned char arena[1 << 20];
 
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
-       OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR };
+       OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR,
+       OP_DEFINT = CASIM_DEFINT };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
 
 /* The calculator's own call (casim_run), with the texts' models. */
+static const char *repl2;
+
 static casim_status run(int op, const char *text, int var, const char *repl, int angle, char *out, size_t arena_cap)
 {
-    casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle};
+    casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle, repl2};
     return casim_run(&rq, out, out_cap, arena, arena_cap);
 }
 
@@ -70,15 +74,18 @@ int main(int argc, char **argv)
     op = strcmp(argv[i], "derive") == 0 ? OP_DERIVE : strcmp(argv[i], "simplify") == 0 ? OP_SIMPLIFY
        : strcmp(argv[i], "expand") == 0 ? OP_EXPAND : strcmp(argv[i], "collect") == 0 ? OP_COLLECT
        : strcmp(argv[i], "subst") == 0 ? OP_SUBST : strcmp(argv[i], "solve") == 0 ? OP_SOLVE
-       : strcmp(argv[i], "integrate") == 0 ? OP_INTEGRATE : strcmp(argv[i], "factor") == 0 ? OP_FACTOR : -1;
+       : strcmp(argv[i], "integrate") == 0 ? OP_INTEGRATE : strcmp(argv[i], "factor") == 0 ? OP_FACTOR
+       : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : -1;
     args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ? 4
-         : op == OP_SUBST ? 5 : 3;
+         : op == OP_SUBST ? 5 : op == OP_DEFINT ? 6 : 3;
     if (op < 0 || argc - i != args) goto usage;
-    if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR) {
+    if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ||
+        op == OP_DEFINT) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
     if (op == OP_SUBST) repl = argv[i + 3];
+    if (op == OP_DEFINT) repl = argv[i + 3], repl2 = argv[i + 4];
     {
         const char *a = argv[argc - 1];
         angle = strcmp(a, "DEG") == 0 ? CASIM_DEG : strcmp(a, "RAD") == 0 ? CASIM_RAD
@@ -97,6 +104,7 @@ int main(int argc, char **argv)
     case CASIM_NOT_INTEGRABLE: printf("NOT_INTEGRABLE\n"); break;
     case CASIM_PARTIAL: printf("PARTIAL %s\n", out); break;
     case CASIM_UNDEFINED: printf("UNDEFINED\n"); break;
+    case CASIM_IMPROPER: printf("IMPROPER\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */
@@ -120,6 +128,8 @@ usage:
                     "       casim [--arena N] [--min-arena] solve \"<text>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] integrate \"<text>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] factor \"<text>\" X RAD|DEG|GRAD\n"
+
+                    "       casim [--arena N] [--min-arena] defint \"<text>\" X LO HI RAD|DEG|GRAD\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

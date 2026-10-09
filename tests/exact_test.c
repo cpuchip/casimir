@@ -16,7 +16,7 @@ static unsigned char arena[65536];
 
 static casim_status simp(const char *t, int angle, int model, char *out)
 {
-    casim_req rq = {CASIM_SIMPLIFY, t, model, 0, NULL, 0, angle};
+    casim_req rq = {CASIM_SIMPLIFY, t, model, 0, NULL, 0, angle, NULL};
     return casim_run(&rq, out, OUT, arena, sizeof arena);
 }
 
@@ -242,7 +242,7 @@ static void visible(void)
         if (k < 6) continue;
         n++;
         angle = strcmp(f[3], "DEG") == 0 ? CASIM_DEG : strcmp(f[3], "GRAD") == 0 ? CASIM_GRAD : CASIM_RAD;
-        rq = (casim_req){CASIM_SIMPLIFY, f[2], strcmp(f[4], "STU") == 0 ? CASIM_MODEL_STU : CASIM_MODEL_35, 0, NULL, 0, angle};
+        rq = (casim_req){CASIM_SIMPLIFY, f[2], strcmp(f[4], "STU") == 0 ? CASIM_MODEL_STU : CASIM_MODEL_35, 0, NULL, 0, angle, NULL};
         st = casim_run(&rq, out, OUT, small, sizeof small);
         name = st == CASIM_OK ? out : st == CASIM_UNDEFINED ? "UNDEFINED" : st == CASIM_NO_ROOM ? "NO_ROOM" : "another status";
         CHECK(strcmp(name, f[5]) == 0, "%s: simplify %s (%s): \"%s\", want \"%s\"", f[0], f[2], f[3], name, f[5]);

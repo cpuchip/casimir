@@ -6,12 +6,14 @@ typedef struct {
     const char *name;
     const char *expr;
     int var, angle;
-    int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst, 5 solve, 6 integrate, 7 factor */
-    const char *repl;       /* subst's replacement */
+    int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst, 5 solve, 6 integrate, 7 factor,
+                               8 defint */
+    const char *repl;       /* subst's replacement; defint's lower bound */
     int model;              /* the text's stamp, the replacement's too (CAS 004: 1 STU, 33, 35) */
     int chars;              /* the equation's length in characters */
     int status;             /* the host's status (0 OK, 3 TOO_LONG, ...) */
     const char *want;       /* the host's text ("" unless OK) */
+    const char *repl2;      /* defint's upper bound (CAS 009) */
 } bench_case;
 
 extern const bench_case cases[];

@@ -472,3 +472,41 @@ suites' shared judge (tests/coreeval.h, ce_close) uses this rule, as abacus's do
 **The integer root** (int_root) returns at once for q > 62, since no root >= 2 of an n below 2^62 exists there, and
 tries candidates from 2: an STU exponent chain can make q astronomically large, and the prototype's loop hung
 stamp_test until this guard.
+
+## CAS 009: definite integrals
+
+`casim_defint(eqn, var, lo, hi, model, angle, …)` (casim_run's CASIM_DEFINT, with the upper bound in the request's
+new last field, repl2; the CLI's `defint "<t>" X LO HI RAD`) gives ∫ from lo to hi exactly: F(hi) − F(lo), F being
+integrate's verified antiderivative, substituted by integrate's own rebuilding walk (check_rewrite, which substitutes
+when given a value and rewrites nothing then), so CAS 008's exact values apply: ∫SIN on [0, π] is 2, ∫1÷X on [1, 3]
+is LN(3), ∫SQRT(X) on [0, 4] is 16÷3.
+
+**The integrand** is integrate's, as typed; integrate's refusals pass through with their status. That includes a
+letter inside a linear argument (1÷(A×X+1) is NOT_INTEGRABLE, as in CAS 006), so the interval check never sees one.
+
+**The bounds** are parsed as subst parses its replacement, both in the integrand's model; their SYNTAX offsets count
+as if the call were eqn|lo|hi. A bound with any letter is BAD_ARG; a bound with no value (LN(0), 1÷0) is UNDEFINED; a
+bound that isn't real (SQRT(-1), ASIN(2)) is BAD_ARG. lo > hi gives the sign reversed; lo = hi gives 0.
+
+**The interval check** walks the canonical integrand (not F: F's LN(ABS(COS(X))) would refuse TAN on [0, π÷4]) over
+the closed interval, for every u linear in var (read from the canonical tree directly):
+- under a negative power, u must not be 0 anywhere on it, nor within 1E-20 × max(1, |u|) of 0 (an endpoint pole is
+  a pole);
+- under a non-integer power, u must not be negative anywhere on it. The core's y^x has no real value for a negative
+  y with any non-integer x, odd denominators included ((-8)^(1÷3) is a domain error, measured), so casim follows it;
+  u = 0 is allowed under a positive power (0^(1÷3) = 0);
+- TAN(u)'s poles, half + k × period in u's units (RAD π/2 + kπ, DEG 90 + 180k, GRAD 100 + 200k): k from abn_floor of
+  (umin − half)/period, and both p_k and p_(k+1) tested against the interval widened by the tolerance.
+- At a rational bound, u is computed exactly in rationals, so an edge exactly at a bound (SQRT(3×X−1) from 1÷3) is
+  exactly 0, not a rounding below it; at other bounds u is computed in abn, and a fractional power's u is refused
+  if it comes out below 0 at all (a refusal near the edge is allowed; a value across it is not).
+- Any failure is the new status CASIM_IMPROPER.
+
+**ABS and SGN of a constant fold** (in fn(), so in every operation): when the constant evaluator (abn, in the angle
+mode: COS(2) is negative in RAD and positive in DEG) puts the value beyond 1E-20 of 0, ABS(u) is u or −u and SGN(u)
+is 1 or −1. So F at a bound prints LN(3), not LN(ABS(3)). Text changes only where ABS takes a constant: ABS(π−4)
+is −π+4, X×ABS(COS(2)) is −X×COS(2) in RAD. (SGN typed is refused by the parser; it occurs only inside integrate's
+check.)
+
+**Not reduced, by the unit:** LN(6)−LN(2) stays, as does LN(0.5×SQRT(2)), and SQRT(8)'s square factor stays
+(2×8^1.5÷9): all exact, and whether to reduce them is a casimir-v1 question.

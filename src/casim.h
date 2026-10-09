@@ -28,8 +28,10 @@ typedef enum {
     CASIM_PARTIAL,              /* CAS 007, factor: out holds a correct factorization (it reads back as the
                                    input exactly), but a factor of degree >= 4 is not proven irreducible (rule 5a);
                                    the firmware shows MAY FACTOR FURTHER beside it */
-    CASIM_UNDEFINED             /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0): the expression
+    CASIM_UNDEFINED,            /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0): the expression
                                    has no value; out is "" */
+    CASIM_IMPROPER              /* CAS 009, defint: a pole or domain edge of the integrand on the closed interval
+                                   (or within 1E-20 of it), so the integral is improper there; out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -74,16 +76,17 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_35 35
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
-               CASIM_FACTOR } casim_op;
+               CASIM_FACTOR, CASIM_DEFINT } casim_op;
 
 typedef struct {
     casim_op op;
     const char *eqn;
     int model;                  /* eqn's: 33, 35, CASIM_MODEL_STU, or 0 (35) */
     int var;                    /* derive, collect, subst: 0-25 for A-Z */
-    const char *repl;           /* subst: the replacement */
-    int repl_model;             /* subst: repl's model, as model */
+    const char *repl;           /* subst: the replacement; defint: the lower bound */
+    int repl_model;             /* subst: repl's model, as model (defint reads both bounds as model) */
     int angle;
+    const char *repl2;          /* CAS 009, defint: the upper bound (last, so older initializers leave it NULL) */
 } casim_req;
 
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
@@ -119,5 +122,14 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
    past 191 bytes. */
 casim_status casim_factor(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                           size_t arena_cap);
+
+/* Unit CAS 009: the definite integral of eqn in var from lo to hi, exact: F(hi) - F(lo) with CAS 006's verified F and
+   CAS 008's exact values. The integrand is CAS 006's, as typed (its refusals pass through). The bounds are exact
+   constants read as model (a letter is BAD_ARG; no value is UNDEFINED; not real is BAD_ARG); lo > hi gives the
+   sign reversed, lo = hi gives 0. IMPROPER when a pole or domain edge of the integrand is on the closed interval
+   [min, max] or within 1E-20 of it: u = 0 under a negative power, u < 0 under a non-integer power, TAN's poles in
+   the angle mode, for u linear in var; a pole placed by another letter is BAD_ARG. TOO_LONG past 191 bytes. */
+casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap);
 
 #endif

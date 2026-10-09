@@ -19,7 +19,7 @@ static const int ANGLES[3] = {CASIM_DEG, CASIM_RAD, CASIM_GRAD};
 
 static casim_status integ(const char *f, int angle, int model, char *out, size_t arena_cap)
 {
-    casim_req rq = {CASIM_INTEGRATE, f, model, 'X' - 'A', NULL, 0, angle};
+    casim_req rq = {CASIM_INTEGRATE, f, model, 'X' - 'A', NULL, 0, angle, NULL};
     return casim_run(&rq, out, OUT, arena, arena_cap);
 }
 
@@ -214,7 +214,7 @@ static void review(void)
     {
         char out[OUT];
         static unsigned char small[1000];
-        casim_req rq = {CASIM_INTEGRATE, "(X+1)×(X+2)×(X+3)×(X+4)", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD};
+        casim_req rq = {CASIM_INTEGRATE, "(X+1)×(X+2)×(X+3)×(X+4)", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_NO_ROOM, "a 1000-byte arena: not NO_ROOM");
     }
 }
@@ -283,7 +283,7 @@ static void visible(void)
         n++;
         angle = strcmp(f[4], "DEG") == 0 ? CASIM_DEG : strcmp(f[4], "GRAD") == 0 ? CASIM_GRAD : CASIM_RAD;
         rq = (casim_req){CASIM_INTEGRATE, f[2], strcmp(f[5], "STU") == 0 ? CASIM_MODEL_STU : CASIM_MODEL_35, f[3][0] - 'A',
-                         NULL, 0, angle};
+                         NULL, 0, angle, NULL};
         st = casim_run(&rq, out, OUT, small, sizeof small);
         if (strcmp(f[6], "NOT_INTEGRABLE") == 0) CHECK(st == CASIM_NOT_INTEGRABLE, "%s: %d \"%s\"", f[0], (int)st, out);
         else if (strcmp(f[6], "BAD_ARG") == 0) CHECK(st == CASIM_BAD_ARG, "%s: %d \"%s\"", f[0], (int)st, out);

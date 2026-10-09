@@ -17,7 +17,7 @@ static unsigned char arena[65536];
 
 static casim_status factor(const char *t, int model, char *out, size_t arena_cap)
 {
-    casim_req rq = {CASIM_FACTOR, t, model, 'X' - 'A', NULL, 0, CASIM_RAD};
+    casim_req rq = {CASIM_FACTOR, t, model, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
     return casim_run(&rq, out, OUT, arena, arena_cap);
 }
 
@@ -265,7 +265,7 @@ static void visible(void)
         if (k < 6) continue;
         n++;
         rq = (casim_req){CASIM_FACTOR, f[2], strcmp(f[4], "STU") == 0 ? CASIM_MODEL_STU : CASIM_MODEL_35, f[3][0] - 'A', NULL, 0,
-                         CASIM_RAD};
+                         CASIM_RAD, NULL};
         st = casim_run(&rq, out, OUT, small, sizeof small);
         if (st == CASIM_PARTIAL) {
             snprintf(partial, sizeof partial, "PARTIAL %s", out);

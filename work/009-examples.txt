@@ -1,0 +1,31 @@
+# CAS unit 009 visible examples, written by casim from the rules (work/009-definite-integrals.md): each answer by
+# hand, F(hi) - F(lo) with CAS 006's F and CAS 008's exact values, in 002's form.
+# ID | defint | integrand | lo | hi | angle | model | the answer, or the status
+N0001 | defint | SIN(X) | 0 | π | RAD | 35 | 2
+N0002 | defint | SIN(X) | 0 | 180 | DEG | 35 | 360÷π
+N0003 | defint | SIN(X) | 0 | 200 | GRAD | 35 | 400÷π
+N0004 | defint | 1÷X | 1 | 3 | RAD | 35 | LN(3)
+N0005 | defint | 1÷X | -3 | -1 | RAD | 35 | -LN(3)
+N0006 | defint | SQRT(X) | 0 | 4 | RAD | 35 | 16÷3
+N0007 | defint | EXP(2×X) | 0 | LN(2) | RAD | 35 | 1.5
+N0008 | defint | X^2 | 0 | 1 | RAD | 35 | 1÷3
+N0009 | defint | X^2 | 1 | 0 | RAD | 35 | -1÷3
+N0010 | defint | X^2 | 2 | 2 | RAD | 35 | 0
+N0011 | defint | TAN(X) | 0 | π÷4 | RAD | 35 | -LN(0.5×SQRT(2))
+N0012 | defint | A×X | 0 | 2 | RAD | 35 | 2×A
+N0013 | defint | 1÷X | -1 | 1 | RAD | 35 | IMPROPER
+N0014 | defint | 1÷X | 0 | 1 | RAD | 35 | IMPROPER
+N0015 | defint | 1÷SQRT(X) | 0 | 1 | RAD | 35 | IMPROPER
+N0016 | defint | SQRT(X) | -1 | 1 | RAD | 35 | IMPROPER
+N0017 | defint | TAN(X) | 0 | π÷2 | RAD | 35 | IMPROPER
+N0018 | defint | TAN(X) | 0 | 90 | DEG | 35 | IMPROPER
+N0019 | defint | TAN(X) | 0 | 100 | GRAD | 35 | IMPROPER
+N0020 | defint | 1÷(2×X-1) | 0 | 1 | RAD | 35 | IMPROPER
+N0021 | defint | X^2 | 0 | X | RAD | 35 | BAD_ARG
+N0022 | defint | X^2 | B | 1 | RAD | 35 | BAD_ARG
+N0023 | defint | 1÷(A×X+1) | 0 | 1 | RAD | 35 | NOT_INTEGRABLE
+N0024 | defint | X^2 | LN(0) | 1 | RAD | 35 | UNDEFINED
+N0025 | defint | X×LN(X) | 1 | 2 | RAD | 35 | NOT_INTEGRABLE
+N0026 | defint | X^2^3 | 0 | 1 | RAD | STU | 1÷9
+N0027 | defint | X^2^3 | 0 | 1 | RAD | 35 | 1÷7
+N0028 | defint | COS(X) | 0 | 100 | GRAD | 35 | 200÷π

@@ -1091,6 +1091,120 @@ static ref power(ctx *c, ref b, ref e)
     return mk(c, K_POW, b, e);
 }
 
+/* ---- CAS 009: a constant's value ----
+   The value of a tree that holds no letter, by the core's own arithmetic (abn), in the angle mode: for the bounds of
+   a definite integral, the interval check, and ABS and SGN of a constant. CV_UNDEF: no value (a 0 divided, LN(0));
+   CV_NOTREAL: outside the real domain (SQRT(-1), LN(-1)); CV_NO: not a constant, or a function it can't evaluate. */
+
+enum { CV_OK, CV_NO, CV_UNDEF, CV_NOTREAL };
+
+static abn abn_pi(void)
+{
+    abn y = abn_zero(), m = abn_from_int(-1), p;
+    abn_atan2(&p, &y, &m);
+    return p;
+}
+
+static int cv_status(abn_status st)
+{
+    return st == ABN_OK ? CV_OK : st == ABN_DIV_ZERO || st == ABN_RANGE ? CV_UNDEF : CV_NOTREAL;
+}
+
+/* an int64 as abn, in two parts of 10^9 (|v| < 2^62) */
+static bool i64_abn(int64_t v, abn *r)
+{
+    abn hi = abn_from_int((int32_t)(v / 1000000000)), lo = abn_from_int((int32_t)(v % 1000000000)), g = abn_from_int(1000000000);
+    return abn_mul(r, &hi, &g) == ABN_OK && abn_add(r, r, &lo) == ABN_OK;
+}
+
+static bool rat_abn(const rat *q, abn *v)
+{
+    abn p, d;
+    return i64_abn(q->p, &p) && i64_abn(q->q, &d) && abn_div(v, &p, &d) == ABN_OK;
+}
+
+/* the angle mode's factor to radians (to_rad) or from them */
+static abn mode_scale(int angle, bool to_rad)
+{
+    abn pi = abn_pi(), d = abn_from_int(angle == CASIM_DEG ? 180 : 200), r;
+    if (angle == CASIM_RAD) return abn_from_int(1);
+    abn_div(&r, to_rad ? &pi : &d, to_rad ? &d : &pi);
+    return r;
+}
+
+static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
+{
+    const node *x;
+    abn t, k;
+    int st;
+    if (!enter(c)) return CV_NO;
+    x = nd(c, r);
+    st = CV_NO;
+    switch (x->kind) {
+    case K_NUM: st = rat_abn(val(c, r), v) ? CV_OK : CV_NO; break;
+    case K_PI: *v = abn_pi(), st = CV_OK; break;
+    case K_ADD:
+    case K_MUL:
+        *v = abn_from_int(x->kind == K_MUL);
+        st = CV_OK;
+        for (int i = 0; i < x->n && st == CV_OK; i++)
+            if ((st = const_val(c, list(c, x->a)[i], &t)) == CV_OK)
+                st = cv_status(x->kind == K_MUL ? abn_mul(v, v, &t) : abn_add(v, v, &t));
+        break;
+    case K_POW:
+        if ((st = const_val(c, x->a, v)) != CV_OK || (st = const_val(c, nd(c, r)->b, &t)) != CV_OK) break;
+        if (abn_is_zero(v) && abn_is_negative(&t)) st = CV_UNDEF;
+        else st = cv_status(abn_pow(v, v, &t));
+        break;
+    case K_FN: {
+        int f = x->id;
+        if ((st = const_val(c, x->a, &t)) != CV_OK) break;
+        if ((f == F_LN || f == F_LOG) && abn_is_zero(&t)) {
+            st = CV_UNDEF;
+            break;
+        }
+        if (f == F_SIN || f == F_COS || f == F_TAN) k = mode_scale(c->angle, true), abn_mul(&t, &t, &k);
+        switch (f) {
+        case F_LN: st = cv_status(abn_ln(v, &t)); break;
+        case F_LOG: st = cv_status(abn_log10(v, &t)); break;
+        case F_EXP: st = cv_status(abn_exp(v, &t)); break;
+        case F_ALOG: st = cv_status(abn_exp10(v, &t)); break;
+        case F_SIN: st = cv_status(abn_sin(v, &t)); break;
+        case F_COS: st = cv_status(abn_cos(v, &t)); break;
+        case F_TAN: st = cv_status(abn_tan(v, &t)); break;
+        case F_ASIN: st = cv_status(abn_asin(v, &t)); break;
+        case F_ACOS: st = cv_status(abn_acos(v, &t)); break;
+        case F_ATAN: st = cv_status(abn_atan(v, &t)); break;
+        case F_SINH: st = cv_status(abn_sinh(v, &t)); break;
+        case F_COSH: st = cv_status(abn_cosh(v, &t)); break;
+        case F_TANH: st = cv_status(abn_tanh(v, &t)); break;
+        case F_ASINH: st = cv_status(abn_asinh(v, &t)); break;
+        case F_ACOSH: st = cv_status(abn_acosh(v, &t)); break;
+        case F_ATANH: st = cv_status(abn_atanh(v, &t)); break;
+        case F_ABS: *v = abn_abs(&t), st = CV_OK; break;
+        case F_SGN: *v = abn_from_int(abn_is_zero(&t) ? 0 : abn_is_negative(&t) ? -1 : 1), st = CV_OK; break;
+        default: st = CV_NO; break;
+        }
+        if (st == CV_OK && (f == F_ASIN || f == F_ACOS || f == F_ATAN))
+            k = mode_scale(c->angle, false), st = cv_status(abn_mul(v, v, &k));
+        break;
+    }
+    default: break;                     /* a letter, an opaque name: not a constant */
+    }
+    c->depth--;
+    return st;
+}
+
+/* the sign of a constant, when the evaluator decides it beyond 1E-20 (CAS 009 rule 5); 0 when it can't */
+static int const_sign(ctx *c, ref a)
+{
+    abn v, tiny, w;
+    if (const_val(c, a, &v) != CV_OK || abn_pow10(&tiny, -20) != ABN_OK) return 0;
+    w = abn_abs(&v);
+    if (abn_cmp(&w, &tiny) <= 0) return 0;
+    return abn_is_negative(&v) ? -1 : 1;
+}
+
 /* ---- CAS 008: exact values ----
    One table, sin(nπ/12), serves SIN, COS (n + 6) and, apart, TAN, in all three angle modes: a constant argument
    is first turned into a rational multiple of π. Only the multiples of π/6 and π/4 are exact; each value is
@@ -1242,8 +1356,16 @@ static ref fn(ctx *c, int f, ref a)
             rat v = *val(c, a);
             v.p = v.p < 0 ? -v.p : v.p;
             return num(c, &v);
+        } else {
+            int sg = const_sign(c, a);              /* CAS 009 rule 5: ABS of a constant whose sign is decided */
+            if (sg) return sg > 0 ? a : neg(c, a);
         }
         break;
+    case F_SGN: {
+        int sg = const_sign(c, a);
+        if (sg) return small(c, sg > 0 ? C_1 : C_M1);
+        break;
+    }
     }
     r = mk(c, K_FN, a, 0);
     if (r != SPARE) nd(c, r)->id = (uint8_t)f;
@@ -3035,6 +3157,7 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_SOLVE: return casim_solve(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_INTEGRATE: return casim_integrate(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_FACTOR: return casim_factor(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_DEFINT: return casim_defint(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -4155,10 +4278,13 @@ static ref check_rewrite(ctx *c, ref r)
     if (c->st != CASIM_OK || !enter(c)) return SPARE;
     x = nd(c, r);
     switch (x->kind) {
+    case K_VAR:                         /* CAS 009: with sub_val set, the walk substitutes (F at a bound) and rewrites nothing */
+        if (c->sub_val && x->id == c->sub_var) v = c->sub_val;
+        break;
     case K_FN: {
         ref a = check_rewrite(c, x->a);
         x = nd(c, r);
-        if (x->id == F_TAN) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));
+        if (x->id == F_TAN && !c->sub_val) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));
         else v = fn(c, x->id, a);
         break;
     }
@@ -4176,7 +4302,7 @@ static ref check_rewrite(ctx *c, ref r)
             ref t = check_rewrite(c, list(c, nd(c, r)->a)[i]);
             list(c, l)[i] = t;
         }
-        if (kind == K_MUL)
+        if (kind == K_MUL && !c->sub_val)
             for (int i = 0; i < n; i++) {
                 const node *g = nd(c, list(c, l)[i]);
                 if (g->kind != K_FN || g->id != F_SGN) continue;
@@ -4236,6 +4362,203 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- definite integrals (unit CAS 009) ----
+   F(hi) - F(lo), with F integrate's verified antiderivative, substituted by check_rewrite's walk, so CAS 008's exact
+   values apply. Printed only when the interval check proves the integrand real and finite on the closed interval:
+   every u linear in var under a negative power is nonzero on it, under a non-integer power positive (0 allowed
+   for a positive power: the core's y^x has no real value for y < 0, odd denominators too), and TAN(u) has no pole
+   on it in the angle mode. A pole within a relative 1E-20 of the interval counts as on it. */
+
+enum { IV_OK, IV_IMPROPER, IV_LETTER };
+
+/* a bound: its value, and its tree when it is a rational number (then u at it is exact) */
+typedef struct {
+    abn v;
+    const rat *q;
+} bound;
+
+/* u = l1 var + l0 at a bound: exact in rationals at a rational bound (u = 0 at X = 1/3 is 0, not a rounding below
+   it), else in abn */
+static bool lin_at(const rat *l, const bound *x, abn *v)
+{
+    abn a, b;
+    rat t;
+    if (x->q && rat_mul(&t, &l[1], x->q) && rat_add(&t, &t, &l[0])) return rat_abn(&t, v);
+    return rat_abn(&l[1], &a) && rat_abn(&l[0], &b) && abn_mul(v, &a, &x->v) == ABN_OK && abn_add(v, v, &b) == ABN_OK;
+}
+
+/* the relative edge: 1E-20 × max(1, |p|, |q|) */
+static abn edge_tol(const abn *p, const abn *q)
+{
+    abn t, m = abn_from_int(1), ap = abn_abs(p), aq = abn_abs(q);
+    if (abn_cmp(&ap, &m) > 0) m = ap;
+    if (abn_cmp(&aq, &m) > 0) m = aq;
+    abn_pow10(&t, -20);
+    abn_mul(&t, &t, &m);
+    return t;
+}
+
+/* a canonical term of u: k (a number), var, or k×var, into l[0] + l[1] var */
+static bool lin_term(ctx *c, ref t, int var, rat *l)
+{
+    const node *x = nd(c, t);
+    rat s;
+    if (is_num(c, t)) return rat_add(&l[0], &l[0], val(c, t));
+    if (x->kind == K_VAR && x->id == var) return rat_int(&s, 1), rat_add(&l[1], &l[1], &s);
+    if (x->kind == K_MUL && x->n == 2 && is_num(c, list(c, x->a)[0]) && nd(c, list(c, x->a)[1])->kind == K_VAR &&
+        nd(c, list(c, x->a)[1])->id == var)
+        return rat_add(&l[1], &l[1], val(c, list(c, x->a)[0]));
+    return false;
+}
+
+/* u's range over [A, B] (A <= B): umin, umax; false if u isn't l1 var + l0 with numbers (another letter: *letter).
+   The canonical tree, read directly (pw walks the typed tree). CAS 006 only integrates numeric linear arguments, so a
+   letter here can't come from today's integrands; the check stays for the day the scope widens. */
+static bool lin_range(ctx *c, ref u, int var, const bound *A, const bound *B, abn *umin, abn *umax, bool *letter)
+{
+    rat lin[2];
+    abn ua, ub;
+    const node *x = nd(c, u);
+    bool ok = true;
+    *letter = false;
+    for (int l = 0; l < 26; l++)
+        if (l != var && contains(c, u, l)) return *letter = true, false;
+    rat_int(&lin[0], 0), rat_int(&lin[1], 0);
+    if (x->kind == K_ADD)
+        for (int i = 0; i < x->n && ok; i++) ok = lin_term(c, list(c, x->a)[i], var, lin);
+    else ok = lin_term(c, u, var, lin);
+    if (!ok || lin[1].p == 0 || !lin_at(lin, A, &ua) || !lin_at(lin, B, &ub)) return false;
+    if (abn_cmp(&ua, &ub) <= 0) *umin = ua, *umax = ub;
+    else *umin = ub, *umax = ua;
+    return true;
+}
+
+/* the power u^e (e a number): u = 0 on the interval under a negative power, u < 0 under a non-integer one */
+static __attribute__((noinline)) int pow_hits(ctx *c, ref u, const rat *ex, int var, const bound *A, const bound *B)
+{
+    abn umin, umax, tol, z = abn_zero(), ntol;
+    bool letter;
+    if (!lin_range(c, u, var, A, B, &umin, &umax, &letter)) return letter ? IV_LETTER : IV_IMPROPER;
+    tol = edge_tol(&umin, &umax), ntol = abn_neg(&tol);
+    if (ex->p < 0 && abn_cmp(&umin, &tol) <= 0 && abn_cmp(&umax, &ntol) >= 0) return IV_IMPROPER;     /* u = 0 on it */
+    if (ex->q != 1 && abn_cmp(&umin, &z) < 0) return IV_IMPROPER;                                      /* u < 0 on it */
+    return IV_OK;
+}
+
+/* TAN(u)'s poles, half + k × period in u's units (RAD π/2 + kπ, DEG 90 + 180k, GRAD 100 + 200k): k = floor((umin -
+   half) / period), so p0 = half + k period <= umin < p1 = p0 + period up to rounding; either within the widened
+   interval is a pole on it */
+static __attribute__((noinline)) int tan_hits(ctx *c, ref u, int var, const bound *A, const bound *B)
+{
+    abn umin, umax, tol, half, per, t, p;      /* t: the quotient, then the widened interval's ends (umin, umax reused) */
+    bool letter;
+    if (!lin_range(c, u, var, A, B, &umin, &umax, &letter)) return letter ? IV_LETTER : IV_IMPROPER;
+    if (c->angle == CASIM_RAD) {
+        abn two = abn_from_int(2);
+        per = abn_pi();
+        abn_div(&half, &per, &two);
+    } else half = abn_from_int(c->angle == CASIM_DEG ? 90 : 100), per = abn_from_int(c->angle == CASIM_DEG ? 180 : 200);
+    tol = edge_tol(&umin, &umax);
+    if (abn_sub(&t, &umin, &half) != ABN_OK || abn_div(&t, &t, &per) != ABN_OK || abn_floor(&t, &t) != ABN_OK ||
+        abn_mul(&p, &t, &per) != ABN_OK || abn_add(&p, &p, &half) != ABN_OK || abn_sub(&umin, &umin, &tol) != ABN_OK ||
+        abn_add(&umax, &umax, &tol) != ABN_OK)
+        return IV_IMPROPER;
+    if (abn_cmp(&p, &umin) >= 0) return IV_IMPROPER;                    /* p0 at the low end */
+    return abn_add(&p, &p, &per) != ABN_OK || abn_cmp(&p, &umax) <= 0 ? IV_IMPROPER : IV_OK;       /* p1 inside */
+}
+
+static int interval_walk(ctx *c, ref r, int var, const bound *A, const bound *B)
+{
+    const node *x;
+    int st = IV_OK;
+    if (!contains(c, r, var)) return IV_OK;             /* a constant factor (A×X^2's A) has no pole in var */
+    if (!enter(c)) return IV_IMPROPER;
+    x = nd(c, r);
+    switch (x->kind) {
+    case K_POW:
+        if (is_num(c, x->b) && (val(c, x->b)->p < 0 || val(c, x->b)->q != 1)) st = pow_hits(c, x->a, val(c, x->b), var, A, B);
+        if (st == IV_OK) st = interval_walk(c, x->a, var, A, B);
+        break;
+    case K_FN:
+        if (x->id == F_TAN) st = tan_hits(c, x->a, var, A, B);
+        if (st == IV_OK) st = interval_walk(c, x->a, var, A, B);
+        break;
+    case K_ADD:
+    case K_MUL:
+        for (int i = 0; i < x->n && st == IV_OK; i++) st = interval_walk(c, list(c, x->a)[i], var, A, B);
+        break;
+    default: break;
+    }
+    c->depth--;
+    return st;
+}
+
+/* a bound: parsed as subst parses its replacement (its SYNTAX offset counted after eqn and what came before it, as
+   if the call were eqn|lo|hi), canonical, letter-free, valued; false with c->st set */
+static ref read_bound(ctx *c, const char *t, int at, abn *v)
+{
+    ref r;
+    int cv;
+    c->s2 = t, c->s = t, c->no_eq = true;
+    r = parse(c);
+    if (c->st == CASIM_SYNTAX) c->errpos += at;
+    if (c->st != CASIM_OK) return SPARE;
+    r = canon(c, r);
+    if (c->st != CASIM_OK) return SPARE;
+    for (int l = 0; l < 26; l++)
+        if (contains(c, r, l)) return c->st = CASIM_BAD_ARG, SPARE;
+    cv = const_val(c, r, v);
+    if (cv != CV_OK) c->st = cv == CV_UNDEF ? CASIM_UNDEFINED : CASIM_BAD_ARG;
+    return c->st == CASIM_OK ? r : SPARE;
+}
+
+static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var, const char *lo, const char *hi, int angle,
+                                                        char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, F = SPARE, f, a, b;
+    bound ba, bb;
+    int chars = 0, iv;
+    size_t ocap = cap < SLOT ? cap : SLOT;
+    if (cap) out[0] = '\0';
+    if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.var = var;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;         /* an equation */
+    if (c.st == CASIM_OK) F = integ(&c, n, var);                        /* CAS 006, checked as it goes */
+    if (c.st != CASIM_OK) return finish(&c, F, out, ocap);
+    f = canon(&c, n);                                                   /* the integrand, for the interval check */
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    a = read_bound(&c, lo, chars + 1, &ba.v);
+    for (const char *p = lo; *p && c.st == CASIM_OK; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    b = c.st == CASIM_OK ? read_bound(&c, hi, chars + 2, &bb.v) : SPARE;
+    c.s = eqn;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    ba.q = is_num(&c, a) ? val(&c, a) : NULL, bb.q = is_num(&c, b) ? val(&c, b) : NULL;
+    iv = abn_cmp(&ba.v, &bb.v) <= 0 ? interval_walk(&c, f, var, &ba, &bb) : interval_walk(&c, f, var, &bb, &ba);
+    if (iv != IV_OK) return c.st = iv == IV_LETTER ? CASIM_BAD_ARG : CASIM_IMPROPER, finish(&c, SPARE, out, ocap);
+    c.sub_var = var;
+    c.sub_val = b;
+    b = check_rewrite(&c, F);                                           /* F(hi) */
+    c.sub_val = a;
+    a = check_rewrite(&c, F);                                           /* F(lo) */
+    c.sub_val = 0, c.sub_var = -1;
+    return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);
+}
+
+casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_defint(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }
 
 /* ---- factor (unit CAS 007) ----

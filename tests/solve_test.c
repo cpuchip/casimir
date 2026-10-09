@@ -18,7 +18,7 @@ static unsigned char arena[65536];
 
 static casim_status solve(const char *eqn, int var, int model, char *out)
 {
-    casim_req rq = {CASIM_SOLVE, eqn, model, var, NULL, 0, CASIM_RAD};
+    casim_req rq = {CASIM_SOLVE, eqn, model, var, NULL, 0, CASIM_RAD, NULL};
     return casim_run(&rq, out, OUT, arena, sizeof arena);
 }
 
@@ -101,7 +101,7 @@ static void exact(void)
           "twelve irrational roots: \"%.60s\"", out);
     /* bad arguments */
     {
-        casim_req rq = {CASIM_SOLVE, "X", CASIM_MODEL_35, 26, NULL, 0, CASIM_RAD};
+        casim_req rq = {CASIM_SOLVE, "X", CASIM_MODEL_35, 26, NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "var 26 accepted");
     }
     CHECK(casim_solve("X^2-1", 'X' - 'A', CASIM_MODEL_35, CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK &&
@@ -215,7 +215,7 @@ static void as_typed(void)
     /* (X-1)...(X-9) at the device's 8 KB arena (it needed 10.8 KB expanded: the review) */
     {
         casim_req rq = {CASIM_SOLVE, "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9)", CASIM_MODEL_35, 'X' - 'A',
-                        NULL, 0, CASIM_RAD};
+                        NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK &&
                   strcmp(out, "SOLVED: X=1; X=2; X=3; X=4; X=5; X=6; X=7; X=8; X=9") == 0,
               "(X-1)...(X-9) in 8 KB: \"%s\"", out);
@@ -446,7 +446,7 @@ static void visible(void)
         if (k < 6) continue;
         n++;
         rq = (casim_req){CASIM_SOLVE, f[2], strcmp(f[4], "STU") == 0 ? CASIM_MODEL_STU : CASIM_MODEL_35, f[3][0] - 'A', NULL, 0,
-                         CASIM_RAD};
+                         CASIM_RAD, NULL};
         st = casim_run(&rq, out, OUT, small, sizeof small);
         name = st == CASIM_OK ? out : st == CASIM_NOT_POLYNOMIAL ? "NOT_POLYNOMIAL" : st == CASIM_NOT_NUMERIC ? "NOT_NUMERIC"
              : st == CASIM_NO_ROOM ? "NO_ROOM" : st == CASIM_TOO_LONG ? "TOO_LONG" : "another status";

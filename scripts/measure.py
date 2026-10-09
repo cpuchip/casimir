@@ -109,6 +109,8 @@ def cli_args(expr, var, angle, op, repl=None, model="35"):
         return m + [op, expr, var, angle]
     if op == "subst":
         return m + [op, expr, var, repl, angle]
+    if op == "defint":                  # CAS 009: repl holds "lo|hi"
+        return m + [op, expr, var] + repl.split("|", 1) + [angle]
     return m + [op, expr, angle]
 
 
@@ -250,6 +252,20 @@ def all_cases():
                         ("DEG", "SIN(30)+COS(225)×TAN(60)+ASIN(-0.5)+EXP(3×LN(2))"),
                         ("GRAD", "COS(50)^2+SIN(100÷3)+ACOS(-1)+4^(3÷2)")]:
         rows.append((f"x mixed {angle}", expr, "X", angle, "simplify", None, "35"))
+    # CAS 009: definite integrals, its visible examples and the heaviest forms (a 12-term polynomial, a long chain
+    # of forms with π bounds, TAN near its poles in each mode)
+    with open(os.path.join(ROOT, "work", "009-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], "X", p[5], "defint", p[3] + "|" + p[4], p[6]))
+    for name, expr, lo, hi, angle in [
+            ("n poly deg 11", "+".join(f"{k + 1}×X^{k}" for k in range(12)), "-1", "2", "RAD"),
+            ("n seven forms", "SIN(2×X)+COS(3×X+1)+EXP(X)+1÷(2×X+1)+SQRT(X+1)+TAN(X÷2)+X^3", "0", "π÷3", "RAD"),
+            ("n TAN DEG", "TAN(X)", "-89", "89", "DEG"), ("n TAN GRAD", "TAN(X)", "101", "299", "GRAD"),
+            ("n (2X+1)^(5÷3)", "(2×X+1)^(5÷3)", "0", "13÷2", "RAD")]:
+        rows.append((name, expr, "X", angle, "defint", lo + "|" + hi, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))
@@ -269,7 +285,8 @@ def main():
     if not os.path.exists(CLI):
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
-    ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor")}
+    ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
+                                          "defint")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:

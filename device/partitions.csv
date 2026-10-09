@@ -1,4 +1,6 @@
 # Name,   Type, SubType, Offset,  Size
+# factory 6 MB of the XIAO's 8 (CAS 009: the constant evaluator links the core's whole transcendental set, about
+# 3.4 MB of libbid, which the firmware links anyway for its own keys; the bench links only what casim calls)
 nvs,      data, nvs,     0x9000,  0x6000
 phy_init, data, phy,     0xf000,  0x1000
-factory,  app,  factory, 0x10000, 0x300000
+factory,  app,  factory, 0x10000, 0x600000

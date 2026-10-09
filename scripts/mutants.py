@@ -130,14 +130,15 @@ MUTANTS = {
          "    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
     ],
     "integ-plus-c": [
-        ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);", "    if (c.st == CASIM_OK) F = add2(&c, integ(&c, n, var), leaf(&c, K_VAR, 2));"),
+        ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */",
+         "    if (c.st == CASIM_OK) F = add2(&c, integ(&c, n, var), leaf(&c, K_VAR, 2));"),
     ],
     "integ-check-no-sgn-abs": [
         ("src/casim.c", "                    list(c, l)[i] = power(c, g->a, small(c, C_M1));\n                    list(c, l)[j] = small(c, C_1);",
          "                    (void)l;"),
     ],
     "integ-check-no-tan": [
-        ("src/casim.c", "        if (x->id == F_TAN) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));",
+        ("src/casim.c", "        if (x->id == F_TAN && !c->sub_val) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));",
          "        if (0) v = a;"),
     ],
     # CAS 007: the unit's list, then the search's own parts (the disks' pairing, a wide interval, the finder)
@@ -202,6 +203,29 @@ MUTANTS = {
     "exact-undefined-not-raised": [
         ("src/casim.c", "            c->st = CASIM_UNDEFINED;            /* CAS 008 rule 5: an exact 0 in a denominator has no value */\n            return SPARE;",
          "            (void)0;"),
+    ],
+    # CAS 009: the unit's list
+    "defint-endpoint-pole-allowed": [
+        ("src/casim.c", "if (ex->p < 0 && abn_cmp(&umin, &tol) <= 0 && abn_cmp(&umax, &ntol) >= 0) return IV_IMPROPER;",
+         "if (ex->p < 0 && abn_cmp(&umin, &ntol) < 0 && abn_cmp(&umax, &tol) > 0) return IV_IMPROPER;"),
+    ],
+    "defint-tan-poles-as-rad": [
+        ("src/casim.c", "    if (c->angle == CASIM_RAD) {\n        abn two = abn_from_int(2);\n        per = abn_pi();",
+         "    if (1) {\n        abn two = abn_from_int(2);\n        per = abn_pi();"),
+    ],
+    "defint-lo-minus-hi": [
+        ("src/casim.c", "    return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);", "    return finish(&c, add2(&c, a, neg(&c, b)), out, ocap);"),
+    ],
+    "defint-fraction-edge-ignored": [
+        ("src/casim.c", "    if (ex->q != 1 && abn_cmp(&umin, &z) < 0) return IV_IMPROPER;",
+         "    if (ex->q != 1 && abn_cmp(&umin, &z) < 0 && 0) return IV_IMPROPER;"),
+    ],
+    "defint-abs-fold-sign": [
+        ("src/casim.c", "            if (sg) return sg > 0 ? a : neg(c, a);", "            if (sg) return sg < 0 ? a : neg(c, a);"),
+    ],
+    "defint-check-walks-F": [
+        ("src/casim.c", "interval_walk(&c, f, var, &ba, &bb) : interval_walk(&c, f, var, &bb, &ba);",
+         "interval_walk(&c, ((void)f, F), var, &ba, &bb) : interval_walk(&c, F, var, &bb, &ba);"),
     ],
     # CAS 005 rule 2 as amended: the equation as typed
     "solve-denominator-allowed": [

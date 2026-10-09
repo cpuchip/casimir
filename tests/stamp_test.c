@@ -16,7 +16,7 @@ static const int MODELS[3] = {CASIM_MODEL_STU, CASIM_MODEL_33, CASIM_MODEL_35};
 
 static casim_status run(casim_op op, const char *eqn, int model, const char *repl, int repl_model, char *out)
 {
-    casim_req rq = {op, eqn, model, 'X' - 'A', repl, repl_model, CASIM_RAD};
+    casim_req rq = {op, eqn, model, 'X' - 'A', repl, repl_model, CASIM_RAD, NULL};
     return casim_run(&rq, out, OUT, arena, sizeof arena);
 }
 
@@ -89,13 +89,13 @@ static void exact(void)
     /* bad arguments */
     {
         char out[OUT];
-        casim_req rq = {CASIM_SIMPLIFY, "X", 7, 0, NULL, 0, CASIM_RAD};
+        casim_req rq = {CASIM_SIMPLIFY, "X", 7, 0, NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "model 7 accepted");
         rq.model = CASIM_MODEL_STU, rq.op = (casim_op)9;
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "op 9 accepted");
-        rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, "Y", 2, CASIM_RAD};
+        rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, "Y", 2, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "repl_model 2 accepted");
-        rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, NULL, CASIM_MODEL_STU, CASIM_RAD};
+        rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, NULL, CASIM_MODEL_STU, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "subst without repl accepted");
     }
     /* the review: a negative fractional power prints with its ^ (not SQRT), so a chain through it keeps its
@@ -116,7 +116,7 @@ static void exact(void)
     /* the review: no text at all is a bad argument, for every op */
     for (int op = CASIM_DERIVE; op <= CASIM_SUBST; op++) {
         char out[OUT];
-        casim_req rq = {(casim_op)op, NULL, CASIM_MODEL_STU, 23, "Y", CASIM_MODEL_STU, CASIM_RAD};
+        casim_req rq = {(casim_op)op, NULL, CASIM_MODEL_STU, 23, "Y", CASIM_MODEL_STU, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "op %d: a NULL eqn accepted", op);
     }
     {
@@ -129,12 +129,12 @@ static void exact(void)
         char out[OUT];
         int len = 0;
         unsigned char small_[64];
-        casim_req rq = {CASIM_SIMPLIFY, chain, CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD};
+        casim_req rq = {CASIM_SIMPLIFY, chain, CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD, NULL};
         for (int i = 0; i < 95; i++) len += snprintf(chain + len, sizeof chain - (size_t)len, "%sX", i ? "^" : "");
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_NO_ROOM, "a 95-level STU chain: not NO_ROOM");
         rq.model = CASIM_MODEL_35;
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_OK, "the same chain read as 35: not OK");
-        rq = (casim_req){CASIM_EXPAND, "(X+Y+1)^6", CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD};
+        rq = (casim_req){CASIM_EXPAND, "(X+Y+1)^6", CASIM_MODEL_STU, 23, NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_TOO_LONG, "(X+Y+1)^6: not TOO_LONG");
         rq.eqn = "SIN(X)";
         CHECK(casim_run(&rq, out, OUT, small_, sizeof small_) == CASIM_NO_ROOM, "a 64-byte arena: not NO_ROOM");
