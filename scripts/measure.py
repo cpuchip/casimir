@@ -105,9 +105,9 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
-    if op in ("derive", "collect", "solve", "integrate", "factor"):
+    if op in ("derive", "collect", "solve", "integrate", "factor", "cancel"):
         return m + [op, expr, var, angle]
-    if op == "subst":
+    if op in ("subst", "pdiv", "pgcd"):
         return m + [op, expr, var, repl, angle]
     if op == "defint":                  # CAS 009: repl holds "lo|hi"
         return m + [op, expr, var] + repl.split("|", 1) + [angle]
@@ -266,6 +266,21 @@ def all_cases():
             ("n TAN DEG", "TAN(X)", "-89", "89", "DEG"), ("n TAN GRAD", "TAN(X)", "101", "299", "GRAD"),
             ("n (2X+1)^(5÷3)", "(2×X+1)^(5÷3)", "0", "13÷2", "RAD")]:
         rows.append((name, expr, "X", angle, "defint", lo + "|" + hi, "35"))
+    # CAS 010: polynomial division, GCD and cancelling, the visible examples and the heaviest forms
+    with open(os.path.join(ROOT, "work", "010-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], "X", "RAD", p[1], None if p[3] == "-" else p[3], p[4]))
+    for name, op, f_, g_ in [
+            ("q deg 12 by 1", "pdiv", "+".join(f"{k + 1}×X^{k}" for k in range(13)), "3×X-2"),
+            ("q deg 12 by 6", "pdiv", "+".join(f"{(k % 5) + 1}×X^{k}" for k in range(13)), "X^6+2×X^3-X+5"),
+            ("g deg 12 common 6", "pgcd", "(X^6+X+1)×(X^6-2×X^2+3)", "(X^6+X+1)×(2×X^6+X^5-7)"),
+            ("g coprime deg 12", "pgcd", "X^12+X+1", "X^12-X^7+3"),
+            ("k deg 12 over deg 12", "cancel", "(X^12-1)÷(X^12+X^6-X^4-X^2+1)", None),
+            ("k (X-1)..(X-6)", "cancel", "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)÷((X-1)×(X-3)×(X-5)×(X+7))", None)]:
+        rows.append((name, f_, "X", "RAD", op, g_, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))
@@ -286,7 +301,7 @@ def main():
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                          "defint")}
+                                          "defint", "pdiv", "pgcd", "cancel")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:

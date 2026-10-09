@@ -7,7 +7,7 @@ typedef struct {
     const char *expr;
     int var, angle;
     int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst, 5 solve, 6 integrate, 7 factor,
-                               8 defint */
+                               8 defint, 9 pdiv, 10 pgcd, 11 cancel */
     const char *repl;       /* subst's replacement; defint's lower bound */
     int model;              /* the text's stamp, the replacement's too (CAS 004: 1 STU, 33, 35) */
     int chars;              /* the equation's length in characters */

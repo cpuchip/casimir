@@ -3201,6 +3201,11 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_INTEGRATE: return casim_integrate(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_FACTOR: return casim_factor(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_DEFINT: return casim_defint(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_PDIV:
+        return casim_pdiv(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_PGCD:
+        return casim_pgcd(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_CANCEL: return casim_cancel(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -5069,4 +5074,344 @@ casim_status casim_factor(const char *eqn, int var, int model, int angle, char *
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_factor(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- polynomial division, GCD and cancelling over Q (unit CAS 010) ---- */
+
+/* the gcd's mod-p polynomials and its reconstruction, in the arena (rule 7: off the stack) */
+typedef struct {
+    uint32_t a[SOLVE_DEG + 1], b[SOLVE_DEG + 1], h[SOLVE_DEG + 1];
+    int64_t acc[SOLVE_DEG + 1];
+    ipoly cand, q;                      /* the candidate and its cofactor */
+} gcdwork;
+
+/* the operations' polynomials, in the arena too: f and g cleared, the gcd, the reduced quotient's two sides and its
+   check, and the removed values' search (the gcd's work area is solve's then, the gcd being done) */
+typedef struct {
+    ipoly fi, gi, gd, nr, dr, back, h, rest;
+    rat roots[SOLVE_DEG + 1];
+    rat kf, kg, k, inv, d;              /* the contents and the reduced quotient's constant */
+} polywork;
+
+/* The primes, largest 31-bit first. A test build (tests/gcdprimes_check.c) swaps in small ones to reach the paths the
+   real primes never need: an unlucky prime, a candidate that fails, a reconstruction that wraps. */
+#ifndef CASIM_GCD_PRIMES
+#define CASIM_GCD_PRIMES 2147483629u, 2147483587u, 2147483579u, 2147483563u, 2147483549u, 2147483543u, 2147483497u, 2147483489u
+#endif
+static const uint32_t GCD_PRIMES[] = {CASIM_GCD_PRIMES};
+
+static uint32_t inv_mod(uint32_t a, uint32_t p)
+{
+    int64_t t = 0, nt = 1, r = p, nr = a;
+    while (nr) {
+        int64_t q = r / nr, x = t - q * nt;
+        t = nt, nt = x, x = r - q * nr, r = nr, nr = x;
+    }
+    return (uint32_t)(t < 0 ? t + p : t);
+}
+
+/* f mod p into m; its degree (-1: 0) */
+static int to_modp(const ipoly *f, uint32_t p, uint32_t *m)
+{
+    int n = f->n;
+    for (int i = 0; i <= n; i++) {
+        int64_t v = f->a[i] % (int64_t)p;
+        m[i] = (uint32_t)(v < 0 ? v + p : v);
+    }
+    while (n >= 0 && m[n] == 0) n--;
+    return n;
+}
+
+/* the monic gcd of w->a (degree na) and w->b (nb) mod p, into w->h; its degree */
+static int gcd_modp(gcdwork *w, int na, int nb, uint32_t p)
+{
+    uint32_t *a = w->a, *b = w->b, *t;
+    while (nb >= 0) {
+        uint32_t il = inv_mod(b[nb], p);
+        while (na >= nb) {
+            uint32_t q = (uint32_t)((uint64_t)a[na] * il % p);
+            int s = na - nb;
+            for (int j = 0; j <= nb; j++) a[s + j] = (uint32_t)((a[s + j] + p - (uint64_t)q * b[j] % p) % p);
+            while (na >= 0 && a[na] == 0) na--;
+        }
+        t = a, a = b, b = t;
+        { int x = na; na = nb, nb = x; }
+    }
+    if (na >= 0) {
+        uint32_t il = inv_mod(a[na], p);
+        for (int i = 0; i <= na; i++) w->h[i] = (uint32_t)((uint64_t)a[i] * il % p);
+    }
+    return na;
+}
+
+/* gcd of f and g, primitive integer polynomials of degree >= 1 with positive leading coefficients (rule 3) */
+static __attribute__((noinline)) bool int_gcd(const ipoly *f, const ipoly *g, gcdwork *w, ipoly *out)
+{
+    int64_t gam = gcd64(f->a[f->n], g->a[g->n]), M = 1;
+    int best = SOLVE_DEG + 1;
+    bool have = false;
+    for (int pi = 0; pi < (int)(sizeof GCD_PRIMES / sizeof GCD_PRIMES[0]); pi++) {
+        uint32_t p = GCD_PRIMES[pi], gp;
+        int nh;
+        ipoly *cand = &w->cand, *q = &w->q;
+        int64_t ct = 0;
+        if (f->a[f->n] % (int64_t)p == 0 || g->a[g->n] % (int64_t)p == 0) continue;
+        nh = gcd_modp(w, to_modp(f, p, w->a), to_modp(g, p, w->b), p);
+        if (nh > best) continue;                        /* an unlucky prime: its gcd's degree is too large */
+        if (nh < best) best = nh, have = false;         /* a smaller degree: start the reconstruction again */
+        if (best == 0) return out->n = 0, out->a[0] = 1, true;
+        gp = (uint32_t)(((gam % (int64_t)p) + p) % p);
+        for (int i = 0; i <= best; i++) w->h[i] = (uint32_t)((uint64_t)w->h[i] * gp % p);     /* its lc is gam */
+        if (!have) {
+            for (int i = 0; i <= best; i++) w->acc[i] = w->h[i] > p / 2 ? (int64_t)w->h[i] - p : (int64_t)w->h[i];
+            M = p, have = true;
+        } else {
+            /* Garner: acc + M × ((h - acc) / M mod p), symmetric, every step overflow-checked */
+            uint32_t iM = inv_mod((uint32_t)(M % (int64_t)p), p);
+            int64_t nM;
+            if (__builtin_mul_overflow(M, (int64_t)p, &nM)) return false;
+            for (int i = 0; i <= best; i++) {
+                int64_t am = w->acc[i] % (int64_t)p, ds, t;
+                uint64_t d;
+                if (am < 0) am += p;
+                d = ((uint64_t)w->h[i] + p - (uint64_t)am) % p * iM % p;
+                ds = d > p / 2 ? (int64_t)d - p : (int64_t)d;
+                if (__builtin_mul_overflow(M, ds, &t) || __builtin_add_overflow(w->acc[i], t, &w->acc[i])) return false;
+            }
+            M = nM;
+        }
+        cand->n = best;
+        for (int i = 0; i <= best; i++) cand->a[i] = w->acc[i], ct = gcd64(ct, w->acc[i]);
+        if (ct == 0) continue;
+        for (int i = 0; i <= best; i++) cand->a[i] /= cand->a[best] < 0 ? -ct : ct;
+        /* Rule 3's proof: the candidate is accepted only if it divides both f and g exactly. Then it divides their
+           true gcd, so its degree is at most the gcd's; and the gcd's degree is at most every modular degree (a gcd
+           over Z reduces mod p to a divisor of the gcd mod p), so at most best, which is the candidate's. The degrees
+           are equal, and a divisor of the gcd of the same degree, primitive with a positive lc, is the gcd. */
+        if (div_poly(f, cand, q) && div_poly(g, cand, q)) return *out = *cand, true;
+    }
+    return false;                                       /* NO_ROOM: never an unproven gcd */
+}
+
+/* a polynomial text read by CAS 005's walk into co: the first (eqn) as parsed already, or the second (repl) parsed here
+   as subst parses its replacement, its SYNTAX offset counted after eqn */
+static ref read_second(ctx *c, const char *eqn, const char *repl, bool repl_rtl, bool rtl)
+{
+    ref r;
+    int chars = 0;
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    c->s2 = repl, c->s = repl, c->no_eq = true, c->rtl = repl_rtl;
+    r = parse(c);
+    c->rtl = rtl, c->s = eqn;
+    if (c->st == CASIM_SYNTAX) c->errpos += chars + 1;
+    return r;
+}
+
+/* a polynomial's degree, -1 for 0 (pdeg says 0 for both 0 and a constant) */
+static int rdeg(const rat *p)
+{
+    int d = pdeg(p);
+    return d == 0 && p[0].p == 0 ? -1 : d;
+}
+
+/* p × k for every coefficient */
+static bool rat_scale(rat *p, const rat *k)
+{
+    for (int i = 0; i <= SOLVE_DEG; i++)
+        if (p[i].p != 0 && !rat_mul(&p[i], &p[i], k)) return false;
+    return true;
+}
+
+/* f = q g + r over Q; false on an int64 overflow. Checked: q g + r is f exactly, deg r < deg g (rule 5) */
+static __attribute__((noinline)) bool pdiv_q(const rat *f, const rat *g, rat *q, rat *r, rat *s)
+{
+    int nf = rdeg(f), ng = rdeg(g);
+    rat inv, t;
+    pzero(q);
+    for (int k = 0; k <= SOLVE_DEG; k++) r[k] = f[k];
+    if (!rat_make(&inv, g[ng].q, g[ng].p)) return false;
+    for (int i = nf; i >= ng; i--) {
+        if (!rat_mul(&q[i - ng], &r[i], &inv)) return false;
+        for (int j = 0; j <= ng; j++) {
+            if (!rat_mul(&t, &q[i - ng], &g[j])) return false;
+            t.p = -t.p;
+            if (!rat_add(&r[i - ng + j], &r[i - ng + j], &t)) return false;
+        }
+    }
+    if (rdeg(r) >= ng) return false;
+    /* the check: s = q g + r, which must be f */
+    for (int k = 0; k <= SOLVE_DEG; k++) s[k] = r[k];
+    for (int i = 0; i <= SOLVE_DEG; i++)
+        for (int j = 0; j <= ng && q[i].p != 0; j++) {
+            if (i + j > SOLVE_DEG || !rat_mul(&t, &q[i], &g[j]) || !rat_add(&s[i + j], &s[i + j], &t)) return false;
+        }
+    for (int k = 0; k <= SOLVE_DEG; k++)
+        if (rat_cmp(&s[k], &f[k]) != 0) return false;
+    return true;
+}
+
+/* the content of co cleared to f: co's lead over f's (f = co / content) */
+static bool content_of(const rat *co, const ipoly *f, rat *k)
+{
+    rat inv;
+    return rat_make(&inv, 1, f->a[f->n]) && rat_mul(k, &co[f->n], &inv);
+}
+
+/* the rows CANCEL prints for the removed values: X=a for each rational root of g, ascending and once, then the rest
+   of g as p=0 when it has no rational root */
+static __attribute__((noinline)) void removed_rows(ctx *c, out_t *w, const ipoly *g, int var, solve_ws *s, int32_t *dq,
+                                                  polywork *P)
+{
+    ipoly *h = &P->h, *rest = &P->rest, *q = &P->back;
+    rat *roots = P->roots;
+    int nr = 0;
+    *h = *g, *rest = *g;
+    if (h->a[0] == 0) {
+        rat_int(&roots[nr++], 0);
+        while (h->n > 0 && h->a[0] == 0) memmove(h->a, h->a + 1, (size_t)h->n * sizeof h->a[0]), h->n--;
+    }
+    s->nfac = 0;
+    if (h->n >= 1) factors(c, h, s, dq);
+    for (int i = 0; i < s->nfac; i++)
+        if (s->fac[i].deg == 1) rat_make(&roots[nr++], s->fac[i].b, s->fac[i].a);
+    for (int i = 1; i < nr; i++)
+        for (int j = i; j > 0 && rat_cmp(&roots[j - 1], &roots[j]) > 0; j--) {
+            rat t = roots[j];
+            roots[j] = roots[j - 1], roots[j - 1] = t;
+        }
+    for (int i = 0; i < nr; i++) {
+        ipoly lin = {1, {-roots[i].p, roots[i].q}};
+        char v[2] = {(char)('A' + var), 0};
+        while (rest->n >= 1 && div_poly(rest, &lin, q)) *rest = *q;
+        puts_(w, "; "), puts_(w, v), puts_(w, "=");
+        put_int(w, roots[i].p);
+        if (roots[i].q != 1) puts_(w, DIVIDE), put_int(w, roots[i].q);
+    }
+    if (rest->n >= 1) {
+        puts_(w, "; ");
+        print(c, w, ipoly_tree(c, rest, var));
+        puts_(w, "=0");
+    }
+}
+
+static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, int var, const char *repl, int angle,
+                                                      char *out, size_t cap, void *arena, size_t arena_cap, bool rtl,
+                                                      bool repl_rtl)
+{
+    ctx c;
+    ref n = SPARE, n2 = SPARE, cr, wr, pr, mark;
+    size_t ocap = cap < SLOT ? cap : SLOT;
+    out_t w = {out, ocap, 0, false};
+    rat *f, *g, *q, *r, *s;
+    if (cap) out[0] = '\0';
+    if (!eqn || (op != CASIM_CANCEL && !repl)) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    cr = grab(&c, 5 * (SOLVE_DEG + 1) * sizeof(rat));
+    wr = grab(&c, sizeof(gcdwork) > sizeof(solve_ws) ? sizeof(gcdwork) : sizeof(solve_ws));
+    pr = grab(&c, sizeof(polywork));
+    mark = (ref)c.used;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;          /* an equation */
+    if (c.st == CASIM_OK && op != CASIM_CANCEL) n2 = read_second(&c, eqn, repl, repl_rtl, rtl);
+    if (c.st != CASIM_OK || cap == 0) return finish(&c, SPARE, out, ocap);
+    f = (rat *)(void *)nd(&c, cr), g = f + SOLVE_DEG + 1, q = g + SOLVE_DEG + 1, r = q + SOLVE_DEG + 1, s = r + SOLVE_DEG + 1;
+    if (op == CASIM_CANCEL) {
+        /* num÷den, as typed: the top division's two sides (no division: den is 1) */
+        ref t = n;
+        while (nd(&c, t)->kind == K_GROUP) t = nd(&c, t)->a;
+        if (nd(&c, t)->kind == K_BDIV) pw(&c, nd(&c, t)->a, var, f), pw(&c, nd(&c, t)->b, var, g);
+        else pw(&c, t, var, f), pzero(g), rat_int(&g[0], 1);
+    } else {
+        pw(&c, n, var, f);
+        if (c.st == CASIM_OK) {
+            c.s = repl;
+            pw(&c, n2, var, g);
+            c.s = eqn;
+        }
+    }
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if (op == CASIM_PDIV) {
+        polywork *P = (polywork *)(void *)nd(&c, pr);
+        if (rdeg(g) < 0) return c.st = CASIM_UNDEFINED, finish(&c, SPARE, out, ocap);
+        if (!clear(&c, f, &P->h) || !clear(&c, g, &P->h)) return finish(&c, SPARE, out, ocap);     /* rule 1's bounds */
+        if (!pdiv_q(f, g, q, r, s)) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+        c.used = (size_t)mark;
+        print(&c, &w, poly_tree(&c, q, var));
+        puts_(&w, "; ");
+        print(&c, &w, poly_tree(&c, r, var));
+    } else {
+        polywork *P = (polywork *)(void *)nd(&c, pr);
+        ipoly *fi = &P->fi, *gi = &P->gi, *gd = &P->gd, *nr = &P->nr, *dr = &P->dr;
+        rat *kf = &P->kf, *kg = &P->kg, *k = &P->k, *inv = &P->inv;
+        if (!clear(&c, f, fi) || !clear(&c, g, gi)) return finish(&c, SPARE, out, ocap);
+        if (op == CASIM_CANCEL && gi->n < 0) return c.st = CASIM_UNDEFINED, finish(&c, SPARE, out, ocap);   /* ÷0 */
+        /* the gcd: of 0 and 0, 0; with 0, the other's primitive part; with a constant, 1 */
+        if (fi->n < 0 && gi->n < 0) gd->n = -1;
+        else if (fi->n < 0 || gi->n < 0) *gd = fi->n < 0 ? *gi : *fi;
+        else if (fi->n == 0 || gi->n == 0) gd->n = 0, gd->a[0] = 1;
+        else if (!int_gcd(fi, gi, (gcdwork *)(void *)nd(&c, wr), gd)) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+        if (gd->n == 0) gd->a[0] = 1;
+        if (op == CASIM_PGCD) c.used = (size_t)mark;          /* CANCEL still prints from the typed tree */
+        if (op == CASIM_PGCD) {
+            if (gd->n < 0) puts_(&w, "0");
+            else print(&c, &w, ipoly_tree(&c, gd, var));
+        } else if (gd->n <= 0) {
+            print(&c, &w, canon(&c, n));                   /* nothing cancels: the quotient as 002 writes it */
+        } else {
+            /* the reduced quotient: (kf / kg) × (fi / gd) ÷ (gi / gd), checked (rule 5) */
+            ipoly *bk = &P->back;
+            ref num_t;
+            if (!div_poly(fi, gd, nr) || !div_poly(gi, gd, dr) || !ipmul((*bk = *nr, bk), gd) ||
+                memcmp(bk->a, fi->a, (size_t)(fi->n + 1) * sizeof fi->a[0]) != 0 || !ipmul((*bk = *dr, bk), gd) ||
+                memcmp(bk->a, gi->a, (size_t)(gi->n + 1) * sizeof gi->a[0]) != 0)
+                return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);                 /* never unchecked */
+            if (!content_of(f, fi, kf) || !content_of(g, gi, kg) || !rat_make(inv, kg->q, kg->p) || !rat_mul(k, kf, inv))
+                return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+            if (dr->n == 0 && (!rat_make(&P->d, 1, dr->a[0]) || !rat_mul(k, k, &P->d)))
+                return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+            pzero(q);
+            for (int i = 0; i <= nr->n; i++) rat_int(&q[i], 0), rat_make(&q[i], nr->a[i], 1);
+            if (!rat_scale(q, k)) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+            num_t = poly_tree(&c, q, var);
+            if (dr->n > 0) num_t = mul2(&c, num_t, power(&c, ipoly_tree(&c, dr, var), small(&c, C_M1)));
+            print(&c, &w, num_t);
+            {
+                ref dqr = grab(&c, SOLVE_DIVS * sizeof(int32_t));
+                if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+                removed_rows(&c, &w, gd, var, (solve_ws *)(void *)nd(&c, wr), (int32_t *)(void *)nd(&c, dqr), P);
+            }
+        }
+    }
+    if (w.full) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    return CASIM_OK;
+}
+
+casim_status casim_pdiv(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                        size_t cap, void *arena, size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model) || !model_ok(repl_model)) return CASIM_BAD_ARG;
+    return do_poly(CASIM_PDIV, eqn, var, repl, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU,
+                   repl_model == CASIM_MODEL_STU);
+}
+
+casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                        size_t cap, void *arena, size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model) || !model_ok(repl_model)) return CASIM_BAD_ARG;
+    return do_poly(CASIM_PGCD, eqn, var, repl, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU,
+                   repl_model == CASIM_MODEL_STU);
+}
+
+casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_poly(CASIM_CANCEL, eqn, var, NULL, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU, false);
 }

@@ -76,7 +76,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_35 35
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
-               CASIM_FACTOR, CASIM_DEFINT } casim_op;
+               CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL } casim_op;
 
 typedef struct {
     casim_op op;
@@ -131,5 +131,22 @@ casim_status casim_factor(const char *eqn, int var, int model, int angle, char *
    the angle mode, for u linear in var; a pole placed by another letter is BAD_ARG. TOO_LONG past 191 bytes. */
 casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
                           size_t cap, void *arena, size_t arena_cap);
+
+/* Unit CAS 010: polynomials in var with rational coefficients, read as typed by CAS 005's walk (degree <= 12,
+   coefficients <= 10^7 once cleared); the second one in repl, read as repl_model.
+   PDIV: the quotient and remainder over Q, out "q; r" (f = q g + r, deg r < deg g, checked exactly); g = 0 is
+   UNDEFINED; an int64 overflow is NO_ROOM.
+   PGCD: the greatest common divisor, the primitive integer polynomial with a positive leading coefficient (a constant
+   gcd is 1; gcd(f, 0) is f's primitive part; gcd(0, 0) is 0), found modulo 31-bit primes and accepted only when it
+   divides both exactly; NO_ROOM if no candidate passes within the primes tried. */
+casim_status casim_pdiv(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                        size_t cap, void *arena, size_t arena_cap);
+casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                        size_t cap, void *arena, size_t arena_cap);
+/* CANCEL: eqn typed as num÷den, reduced by gcd(num, den): out is the reduced quotient, then a row for each value the
+   cancelling removed: "X=a" for each rational root of the gcd (ascending, once), then the rest of the gcd as "p=0"
+   when it has no rational root. A gcd of 1 prints the quotient in canonical form with no rows. */
+casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap);
 
 #endif

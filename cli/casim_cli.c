@@ -9,6 +9,9 @@
  *   casim integrate "<text>" X RAD   an antiderivative in X, without +C (CAS 006)
  *   casim factor "<text>" X RAD      the factors over Q; PARTIAL <text> when one is unproven (CAS 007)
  *   casim defint "<text>" X LO HI RAD  the exact definite integral from LO to HI; IMPROPER on a pole (CAS 009)
+ *   casim pdiv "<f>" X "<g>" RAD      the quotient and remainder of f by g over Q, "q; r" (CAS 010)
+ *   casim pgcd "<f>" X "<g>" RAD      the gcd of f and g, primitive with a positive leading coefficient (CAS 010)
+ *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
@@ -30,7 +33,7 @@ static unsigned char arena[1 << 20];
 
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
        OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR,
-       OP_DEFINT = CASIM_DEFINT };
+       OP_DEFINT = CASIM_DEFINT, OP_PDIV = CASIM_PDIV, OP_PGCD = CASIM_PGCD, OP_CANCEL = CASIM_CANCEL };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
@@ -75,16 +78,17 @@ int main(int argc, char **argv)
        : strcmp(argv[i], "expand") == 0 ? OP_EXPAND : strcmp(argv[i], "collect") == 0 ? OP_COLLECT
        : strcmp(argv[i], "subst") == 0 ? OP_SUBST : strcmp(argv[i], "solve") == 0 ? OP_SOLVE
        : strcmp(argv[i], "integrate") == 0 ? OP_INTEGRATE : strcmp(argv[i], "factor") == 0 ? OP_FACTOR
-       : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : -1;
-    args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ? 4
-         : op == OP_SUBST ? 5 : op == OP_DEFINT ? 6 : 3;
+       : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : strcmp(argv[i], "pdiv") == 0 ? OP_PDIV
+       : strcmp(argv[i], "pgcd") == 0 ? OP_PGCD : strcmp(argv[i], "cancel") == 0 ? OP_CANCEL : -1;
+    args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR || op == OP_CANCEL ? 4
+         : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT ? 6 : 3;
     if (op < 0 || argc - i != args) goto usage;
     if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ||
-        op == OP_DEFINT) {
+        op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
-    if (op == OP_SUBST) repl = argv[i + 3];
+    if (op == OP_SUBST || op == OP_PDIV || op == OP_PGCD) repl = argv[i + 3];
     if (op == OP_DEFINT) repl = argv[i + 3], repl2 = argv[i + 4];
     {
         const char *a = argv[argc - 1];
@@ -130,6 +134,12 @@ usage:
                     "       casim [--arena N] [--min-arena] factor \"<text>\" X RAD|DEG|GRAD\n"
 
                     "       casim [--arena N] [--min-arena] defint \"<text>\" X LO HI RAD|DEG|GRAD\n"
+
+
+                    "       casim [--arena N] [--min-arena] pdiv|pgcd \"<f>\" X \"<g>\" RAD|DEG|GRAD\n"
+
+
+                    "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

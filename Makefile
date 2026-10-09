@@ -23,8 +23,12 @@ FRAME := -Werror=frame-larger-than=1024     # an error whatever CFLAGS says (rev
 .PHONY: all test size clean
 all: $(TESTS) build/casim
 
-test: all build/frames.ok build/clang.ok build/symbols.ok
-	scripts/run-tests.sh $(TESTS)
+test: all build/frames.ok build/clang.ok build/symbols.ok build/gcdprimes_check
+	scripts/run-tests.sh $(TESTS) build/gcdprimes_check
+
+# CAS 010's gcd on small primes: one translation unit with src/casim.c (its prime list swapped), so not the TESTS rule
+build/gcdprimes_check: tests/gcdprimes_check.c $(CASIM_SRC) $(CASIM_HDRS) build/core/.pin
+	$(CC) $(CFLAGS) -I$(CB)/core -Isrc -Itests -o $@ $< $(LIBS)
 
 # No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.
 build/symbols.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/symbol_control.c scripts/symbol-check.sh build/core/.pin

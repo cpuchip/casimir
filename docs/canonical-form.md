@@ -510,3 +510,33 @@ check.)
 
 **Not reduced, by the unit:** LN(6)−LN(2) stays, as does LN(0.5×SQRT(2)), and SQRT(8)'s square factor stays
 (2×8^1.5÷9): all exact, and whether to reduce them is a casimir-v1 question.
+
+## CAS 010: polynomial division, GCD and cancelling
+
+Three operations on polynomials in var with rational coefficients, read as typed by CAS 005's walk (degree ≤ 12,
+coefficients ≤ 10^7 once cleared; another letter is NOT_NUMERIC and var in a function or a denominator
+NOT_POLYNOMIAL, as solve and factor say it). The second polynomial is in repl, read in repl_model as subst reads its
+replacement. An equation is BAD_ARG.
+
+- **PDIV** (`pdiv "<f>" X "<g>"`): `q; r` with f = q×g + r and deg r < deg g, over Q in casim's int64 rationals
+  (rat_add, rat_mul). The identity is checked exactly before printing. g = 0 is UNDEFINED; an overflow is NO_ROOM.
+  Measured at the 8 KB arena, f of degree 2–12 over g of degree 1 to deg f: coefficients up to 10 answer 96% (4%
+  TOO_LONG), up to 10^3 56% (22% NO_ROOM), up to 10^5 33% (57% NO_ROOM), up to 10^7 14% (78% NO_ROOM): the
+  quotient's denominators grow like lc(g)^k.
+- **PGCD** (`pgcd "<f>" X "<g>"`): the primitive integer polynomial with a positive leading coefficient (a gcd over Q
+  is defined up to a constant; this is FACTOR's normalization). gcd(f, 0) is f's primitive part, gcd(0, 0) is 0, a
+  constant gcd is 1. Found modulo 31-bit primes (each dividing neither leading coefficient), the smallest modular
+  degree kept, the gcd mod p scaled to lc gcd(lc f, lc g) and combined by Garner into int64 (overflow-checked); a
+  candidate is accepted only if it divides both exactly, which proves it is the gcd (the argument is at the test in
+  src/casim.c). Eight primes without a passing candidate is NO_ROOM, never an unproven gcd. One prime almost always
+  suffices: the candidate is gcd(lc f, lc g) times the monic gcd, and that factor carries the true gcd's own lc.
+  The paths the real primes never take (an unlucky prime between lucky ones, a failing candidate, a reconstruction
+  that wraps to a negative leading coefficient) are reached by tests/gcdprimes_check.c, which builds src/casim.c with
+  primes 11 to 29 (CASIM_GCD_PRIMES) and constructs each case. Garner's overflow checks are not reachable within the
+  bounds (two lucky 31-bit primes reconstruct any candidate) and stay as the defence.
+- **CANCEL** (`cancel "<n÷d>" X`): the top division's two sides, reduced by their gcd: the reduced quotient, then a
+  row for each value the cancelling removed: `X=a` for each rational root of the gcd (ascending, once; found by
+  solve's exact search), then what is left of the gcd as `p=0` when it has no rational root. The removed values are
+  where the typed quotient is undefined and the reduced one isn't; limits will read them. Reduced numerator × gcd =
+  numerator and the same for the denominator are checked exactly. A gcd of 1 prints the quotient as 002 writes it.
+  A denominator of 0 is UNDEFINED.

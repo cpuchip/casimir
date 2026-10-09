@@ -195,7 +195,7 @@ MUTANTS = {
         ("src/casim.c", "{{0, 1, 1}, {0, 0, 0}, {1, 2, 1}", "{{0, 1, 1}, {1, 4, 1}, {1, 2, 1}"),
     ],
     "exact-imperfect-power-simplified": [
-        ("src/casim.c", "        if (ok && v == n) return *r = t, true;", "        if (ok) return *r = t, true;"),
+        ("src/casim.c", "        if (!over && v == n) return *r = t, true;", "        if (!over) return *r = t, true;"),
     ],
     "exact-inverse-branch-wrong": [
         ("src/casim.c", "lo = f == F_ACOS ? 0 : -6,", "lo = f == F_ACOS ? -12 : -6,"),
@@ -229,6 +229,34 @@ MUTANTS = {
     "defint-check-walks-F": [
         ("src/casim.c", "interval_walk(&c, f, var, &ba, &bb) : interval_walk(&c, f, var, &bb, &ba);",
          "interval_walk(&c, ((void)f, F), var, &ba, &bb) : interval_walk(&c, F, var, &bb, &ba);"),
+    ],
+    # CAS 010: the unit's list
+    "poly-degree-not-minimized": [
+        ("src/casim.c", "        if (nh > best) continue;                        /* an unlucky prime: its gcd's degree is too large */",
+         "        if (nh > best && 0) continue;                   /* an unlucky prime: its gcd's degree is too large */"),
+        ("src/casim.c", "        if (nh < best) best = nh, have = false;         /* a smaller degree: start the reconstruction again */",
+         "        if (nh != best) best = nh, have = false;        /* a smaller degree: start the reconstruction again */"),
+    ],
+    "poly-candidate-test-skipped": [
+        ("src/casim.c", "        if (div_poly(f, cand, q) && div_poly(g, cand, q)) return *out = *cand, true;",
+         "        if (1) return (void)q, *out = *cand, true;"),
+    ],
+    # (poly-garner-overflow-unchecked, the unit's list, is equivalent within rule 1's bounds: a coefficient can't
+    # overflow while M×p fits, since |acc'| <= M/2 + M×p/2; and M×p only overflows on a third combined 31-bit prime,
+    # while the candidate is at most gcd(lc f, lc g)/lc(G) × the factor bound, about 3.2E17, which two lucky primes
+    # (M about 4.6E18) always reconstruct; an unlucky prime resets M instead. The checks stay as the defence; reported.)
+    "poly-remainder-not-reduced": [
+        ("src/casim.c", "    for (int i = nf; i >= ng; i--) {\n        if (!rat_mul(&q[i - ng], &r[i], &inv)) return false;",
+         "    for (int i = nf; i >= ng + 1; i--) {\n        if (!rat_mul(&q[i - ng], &r[i], &inv)) return false;"),
+        ("src/casim.c", "    if (rdeg(r) >= ng) return false;", "    (void)0;"),
+    ],
+    "poly-gcd-sign-not-normalized": [
+        ("src/casim.c", "        for (int i = 0; i <= best; i++) cand->a[i] /= cand->a[best] < 0 ? -ct : ct;",
+         "        for (int i = 0; i <= best; i++) cand->a[i] /= ct;"),
+    ],
+    "poly-cancel-rows-dropped": [
+        ("src/casim.c", "                removed_rows(&c, &w, gd, var, (solve_ws *)(void *)nd(&c, wr), (int32_t *)(void *)nd(&c, dqr), P);",
+         "                (void)removed_rows, (void)dqr;"),
     ],
     # CAS 005 rule 2 as amended: the equation as typed
     "solve-denominator-allowed": [
