@@ -34,10 +34,15 @@ evaluated a function at an exact point, so constant subexpressions stayed as wri
    rule 2 produces (0, ±1/2, ±SQRT(2)÷2, ±SQRT(3)÷2, ±1, and for ATAN also ±SQRT(3)÷3 and ±SQRT(3)) give the
    principal angle, in the calculator's angle mode: a multiple of π in RAD, degrees in DEG, grads in GRAD. So
    ATAN(1) = π÷4 in RAD and 45 in DEG. CAS 009 needs this for ATAN terms. Any other argument stays as written.
-5. **An exact zero in a denominator is refused** (abacus, answering casim's (a)). When the layer makes a numeric 0
-   the base of a negative power (1÷COS(π÷2), 1÷SIN(π)), the operation refuses with a new status, CASIM_UNDEFINED,
-   and out is "". The expression has no value, and "as written" would hide that; on the core it evaluates to about
-   10^34 because its π isn't exact. The firmware maps the status to a message in its next CAS unit.
+5. **An exact zero in a denominator is refused** (abacus, answering casim's (a)). ~~When the layer makes a numeric 0
+   the base of a negative power~~ **Ruled uniform at the build (casim #5460):** whenever power() is given a numeric 0
+   base and a numeric negative exponent, wherever the zero came from: the layer (1÷COS(π÷2), 1÷SIN(π)) or the typist
+   (X÷0, 0^(−1÷2), (X−X)^(−2)). The operation refuses with a new status, CASIM_UNDEFINED, and out is "". The
+   expression has no value, and "as written" would hide that: on the core a typed 0^(−1) is an error, and the
+   layer's SIN(π) evaluates to about 10^34 because its π isn't exact. One rule in one place, with no provenance mark
+   on nodes (decision 68). A symbolic exponent (0^(−X)) stays as written. **A refusal is for the user's expression
+   only:** no internal path (a candidate root, a derive-back, a divisor check) may turn "this candidate is a pole"
+   into the operation's status. The firmware maps the status to a message in its next CAS unit.
 6. **The read-back holds, with an absolute tolerance at zero.** Every printed exact value must evaluate on the core
    to the input's value, within a relative 1E-24, except where the exact value is 0. There the core's value of the
    input (for example SIN(π) = −1.16×10^-34, from its 34-digit π) passes when it's within 1E-30 of 0, scaled by the
@@ -52,7 +57,9 @@ evaluated a function at an exact point, so constant subexpressions stayed as wri
 
 - **The blast radius is restated at the build:** every changed check in all 15 suites listed, each a correct exact
   simplification (the prototype found 5: SIN(π), TAN(π), the same SIN(π) in pairs_test, −ASIN(SIN(SIN(π))), and
-  0.25^1.5). Rule 4 may add more; list them.
+  0.25^1.5). Rule 4 may add more; list them. Rule 5's uniform scope adds, as measured at the build (#5460):
+  simplify_test 5 and expand_test 18 checks that now expect UNDEFINED, and stamp_test's 24 round trips of
+  Y^(0^−0.5), which are replaced by a stamped case that is still OK, so the stamp's count holds.
 - **Visible examples,** work/008-examples.txt:
   - every row of the angle table in RAD, DEG and GRAD;
   - the inverse functions;
