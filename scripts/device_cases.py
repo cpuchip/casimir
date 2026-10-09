@@ -10,7 +10,7 @@ import measure  # noqa: E402
 
 ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
 STATUS = {"TOO_LONG": 3, "BAD_ARG": 4, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7, "NOT_INTEGRABLE": 8,
-          "PARTIAL": 9}
+          "PARTIAL": 9, "UNDEFINED": 10}
 
 
 def c_str(s):

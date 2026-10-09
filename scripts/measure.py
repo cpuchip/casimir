@@ -239,6 +239,17 @@ def all_cases():
                        ("f (X^2+X+6)^6", "(X^2+X+6)^6"), ("f (X^6+X+1)^2", "(X^6+X+1)^2"),
                        ("f 12 linear", "×".join(f"(X{-i:+d})" if i else "X" for i in range(-5, 7)))]:
         rows.append((name, expr, "X", "RAD", "factor", None, "35"))
+    # CAS 008: exact values, its visible examples and a mixed constant expression in each mode
+    with open(os.path.join(ROOT, "work", "008-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], "X", p[3], "simplify", None, p[4]))
+    for angle, expr in [("RAD", "SIN(π÷4)×COS(π÷3)+TAN(π÷3)^2+SQRT(0.25)-8^(1÷3)+ATAN(1)"),
+                        ("DEG", "SIN(30)+COS(225)×TAN(60)+ASIN(-0.5)+EXP(3×LN(2))"),
+                        ("GRAD", "COS(50)^2+SIN(100÷3)+ACOS(-1)+4^(3÷2)")]:
+        rows.append((f"x mixed {angle}", expr, "X", angle, "simplify", None, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))

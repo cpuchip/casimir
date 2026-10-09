@@ -60,10 +60,16 @@ static inline abn ce_num(const char *text)
     return a;
 }
 
-/* |got - want| <= 10^tol * |want|, or <= 10^tol when want is 0. */
+/* |got - want| <= 10^tol * |want|, or <= 10^tol when want is 0. CAS 008 rule 6: an exact 0 (got) also passes against
+   a residue within 1E-30 of 0 (want), since the core's π has 34 digits (its SIN(π) is about -1.16E-34); abacus's
+   judge uses the same rule. */
 static inline bool ce_close(const abn *got, const abn *want, int tol)
 {
     abn d, bound, scale;
+    if (abn_is_zero(got)) {
+        abn w = abn_abs(want), tiny;
+        if (abn_pow10(&tiny, -30) == ABN_OK && abn_cmp(&w, &tiny) <= 0) return true;
+    }
     if (abn_sub(&d, got, want) != ABN_OK) return false;
     d = abn_abs(&d);
     if (abn_pow10(&scale, tol) != ABN_OK) return false;

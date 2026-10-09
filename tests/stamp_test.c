@@ -98,9 +98,12 @@ static void exact(void)
         rq = (casim_req){CASIM_SUBST, "X", CASIM_MODEL_STU, 23, NULL, CASIM_MODEL_STU, CASIM_RAD};
         CHECK(casim_run(&rq, out, OUT, arena, sizeof arena) == CASIM_BAD_ARG, "subst without repl accepted");
     }
-    /* the review: 0^(-1/2) prints with its ^ (not SQRT), so a chain through it keeps its parentheses */
+    /* the review: a negative fractional power prints with its ^ (not SQRT), so a chain through it keeps its
+       parentheses. CAS 008 (rule 5, uniform): 0^(-1/2) is UNDEFINED now, so 2^(-1/2) (not a perfect power) keeps the
+       printer's case, and 4^(-1/2) = 0.5 runs rule 1's new path through the stamp (abacus #5462) */
     {
-        static const char *const Z[] = {"Y^(0^-0.5)", "(0^-0.5)^X", "(0^-0.5)^2.5", "(X-X)^(-1÷2)^Y", "Y^(X-X)^(-1÷2)"};
+        static const char *const Z[] = {"Y^(2^-0.5)", "(2^-0.5)^X", "(2^-0.5)^2.5", "Y^(4^-0.5)", "(4^-0.5)^X",
+                                        "(X-X)^(-1÷2)^Y", "Y^(X-X)^(-1÷2)"};
         for (size_t i = 0; i < sizeof Z / sizeof Z[0]; i++)
             for (int m = 0; m < 3; m++) {
                 char out[OUT];
@@ -139,6 +142,12 @@ static void exact(void)
     /* the old calls read 35 */
     {
         char out[OUT];
+        /* CAS 008: UNDEFINED survives the stamp: Y^((X-X)^(-1/2)) in STU has a 0 under a negative power; read as 35,
+           (Y^0)^(-1/2) is 1 */
+        CHECK(run(CASIM_SIMPLIFY, "Y^(X-X)^(-1÷2)", CASIM_MODEL_STU, NULL, 0, out) == CASIM_UNDEFINED && out[0] == '\0',
+              "Y^(X-X)^(-1/2) (STU): \"%s\", want UNDEFINED", out);
+        CHECK(run(CASIM_SIMPLIFY, "Y^(X-X)^(-1÷2)", CASIM_MODEL_35, NULL, 0, out) == CASIM_OK && strcmp(out, "1") == 0,
+              "Y^(X-X)^(-1/2) (35): \"%s\", want 1", out);
         CHECK(casim_simplify("2^3^2", CASIM_RAD, out, OUT, arena, sizeof arena) == CASIM_OK && strcmp(out, "64") == 0,
               "casim_simplify 2^3^2: \"%s\"", out);
     }

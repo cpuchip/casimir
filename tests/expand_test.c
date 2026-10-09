@@ -242,7 +242,13 @@ static void instrument(void)
         if (strlen(wb) < 185) pair(wa, wb);
         snprintf(wa, sizeof wa, "Z÷(%s)", a);
         snprintf(wb, sizeof wb, "Z÷(%s)", b);
-        if (strlen(wb) < 185) pair(wa, wb);
+        if (strcmp(b, "0") == 0) {
+            /* the sum is 0: under a ÷ both have no value (CAS 008 rule 5, uniform) */
+            char oa[OUT], ob[OUT];
+            casim_status sa = ex(wa, oa), sb = ex(wb, ob);
+            CHECK(sa == CASIM_UNDEFINED && sb == CASIM_UNDEFINED, "expand %s: %d, %s: %d, want UNDEFINED", wa, (int)sa, wb,
+                  (int)sb);
+        } else if (strlen(wb) < 185) pair(wa, wb);
     }
     printf("expand: %d instrument cases judged\n", judged);
     CHECK(judged > 500, "only %d instrument cases judged", judged);

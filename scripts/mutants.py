@@ -182,6 +182,27 @@ MUTANTS = {
     "factor-finder-off": [
         ("src/casim.c", "    repeated_factors(&f, s, w, dq, it, &ni);", "    (void)repeated_factors;"),
     ],
+    # CAS 008: the unit's list
+    "exact-table-sign-flipped": [
+        ("src/casim.c", "{0, 0, 0, 0}, {1, 1, 3, 3}, {1, 1, 1, 1}", "{0, 0, 0, 0}, {-1, 1, 3, 3}, {1, 1, 1, 1}"),
+    ],
+    "exact-deg-read-as-rad": [
+        ("src/casim.c", "    if (c->angle != CASIM_RAD) {\n        rat d;\n        if (!is_num(c, a)) return false;",
+         "    if (c->angle == CASIM_GRAD) {\n        rat d;\n        if (!is_num(c, a)) return false;"),
+    ],
+    "exact-odd-twelfth-simplified": [
+        ("src/casim.c", "{{0, 1, 1}, {0, 0, 0}, {1, 2, 1}", "{{0, 1, 1}, {1, 4, 1}, {1, 2, 1}"),
+    ],
+    "exact-imperfect-power-simplified": [
+        ("src/casim.c", "        if (ok && v == n) return *r = t, true;", "        if (ok) return *r = t, true;"),
+    ],
+    "exact-inverse-branch-wrong": [
+        ("src/casim.c", "lo = f == F_ACOS ? 0 : -6,", "lo = f == F_ACOS ? -12 : -6,"),
+    ],
+    "exact-undefined-not-raised": [
+        ("src/casim.c", "            c->st = CASIM_UNDEFINED;            /* CAS 008 rule 5: an exact 0 in a denominator has no value */\n            return SPARE;",
+         "            (void)0;"),
+    ],
     # CAS 005 rule 2 as amended: the equation as typed
     "solve-denominator-allowed": [
         ("src/casim.c", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var) && 0) {"),
@@ -196,10 +217,10 @@ MUTANTS = {
         ("src/casim.c", "        if (c->st == CASIM_OK) c->st = CASIM_NO_ROOM;          /* the stack's bound (CAS 004: not TOO_LONG) */",
          "        if (c->st == CASIM_OK) c->st = CASIM_TOO_LONG;"),
     ],
-    "zero-half-level": [
-        ("src/casim.c", "    return abs_is(c, x, 1, 2) && !(num_negative(c, x) && !below(c, f)) ? 5 : 4;",
-         "    return abs_is(c, x, 1, 2) ? 5 : 4;"),
-    ],
+    # (zero-half-level, CAS 004's review: 0^(-1/2) printed with its ^. Since CAS 008 rule 5 (uniform), power() refuses a
+    # numeric 0 under a negative power before a node exists, and below() refuses only that base, so the clause is
+    # unreachable: the mutant is equivalent. The clause stays as a defence; stamp_test's Y^(2^-0.5) chains keep the
+    # printer's negative-half-power case.)
     # decision 52: a chain of powers printed bare
     "chain-bare": [
         ("src/casim.c", "    for (int i = 1; i < k; i++) puts_(w, \"(\");", "    (void)0;"),

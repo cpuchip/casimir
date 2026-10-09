@@ -1025,6 +1025,24 @@ static ref mul(ctx *c, const ref *in, int n)
 }
 
 /* u^e (docs: e not 0 or 1; a number to a whole power folded; (u^a)^n and (u×v)^n for a whole n). */
+/* CAS 008 rule 1: the integer q-th root of n >= 0, when exact. No root >= 2 of an n below 2^62 has q > 62 (rule 8:
+   the guard keeps an STU exponent chain's huge q from a long loop; stamp_test is its regression). */
+static bool int_root(int64_t n, long q, int64_t *r)
+{
+    double g;
+    if (n < 0) return false;
+    if (n < 2 || q == 1) return *r = n, true;
+    if (q > 62) return false;
+    g = __builtin_pow((double)n, 1.0 / (double)q);
+    for (int64_t t = (int64_t)g - 1 < 2 ? 2 : (int64_t)g - 1; t <= (int64_t)g + 1; t++) {
+        int64_t v = 1;
+        bool ok = true;
+        for (long i = 0; i < q && ok; i++) ok = !__builtin_mul_overflow(v, t, &v) && v <= n;
+        if (ok && v == n) return *r = t, true;
+    }
+    return false;
+}
+
 static ref power(ctx *c, ref b, ref e)
 {
     long k_ = 0;
@@ -1038,7 +1056,19 @@ static ref power(ctx *c, ref b, ref e)
         const rat *v = val(c, b);
         rat p;
         if (rat_is(v, 0, 1) && is_num(c, e) && val(c, e)->p > 0) return b;     /* 0^e, e > 0 */
-        if (w && !(rat_is(v, 0, 1) && k_ < 0) && rat_pow(&p, v, k_)) return num(c, &p);
+        if (rat_is(v, 0, 1) && is_num(c, e) && val(c, e)->p < 0) {
+            c->st = CASIM_UNDEFINED;            /* CAS 008 rule 5: an exact 0 in a denominator has no value */
+            return SPARE;
+        }
+        if (w && rat_pow(&p, v, k_)) return num(c, &p);
+        if (!w && is_num(c, e) && v->p > 0) {
+            /* CAS 008 rule 1: a perfect rational power, (p/q)^(m/n) with p and q exact n-th powers */
+            const rat *x = val(c, e);
+            int64_t rp, rq;
+            rat root;
+            if (int_root(v->p, x->q, &rp) && int_root(v->q, x->q, &rq) && rat_make(&root, rp, rq) && rat_pow(&p, &root, x->p))
+                return num(c, &p);
+        }
     }
     if (w && nd(c, b)->kind == K_POW) return power(c, nd(c, b)->a, mul2(c, nd(c, b)->b, e));
     if (w && nd(c, b)->kind == K_ADD) {
@@ -1061,6 +1091,114 @@ static ref power(ctx *c, ref b, ref e)
     return mk(c, K_POW, b, e);
 }
 
+/* ---- CAS 008: exact values ----
+   One table, sin(nπ/12), serves SIN, COS (n + 6) and, apart, TAN, in all three angle modes: a constant argument
+   is first turned into a rational multiple of π. Only the multiples of π/6 and π/4 are exact; each value is
+   s × p/q × SQRT(k). */
+
+typedef struct {
+    signed char s, p, q, k;             /* s × p/q × SQRT(k); p = 0 is the value 0 */
+} xval;
+
+/* sin(nπ/12), cos(nπ/12) (cos: n + 6) and tan(nπ/12); false where not exact (an odd multiple of π/12, TAN's poles) */
+static bool table_val(int f, long n, xval *v)
+{
+    static const signed char SINM[7][3] = {{0, 1, 1}, {0, 0, 0}, {1, 2, 1}, {1, 2, 2}, {1, 2, 3}, {0, 0, 0}, {1, 1, 1}};
+    static const signed char TANM[12][4] = {{1, 0, 1, 1}, {0, 0, 0, 0}, {1, 1, 3, 3}, {1, 1, 1, 1}, {1, 1, 1, 3},
+                                            {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {-1, 1, 1, 3}, {-1, 1, 1, 1},
+                                            {-1, 1, 3, 3}, {0, 0, 0, 0}};
+    int m;
+    if (f == F_TAN) {
+        m = (int)(((n % 12) + 12) % 12);
+        if (TANM[m][2] == 0) return false;
+        *v = (xval){TANM[m][0], TANM[m][1], TANM[m][2], TANM[m][3]};
+        return true;
+    }
+    if (f == F_COS) n += 6;
+    m = (int)(((n % 24) + 24) % 24);
+    v->s = (signed char)(m >= 12 ? -1 : 1);
+    m %= 12;
+    if (m > 6) m = 12 - m;
+    if (SINM[m][1] == 0) return false;
+    v->p = SINM[m][0], v->q = SINM[m][1], v->k = SINM[m][2];
+    return true;
+}
+
+static ref xval_tree(ctx *c, const xval *v)
+{
+    rat r;
+    ref t;
+    rat_make(&r, v->s * v->p, v->q);
+    t = num(c, &r);
+    if (v->k > 1 && v->p != 0) {
+        rat kv;
+        rat_int(&kv, v->k);
+        t = mul2(c, t, power(c, num(c, &kv), small(c, C_HALF)));
+    }
+    return t;
+}
+
+/* a constant angle as n, a multiple of π/12 (rule 2): RAD 0, π or q×π; DEG d (d/180 π); GRAD d (d/200 π) */
+static bool angle_n(ctx *c, ref a, long *n)
+{
+    const node *x = nd(c, a);
+    rat r, t, twelve;
+    if (c->angle != CASIM_RAD) {
+        rat d;
+        if (!is_num(c, a)) return false;
+        rat_make(&d, 1, c->angle == CASIM_DEG ? 180 : 200);
+        if (!rat_mul(&r, val(c, a), &d)) return false;
+    } else if (is_num(c, a) && rat_is(val(c, a), 0, 1)) rat_int(&r, 0);
+    else if (x->kind == K_PI) rat_int(&r, 1);
+    else if (x->kind == K_MUL && x->n == 2 && is_num(c, list(c, x->a)[0]) && nd(c, list(c, x->a)[1])->kind == K_PI)
+        r = *val(c, list(c, x->a)[0]);
+    else return false;
+    rat_int(&twelve, 12);
+    return rat_mul(&t, &r, &twelve) && rat_whole(&t, n);
+}
+
+/* a value the table prints, read back from its tree (rule 4): p/q, ±p/q × SQRT(k), SQRT(k) */
+static bool tree_xval(ctx *c, ref a, xval *v)
+{
+    const node *x = nd(c, a);
+    rat co;
+    long kk;
+    int k = 1;
+    rat_int(&co, 1);
+    if (is_num(c, a)) co = *val(c, a);
+    else {
+        ref rt_ = a;
+        if (x->kind == K_MUL && x->n == 2 && is_num(c, list(c, x->a)[0])) co = *val(c, list(c, x->a)[0]), rt_ = list(c, x->a)[1];
+        x = nd(c, rt_);
+        if (x->kind != K_POW || !is_num(c, x->a) || !is_k(c, x->b, 1, 2)) return false;
+        if (!rat_whole(val(c, x->a), &kk) || (kk != 2 && kk != 3)) return false;
+        k = (int)kk;
+    }
+    if (co.p > 127 || co.p < -127 || co.q > 127) return false;
+    v->s = (signed char)(co.p < 0 ? -1 : 1), v->p = (signed char)(co.p < 0 ? -co.p : co.p), v->q = (signed char)co.q;
+    v->k = (signed char)k;
+    return true;
+}
+
+/* ASIN, ACOS, ATAN of a table value: the principal angle in the mode (ASIN, ATAN in [-π/2, π/2], ACOS in [0, π]) */
+static ref exact_inverse(ctx *c, int f, ref a)
+{
+    xval v, t;
+    int g = f == F_ASIN ? F_SIN : f == F_ACOS ? F_COS : F_TAN, lo = f == F_ACOS ? 0 : -6, hi = f == F_ACOS ? 12 : 6;
+    if (!tree_xval(c, a, &v)) return 0;
+    for (int n = lo; n <= hi; n++) {
+        rat r;
+        if (!table_val(g, n, &t)) continue;
+        if (t.p == 0 ? v.p != 0 : (t.s != v.s || t.p * v.q != v.p * t.q || t.k != v.k)) continue;
+        if (c->angle == CASIM_DEG) return rat_int(&r, 15 * n), num(c, &r);
+        if (c->angle == CASIM_GRAD) return rat_make(&r, 50 * n, 3), num(c, &r);
+        if (n == 0) return small(c, C_0);
+        rat_make(&r, n, 12);
+        return mul2(c, num(c, &r), leaf(c, K_PI, 0));
+    }
+    return 0;
+}
+
 static ref fn(ctx *c, int f, ref a)
 {
     const node *x = nd(c, a);
@@ -1070,8 +1208,33 @@ static ref fn(ctx *c, int f, ref a)
     case F_SQ: return power(c, a, small(c, C_2));
     case F_INV: return power(c, a, small(c, C_M1));
     case F_SQRT: return power(c, a, small(c, C_HALF));
-    case F_LN: if (x->kind == K_FN && x->id == F_EXP) return x->a; break;
-    case F_EXP: if (x->kind == K_FN && x->id == F_LN) return x->a; break;
+    case F_LN:
+        if (x->kind == K_FN && x->id == F_EXP) return x->a;
+        if (is_k(c, a, 1, 1)) return small(c, C_0);                 /* CAS 008 */
+        break;
+    case F_EXP:
+        if (x->kind == K_FN && x->id == F_LN) return x->a;
+        if (is_k(c, a, 0, 1)) return small(c, C_1);                 /* CAS 008 */
+        if (x->kind == K_MUL && x->n == 2 && is_num(c, list(c, x->a)[0])) {
+            /* EXP(k×LN(a)) = a^k, a a positive number (exact when power() makes it so) */
+            ref u = list(c, x->a)[1];
+            if (nd(c, u)->kind == K_FN && nd(c, u)->id == F_LN && is_num(c, nd(c, u)->a) && val(c, nd(c, u)->a)->p > 0)
+                return power(c, nd(c, u)->a, list(c, x->a)[0]);
+        }
+        break;
+    case F_SIN:
+    case F_COS:
+    case F_TAN: {
+        long n;
+        xval v;
+        if (angle_n(c, a, &n) && table_val(f, n, &v)) return xval_tree(c, &v);
+        break;
+    }
+    case F_ASIN:
+    case F_ACOS:
+    case F_ATAN:
+        if ((r = exact_inverse(c, f, a)) != 0) return r;
+        break;
     case F_LOG: if (x->kind == K_FN && x->id == F_ALOG) return x->a; break;
     case F_ALOG: if (x->kind == K_FN && x->id == F_LOG) return x->a; break;
     case F_ABS:

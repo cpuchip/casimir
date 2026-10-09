@@ -25,9 +25,11 @@ typedef enum {
                                    π, SQRT(2), a draw); out is "" */
     CASIM_NOT_INTEGRABLE,       /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
                                    derive-back check could not close; out is "" */
-    CASIM_PARTIAL               /* CAS 007, factor: out holds a correct factorization (it reads back as the
+    CASIM_PARTIAL,              /* CAS 007, factor: out holds a correct factorization (it reads back as the
                                    input exactly), but a factor of degree >= 4 is not proven irreducible (rule 5a);
                                    the firmware shows MAY FACTOR FURTHER beside it */
+    CASIM_UNDEFINED             /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0): the expression
+                                   has no value; out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */

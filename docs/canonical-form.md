@@ -438,3 +438,37 @@ review (89,000 inputs against SymPy as a black box, no wrong answer) found two m
   512-bit integers) would decide these; it is the next step if they matter.
 - **Mignotte-type polynomials**, X^n − p(aX−1)^2 with a in the tens to hundreds: two roots within about 1/a^2, too
   close for the disks.
+
+## CAS 008: exact values
+
+002's form never evaluated a function at an exact point, so SIN(π÷6) stayed SIN(π÷6). From CAS 008, the two canonical
+constructors evaluate the exact constants a student expects, so every operation shares it:
+
+- **fn():** SIN, COS and TAN at an exact angle; ASIN, ACOS and ATAN at the values that table produces; LN(1) = 0,
+  EXP(0) = 1; EXP(k×LN(a)) = a^k for a numeric a > 0 (exact when power() makes it so; EXP(X×LN(2)) stays).
+- **power():** a perfect rational power, (p/q)^(m/n) with p, q > 0 exact n-th powers: 4^(3÷2) = 8, 0.25^1.5 = 0.125.
+  SQRT(8) stays SQRT(8) (no square factors pulled out), and 12^(1÷3) stays.
+
+**One table, three angle modes.** A constant argument is first turned into a rational multiple r of π: in RAD it
+must be 0, π or q×π; in DEG a number d gives r = d/180, in GRAD r = d/200 (π inside a DEG or GRAD argument is just a
+number of degrees). When 12r is an integer divisible by 2 or 3 (a multiple of π/6 or π/4), the value is
+s × p/q × SQRT(k) from sin(nπ/12) (COS is n + 6) or tan(nπ/12), printed in 002's form: 0.5×SQRT(2), SQRT(3)÷3, -1.
+Odd multiples of π/12, TAN at its poles, and any argument that isn't constant stay as written.
+
+**The inverses** return the principal angle in the mode: ASIN and ATAN in [-π/2, π/2], ACOS in [0, π]. ATAN(1) is
+0.25×π in RAD, 45 in DEG, 50 in GRAD; ACOS(-0.5) is 2×π÷3. Only the values the table prints are read (0, ±1/2,
+±SQRT(2)÷2, ±SQRT(3)÷2, ±1, and ±SQRT(3)÷3, ±SQRT(3) for ATAN): ASIN(2) and ACOS(0.3) stay.
+
+**CASIM_UNDEFINED:** a numeric 0 under a numeric negative power, whether the layer made the 0 (1÷COS(π÷2)) or it was
+typed (1÷0, X÷0, (X-X)^(-2)): the expression has no value, and out is "". Before CAS 008 these printed as
+0^(-1); the rule is uniform (abacus #5462). A symbolic exponent stays: 0^(-X) is 0^(-X). No internal path builds a
+numeric power at a candidate point (solve's and factor's coefficient walks are rational arithmetic; integrate's
+1÷a and 1÷(n+1) have a ≠ 0 and n ≠ -1 by construction), so the status is only ever about the user's expression.
+
+**The read-back, rule 6:** each value evaluates on the core to the input's value, relative 1E-24, except an exact 0,
+which passes against a residue within 1E-30 (the core's π has 34 digits: its SIN(π) is about -1.16E-34). The
+suites' shared judge (tests/coreeval.h, ce_close) uses this rule, as abacus's does.
+
+**The integer root** (int_root) returns at once for q > 62, since no root >= 2 of an n below 2^62 exists there, and
+tries candidates from 2: an STU exponent chain can make q astronomically large, and the prototype's loop hung
+stamp_test until this guard.

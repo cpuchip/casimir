@@ -96,6 +96,7 @@ int main(int argc, char **argv)
     case CASIM_NOT_NUMERIC: printf("NOT_NUMERIC\n"); break;
     case CASIM_NOT_INTEGRABLE: printf("NOT_INTEGRABLE\n"); break;
     case CASIM_PARTIAL: printf("PARTIAL %s\n", out); break;
+    case CASIM_UNDEFINED: printf("UNDEFINED\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */

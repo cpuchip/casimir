@@ -200,14 +200,19 @@ static void review(void)
         fixed(t);
     }
     is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");
-    /* 5: 0 to a negative power stays as it is (undefined; 1÷0^2 would read back as 1÷0) */
-    is("0^(-2)", "0^(-2)");
-    is("(X-X)^(-2)", "0^(-2)");
-    /* the second review (2026-10-06): -1 and -1/2 too; a regrouped product still merges with its power;
-       a-b and -b+a agree with numbers that do not fold; a like-term merge with them stays canonical */
-    is("0^(-1)", "0^(-1)");
-    is("X÷0", "X×0^(-1)");
-    is("0^(-1÷2)", "0^(-0.5)");
+    /* 5: 0 to a negative power has no value. It stayed as written until CAS 008, whose rule 5 (ruled uniform,
+       abacus #5462) refuses it with UNDEFINED, typed or made; a symbolic exponent stays as written. The second review
+       (2026-10-06) added -1 and -1/2; a regrouped product still merges with its power; a-b and -b+a agree with
+       numbers that do not fold; a like-term merge with them stays canonical */
+    {
+        static const char *const U[] = {"0^(-2)", "(X-X)^(-2)", "0^(-1)", "X÷0", "0^(-1÷2)"};
+        for (unsigned i = 0; i < sizeof U / sizeof U[0]; i++) {
+            char out[OUT];
+            casim_status st = simp(U[i], CASIM_RAD, out);
+            CHECK(st == CASIM_UNDEFINED && out[0] == '\0', "simplify %s: status %d \"%s\", want UNDEFINED", U[i], (int)st, out);
+        }
+        is("0^(-X)", "0^(-X)");
+    }
     pair("(SQRT(2×Z)×SQRT(2×Z))÷SQRT(2×Z)", "SQRT(2×Z)×SQRT(2×Z)÷SQRT(2×Z)", CASIM_RAD);
     pair("(SQRT(Y×Z)×SQRT(Y×Z))÷SQRT(Y×Z)", "SQRT(Y×Z)×(SQRT(Y×Z)÷SQRT(Y×Z))", CASIM_RAD);
     pair("X-4E18×4E18", "-4E18×4E18+X", CASIM_RAD);
@@ -217,7 +222,7 @@ static void review(void)
     /* the third review: a 19-digit decimal the printer writes reads back as the same number */
     is("531441÷262144×X", "2.027286529541015625×X");
     is("531441÷262144+531441÷262144", "4.05457305908203125");
-    is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-0.5×π-SQRT(π+5)-0.25^1.5");     /* whole powers fold only */
+    is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-0.5×π-SQRT(π+5)-0.125");     /* CAS 008 rule 1: a perfect power folds */
 }
 
 static void rules(void)
