@@ -7,6 +7,7 @@ cd "$(dirname "$0")/.."
 IMAGE=emscripten/emsdk@sha256:90b757eb11fa9a0e3ce4d2d9f76d932a56018e4accc37b5a28b2783751e60eb7    # 4.0.10
 TGZ=build/intel-dfp/IntelRDFPMathLib20U5.tar.gz
 STEPS='set -e
+mkdir -p build
 emcmake cmake -S . -B build/wasm-cmake -DCMAKE_BUILD_TYPE=Release ${TARBALL:+-DCASIM_INTEL_TARBALL=$PWD/$TARBALL} >build/wasm-cmake.log
 cmake --build build/wasm-cmake -j8 >>build/wasm-cmake.log 2>&1 || { tail -20 build/wasm-cmake.log; exit 1; }
 mkdir -p build/wasm && cp build/wasm-cmake/casim.js build/wasm-cmake/casim.wasm build/wasm-cmake/casim.mjs build/wasm/
