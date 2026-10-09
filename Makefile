@@ -23,8 +23,14 @@ FRAME := -Werror=frame-larger-than=1024     # an error whatever CFLAGS says (rev
 .PHONY: all test size clean
 all: $(TESTS) build/casim
 
-test: all build/frames.ok
+test: all build/frames.ok build/clang.ok
 	scripts/run-tests.sh $(TESTS)
+
+# The site's wasm build is clang: casim's sources under clang -Wall -Wextra -Werror too (abacus #5430, after
+# primer #5429), with a planted control that must fail.
+build/clang.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/clang_control.c scripts/clang-check.sh build/core/.pin
+	scripts/clang-check.sh
+	touch $@
 
 # CAS 004 rule 3: no frame in src/ larger than 1 KB, here as on the S3 (scripts/size-s3.sh). The planted
 # control, a 2 KB frame, must fail the same flags, or the guard checks nothing.
