@@ -1029,16 +1029,19 @@ static ref mul(ctx *c, const ref *in, int n)
    the guard keeps an STU exponent chain's huge q from a long loop; stamp_test is its regression). */
 static bool int_root(int64_t n, long q, int64_t *r)
 {
-    double g;
+    int64_t lo = 2, hi = (int64_t)1 << 31;
     if (n < 0) return false;
     if (n < 2 || q == 1) return *r = n, true;
     if (q > 62) return false;
-    g = __builtin_pow((double)n, 1.0 / (double)q);
-    for (int64_t t = (int64_t)g - 1 < 2 ? 2 : (int64_t)g - 1; t <= (int64_t)g + 1; t++) {
-        int64_t v = 1;
-        bool ok = true;
-        for (long i = 0; i < q && ok; i++) ok = !__builtin_mul_overflow(v, t, &v) && v <= n;
-        if (ok && v == n) return *r = t, true;
+    /* bisection on t in [2, 2^31] (t^q <= n < 2^62, q >= 2), t^q overflow-checked and cut off past n: integers only,
+       so no libm pow is linked (abacus #5589: it cost the firmware 3.9 KB) */
+    while (lo <= hi) {
+        int64_t t = lo + (hi - lo) / 2, v = 1;
+        bool over = false;
+        for (long i = 0; i < q && !over; i++) over = __builtin_mul_overflow(v, t, &v) || v > n;
+        if (!over && v == n) return *r = t, true;
+        if (over) hi = t - 1;
+        else lo = t + 1;
     }
     return false;
 }
@@ -1132,6 +1135,47 @@ static abn mode_scale(int angle, bool to_rad)
     return r;
 }
 
+static int const_val(ctx *c, ref r, abn *v);
+
+/* v^k for a whole k, by squaring (abn_mul, abn_div): exact as the core's own arithmetic, any sign of v */
+static int abn_ipow(abn *v, long k)
+{
+    abn b = *v, acc = abn_from_int(1);
+    unsigned long m = k < 0 ? -(unsigned long)k : (unsigned long)k;
+    if (abn_is_zero(v)) return k < 0 ? CV_UNDEF : (*v = k == 0 ? acc : abn_zero(), CV_OK);
+    for (; m; m >>= 1) {
+        if (m & 1 && abn_mul(&acc, &acc, &b) != ABN_OK) return CV_UNDEF;
+        if (m > 1 && abn_mul(&b, &b, &b) != ABN_OK) return CV_UNDEF;
+    }
+    if (k < 0) {
+        abn one = abn_from_int(1);
+        return cv_status(abn_div(v, &one, &acc));
+    }
+    return *v = acc, CV_OK;
+}
+
+/* v^e without abn_pow (abacus #5589: libbid's pow and its tables cost Rev A 38 KB, and only this called it): a whole
+   e exactly; p/2 through abn_sqrt; any other e, for v > 0, as exp(e ln v). A negative v under a non-whole e isn't
+   real; 0 under a negative e has no value. */
+static int const_pow(ctx *c, ref e, abn *v)
+{
+    abn t, l;
+    int st;
+    long k;
+    if (is_num(c, e) && rat_whole(val(c, e), &k)) return abn_ipow(v, k);
+    if (is_num(c, e) && val(c, e)->q == 2) {
+        if (abn_is_negative(v)) return CV_NOTREAL;
+        if (abn_is_zero(v)) return val(c, e)->p < 0 ? CV_UNDEF : CV_OK;
+        if ((st = cv_status(abn_sqrt(v, v))) != CV_OK) return st;
+        return abn_ipow(v, (long)val(c, e)->p);
+    }
+    if ((st = const_val(c, e, &t)) != CV_OK) return st;
+    if (abn_is_negative(v)) return CV_NOTREAL;
+    if (abn_is_zero(v)) return abn_is_negative(&t) ? CV_UNDEF : abn_is_zero(&t) ? (*v = abn_from_int(1), CV_OK) : CV_OK;
+    if ((st = cv_status(abn_ln(&l, v))) != CV_OK || (st = cv_status(abn_mul(&l, &l, &t))) != CV_OK) return st;
+    return cv_status(abn_exp(v, &l));
+}
+
 static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
 {
     const node *x;
@@ -1152,9 +1196,8 @@ static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
                 st = cv_status(x->kind == K_MUL ? abn_mul(v, v, &t) : abn_add(v, v, &t));
         break;
     case K_POW:
-        if ((st = const_val(c, x->a, v)) != CV_OK || (st = const_val(c, nd(c, r)->b, &t)) != CV_OK) break;
-        if (abn_is_zero(v) && abn_is_negative(&t)) st = CV_UNDEF;
-        else st = cv_status(abn_pow(v, v, &t));
+        if ((st = const_val(c, x->a, v)) != CV_OK) break;
+        st = const_pow(c, nd(c, r)->b, v);
         break;
     case K_FN: {
         int f = x->id;

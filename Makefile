@@ -23,8 +23,13 @@ FRAME := -Werror=frame-larger-than=1024     # an error whatever CFLAGS says (rev
 .PHONY: all test size clean
 all: $(TESTS) build/casim
 
-test: all build/frames.ok build/clang.ok
+test: all build/frames.ok build/clang.ok build/symbols.ok
 	scripts/run-tests.sh $(TESTS)
+
+# No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.
+build/symbols.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/symbol_control.c scripts/symbol-check.sh build/core/.pin
+	scripts/symbol-check.sh
+	touch $@
 
 # The site's wasm build is clang: casim's sources under clang -Wall -Wextra -Werror too (abacus #5430, after
 # primer #5429), with a planted control that must fail.
