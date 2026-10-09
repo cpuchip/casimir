@@ -16,7 +16,12 @@ evaluated a function at an exact point, so constant subexpressions stayed as wri
    - **fn():**
      - SIN, COS and TAN at an exact angle (rule 2);
      - LN(1) = 0, EXP(0) = 1;
-     - EXP(k×LN(a)) = a^k for a numeric a > 0 and k rational, when a^k is exact by rule 3;
+     - EXP(k×LN(a)) = a^k for a numeric a > 0 and k rational~~, when a^k is exact by rule 3~~. **Amended at the
+       build (abacus, 2026-10-09):** the rewrite holds for every numeric a > 0 and k. a^k is then exact when rule 3
+       makes it so (EXP(3×LN(2)) = 8) and otherwise stays as written (EXP(1.5×LN(27)) = 27^1.5, EXP(0.5×LN(8)) =
+       SQRT(8)). EXP(X×LN(2)) stays. The build did this, and casim's docs/canonical-form.md says so, but its report
+       didn't list it as a change from this text. abacus's hidden set found it (98 of 4,000 cases) and judged it: the
+       identity holds for a > 0, the values are right, and a^k reads better than EXP-of-LN;
      - **the inverse functions at the table's exact values** (rule 4).
    - **power():** perfect rational powers. (p/q)^(m/n) with p, q > 0 is exact when p and q have exact integer n-th
      roots, so 4^(3÷2) = 8 and 0.25^1.5 = 0.125. Otherwise it stays as written.
