@@ -98,6 +98,7 @@ static void exact(void)
     is("X^2", "0", "1", CASIM_RAD, "1÷3");
     is("X^2", "1", "0", CASIM_RAD, "-1÷3");
     is("X^2", "2", "2", CASIM_RAD, "0");
+    is("SQRT(X)", "0", "0", CASIM_RAD, "0");                         /* rule 6a: an allowed edge, lo = hi */
     is("TAN(X)", "0", "π÷4", CASIM_RAD, "-LN(0.5×SQRT(2))");
     is("A×X", "0", "2", CASIM_RAD, "2×A");
     is("COS(X)", "0", "π÷2", CASIM_RAD, "1");
@@ -128,6 +129,11 @@ static void refusals(void)
     refused("1÷(2×X-1)", "0", "1", CASIM_RAD, CASIM_IMPROPER);
     refused("X^(-2)", "-1", "1", CASIM_RAD, CASIM_IMPROPER);
     refused("1÷(3×X-1)", "1÷3", "1", CASIM_RAD, CASIM_IMPROPER);    /* the pole exactly at a rational endpoint */
+    /* rule 6a: lo = hi on a pole or edge is IMPROPER (the closed interval is the point); an allowed edge gives 0 */
+    refused("1÷X", "0", "0", CASIM_RAD, CASIM_IMPROPER);
+    refused("1÷SQRT(X)", "0", "0", CASIM_RAD, CASIM_IMPROPER);
+    refused("SQRT(X)", "-1", "-1", CASIM_RAD, CASIM_IMPROPER);
+    refused("TAN(X)", "90", "90", CASIM_DEG, CASIM_IMPROPER);
     /* BAD_ARG: a bound with a letter; a pole that another letter places */
     refused("X^2", "0", "X", CASIM_RAD, CASIM_BAD_ARG);
     refused("X^2", "B", "1", CASIM_RAD, CASIM_BAD_ARG);

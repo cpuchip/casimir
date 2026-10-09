@@ -41,8 +41,10 @@ exact points. This unit puts the two together, and refuses any interval on which
        this unit follows the core. Otherwise u ≥ 0 is the rule, with u = 0 allowed only for a positive power;
      - TAN(u): COS(u) = 0 anywhere on the interval, in the angle mode. The poles are u = π÷2 + kπ in RAD,
        90 + 180k in DEG and 100 + 200k in GRAD.
-   - **A pole or edge whose position depends on another letter** (1÷(A×X+1)) can't be placed, so it is refused as
-     BAD_ARG. A constant multiplier with letters (A×X^2) is fine: it has no pole.
+   - **A pole or edge whose position depends on another letter** ~~(1÷(A×X+1))~~ can't be placed, so it is refused as
+     BAD_ARG. A constant multiplier with letters (A×X^2) is fine: it has no pole. *Amended at the build (casim #5568,
+     abacus #5571): rule 2 runs first, and CAS 006 refuses a letter inside a linear argument, so 1÷(A×X+1) is
+     NOT_INTEGRABLE and no CAS 006 integrand reaches this path; it stays, for a wider scope later.*
    - **Refusal: a new status, CASIM_IMPROPER.** The integral is improper on this interval (a pole or domain edge on
      it), or the check couldn't prove it isn't. The firmware maps it to a message in its next CAS unit.
    - **Conservative at the edge:** the check uses the bounds' values from the abn evaluator. When a pole or edge is
@@ -59,10 +61,16 @@ exact points. This unit puts the two together, and refuses any interval on which
 6. **Verification:** F is CAS 006's verified antiderivative (derive-back), and the interval check guarantees F is
    continuous on the interval (its LN(ABS(u)) and TAN forms come only from integrands the check passed). So F(hi) −
    F(lo) is the integral. casim adds no new check; abacus's hidden set judges every value by quadrature.
+6a. **lo = hi on a pole or edge** (abacus #5571; the build already did this): the closed interval is the single point
+    lo, and rule 4's principle holds there, so ∫1÷X from 0 to 0, ∫1÷SQRT(X) from 0 to 0, ∫SQRT(X) from −1 to −1 and
+    TAN(X) from 90 to 90 in DEG are IMPROPER. An edge a positive power allows gives 0: ∫SQRT(X) from 0 to 0 is 0.
 7. **Bounds, decision 68:**
    - flash measured, against the prototype's 2.7 KB plus the plumbing, TAN's DEG and GRAD poles, and the ABS/SGN fold;
    - frames ≤ 224 B on the new helpers;
    - the worst stack is within the depth guard's 12,288 B;
+   - *At the build (casim 621516e): 12,032 B, +32 on derive's 46-deep nest, so 256 B are left. The next unit that
+     touches derive's path recalibrates the depth guard (CASIM_DEPTH_MAX 47 → 46, so the deepest nest accepted is 45)
+     as part of that unit (abacus #5571; the guard's value is 47 in src/casim.c, the nest that sets the worst stack 46).*
    - the arena is measured;
    - S3 times are measured, and the worst is under 1 s or the unit says what it costs.
 
@@ -83,7 +91,8 @@ exact points. This unit puts the two together, and refuses any interval on which
     - SQRT(X) on [−1, 1];
     - TAN(X) on [0, π÷2] in RAD, on [0, 90] in DEG, and on [0, 100] in GRAD;
     - 1÷(2×X−1) on [0, 1];
-  - **BAD_ARG:** a bound with X, a bound with another letter, and 1÷(A×X+1);
+  - **BAD_ARG:** a bound with X, a bound with another letter~~, and 1÷(A×X+1)~~ (1÷(A×X+1) is NOT_INTEGRABLE by rule 2:
+    N0023, amended at the build, abacus #5571);
   - UNDEFINED: a bound of LN(0);
   - NOT_INTEGRABLE passed through (X×LN(X));
   - the STU stamp.
