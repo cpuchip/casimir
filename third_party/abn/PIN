@@ -1,0 +1,7 @@
+# abn, the number layer Casimir is written against, vendored from the calculator firmware
+# (cpuchip/abacus-firmware, which owns it) at the commit in CORE_PIN. Casimir never edits these
+# files: `make check-abn` byte-compares them with the firmware at that commit when a firmware
+# clone is present (CORE_REPO), and checks the SHA-256s below in every build of the checks.
+commit 2f2eff6c8e6be44e1bfa0f92d5055583ecbe4ffc
+f3e2e4d808a370d808514d01a8578c32a27b5f0003c9cea8a2a6510081651eef  abn.h
+f63ee8bbcc873d63147714aaaf002974a010cd52d200b76b3869cbbbd0ee3bc2  abn_intel.c

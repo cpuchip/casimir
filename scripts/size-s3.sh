@@ -17,7 +17,7 @@ docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" espressif/idf:v5.4
     mkdir -p build/s3
     F="-std=c11 -O2 -mlongcalls -ffunction-sections -fdata-sections -Wall -Wextra -Werror -Wframe-larger-than=1024"
     for f in src/*.c; do
-        xtensa-esp32s3-elf-gcc $F -fstack-usage -Ibuild/core/core -Isrc -c -o build/s3/$(basename "$f" .c).o "$f"
+        xtensa-esp32s3-elf-gcc $F -fstack-usage -Ithird_party/abn -Isrc -c -o build/s3/$(basename "$f" .c).o "$f"
     done
     # the frame guard (CAS 004 rule 3) must refuse its planted 2 KB control, or it checks nothing
     if xtensa-esp32s3-elf-gcc $F -c -o /dev/null tests/frame_control.c 2>/dev/null; then

@@ -1,0 +1,56 @@
+# The Intel library sources Casimir's number layer links (CAS 011, D3), relative to the library's LIBRARY/ directory:
+# the objects of Intel's libbid.a that a link of src/casim.c and third_party/abn/abn_intel.c pulls in, read from the
+# linker's map (scripts/intel-sources.sh rewrites this file). CMake, the ESP-IDF component and the wasm build compile
+# exactly these; the Makefile builds the whole library with Intel's makefile, and the golden test shows the two agree.
+float128/dpml_exception.c
+float128/dpml_four_over_pi.c
+float128/dpml_ux_bid.c
+float128/dpml_ux_exp.c
+float128/dpml_ux_inv_hyper.c
+float128/dpml_ux_inv_trig.c
+float128/dpml_ux_log.c
+float128/dpml_ux_ops_64.c
+float128/dpml_ux_ops.c
+float128/dpml_ux_sqrt.c
+float128/dpml_ux_trig.c
+float128/sqrt_tab_t.c
+src/bid128_2_str_tables.c
+src/bid128_acos.c
+src/bid128_acosh.c
+src/bid128_add.c
+src/bid128_asin.c
+src/bid128_asinh.c
+src/bid128_atan2.c
+src/bid128_atan.c
+src/bid128_atanh.c
+src/bid128.c
+src/bid128_compare.c
+src/bid128_cos.c
+src/bid128_cosh.c
+src/bid128_div.c
+src/bid128_exp10.c
+src/bid128_exp.c
+src/bid128_fma.c
+src/bid128_fmod.c
+src/bid128_hypot.c
+src/bid128_log10.c
+src/bid128_log1p.c
+src/bid128_log.c
+src/bid128_mul.c
+src/bid128_noncomp.c
+src/bid128_pow.c
+src/bid128_round_integral.c
+src/bid128_scalb.c
+src/bid128_sin.c
+src/bid128_sinh.c
+src/bid128_sqrt.c
+src/bid128_string.c
+src/bid128_tan.c
+src/bid128_tanh.c
+src/bid128_to_int32.c
+src/bid64_to_bid128.c
+src/bid_binarydecimal.c
+src/bid_convert_data.c
+src/bid_decimal_data.c
+src/bid_from_int.c
+src/bid_round.c

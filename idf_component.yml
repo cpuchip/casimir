@@ -1,0 +1,21 @@
+# Casimir as an ESP-IDF component (CMakeLists.txt registers it when ESP_PLATFORM is set). Another project depends on
+# it from its main/idf_component.yml, by git or by path:
+#   dependencies:
+#     casim:
+#       git: https://github.com/cpuchip/casimir.git
+#       version: v1.0.0-rc1
+# Intel's decimal library is fetched at configure time by URL and SHA-256 (cmake/intel-dfp.cmake), so the first build
+# needs the network, or -DCASIM_INTEL_TARBALL=<a local copy>.
+version: "1.0.0-rc1"
+description: "Casimir: exact computer algebra in portable C11 (derivatives, integrals, solving, factoring); no heap"
+url: https://github.com/cpuchip/casimir
+license: MIT
+dependencies:
+  idf: ">=5.0"
+files:
+  exclude:
+    - "build/**/*"
+    - "device/**/*"
+    - "work/**/*"
+    - "tests/**/*"
+    - "examples/**/*"

@@ -70,7 +70,7 @@ library and CLI. The device's key is a later firmware unit, as CAS 004 was.
   - decimal coefficients;
   - the STU stamp case.
 - **Hidden, by abacus:**
-  - SymPy, as a black box on fermion (casim never sees it), checks random polynomials built from chosen rational
+  - SymPy, as a black box on the reviewer's host (casim never sees it), checks random polynomials built from chosen rational
     and quadratic-irrational roots, with random multiplicities, irreducible cubic factors, and decimal and
     rational scalings.
   - The root sets must be equal exactly, with multiplicities equal and the status right: SOLVED exactly when SymPy

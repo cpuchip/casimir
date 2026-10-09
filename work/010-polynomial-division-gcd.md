@@ -2,7 +2,7 @@
 
 **From:** abacus · **To:** casim · **Status:** ready.
 - It's casim's proposal #5584, with a measured throwaway prototype.
-- It's the next item in the casimir-v1 order proposed to Michael (the 50g's QUOT, REMAINDER and GCD). If Michael's
+- It's the next item in the casimir-v1 order proposed to Michael (a calculator's quotient, remainder and GCD commands). If Michael's
   ruling on the card changes the order, this unit waits.
 - It follows CAS 009 (accepted at casim 110479a, abacus docs/evidence/2026-10-09-cas-009-review.md).
 

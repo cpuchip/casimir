@@ -93,7 +93,7 @@ and 005.
   - a constant with another letter;
   - the STU stamp case.
 - **Hidden, by abacus:**
-  - SymPy, as a black box on fermion (casim never sees it), builds integrands from rule 2's forms, with random
+  - SymPy, as a black box on the reviewer's host (casim never sees it), builds integrands from rule 2's forms, with random
     coefficients, linear arguments and angle modes, plus out-of-scope integrands.
   - Each printed F is judged twice by value, relative 1E-24 at random points where everything is real:
     - F′ by mpmath's numeric derivative must equal the integrand;

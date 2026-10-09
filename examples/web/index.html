@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Casimir in the browser</title>
+<!-- Casimir's WebAssembly module from JavaScript. Build it (scripts/wasm.sh, into build/wasm), then serve the
+     repository's root and open /examples/web/:   python3 -m http.server 8000   (a module cannot load from file://) -->
+<style>
+  :root { --bg: #fbfaf7; --fg: #1d1d1b; --muted: #6b6a66; --line: #d9d6cf; --accent: #2d5d8a; --bad: #9a3b2e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #18191b; --fg: #e9e7e2; --muted: #9b9993; --line: #3a3b3e; --accent: #8db6dc; --bad: #e08a7c; }
+  }
+  body { background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; margin: 0 auto;
+         max-width: 44rem; padding: 2rem 1rem; }
+  h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+  p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+  form { display: grid; gap: .75rem; }
+  .row { display: flex; flex-wrap: wrap; gap: .75rem; }
+  label { display: grid; gap: .2rem; font-size: .85rem; color: var(--muted); }
+  input, select, button { font: inherit; color: var(--fg); background: transparent; border: 1px solid var(--line);
+                          border-radius: 6px; padding: .45rem .6rem; }
+  input.text { font-family: ui-monospace, monospace; width: 100%; box-sizing: border-box; }
+  button { background: var(--accent); color: var(--bg); border: 0; cursor: pointer; justify-self: start; }
+  .keys button { background: transparent; color: var(--fg); border: 1px solid var(--line); padding: .25rem .6rem; }
+  output { display: block; margin-top: 1.25rem; padding: .9rem 1rem; border: 1px solid var(--line); border-radius: 6px;
+           font-family: ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.5em; }
+  .status { font-size: .8rem; color: var(--muted); margin-top: .4rem; }
+  .status.bad { color: var(--bad); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<h1>Casimir</h1>
+<p class="lede">Exact computer algebra, from C compiled to WebAssembly. <span id="version"></span></p>
+
+<form id="f">
+  <div class="row">
+    <label>Operation
+      <select id="op">
+        <option>derive</option><option>simplify</option><option>expand</option><option>collect</option>
+        <option>subst</option><option>solve</option><option selected>integrate</option><option>factor</option>
+        <option>defint</option><option>pdiv</option><option>pgcd</option><option>cancel</option>
+      </select>
+    </label>
+    <label>Variable <select id="var"></select></label>
+    <label>Angle
+      <select id="angle"><option>RAD</option><option>DEG</option><option>GRAD</option></select>
+    </label>
+  </div>
+  <label>Expression
+    <input id="text" class="text" value="3×X^2+COS(2×X)" autocomplete="off" spellcheck="false">
+  </label>
+  <div class="row keys" aria-label="Symbols">
+    <button type="button" data-key="×">×</button><button type="button" data-key="÷">÷</button>
+    <button type="button" data-key="π">π</button><button type="button" data-key="^">^</button>
+  </div>
+  <label id="second-label" hidden><span id="second-name">Second</span>
+    <input id="second" class="text" autocomplete="off" spellcheck="false">
+  </label>
+  <label id="hi-label" hidden>Upper bound <input id="hi" class="text" value="π" autocomplete="off" spellcheck="false"></label>
+  <button>Compute</button>
+</form>
+<output id="out"></output>
+<div id="status" class="status"></div>
+
+<script type="module">
+import { loadCasimir } from "../../build/wasm/casim.mjs";
+
+const $ = (id) => document.getElementById(id);
+for (let c = 65; c <= 90; c++) $("var").add(new Option(String.fromCharCode(c), String.fromCharCode(c), false, c === 88));
+const second = { subst: ["Replacement for the variable", "X+1"], defint: ["Lower bound", "0"],
+                 pdiv: ["Divisor", "X-1"], pgcd: ["Second polynomial", "X^2-1"] };
+function shape() {
+  const op = $("op").value, s = second[op];
+  $("second-label").hidden = !s;
+  $("hi-label").hidden = op !== "defint";
+  if (s) { $("second-name").textContent = s[0]; if (!$("second").value) $("second").value = s[1]; }
+}
+$("op").addEventListener("change", () => { $("second").value = ""; shape(); });
+document.querySelectorAll("[data-key]").forEach((b) => b.addEventListener("click", () => {
+  const t = $("text"), k = b.dataset.key, i = t.selectionStart ?? t.value.length;
+  t.value = t.value.slice(0, i) + k + t.value.slice(t.selectionEnd ?? i);
+  t.focus(); t.selectionStart = t.selectionEnd = i + k.length;
+}));
+shape();
+
+const cas = await loadCasimir();
+$("version").textContent = `Version ${cas.version}.`;
+$("f").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const op = $("op").value, opts = { var: $("var").value, angle: $("angle").value };
+  const r = cas.run(op, $("text").value, opts, second[op] ? $("second").value : null,
+                    op === "defint" ? $("hi").value : null);
+  const ok = r.status === "OK" || r.status === "PARTIAL";
+  $("out").textContent = ok ? r.out : "";
+  $("status").textContent = r.status === "OK" ? "" : r.status + (r.out && !ok ? ` (${r.out})` : "");
+  $("status").classList.toggle("bad", !ok);
+});
+</script>
+</body>
+</html>

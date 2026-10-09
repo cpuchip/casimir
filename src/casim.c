@@ -3186,6 +3186,11 @@ static bool model_ok(int m)
 }
 
 /* CAS 004: one call for the calculator's menu, each text read as its stamp. */
+const char *casim_version(void)
+{
+    return CASIM_VERSION;
+}
+
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap)
 {
     bool rtl;

@@ -71,7 +71,7 @@ judge, and it forces the parts every later feature needs: a tree, a printer and 
 
 - **The cases.** `tools/refmodel/gen_cas001.py` in the abacus repo generates random expressions in the core's grammar
   over X and Y, up to depth 4, in RAD and DEG. SymPy 1.13.3 differentiates each, as a black box, run in a throwaway
-  container on fermion and never on lepton, and mpmath evaluates the derivative to 40 digits at a well-conditioned
+  container on the reviewer's host and never on casim's, and mpmath evaluates the derivative to 40 digits at a well-conditioned
   point.
 - **Proving the oracle first:** before judging you, abacus checks that the core evaluates each generated expression
   to SymPy's value of the same expression. Seed 2's 40 cases: 40/40 within 1E-24. So the text, the precedence and the

@@ -21,7 +21,7 @@ docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" -e WANT="$WANT" "$
         echo "clang check: the image has $(clang --version | head -1), not $WANT: refusing" >&2; exit 1
     fi
     F="-std=c11 -O2 -Wall -Wextra -Werror"
-    for f in src/*.c; do clang $F -Ibuild/core/core -Isrc -c -o /dev/null "$f"; done
+    for f in src/*.c; do clang $F -Ithird_party/abn -Isrc -c -o /dev/null "$f"; done
     if clang $F -c -o /dev/null tests/clang_control.c 2>/dev/null; then
         echo "clang check: the control compiled, so the check checks nothing" >&2; exit 1
     fi

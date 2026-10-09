@@ -12,13 +12,13 @@ trap 'rm -rf "$tmp"' EXIT
 bad() { nm -u "$1" | awk '{print $NF}' | grep -E "$FORBID" || true; }
 for f in src/*.c; do
     o="$tmp/$(basename "$f" .c).o"
-    ${CC:-cc} -std=c11 -O2 -Ibuild/core/core -Isrc -c -o "$o" "$f"
+    ${CC:-cc} -std=c11 -O2 -Ithird_party/abn -Isrc -c -o "$o" "$f"
     if [ -n "$(bad "$o")" ]; then
         echo "symbol check: $f needs $(bad "$o" | tr '\n' ' '): a pow the firmware would have to link" >&2
         exit 1
     fi
 done
-${CC:-cc} -std=c11 -O2 -Ibuild/core/core -Isrc -c -o "$tmp/control.o" tests/symbol_control.c
+${CC:-cc} -std=c11 -O2 -Ithird_party/abn -Isrc -c -o "$tmp/control.o" tests/symbol_control.c
 if [ -z "$(bad "$tmp/control.o")" ]; then
     echo "symbol check: the control's pow was not seen, so the check checks nothing" >&2
     exit 1

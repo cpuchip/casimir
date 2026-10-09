@@ -1,14 +1,35 @@
-/* Casimir (casim): computer algebra on the abacus core's equation grammar.
+/* Casimir (casim): computer algebra in portable C11 for a calculator, and for anything else that can call C.
  *
- * Unit CAS 001: the derivative of an equation; CAS 002: simplify, to a canonical form
- * (docs/canonical-form.md). The input is equation text in the core's grammar
- * (core/eqn.h), the output is equation text in the same grammar, so the core can evaluate, SOLVE or
- * store it. All working memory comes from the caller's arena; nothing is allocated.
+ * Each operation reads an expression as text and writes its answer as text (docs/language.md: the input language,
+ * the models, the angle modes and each operation's statuses, with examples). The answers are exact. The operations
+ * that search for an answer check it before writing it, and refuse when the check cannot close: integrate
+ * differentiates its answer back, solve divides out each root exactly, factor reads its product back as the input,
+ * pdiv checks f = q g + r, pgcd and cancel accept a gcd only when it divides both exactly. The rewriting operations
+ * (derive, simplify, expand, collect, subst) apply only rules that keep the value; the tests check them.
+ *
+ * The contract, for every call here:
+ *  - The caller gives all the memory: out (cap bytes, its NUL included) and an arena (arena_cap bytes, any
+ *    alignment; 8 KiB is the calculator's budget, and at most 524,280 bytes of it are used). Nothing is allocated.
+ *  - out always holds a NUL-terminated text when cap >= 1. A status other than CASIM_OK says what out holds.
+ *  - Text is UTF-8 with the calculator's symbols (× for times, ÷ for divide, π); var is 0-25 for A-Z.
+ *  - No state outlives a call: casim keeps no globals that a call writes, so calls on separate arenas and outputs
+ *    do not touch each other.
+ *  - The numbers are IEEE 754 decimal128 (34 digits) through abn.h; no binary floating point reaches an answer.
+ *
+ * The work units (work/CAS NNN) say why each rule is what it is; docs/canonical-form.md defines the output form.
  */
 #ifndef CASIM_H
 #define CASIM_H
 
 #include <stddef.h>
+
+/* The release, as semver; casim_version() returns the same text from the compiled library. */
+#define CASIM_VERSION "1.0.0-rc1"
+#define CASIM_VERSION_MAJOR 1
+#define CASIM_VERSION_MINOR 0
+#define CASIM_VERSION_PATCH 0
+
+const char *casim_version(void);
 
 typedef enum {
     CASIM_OK = 0,
