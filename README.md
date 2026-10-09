@@ -116,7 +116,7 @@ gzipped), most of it the decimal library's tables.
   exact, examples, expand, factor, fuzz, integrate, opaque, pairs, poly, simplify, solve, stamp, subst and syntax
   (tests/*_test.c).
 - **The standalone checks** (`make check`, and CI) need nothing private:
-  - the golden test, 7,744 calls whose exact answers were recorded before this release, so a change shows up;
+  - the golden test, 7,778 calls whose exact answers were recorded before this release, so a change shows up;
   - the frame and symbol gates;
   - a gcd check on small primes;
   - check-abn;
@@ -124,6 +124,11 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 80 deliberate faults, each of which the tests must
+  catch. The developer tests catch all 80. The standalone checks first caught 64. The other 16 changed answers only
+  where the developer tests looked, so their inputs that expose each fault were added to the golden corpus, 34 lines
+  found by scripts/golden-harvest.py. The standalone checks now catch 80 of 80. Those lines were chosen because they
+  catch those 16 faults, so a fault unlike them can still need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
 - **The S3 bench** (scripts/device.sh) runs 748 cases on the chip, through the ESP-IDF component, and requires every

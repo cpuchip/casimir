@@ -7746,3 +7746,55 @@ defint	35	23	0	35	65536	65536	Y	1	3	OK	2×Y
 simplify	35	23	1	35	8192	65536	1.5	\N	\N	OK	1.5
 simplify	1	23	2	1	65536	65536	((((1E3)÷(1E3))+(1.5))÷(X))÷((((7)÷(1.5))^(LOG(0.5)))^(-4))	\N	\N	OK	2.5×(14÷3)^(4×LOG(0.5))÷X
 solve	35	23	1	35	8192	65536	(3×X--1)×(1×X--4)×(3×X-2)×(4×X-4)×(X^2-2)	\N	\N	OK	SOLVED: X=-4; X=-SQRT(2); X=-1÷3; X=2÷3; X=1; X=SQRT(2)
+# Aimed lines (abacus #5782): developer-test inputs that kill a mutant the lines above missed, found by
+# scripts/golden-harvest.py (the shortest 3 of each mutant's killing inputs), answers recorded from dbb6d4c's src.
+# kills add-one-end (a developer test's input)
+simplify	35	0	1	35	32768	4096	3E18×X+3E18×X-3E18×X-2E18×X+2E18÷7×X-2E18÷7×X	\N	\N	OK	1000000000000000000×X
+# kills run-unsorted (a developer test's input)
+collect	35	23	1	35	65536	4096	0.5×X×Y+3E18×X×Y+(1÷3)×X×Y	\N	\N	OK	Y×(5÷6)×3600000000000000001×X
+simplify	35	0	1	35	32768	4096	4E18×X+4E18×X+4E18×X-4E18×X	\N	\N	OK	-4000000000000000000×X+4000000000000000000×X+4000000000000000000×X+4000000000000000000×X
+collect	35	23	1	35	65536	4096	(3E18)×X^0×Y^1+(0.5)×X^0×Y^1	\N	\N	OK	(0.5×Y+3000000000000000000×Y)
+# kills one-denominator-group (a developer test's input)
+simplify	35	0	1	35	32768	4096	2E18÷7-2E18÷7+3E18+X	\N	\N	OK	X+3000000000000000000
+simplify	35	0	1	35	32768	4096	2E18÷7×X-2E18÷7×X+3E18×X	\N	\N	OK	3000000000000000000×X
+simplify	35	0	1	35	32768	4096	3E18×X+2E18÷7×X-2E18÷7×X	\N	\N	OK	3000000000000000000×X
+# kills no-walk-fallback (a developer test's input)
+simplify	35	0	1	35	32768	4096	2E18+1E18-4500000000000000001÷2+X	\N	\N	OK	X+1499999999999999999÷2
+simplify	35	0	1	35	32768	4096	(-1E18)×X+(5÷6)×X+(0.5)×X+(1÷3)×X+(4E18÷3)×X	\N	\N	OK	333333333333333335×X
+# kills no-resort (a developer test's input)
+simplify	35	0	1	35	32768	4096	X×2E18×4E18+X×3E18×4E18+X×3E18×4E18	\N	\N	OK	X×2×3000000000000000000×4000000000000000000+X×2000000000000000000×4000000000000000000
+simplify	35	0	1	35	32768	4096	X×2×3E18×4E18+X×3E18×4E18+X×3E18×4E18	\N	\N	OK	X×2×2×3000000000000000000×4000000000000000000
+# kills sign-from-first (a developer test's input)
+collect	35	23	1	35	8192	4096	(-4E18×Y+3×Y÷3037000499+Y×(-3)×4E18+Y×3×3E18+Y×3×4E18)×X	\N	\N	OK	(-4000000000000000000×Y+3×Y÷3037000499+Y×(-3)×4000000000000000000+Y×3×3000000000000000000+Y×3×4000000000000000000)×X
+simplify	35	0	1	35	32768	4096	(-4E18×Y+3×Y÷3037000499+Y×(-3)×4E18+Y×3×3E18+Y×3×4E18)×X	\N	\N	OK	-X×(-3×Y÷3037000499+4000000000000000000×Y+Y×(-3)×3000000000000000000+Y×(-3)×4000000000000000000+Y×3×4000000000000000000)
+simplify	35	0	1	35	8192	4096	(-4E18×Y+3×Y÷3037000499+Y×(-3)×4E18+Y×3×3E18+Y×3×4E18)×X	\N	\N	OK	-X×(-3×Y÷3037000499+4000000000000000000×Y+Y×(-3)×3000000000000000000+Y×(-3)×4000000000000000000+Y×3×4000000000000000000)
+# kills no-sign-content (a developer test's input)
+simplify	35	0	1	35	32768	4096	Z×(-X-4E18×4E18×Y)	\N	\N	OK	-Z×(X+Y×4000000000000000000×4000000000000000000)
+simplify	35	0	1	35	32768	4096	-(X+Y×4000000000000000000×4000000000000000000)÷Z	\N	\N	OK	-(X+Y×4000000000000000000×4000000000000000000)÷Z
+# kills sum-div-unmerged (a developer test's input)
+simplify	35	0	1	35	32768	4096	(-4E18×Y-3E18×Y)×X	\N	\N	OK	X×Y×(-1.75)×4000000000000000000
+simplify	35	0	1	35	32768	4096	(4E18×Y+4E18×Y+1)×X	\N	\N	OK	4000000000000000000×X×(2×Y+1÷4000000000000000000)
+collect	35	23	1	35	65536	4096	-4E18×X×Y-3E18×X×Y+X	\N	\N	OK	(Y×(-1.75)×4000000000000000000+1)×X
+# kills collect-ck-raw (a developer test's input)
+collect	35	23	1	35	65536	4096	(3E18)×X^0×Y^2+(5÷6)×X^0×Y^2	\N	\N	OK	Y^2×(5÷6)×3600000000000000001
+# kills apart-not-set-by-run (a developer test's input)
+# kills apart-not-set-by-fold (a developer test's input)
+collect	35	23	1	35	65536	4096	(7×Y^2+Y×15×(2000000000000000000÷7))×X^2	\N	\N	OK	(7×Y^2+Y×15×(2000000000000000000÷7))×X^2
+collect	35	23	1	35	65536	4096	(5×Y^2÷6+Y×(-19÷21)×3000000000000000000)×X+7×Y	\N	\N	OK	(5×Y^2÷6+Y×(-19÷21)×3000000000000000000)×X+7×Y
+collect	35	23	1	35	65536	4096	(7×Y^2+Y×(-13÷14)×4000000000000000000)×X+47×Y^2÷6	\N	\N	OK	(7×Y^2+Y×(-13÷14)×4000000000000000000)×X+47×Y^2÷6
+# kills content-apart (a developer test's input)
+collect	35	23	1	35	65536	4096	Y÷3×X^2+(5×Y^2÷6+Y×11.5×(2000000000000000000÷7))	\N	\N	OK	Y÷3×X^2+(5×Y^2÷6+Y×11.5×(2000000000000000000÷7))
+# kills stu-exponent-minus-tight (a developer test's input)
+expand	1	23	1	0	65536	4096	2^-Y^X	\N	\N	OK	2^(-Y^X)
+expand	1	23	1	0	65536	4096	3^-2^2	\N	\N	OK	1÷81
+expand	1	23	1	0	65536	4096	3^-X^2	\N	\N	OK	3^(-X^2)
+# kills repl-stamp-ignored (a developer test's input)
+subst	35	23	1	1	65536	4096	X^2	Y^3^2	\N	OK	Y^18
+# kills defint-tan-poles-sparse (a developer test's input)
+defint	35	23	0	0	65536	4096	TAN(X)	100	280	IMPROPER	
+defint	35	23	2	0	65536	4096	TAN(X)	101	350	IMPROPER	
+defint	35	23	0	0	65536	4096	TAN(2×X+1)	-2	-60	IMPROPER	
+# kills rand-folded (a developer test's input)
+subst	35	23	1	35	65536	4096	X+1	RAND	\N	OK	1+RAND
+subst	35	23	1	35	65536	4096	X-X	RAND	\N	NOT_DIFFERENTIABLE	RAND
+expand	35	0	1	35	65536	4096	RAND÷3	\N	\N	OK	1÷3×RAND

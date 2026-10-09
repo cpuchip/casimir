@@ -26,7 +26,7 @@ static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TO
                                        "IMPROPER"};
 #define COUNT(a) ((int)(sizeof a / sizeof a[0]))
 
-static unsigned char arena[ARENA];
+static _Alignas(8) unsigned char arena[ARENA];     /* aligned, as tests/golden_log.c logs the arena */
 static char out[OUT];
 
 static int find(const char *const *names, int n, const char *s)
