@@ -213,6 +213,9 @@ MUTANTS = {
         ("src/casim.c", "    if (c->angle == CASIM_RAD) {\n        abn two = abn_from_int(2);\n        per = abn_pi();",
          "    if (1) {\n        abn two = abn_from_int(2);\n        per = abn_pi();"),
     ],
+    "defint-tan-poles-sparse": [         # abacus #5577: as-RAD is caught only by over-refusing; this places them too few
+        ("src/casim.c", "per = abn_from_int(c->angle == CASIM_DEG ? 180 : 200);", "per = abn_from_int(c->angle == CASIM_DEG ? 360 : 400);"),
+    ],
     "defint-lo-minus-hi": [
         ("src/casim.c", "    return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);", "    return finish(&c, add2(&c, a, neg(&c, b)), out, ocap);"),
     ],

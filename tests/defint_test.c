@@ -112,6 +112,29 @@ static void exact(void)
     is("SQRT(3×X-1)", "1÷3", "17÷3", CASIM_RAD, "128÷9");          /* the edge exactly at a rational endpoint: allowed (u = 16 at 17/3) */
 }
 
+/* an answer (OK) that equals the quadrature: the text is not pinned (COS(-89) stays as written) */
+static void answered(const char *f, const char *lo, const char *hi, int angle)
+{
+    char out[OUT];
+    casim_status st = defint(f, lo, hi, angle, CASIM_MODEL_35, out, sizeof arena);
+    CHECK(st == CASIM_OK && by_value(f, lo, hi, angle, out), "defint %s on [%s, %s] (%s): %d \"%s\", want an answer of its value",
+          f, lo, hi, MODE[angle], (int)st, out);
+}
+
+/* TAN's poles placed exactly in DEG and GRAD (abacus #5577): intervals that just miss 90 + 180k and 100 + 200k are
+   answered; one that holds only the next pole is refused (a sparse placement, period 360 or 400, would miss it) */
+static void tan_poles(void)
+{
+    answered("TAN(X)", "91", "269", CASIM_DEG);
+    answered("TAN(X)", "-89", "89", CASIM_DEG);
+    answered("TAN(2×X)", "46", "134", CASIM_DEG);
+    answered("TAN(X)", "101", "299", CASIM_GRAD);
+    answered("TAN(X)", "-99", "99", CASIM_GRAD);
+    refused("TAN(X)", "100", "280", CASIM_DEG, CASIM_IMPROPER);     /* 270, not 90 */
+    refused("TAN(X)", "101", "350", CASIM_GRAD, CASIM_IMPROPER);    /* 300, not 100 */
+    refused("TAN(X)", "-280", "-100", CASIM_DEG, CASIM_IMPROPER);   /* -270 */
+}
+
 static void refusals(void)
 {
     /* IMPROPER: a pole or domain edge on the closed interval */
@@ -305,6 +328,7 @@ int main(void)
     ce_init();
     exact();
     refusals();
+    tan_poles();
     stamp();
     seeded();
     visible();
