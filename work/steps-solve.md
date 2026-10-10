@@ -32,7 +32,7 @@ Depth 0 is the equation as it stands, `…=0`; depth 1 is each factor set to 0, 
     nothing to reduce, once): `X^2-X-1=0: X=(1-SQRT(5))÷2; X=(1+SQRT(5))÷2` is one line;
   - **LEFT:** a factor of degree 3 or more that solve leaves, `X^3-2×X-5=0: DEGREE 3 LEFT`. One that is a power
     prints as one, in the LEFT line, the product line that leaves it and the division before: `(X^3+6×X^2+6×X+3)^4=0:
-    DEGREE 12 LEFT` (abacus #6311: 299 of the hidden set's 654 left factors are powers). Its k-th root is solved for
+    DEGREE 12 LEFT` (abacus #6311, #6349: 253 of the hidden set's 654 left factors are perfect powers; 46 more are a repeated factor beside another, like (…)^2×(cubic)×X, and print expanded until a square-free decomposition, on CAS 007's later list). Its k-th root is solved for
     exactly and multiplied back before it prints; the answer, DEGREE 12, is solve's.
 - **ANSWER:** solve's own answer, the last step either way.
 
