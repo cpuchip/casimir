@@ -222,7 +222,7 @@ static void review(void)
     /* the third review: a 19-digit decimal the printer writes reads back as the same number */
     is("531441÷262144×X", "2.027286529541015625×X");
     is("531441÷262144+531441÷262144", "4.05457305908203125");
-    is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-0.5×π-SQRT(π+5)-0.125");     /* CAS 008 rule 1: a perfect power folds */
+    is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-π÷2-SQRT(π+5)-0.125");       /* CAS 008 rule 1: a perfect power folds */
 }
 
 static void rules(void)

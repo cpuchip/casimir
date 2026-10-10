@@ -800,6 +800,112 @@ static ref term_of(ctx *c, const rat *k, const ref *f, int nf)
     return mul(c, list(c, ml), nf + 1);
 }
 
+/* cas-pi-form: the logs of positive numbers in a sum combine. Terms k×LN(a) whose coefficients share one denominator
+   are one log, the coefficients' gcd g outside: Σ k×LN(a) = g×LN(Π a^(k/g)) (2×LN(2)+2×LN(3) is 2×LN(6)); LOG
+   likewise. LN(1÷m) is -LN(m), LOG(10^j) is j. Numbers only, never a letter (LN(X)+LN(Y) would change the domain). */
+
+/* the gcd of two rationals >= 0, gcd(p1, p2) ÷ lcm(q1, q2); gcd(0, y) = y */
+static __attribute__((noinline)) bool rat_gcd(rat *r, const rat *x, const rat *y)
+{
+    int64_t gq, l;
+    if (x->p == 0) return *r = *y, true;
+    gq = gcd64(x->q, y->q);
+    if (!mul64(&l, x->q / gq, y->q)) return false;
+    return rat_make(r, gcd64(x->p, y->p), l);
+}
+
+/* t as k×LN(a) or k×LOG(a), a a positive number: the function (k and a set), or -1 */
+static __attribute__((noinline)) int log_term(const ctx *c, ref t, rat *k, rat *a)
+{
+    const node *x = nd(c, t);
+    ref f = t;
+    rat_int(k, 1);
+    if (x->kind == K_MUL) {
+        if (x->n != 2 || !is_num(c, list(c, x->a)[0])) return -1;
+        *k = *val(c, list(c, x->a)[0]);
+        f = list(c, x->a)[1];
+    }
+    x = nd(c, f);
+    if (x->kind != K_FN || (x->id != F_LN && x->id != F_LOG) || !is_num(c, x->a) || val(c, x->a)->p <= 0) return -1;
+    *a = *val(c, x->a);
+    return x->id;
+}
+
+/* whether t is a log of function f whose coefficient has denominator den (one group: k and a set) */
+static bool in_group(const ctx *c, ref t, int f, int64_t den, rat *k, rat *a)
+{
+    return log_term(c, t, k, a) == f && k->q == den;
+}
+
+/* whether n > 0 is 10^j, j >= 0 */
+static bool pow10_of(int64_t n, long *j)
+{
+    *j = 0;
+    while (n > 1 && n % 10 == 0) n /= 10, ++*j;
+    return n == 1;
+}
+
+/* f(q), q > 0, in its form: 0 for q = 1, j for LOG(10^j) (and 10^-j), -f(m) for q = 1÷m, else f(q) */
+static __attribute__((noinline)) ref log_of(ctx *c, int f, const rat *q)
+{
+    rat m = *q;
+    long j;
+    bool neg_ = false;
+    ref r;
+    if (rat_is(q, 1, 1)) return small(c, C_0);
+    if (f == F_LOG && ((q->q == 1 && pow10_of(q->p, &j)) || (q->p == 1 && pow10_of(q->q, &j)))) {
+        rat_int(&m, (int)(q->q == 1 ? j : -j));
+        return num(c, &m);
+    }
+    if (q->p == 1) rat_int(&m, 1), m.p = q->q, neg_ = true;
+    r = mk(c, K_FN, num(c, &m), 0);
+    if (r == SPARE) return SPARE;
+    nd(c, r)->id = (uint8_t)f;
+    return neg_ ? mul_node(c, small(c, C_M1), &r, 1) : r;
+}
+
+/* A sum's logs, t[0..*k): two or more of one function whose coefficients share a denominator become one term.
+   Returns whether t changed (one group a call; the caller runs the sum's steps again). Past 2^62 a group stays. */
+static __attribute__((noinline)) bool combine_logs(ctx *c, ref *t, int *k)
+{
+    for (int f = F_LN; f <= F_LOG; f++)
+        for (int i = 0; i < *k; i++) {
+            rat ki, ai, kj, aj, g, q, x;
+            int n = 0, w = 0;
+            ref r;
+            if (log_term(c, t[i], &ki, &ai) != f) continue;
+            rat_int(&g, 0);
+            for (int j = i; j < *k; j++)
+                if (in_group(c, t[j], f, ki.q, &kj, &aj)) {
+                    if (kj.p < 0) kj.p = -kj.p;
+                    if (!rat_gcd(&g, &g, &kj)) return false;
+                    n++;
+                }
+            if (n < 2) continue;
+            rat_int(&q, 1);
+            for (int j = i; j < *k; j++)
+                if (in_group(c, t[j], f, ki.q, &kj, &aj)) {
+                    rat inv, e, p;
+                    long wh;
+                    if (!rat_make(&inv, g.q, g.p) || !rat_mul(&e, &kj, &inv) || !rat_whole(&e, &wh) ||
+                        !rat_pow(&p, &aj, wh) || !rat_mul(&q, &q, &p))
+                        return false;
+                }
+            if ((r = log_of(c, f, &q)) == SPARE) return false;
+            if (is_num(c, r)) {
+                if (!rat_mul(&x, val(c, r), &g)) return false;
+                r = num(c, &x);
+            } else if (!rat_is(&g, 1, 1))
+                r = mul2(c, num(c, &g), r);
+            for (int j = 0; j < *k; j++)
+                if (j < i || !in_group(c, t[j], f, ki.q, &kj, &aj)) t[w++] = t[j];
+            if (!is_k(c, r, 0, 1)) t[w++] = r;
+            *k = w;
+            return true;
+        }
+    return false;
+}
+
 /* A sum (docs: flattened, sorted by monomial, like terms collected, the constant last). */
 static ref add(ctx *c, const ref *in, int n)
 {
@@ -847,6 +953,12 @@ again:
            sorts elsewhere, maybe beside a like term (third pass). Again: each pass merged a run, so fewer
            terms each time. */
         m = k, k = 0, resort = false;
+        goto again;
+    }
+    if (combine_logs(c, t, &k)) {
+        /* a group of logs is one term: it sorts elsewhere, may be a number (LOG(10)) or like another term. Each
+           call leaves fewer logs, so this ends. */
+        m = k, k = 0;
         goto again;
     }
     if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
@@ -1368,6 +1480,7 @@ static ref fn(ctx *c, int f, ref a)
     case F_LN:
         if (x->kind == K_FN && x->id == F_EXP) return x->a;
         if (is_k(c, a, 1, 1)) return small(c, C_0);                 /* CAS 008 */
+        if (is_num(c, a) && val(c, a)->p == 1 && val(c, a)->q > 1) return log_of(c, f, val(c, a));   /* -LN(m) */
         break;
     case F_EXP:
         if (x->kind == K_FN && x->id == F_LN) return x->a;
@@ -1392,7 +1505,14 @@ static ref fn(ctx *c, int f, ref a)
     case F_ATAN:
         if ((r = exact_inverse(c, f, a)) != 0) return r;
         break;
-    case F_LOG: if (x->kind == K_FN && x->id == F_ALOG) return x->a; break;
+    case F_LOG:
+        if (x->kind == K_FN && x->id == F_ALOG) return x->a;
+        if (is_num(c, a) && val(c, a)->p > 0) {
+            long j;
+            const rat *v = val(c, a);
+            if ((v->q == 1 && pow10_of(v->p, &j)) || (v->p == 1 && v->q > 1)) return log_of(c, f, v);    /* j, -LOG(m) */
+        }
+        break;
     case F_ALOG: if (x->kind == K_FN && x->id == F_LOG) return x->a; break;
     case F_ABS:
         if (is_num(c, a)) {
@@ -2175,7 +2295,7 @@ static bool below(const ctx *c, ref f)
 
 /* A coefficient's parts: whether it prints in the numerator (a decimal other than 1, or the p of a p÷q
    other than 1) and whether it has a denominator (the q of a p÷q). */
-static __attribute__((noinline)) void coef_parts(const ctx *c, ref f0, bool *top, bool *bottom)
+static __attribute__((noinline)) void coef_parts(const ctx *c, ref f0, bool frac, bool *top, bool *bottom)
 {
     rat co;
     abn d;
@@ -2183,12 +2303,13 @@ static __attribute__((noinline)) void coef_parts(const ctx *c, ref f0, bool *top
     if (!f0) return;
     co = *val(c, f0);
     co.p = co.p < 0 ? -co.p : co.p;
-    if (decimal_of(&co, &d)) *top = !rat_is(&co, 1, 1);
+    if (!frac && decimal_of(&co, &d)) *top = !rat_is(&co, 1, 1);
     else *top = co.p != 1, *bottom = co.q != 1;
 }
 
-/* The coefficient's sign and numerator (top) or its ÷ denominator; returns whether it printed an item. */
-static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bool flip, bool top)
+/* The coefficient's sign and numerator (top) or its ÷ denominator, p÷q whole when frac; returns whether it printed
+   an item. */
+static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bool frac, bool flip, bool top)
 {
     rat co;
     abn d;
@@ -2198,7 +2319,7 @@ static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bo
     neg_ = (co.p < 0) != flip;
     co.p = co.p < 0 ? -co.p : co.p;
     if (top && neg_) puts_(w, "-");
-    if (decimal_of(&co, &d)) {
+    if (!frac && decimal_of(&co, &d)) {
         if (!top || rat_is(&co, 1, 1)) return 0;
         put_num(w, &d);
         return 1;
@@ -2213,6 +2334,21 @@ static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bo
         put_int(w, co.q);
     }
     return 0;
+}
+
+/* Whether a product's coefficient prints as a fraction (cas-pi-form): π, or π to a whole positive power, among its
+   numerator's factors. π÷4 and π^2÷32, not 0.25×π; under a ÷ or a root π keeps the decimal (0.5÷π, 0.5×SQRT(π)). */
+static __attribute__((noinline)) bool pi_frac(const ctx *c, const ref *f, int start, int n)
+{
+    if (!start) return false;
+    for (int i = start; i < n; i++) {
+        const node *x = nd(c, f[i]);
+        if (x->kind == K_PI) return true;
+        if (x->kind == K_POW && nd(c, x->a)->kind == K_PI && is_num(c, x->b) && val(c, x->b)->q == 1 &&
+            val(c, x->b)->p > 0)
+            return true;
+    }
+    return false;
 }
 
 /* A number exponent, its absolute value: a decimal, or (p÷q). */
@@ -2308,11 +2444,11 @@ static __attribute__((noinline)) void print_drawn(ctx *c, out_t *w, const ref *f
     bool top, bottom;
     int items;
     /* the coefficient whole and first, p÷q as one item (RAND÷3 prints 1÷3×RAND; review) */
-    coef_parts(c, start ? f[0] : 0, &top, &bottom);
-    items = put_coef(c, w, start ? f[0] : 0, flip, true);
+    coef_parts(c, start ? f[0] : 0, pi_frac(c, f, start, n), &top, &bottom);
+    items = put_coef(c, w, start ? f[0] : 0, pi_frac(c, f, start, n), flip, true);
     if (bottom) {
         if (!items) puts_(w, "1");
-        put_coef(c, w, start ? f[0] : 0, flip, false);
+        put_coef(c, w, start ? f[0] : 0, pi_frac(c, f, start, n), flip, false);
         items = 1;
     }
     for (int i = start; i < n; i++) {
@@ -2336,14 +2472,14 @@ static void print_product(ctx *c, out_t *w, ref r, bool flip)
         print_drawn(c, w, f, n, start, flip);
         return;
     }
-    items = put_coef(c, w, start ? f[0] : 0, flip, true);
+    items = put_coef(c, w, start ? f[0] : 0, pi_frac(c, f, start, n), flip, true);
     for (int i = start; i < n; i++) {
         if (below(c, f[i])) continue;
         if (items++) puts_(w, TIMES);
         put_factor(c, w, f[i], 2);
     }
     if (!items) puts_(w, "1");
-    put_coef(c, w, start ? f[0] : 0, flip, false);
+    put_coef(c, w, start ? f[0] : 0, pi_frac(c, f, start, n), flip, false);
     for (int i = start; i < n; i++) {
         if (!below(c, f[i])) continue;
         puts_(w, DIVIDE);
@@ -2358,7 +2494,7 @@ static int product_level(ctx *c, ref r)
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &r;
     int n = x->kind == K_MUL ? x->n : 1, start = has_coef(c, f, n), items, dens, one = 5;
     bool top, bottom, sign = start && num_negative(c, f[0]);
-    coef_parts(c, start ? f[0] : 0, &top, &bottom);
+    coef_parts(c, start ? f[0] : 0, pi_frac(c, f, start, n), &top, &bottom);
     items = top, dens = bottom;
     for (int i = start; i < n; i++) {
         if (below(c, f[i])) dens++;

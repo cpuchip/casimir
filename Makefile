@@ -41,6 +41,7 @@ check: all build/frames.ok build/symbols.ok build/gcdprimes_check check-abn
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
 	scripts/doc-examples.py
+	scripts/log-values.py
 
 test: check build/clang.ok $(TESTS)
 	scripts/run-tests.sh $(TESTS)

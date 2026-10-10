@@ -58,7 +58,8 @@ time in a profile (Euclid on software decimal: gcd 18%, fmod 10%, isZero 13%). W
 same derivative takes 0.9 ms, and a 191-byte equation simplifies in at most 2.1 ms.
 
 Printed: a rational whose decimal expansion terminates within 18 digits prints as that decimal (0.3);
-any other prints as a quotient (2÷3). A number is folded into a whole power only (0.25^1.5 stays: exact
+any other prints as a quotient (2÷3). One exception since cas-pi-form: a product with π in its numerator prints its
+coefficient as a quotient (π÷4, below). A number is folded into a whole power only (0.25^1.5 stays: exact
 roots are not part of CAS 002).
 
 **Numbers that do not fold together** (a step past 2^62) are handled all or nothing: when any step of
@@ -460,7 +461,7 @@ s × p/q × SQRT(k) from sin(nπ/12) (COS is n + 6) or tan(nπ/12), printed in 0
 Odd multiples of π/12, TAN at its poles, and any argument that isn't constant stay as written.
 
 **The inverses** return the principal angle in the mode: ASIN and ATAN in [-π/2, π/2], ACOS in [0, π]. ATAN(1) is
-0.25×π in RAD, 45 in DEG, 50 in GRAD; ACOS(-0.5) is 2×π÷3. Only the values the table prints are read (0, ±1/2,
+π÷4 in RAD (0.25×π before cas-pi-form), 45 in DEG, 50 in GRAD; ACOS(-0.5) is 2×π÷3. Only the values the table prints are read (0, ±1/2,
 ±SQRT(2)÷2, ±SQRT(3)÷2, ±1, and ±SQRT(3)÷3, ±SQRT(3) for ATAN): ASIN(2) and ACOS(0.3) stay.
 
 **CASIM_UNDEFINED:** a numeric 0 under a numeric negative power, whether the layer made the 0 (1÷COS(π÷2)) or it was
@@ -544,3 +545,35 @@ replacement. An equation is BAD_ARG.
   where the typed quotient is undefined and the reduced one isn't; limits will read them. Reduced numerator × gcd =
   numerator and the same for the denominator are checked exactly. A gcd of 1 prints the quotient as 002 writes it.
   A denominator of 0 is UNDEFINED.
+
+## cas-pi-form: fractions of π, and logs combined (abacus decision 71)
+
+Michael's card: "Fractions of π, and combine logs too … Let's just do the right thing now." Both rules change only
+what an answer looks like, never its value, and both hold on every path that builds an expression (simplify and
+every op's answer).
+
+- **Fractions of π.** A product with π, or π to a whole positive power, among its numerator's factors prints its
+  rational coefficient as p÷q, never as a decimal: π÷4, -27×π÷8+27, π^2÷32, π×COS(X)÷200 (GRAD's derivative factor
+  now reads like DEG's π×COS(X)÷180). π under a ÷ or a root keeps 002's decimal: 0.5÷π, 0.5×SQRT(π), 1.5÷π. Only the
+  printer changes (`pi_frac`); the tree is the same, and π÷4 reads back as it.
+- **Logs of positive numbers combine in a sum.** Terms k×LN(a), a a positive rational, whose coefficients have one
+  denominator in lowest terms are one term: Σ k×LN(a) = g×LN(Π a^(k/g)), g the coefficients' gcd (each k/g whole).
+  LN(6)−LN(2) is LN(3), 3×LN(2)−LN(4) is LN(2), 2×LN(2)+2×LN(3) is 2×LN(6), LN(2)÷2+LN(3)÷2 is 0.5×LN(6). LOG
+  likewise, apart from LN. Terms whose coefficients have different denominators form separate groups: LN(8)+LN(4)÷3
+  and −2×LN(0.25)+LN(1.5)÷3 stay as they are (one log of 2048 or 6144 is not what a student expects; abacus #6077).
+  A group past 2^62 stays apart.
+- **The coefficient stays outside.** A lone 2×LN(3) stays: the ruling's "k×LN(a) → LN(a^k)" was built and measured,
+  and it gave one value two forms by path. ALOG(2×X)÷(2×LN(10)) simplified to ALOG(2×X)÷LN(100) while integrate built
+  0.5×ALOG(2×X)÷LN(10), and the primitive-sum rule (a sum as a factor divided by its content) rescaled LN(2) to
+  5×LN(2) behind it. So LN(4) and 2×LN(2) remain two forms, as they were before.
+- **Exact values:** LN(1÷m) is −LN(m) and LOG(1÷m) is −LOG(m) (LN(0.5) is −LN(2); LN(2÷3) stays); LOG(10^j) is j,
+  for any whole j (LOG(100) is 2, LOG(0.01) is −2, LOG(1) is 0).
+- **Numbers only.** A log of a letter, of π or of a root never combines: LN(X)+LN(Y) is not LN(X×Y), which is defined
+  where X and Y are both negative, and LN(π)+LN(2) stays. X×LN(2)+X×LN(3) stays too: combining it means grouping terms
+  by a letter factor, which is no domain issue and may be a later step.
+- **Where:** add() runs `combine_logs` after its like terms, once for each group that combines, then its steps
+  again (the combined term sorts elsewhere, may be a number, or like another term); fn() makes −LN(m) and LOG's
+  exact values. The helpers are noinline: inlined, they grew add's recursive frame from 224 to 352 bytes on the S3.
+- **Judged by** scripts/log-values.py in make check: seeded random sums of logs of numbers and letters, π and its
+  multiples, each input and answer evaluated in Python's math at X = 0.7 and X = −0.7. An answer must keep the value,
+  be defined exactly where the input is, and simplify to itself; the judge first refuses two planted wrong answers.

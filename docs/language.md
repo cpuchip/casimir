@@ -92,8 +92,14 @@ these things:
 - collects like terms;
 - folds numbers exactly;
 - makes a sum that is a factor primitive (`(2×X+2)×Y` is `2×Y×(X+1)`);
-- evaluates exact constants: SIN, COS and TAN at multiples of π/6 and π/4, their inverses, LN(1), EXP(0) and perfect
-  powers.
+- evaluates exact constants: SIN, COS and TAN at multiples of π/6 and π/4, their inverses, LN(1), EXP(0), LOG of a
+  power of 10 and perfect powers;
+- prints a product with π in its numerator with its coefficient as a fraction (`π÷4`, not `0.25×π`); π under a ÷ or
+  a root keeps the decimal (`0.5÷π`);
+- combines the logs of positive numbers in a sum: LN with LN and LOG with LOG, when their coefficients have one
+  denominator, the coefficients' gcd outside (`2×LN(2)+2×LN(3)` is `2×LN(6)`), and LN(1÷m) is -LN(m). Coefficients
+  with different denominators stay apart, and so do logs of letters: `LN(X)+LN(Y)` is not `LN(X×Y)`, which is
+  defined where X and Y are both negative.
 
 It never expands, factors or applies trigonometric identities. Statuses: UNDEFINED (an exact 0 under a negative
 power: the expression has no value).
@@ -105,6 +111,11 @@ power: the expression has no value).
 | `casim simplify "0.1+0.2+1÷3" RAD` | `19÷30` |
 | `casim simplify "LN(EXP(X))+X^(1÷2)" RAD` | `X+SQRT(X)` |
 | `casim simplify "SIN(30)+COS(45)" DEG` | `0.5×SQRT(2)+0.5` |
+| `casim simplify "ATAN(1)+ACOS(-0.5)" RAD` | `11×π÷12` |
+| `casim simplify "LN(6)-LN(2)" RAD` | `LN(3)` |
+| `casim simplify "2×LN(2)+2×LN(3)+LOG(20)-LOG(2)" RAD` | `2×LN(6)+1` |
+| `casim simplify "LN(0.5)+LN(X)+LN(Y)" RAD` | `LN(X)+LN(Y)-LN(2)` |
+| `casim simplify "LN(8)+LN(4)÷3" RAD` | `LN(4)÷3+LN(8)` |
 | `casim simplify "1÷COS(π÷2)" RAD` | `UNDEFINED` |
 
 ### expand, collect, subst
@@ -179,6 +190,7 @@ HI reverses the sign. Statuses: IMPROPER (a pole or domain edge of the integrand
 |---|---|
 | `casim defint "SIN(X)" X 0 π RAD` | `2` |
 | `casim defint "X^2" X 1 3 RAD` | `26÷3` |
+| `casim defint "1÷X" X 2 6 RAD` | `LN(3)` |
 | `casim defint "1÷X" X -1 1 RAD` | `IMPROPER` |
 | `casim defint "X^2" X B 1 RAD` | `BAD_ARG` |
 

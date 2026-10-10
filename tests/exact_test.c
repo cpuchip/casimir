@@ -94,14 +94,14 @@ static void inverses(void)
     is("ASIN(0.5)", CASIM_GRAD, "100÷3");
     is("ACOS(-0.5)", CASIM_RAD, "2×π÷3");
     is("ACOS(-0.5)", CASIM_DEG, "120");
-    is("ATAN(1)", CASIM_RAD, "0.25×π");
+    is("ATAN(1)", CASIM_RAD, "π÷4");
     is("ATAN(1)", CASIM_DEG, "45");
     is("ATAN(1)", CASIM_GRAD, "50");
     is("ATAN(SQRT(3))", CASIM_RAD, "π÷3");
     is("ATAN(-SQRT(3)÷3)", CASIM_RAD, "-π÷6");
-    is("ASIN(-SQRT(2)÷2)", CASIM_RAD, "-0.25×π");
+    is("ASIN(-SQRT(2)÷2)", CASIM_RAD, "-π÷4");
     is("ACOS(-1)", CASIM_RAD, "π");
-    is("ACOS(0)", CASIM_RAD, "0.5×π");
+    is("ACOS(0)", CASIM_RAD, "π÷2");
     is("ACOS(1)", CASIM_DEG, "0");
     is("ASIN(-1)", CASIM_DEG, "-90");
     is("ACOS(SQRT(3)÷2)", CASIM_DEG, "30");
@@ -141,7 +141,7 @@ static void as_written(void)
 {
     is("SIN(π÷12)", CASIM_RAD, "SIN(π÷12)");
     is("SIN(15)", CASIM_DEG, "SIN(15)");
-    is("TAN(π÷2)", CASIM_RAD, "TAN(0.5×π)");
+    is("TAN(π÷2)", CASIM_RAD, "TAN(π÷2)");
     is("TAN(90)", CASIM_DEG, "TAN(90)");
     is("SIN(π÷6)", CASIM_DEG, "SIN(π÷6)");
     is("SIN(1)", CASIM_RAD, "SIN(1)");

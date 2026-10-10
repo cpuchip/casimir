@@ -356,6 +356,34 @@ MUTANTS = {
         ("src/casim.c", "        print_in(c, w, b, level(c, b) < 5);                 /* (X^Y)^0.3 (decision 52) */\n        puts_(w, \"^\");",
          "        print_in(c, w, b, level(c, b) < 2);\n        puts_(w, \"^\");"),
     ],
+    # cas-pi-form: π's scope. Bare π not a fraction (0.25×π again); π under a ÷ or a root a fraction (1÷2÷π)
+    "pi-frac-bare-pi": [
+        ("src/casim.c", "        if (x->kind == K_PI) return true;", "        if (x->kind == K_PI) return false;"),
+    ],
+    "pi-frac-under-divide": [
+        ("src/casim.c", "&& is_num(c, x->b) && val(c, x->b)->q == 1 &&\n            val(c, x->b)->p > 0)", ")"),
+    ],
+    # cas-pi-form: the logs. Combining off; the gcd not put back outside (2×LN(2)+2×LN(3) as LN(6)); the gcd taken
+    # from the first coefficient (3×LN(2)-LN(4) left apart); groups across denominators (LN(8)+LN(4)÷3 as
+    # LN(2048)÷3); LN(1÷m) losing its sign; LOG(10^-j) as j
+    "logs-not-combined": [
+        ("src/casim.c", "    if (combine_logs(c, t, &k)) {", "    if (0 && combine_logs(c, t, &k)) {"),
+    ],
+    "log-gcd-not-outside": [
+        ("src/casim.c", "            } else if (!rat_is(&g, 1, 1))\n                r = mul2(c, num(c, &g), r);", "            }"),
+    ],
+    "log-gcd-first": [
+        ("src/casim.c", "                    if (!rat_gcd(&g, &g, &kj)) return false;", "                    if (g.p == 0) g = kj;"),
+    ],
+    "log-groups-mixed": [
+        ("src/casim.c", "    return log_term(c, t, k, a) == f && k->q == den;", "    return log_term(c, t, k, a) == f && den;"),
+    ],
+    "log-sign-lost": [
+        ("src/casim.c", "    return neg_ ? mul_node(c, small(c, C_M1), &r, 1) : r;", "    return r;"),
+    ],
+    "log10-exact-sign": [
+        ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
+    ],
 }
 
 
