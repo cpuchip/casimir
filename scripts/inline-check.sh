@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # derive's recursion must not gain a frame (work/steps-derive.md, oracle 5): deriv() is always inline, or each level
-# of a derivative's recursion pays a call of its own (32 bytes on the S3, 46 levels: three times the stack's margin).
+# of a derivative's recursion pays a call of its own (32 bytes on the S3, 44 levels: 1,408, twice the stack's margin).
 # The compiler's stack-usage report must hold no function deriv; a planted control (deriv made noinline) must hold
 # one, or the check checks nothing.
 set -euo pipefail

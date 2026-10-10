@@ -18,10 +18,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CLI = os.path.join(ROOT, "build", "casim")
 FN = ["SIN", "COS", "TAN", "LN", "EXP", "SQRT", "ATAN", "SINH", "COSH", "LOG", "ALOG"]
 POINTS = [0.37, 0.81, 1.23]
-# deep cases plain derive answers at the depth guard's edge, which steps must page too: the S3 bench found a 44-deep
-# SIN chain paging NO_ROOM when steps were printed inside the walk, and a walk that counts a node's level twice
-# fails LN(...44...)×X^2. Then shapes random inputs rarely make.
-FIXED = ["SIN(" * 44 + "X" + ")" * 44, "X^(" * 20 + "X" + ")" * 20, "LN(" * 44 + "X" + ")" * 44 + "×X^2",
+# deep cases plain derive answers at the depth guard's edge, which steps must page too: the S3 bench found a SIN chain
+# at the edge paging NO_ROOM when steps were printed inside the walk, and a walk that counts a node's level twice
+# fails LN(...)×X^2 at the edge. The edge is two levels below the guard: 42 with CASIM_DEPTH_MAX 44 (rc5, abacus #6321;
+# 44 with 46 before: a guard move must move these, or the edge goes untested). Then shapes random inputs rarely make.
+FIXED = ["SIN(" * 42 + "X" + ")" * 42, "X^(" * 20 + "X" + ")" * 20, "LN(" * 42 + "X" + ")" * 42 + "×X^2",
          "(X^-1)^(X+1)", "(SIN(X)^-2)^X×X"]      # a general power's base with a ÷ (its template's divisor is whole)
 
 
