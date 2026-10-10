@@ -113,6 +113,8 @@ power: the expression has no value).
 | `casim simplify "SIN(30)+COS(45)" DEG` | `0.5×SQRT(2)+0.5` |
 | `casim simplify "ATAN(1)+ACOS(-0.5)" RAD` | `11×π÷12` |
 | `casim simplify "LN(6)-LN(2)" RAD` | `LN(3)` |
+| `casim simplify "3×LN(2)-LN(4)" RAD` | `LN(2)` |
+| `casim simplify "4×LN(2)+6×LN(3)" RAD` | `2×LN(108)` |
 | `casim simplify "2×LN(2)+2×LN(3)+LOG(20)-LOG(2)" RAD` | `2×LN(6)+1` |
 | `casim simplify "LN(0.5)+LN(X)+LN(Y)" RAD` | `LN(X)+LN(Y)-LN(2)` |
 | `casim simplify "LN(8)+LN(4)÷3" RAD` | `LN(4)÷3+LN(8)` |

@@ -26,7 +26,7 @@ def main():
         got = " / ".join(p.stdout.strip().split("\n"))
         if got != m.group(2):
             failed += 1
-            print(f"docs/language.md:{i}: casim {m.group(1)}\n  doc   {m.group(2)}\n  casim {got}")
+            print(f"FAIL docs/language.md:{i}: casim {m.group(1)}\n  doc   {m.group(2)}\n  casim {got}")
     print(f"doc examples: {n} commands in docs/language.md\nchecks: {n} failed: {failed}")
     sys.exit(1 if failed or n == 0 else 0)
 

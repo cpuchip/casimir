@@ -373,13 +373,19 @@ MUTANTS = {
         ("src/casim.c", "            } else if (!rat_is(&g, 1, 1))\n                r = mul2(c, num(c, &g), r);", "            }"),
     ],
     "log-gcd-first": [
-        ("src/casim.c", "                    if (!rat_gcd(&g, &g, &kj)) return false;", "                    if (g.p == 0) g = kj;"),
+        ("src/casim.c", "                    if (!rat_gcd(&g, &g, &kj)) return false;",
+         "                    if (g.p == 0 && !rat_gcd(&g, &g, &kj)) return false;"),
     ],
     "log-groups-mixed": [
         ("src/casim.c", "    return log_term(c, t, k, a) == f && k->q == den;", "    return log_term(c, t, k, a) == f && den;"),
     ],
     "log-sign-lost": [
-        ("src/casim.c", "    return neg_ ? mul_node(c, small(c, C_M1), &r, 1) : r;", "    return r;"),
+        ("src/casim.c", "    return neg_ ? mul_node(c, small(c, C_M1), &r, 1) : r;", "    return neg_ ? r : r;"),
+    ],
+    # cas-pi-form: a log of a letter taken into a group (its argument read as a number): letters must never combine
+    "log-letters-combined": [
+        ("src/casim.c", "!is_num(c, x->a) || val(c, x->a)->p <= 0) return -1;",
+         "(is_num(c, x->a) && val(c, x->a)->p <= 0)) return -1;"),
     ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
