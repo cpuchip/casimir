@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Aims the golden corpus where a fault is known to hide (abacus #5782): the developer tests' own inputs that kill a
-mutant the corpus missed, added as inputs only, with answers recorded from the corpus's source (dbb6d4c). No new
+mutant the corpus missed, added as inputs only, with answers recorded from the corpus's source (REF). No new
 oracle: still regression. Needs the developer tests' core (make test's build/libcore.a) and git.
 
     scripts/golden-harvest.py MUTANT...      prints, for each mutant, up to PER_MUTANT killing input lines
@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mutants  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REF = "dbb6d4c"                 # the corpus's source
+REF = "826060e"                 # the corpus's source (cas-pi-form re-recorded its moved lines there)
 PER_MUTANT = 3
 ARENA_MAX, CAP_MAX = 1 << 19, 65536
 CC = os.environ.get("CC", "cc")

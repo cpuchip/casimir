@@ -1,0 +1,531 @@
+# The golden lines cas-pi-form moved (abacus decision 71, #6077): each line's inputs, then its answer before (from
+# dbb6d4c) and after (from 826060e). Every other line is byte-identical. Judged by value: scripts/log-values.py and
+# the developer tests; abacus reruns the hidden sets by value.
+simplify	35	23	1	35	65536	65536	ATAN(1)	\N	\N
+  before	OK	0.25×π
+  after	OK	π÷4
+simplify	35	23	1	35	8192	192	ATAN(1)	\N	\N
+  before	OK	0.25×π
+  after	OK	π÷4
+simplify	35	23	1	35	65536	65536	SIN(π÷4)×COS(π÷3)+TAN(π÷3)^2+SQRT(0.25)-8^(1÷3)+ATAN(1)	\N	\N
+  before	OK	0.25×π+0.25×SQRT(2)+1.5
+  after	OK	π÷4+0.25×SQRT(2)+1.5
+simplify	35	23	1	35	8192	192	SIN(π÷4)×COS(π÷3)+TAN(π÷3)^2+SQRT(0.25)-8^(1÷3)+ATAN(1)	\N	\N
+  before	OK	0.25×π+0.25×SQRT(2)+1.5
+  after	OK	π÷4+0.25×SQRT(2)+1.5
+simplify	35	23	1	35	8192	65536	ATAN(1)	\N	\N
+  before	OK	0.25×π
+  after	OK	π÷4
+defint	35	23	2	35	8192	65536	(3)×((0.5)×((2)+(7)))	π÷4	2
+  before	OK	-3.375×π+27
+  after	OK	-27×π÷8+27
+defint	33	23	1	33	8192	65536	7	π÷4	π
+  before	OK	5.25×π
+  after	OK	21×π÷4
+defint	35	23	2	35	65536	65536	X	π÷4	π
+  before	OK	0.46875×π^2
+  after	OK	15×π^2÷32
+simplify	35	23	1	35	65536	65536	ATAN((7)÷(7))	\N	\N
+  before	OK	0.25×π
+  after	OK	π÷4
+defint	1	23	2	1	8192	65536	((7)×((2)×(2)))+((ACOS(π))×(X))	-1	π
+  before	OK	28×π-0.5×ACOS(π)+0.5×π^2×ACOS(π)+28
+  after	OK	28×π-0.5×ACOS(π)+π^2×ACOS(π)÷2+28
+defint	35	23	1	35	8192	65536	EXP(((3)÷(-4))+((3)-(0.5)))	π÷4	3
+  before	OK	3×EXP(1.75)-0.25×π×EXP(1.75)
+  after	OK	3×EXP(1.75)-π×EXP(1.75)÷4
+defint	1	23	1	1	8192	65536	7	π÷4	3
+  before	OK	-1.75×π+21
+  after	OK	-7×π÷4+21
+defint	35	23	2	35	65536	65536	π	π÷4	-2
+  before	OK	-2×π-0.25×π^2
+  after	OK	-2×π-π^2÷4
+defint	35	23	1	35	8192	65536	1.5	π÷4	3
+  before	OK	-0.375×π+4.5
+  after	OK	-3×π÷8+4.5
+defint	33	23	2	33	8192	65536	(((π)-(7))-(π))×(π)	π÷4	1
+  before	OK	-7×π+1.75×π^2
+  after	OK	-7×π+7×π^2÷4
+defint	1	23	1	1	8192	65536	(COS(-4))-(((π)÷(Y))÷(ACOS(2)))	0.5	π
+  before	OK	-0.5×COS(-4)+π×COS(-4)+0.5×π÷Y÷ACOS(2)-π^2÷Y÷ACOS(2)
+  after	OK	-0.5×COS(-4)+π×COS(-4)+π÷2÷Y÷ACOS(2)-π^2÷Y÷ACOS(2)
+collect	35	23	1	35	65536	65536	(π)÷(1E3)	\N	\N
+  before	OK	0.001×π
+  after	OK	π÷1000
+defint	33	23	2	33	8192	65536	2	π÷4	π
+  before	OK	1.5×π
+  after	OK	3×π÷2
+simplify	35	23	1	35	8192	65536	(π)÷(1E3)	\N	\N
+  before	OK	0.001×π
+  after	OK	π÷1000
+collect	35	23	2	35	65536	65536	(ALOG((SINH(π))^((π)^(π))))×((((2)^(3))+((7)+(1.5)))×(π))	\N	\N
+  before	OK	16.5×π×ALOG(SINH(π)^(π^π))
+  after	OK	33×π×ALOG(SINH(π)^(π^π))÷2
+defint	35	23	1	35	65536	65536	X	0.5	π
+  before	OK	0.5×π^2-0.125
+  after	OK	π^2÷2-0.125
+defint	1	23	0	1	8192	65536	(3)×((7)-(1.5))	π÷4	π
+  before	OK	12.375×π
+  after	OK	99×π÷8
+defint	35	23	1	35	8192	65536	X	π÷4	π
+  before	OK	0.46875×π^2
+  after	OK	15×π^2÷32
+defint	35	23	1	35	8192	65536	(COSH(SQRT(2)))-((-4)×(Y))	π÷4	3
+  before	OK	12×Y+3×COSH(SQRT(2))-Y×π-0.25×π×COSH(SQRT(2))
+  after	OK	12×Y+3×COSH(SQRT(2))-Y×π-π×COSH(SQRT(2))÷4
+defint	1	23	2	1	8192	65536	ATAN((1.5)×(COSH(-4)))	π÷4	1
+  before	OK	ATAN(1.5×COSH(-4))-0.25×π×ATAN(1.5×COSH(-4))
+  after	OK	ATAN(1.5×COSH(-4))-π×ATAN(1.5×COSH(-4))÷4
+subst	1	23	2	1	8192	65536	(1E3)-(((3)^(1.5))-(LOG(0.5)))	((3)-(Y))÷((-4)+(3))	\N
+  before	OK	LOG(0.5)-3^1.5+1000
+  after	OK	-LOG(2)-3^1.5+1000
+integrate	35	23	1	35	8192	65536	(7)^(LOG(ABS((0.5)×(0.5))))	\N	\N
+  before	OK	X×7^LOG(0.25)
+  after	OK	X×7^(-LOG(4))
+integrate	1	24	2	1	65536	65536	((((7)^(0.5))×((7)^(3)))+(((-4)×(π))×((Y)+(3))))÷(SQ(1E3))	\N	\N
+  before	OK	0.000343×Y×SQRT(7)-0.000012×π×(Y+Y^2÷6)
+  after	OK	0.000343×Y×SQRT(7)-3×π×(Y+Y^2÷6)÷250000
+simplify	33	23	2	33	65536	65536	(1.5)÷(INV(π))	\N	\N
+  before	OK	1.5×π
+  after	OK	3×π÷2
+defint	1	23	2	1	8192	65536	2	π÷4	3
+  before	OK	-0.5×π+6
+  after	OK	-π÷2+6
+defint	35	23	1	35	8192	65536	X	-1	π
+  before	OK	0.5×π^2-0.5
+  after	OK	π^2÷2-0.5
+defint	1	23	1	1	8192	65536	(X)+(ATAN(7))	π÷4	1
+  before	OK	ATAN(7)-0.03125×π^2-0.25×π×ATAN(7)+0.5
+  after	OK	ATAN(7)-π^2÷32-π×ATAN(7)÷4+0.5
+defint	1	23	2	1	8192	65536	SGN(-4)	π÷4	1
+  before	OK	SGN(-4)-0.25×π×SGN(-4)
+  after	OK	SGN(-4)-π×SGN(-4)÷4
+subst	35	23	2	35	8192	65536	((π)×(SQ(0.5)))^(ASIN((Y)×(1E3)))	SINH(π)	\N
+  before	OK	(0.25×π)^ASIN(1000×Y)
+  after	OK	(π÷4)^ASIN(1000×Y)
+defint	35	23	2	35	8192	65536	SQ((3)+(SGN(-4)))	π÷4	3
+  before	OK	3×(SGN(-4)+3)^2-0.25×π×(SGN(-4)+3)^2
+  after	OK	3×(SGN(-4)+3)^2-π×(SGN(-4)+3)^2÷4
+defint	35	23	2	35	8192	65536	SGN((1.5)÷(π))	π÷4	3
+  before	OK	3×SGN(1.5÷π)-0.25×π×SGN(1.5÷π)
+  after	OK	3×SGN(1.5÷π)-π×SGN(1.5÷π)÷4
+defint	33	23	0	33	8192	65536	COSH(((Y)×(7))×(3))	π÷4	-2
+  before	OK	-2×COSH(21×Y)-0.25×π×COSH(21×Y)
+  after	OK	-2×COSH(21×Y)-π×COSH(21×Y)÷4
+defint	35	23	1	35	65536	65536	((X)+(ASIN(1E3)))+(X)	π÷4	3
+  before	OK	3×ASIN(1000)-0.0625×π^2-0.25×π×ASIN(1000)+9
+  after	OK	3×ASIN(1000)-π^2÷16-π×ASIN(1000)÷4+9
+collect	33	23	1	33	8192	65536	ASIN((3)÷(3))	\N	\N
+  before	OK	0.5×π
+  after	OK	π÷2
+simplify	35	23	0	35	8192	65536	((ABS((1.5)^(Y)))^(((0.5)×(π))×((1.5)+(3))))÷(COSH(ATAN(3)))	\N	\N
+  before	OK	ABS(1.5^Y)^(2.25×π)÷COSH(ATAN(3))
+  after	OK	ABS(1.5^Y)^(9×π÷4)÷COSH(ATAN(3))
+defint	1	23	1	1	65536	65536	0.5	0.5	π
+  before	OK	0.5×π-0.25
+  after	OK	π÷2-0.25
+defint	35	23	1	35	65536	65536	(π)×(((X)+(π))-((7)÷(0.5)))	0.5	3
+  before	OK	-0.5×π×(π-13.75)+3×π×(π-12.5)
+  after	OK	-π×(π-13.75)÷2+3×π×(π-12.5)
+defint	35	23	1	35	8192	65536	7	π÷4	2
+  before	OK	-1.75×π+14
+  after	OK	-7×π÷4+14
+defint	35	23	1	35	8192	65536	(ATAN(-4))-(((1E3)×(2))÷((7)^(π)))	π÷4	2
+  before	OK	2×ATAN(-4)-4000×7^(-π)-0.25×π×ATAN(-4)+500×π×7^(-π)
+  after	OK	2×ATAN(-4)-4000×7^(-π)-π×ATAN(-4)÷4+500×π×7^(-π)
+defint	35	23	1	35	65536	65536	((π)÷(0.5))×(((π)+(2))+(EXP(1E3)))	π÷4	2
+  before	OK	4×π×(π+EXP(1000)+2)-0.5×π^2×(π+EXP(1000)+2)
+  after	OK	4×π×(π+EXP(1000)+2)-π^2×(π+EXP(1000)+2)÷2
+expand	33	23	1	33	8192	65536	(ASIN(1.5))÷(ASIN((0.5)-((0.5)×(π))))	\N	\N
+  before	OK	ASIN(1.5)÷ASIN(-0.5×π+0.5)
+  after	OK	ASIN(1.5)÷ASIN(-π÷2+0.5)
+expand	35	23	1	35	8192	65536	(X)+(((7)÷((0.5)+(1.5)))×((π)-(1E3)))	\N	\N
+  before	OK	X+3.5×π-3500
+  after	OK	X+7×π÷2-3500
+integrate	35	23	2	35	8192	65536	TAN(ACOS((LN(0.5))×((2)+(7))))	\N	\N
+  before	OK	X×TAN(ACOS(9×LN(0.5)))
+  after	OK	X×TAN(ACOS(-9×LN(2)))
+simplify	35	23	0	35	8192	65536	((X)^((Y)+(3)))×(ABS(((π)÷(-4))-(X)))	\N	\N
+  before	OK	X^(Y+3)×ABS(-X-0.25×π)
+  after	OK	X^(Y+3)×ABS(-X-π÷4)
+defint	33	23	1	33	65536	65536	7	π÷4	2
+  before	OK	-1.75×π+14
+  after	OK	-7×π÷4+14
+derive	35	23	1	35	65536	65536	(X)^((((π)×(0.5))÷(ASIN(X)))+(SQRT(SQ(Y))))	\N	\N
+  before	OK	-0.5×X^(SQRT(Y^2)+0.5×π÷ASIN(X))×(π×LN(X)÷ASIN(X)^2÷SQRT(-X^2+1)-2×(SQRT(Y^2)+0.5×π÷ASIN(X))÷X)
+  after	OK	-0.5×X^(SQRT(Y^2)+π÷2÷ASIN(X))×(π×LN(X)÷ASIN(X)^2÷SQRT(-X^2+1)-2×(SQRT(Y^2)+π÷2÷ASIN(X))÷X)
+expand	1	23	1	1	8192	65536	((ATAN(COS(π)))-((INV(0.5))÷((7)÷(1E3))))-(COSH(ALOG((1.5)÷(1.5))))	\N	\N
+  before	OK	-0.25×π-COSH(ALOG(1))-2000÷7
+  after	OK	-π÷4-COSH(ALOG(1))-2000÷7
+expand	33	23	2	33	8192	65536	SIN((π)^((π)×((3)÷(2))))	\N	\N
+  before	OK	SIN(π^(1.5×π))
+  after	OK	SIN(π^(3×π÷2))
+defint	1	23	0	1	8192	65536	(3)-(((7)+(1E3))-((3)^(1E3)))	π÷4	π
+  before	OK	2.25×π+0.75×π×(3^1000-1007)
+  after	OK	9×π÷4+3×π×(3^1000-1007)÷4
+defint	1	23	2	1	8192	65536	(((Y)÷(X))-(INV(0.5)))÷(1E3)	π÷4	1
+  before	OK	0.0005×π-0.001×Y×LN(0.25×π)-0.002
+  after	OK	π÷2000-0.001×Y×LN(π÷4)-0.002
+defint	1	23	1	1	8192	65536	π	π÷4	-2
+  before	OK	-2×π-0.25×π^2
+  after	OK	-2×π-π^2÷4
+defint	33	23	0	33	8192	65536	1.5	0.5	π
+  before	OK	1.5×π-0.75
+  after	OK	3×π÷2-0.75
+defint	1	23	1	1	65536	65536	INV(2)	π÷4	π
+  before	OK	0.375×π
+  after	OK	3×π÷8
+derive	35	23	2	35	65536	65536	SIN(LN((X)×(SINH(π))))	\N	\N
+  before	OK	0.005×π×COS(LN(X×SINH(π)))÷X
+  after	OK	π×COS(LN(X×SINH(π)))÷200÷X
+integrate	33	23	0	33	65536	65536	LOG(0.5)	\N	\N
+  before	OK	X×LOG(0.5)
+  after	OK	-X×LOG(2)
+simplify	35	23	2	35	8192	65536	((((2)÷(2))×((π)÷(7)))×(((Y)-(1.5))^(X)))÷((-4)÷((LN(0.5))+(ATAN(7))))	\N	\N
+  before	OK	-π×(Y-1.5)^X×(LN(0.5)+ATAN(7))÷28
+  after	OK	π×(Y-1.5)^X×(LN(2)-ATAN(7))÷28
+defint	35	23	1	35	65536	65536	(((Y)^(-4))+(0.5))^((COSH(1.5))^(Y))	π÷4	π
+  before	OK	0.75×π×(1÷Y^4+0.5)^(COSH(1.5)^Y)
+  after	OK	3×π×(1÷Y^4+0.5)^(COSH(1.5)^Y)÷4
+collect	33	23	1	33	65536	65536	((TAN((1.5)-(X)))-((ALOG(-4))÷((1.5)^(2))))×((((X)+(π))+(LOG(1E3)))÷((SQ(7))÷(1.5)))	\N	\N
+  before	OK	-2×ALOG(-4)÷147×X+(-2×π×ALOG(-4)÷147-2×LOG(1000)×ALOG(-4)÷147)+3×X×TAN(-X+1.5)÷98+3×π×TAN(-X+1.5)÷98+3×LOG(1000)×TAN(-X+1.5)÷98
+  after	OK	-2×ALOG(-4)÷147×X+(-2×ALOG(-4)÷49-2×π×ALOG(-4)÷147)+9×TAN(-X+1.5)÷98+3×X×TAN(-X+1.5)÷98+3×π×TAN(-X+1.5)÷98
+defint	35	23	0	35	8192	65536	TAN(COSH(SIN(3)))	π÷4	π
+  before	OK	0.75×π×TAN(COSH(SIN(3)))
+  after	OK	3×π×TAN(COSH(SIN(3)))÷4
+subst	35	23	1	35	8192	65536	(ATAN((1.5)-(0.5)))×(3)	SQRT((2)-(1.5))	\N
+  before	OK	0.75×π
+  after	OK	3×π÷4
+defint	33	23	1	33	65536	65536	(((7)+(0.5))÷(Y))×(((X)+(2))-(COSH(0.5)))	1	π
+  before	OK	15×(π+0.25×π^2-0.5×π×COSH(0.5))÷Y+7.5×(COSH(0.5)-2.5)÷Y
+  after	OK	15×(π+π^2÷4-π×COSH(0.5)÷2)÷Y+7.5×(COSH(0.5)-2.5)÷Y
+defint	1	23	0	1	8192	65536	(0.5)^(((1.5)^(1E3))-((-4)^(-4)))	π÷4	2
+  before	OK	2×0.5^(1.5^1000-0.00390625)-0.25×π×0.5^(1.5^1000-0.00390625)
+  after	OK	2×0.5^(1.5^1000-0.00390625)-π×0.5^(1.5^1000-0.00390625)÷4
+collect	33	23	2	33	8192	65536	((ABS(X))÷(2))-(ASIN((1.5)×(π)))	\N	\N
+  before	OK	-ASIN(1.5×π)+0.5×ABS(X)
+  after	OK	-ASIN(3×π÷2)+0.5×ABS(X)
+defint	33	23	1	33	65536	65536	ASIN(1.5)	π÷4	π
+  before	OK	0.75×π×ASIN(1.5)
+  after	OK	3×π×ASIN(1.5)÷4
+collect	33	24	0	33	8192	65536	((2)-((π)÷(-4)))-(3)	\N	\N
+  before	OK	(0.25×π-1)
+  after	OK	(π÷4-1)
+defint	1	23	1	1	65536	65536	1.5	π÷4	2
+  before	OK	-0.375×π+3
+  after	OK	-3×π÷8+3
+integrate	35	23	1	35	65536	65536	((3)÷(((1.5)-(1.5))+(SGN(0.5))))×(((π)-((2)÷(1.5)))-(X))	\N	\N
+  before	OK	-4×(X+0.375×X^2-0.75×X×π)÷SGN(0.5)
+  after	OK	-4×(X+0.375×X^2-3×X×π÷4)÷SGN(0.5)
+defint	35	23	0	35	8192	65536	((ABS(2))+(2))^(ASIN((0.5)÷(-4)))	π÷4	π
+  before	OK	0.75×π×4^ASIN(-0.125)
+  after	OK	3×π×4^ASIN(-0.125)÷4
+derive	35	24	0	35	8192	65536	((7)^(-4))^(((X)+((1E3)^(-4)))^(((1E3)×(2))÷((X)÷(Y))))	\N	\N
+  before	OK	2000×LN(X+1E-12)×LN(1÷2401)×(X+1E-12)^(2000×Y÷X)×(1÷2401)^((X+1E-12)^(2000×Y÷X))÷X
+  after	OK	-2000×LN(X+1E-12)×LN(2401)×(X+1E-12)^(2000×Y÷X)×(1÷2401)^((X+1E-12)^(2000×Y÷X))÷X
+defint	35	23	1	35	8192	65536	2	π÷4	-2
+  before	OK	-0.5×π-4
+  after	OK	-π÷2-4
+defint	1	23	0	1	8192	65536	TAN(((7)-(X))-((1E3)÷(0.5)))	π÷4	2
+  before	OK	-180×LN(-COS(-0.25×π-1993))÷π+180×LN(-COS(-1995))÷π
+  after	OK	-180×LN(-COS(-π÷4-1993))÷π+180×LN(-COS(-1995))÷π
+expand	33	23	1	33	65536	65536	(ASIN((1E3)^((2)÷(0.5))))^(((Y)×((1E3)^(X)))×(((π)×(0.5))÷((1E3)÷(3))))	\N	\N
+  before	OK	ASIN(1000000000000)^(0.0015×Y×π×1000^X)
+  after	OK	ASIN(1000000000000)^(3×Y×π×1000^X÷2000)
+defint	35	23	1	35	8192	65536	SINH((-4)-((X)-(0.5)))	π÷4	1
+  before	OK	COSH(-0.25×π-3.5)-COSH(-4.5)
+  after	OK	COSH(-π÷4-3.5)-COSH(-4.5)
+defint	33	23	1	33	8192	65536	π	π÷4	π
+  before	OK	0.75×π^2
+  after	OK	3×π^2÷4
+defint	35	23	1	35	65536	65536	((0.5)×(-4))^(TANH((-4)+(π)))	π÷4	2
+  before	OK	2×(-2)^TANH(π-4)-0.25×π×(-2)^TANH(π-4)
+  after	OK	2×(-2)^TANH(π-4)-π×(-2)^TANH(π-4)÷4
+subst	33	23	1	33	8192	65536	(3)^((LOG(1E3))÷(Y))	Y	\N
+  before	OK	3^(LOG(1000)÷Y)
+  after	OK	3^(3÷Y)
+defint	35	23	2	35	8192	65536	((-4)÷((-4)+(X)))×(Y)	π÷4	2
+  before	OK	4×Y×LN(-0.25×π+4)-4×Y×LN(2)
+  after	OK	4×Y×LN(-π÷4+4)-4×Y×LN(2)
+defint	35	23	1	35	65536	65536	(((1E3)-(0.5))÷(2))÷(((2)-(X))÷((2)-(1E3)))	0	-2
+  before	OK	-498750.5×LN(1÷499)+498750.5×LN(2÷499)
+  after	OK	498750.5×LN(2)
+defint	33	23	1	33	8192	65536	SIN((ABS(Y))+((-4)-(-4)))	π÷4	π
+  before	OK	0.75×π×SIN(ABS(Y))
+  after	OK	3×π×SIN(ABS(Y))÷4
+simplify	35	23	1	35	65536	65536	((ASIN((0.5)×(2)))+(X))-((X)-(((X)+(1E3))+((0.5)×(1E3))))	\N	\N
+  before	OK	X+0.5×π+1500
+  after	OK	X+π÷2+1500
+defint	35	23	2	35	8192	65536	SQ((1.5)^(7))	π÷4	3
+  before	OK	-72.9823150634765625×π+875.78778076171875
+  after	OK	-4782969×π÷65536+875.78778076171875
+simplify	35	23	1	35	8192	65536	(((2)+(LN(1.5)))÷(((Y)×(-4))-((1.5)×(π))))+((((X)^(Y))+((X)÷(3)))×((COSH(0.5))^(3)))	\N	\N
+  before	OK	COSH(0.5)^3×(X+3×X^Y)÷3-0.25×(LN(1.5)+2)÷(Y+0.375×π)
+  after	OK	COSH(0.5)^3×(X+3×X^Y)÷3-0.25×(LN(1.5)+2)÷(Y+3×π÷8)
+integrate	35	23	1	35	8192	65536	((π)×((INV(X))+(1.5)))-(3)	\N	\N
+  before	OK	-3×X+1.5×π×(X+2×LN(ABS(X))÷3)
+  after	OK	-3×X+3×π×(X+2×LN(ABS(X))÷3)÷2
+expand	33	23	1	33	8192	65536	((((X)-(Y))÷(SIN(X)))×(1.5))^(SQRT(((-4)÷(7))^((π)×(1.5))))	\N	\N
+  before	OK	(1.5×X÷SIN(X)-1.5×Y÷SIN(X))^SQRT((-4÷7)^(1.5×π))
+  after	OK	(1.5×X÷SIN(X)-1.5×Y÷SIN(X))^SQRT((-4÷7)^(3×π÷2))
+defint	35	23	1	35	65536	65536	COSH((Y)+(7))	π÷4	1
+  before	OK	COSH(Y+7)-0.25×π×COSH(Y+7)
+  after	OK	COSH(Y+7)-π×COSH(Y+7)÷4
+subst	35	23	1	35	8192	65536	(1E3)×((LOG(1E3))-((1E3)×(1.5)))	0.5	\N
+  before	OK	1000×LOG(1000)-1500000
+  after	OK	-1497000
+defint	35	23	2	35	8192	65536	(1.5)+(7)	0	π
+  before	OK	8.5×π
+  after	OK	17×π÷2
+defint	33	23	1	33	8192	65536	(π)+(((π)÷(2))-((1E3)-(3)))	1	π
+  before	OK	-1.5×π+π^2+0.5×π×(π-1994)+997
+  after	OK	-3×π÷2+π^2+π×(π-1994)÷2+997
+defint	1	23	0	1	65536	65536	SQRT((ABS(7))-((Y)÷(2)))	π÷4	2
+  before	OK	2×SQRT(-0.5×Y+7)-0.25×π×SQRT(-0.5×Y+7)
+  after	OK	2×SQRT(-0.5×Y+7)-π×SQRT(-0.5×Y+7)÷4
+simplify	1	23	1	1	65536	65536	((Y)×(((X)×(3))+((π)+(X))))-((-4)^((7)÷((1E3)÷(X))))	\N	\N
+  before	OK	-(-4)^(0.007×X)+4×Y×(X+0.25×π)
+  after	OK	-(-4)^(0.007×X)+4×Y×(X+π÷4)
+expand	35	23	0	35	65536	65536	((((7)^(1.5))^((2)-(3)))×(((π)×(1.5))+(3)))-(((X)÷(X))+(INV(1.5)))	\N	\N
+  before	OK	3÷7^1.5+1.5×π÷7^1.5-5÷3
+  after	OK	3÷7^1.5+3×π÷2÷7^1.5-5÷3
+defint	35	23	2	35	8192	65536	(7)-((SQ(-4))^((1E3)+(1.5)))	π÷4	3
+  before	OK	-1.75×π-3×16^1001.5+0.25×π×16^1001.5+21
+  after	OK	-7×π÷4-3×16^1001.5+π×16^1001.5÷4+21
+integrate	35	23	0	35	65536	65536	((((Y)÷(2))^(0.5))×(((7)-(1.5))×(SQ(π))))-((((2)×(1E3))+(LOG(7)))÷(LOG(1E3)))	\N	\N
+  before	OK	5.5×X×π^2×SQRT(0.5×Y)-X×(LOG(7)+2000)÷LOG(1000)
+  after	OK	11×X×π^2×SQRT(0.5×Y)÷2-X×(LOG(7)+2000)÷3
+collect	35	23	2	35	8192	65536	((((0.5)×(7))×((π)×(1.5)))×((INV(X))×((π)^(7))))-((SQRT(Y))-((ALOG(X))+(1E3)))	\N	\N
+  before	OK	(-SQRT(Y)+1000)+5.25×π^8×X^(-1)+ALOG(X)
+  after	OK	(-SQRT(Y)+1000)+21×π^8÷4×X^(-1)+ALOG(X)
+integrate	35	23	0	35	65536	65536	(7)-((1.5)×(((3)-(0.5))^((π)÷(2))))	\N	\N
+  before	OK	7×X-1.5×X×2.5^(0.5×π)
+  after	OK	7×X-1.5×X×2.5^(π÷2)
+defint	1	23	1	1	8192	65536	X	0.5	π
+  before	OK	0.5×π^2-0.125
+  after	OK	π^2÷2-0.125
+defint	1	23	0	1	8192	65536	SQRT(ALOG(Y))	π÷4	π
+  before	OK	0.75×π×SQRT(ALOG(Y))
+  after	OK	3×π×SQRT(ALOG(Y))÷4
+simplify	1	23	2	1	65536	65536	((((Y)-(0.5))+((7)^(2)))÷(LOG(0.5)))-(0.5)	\N	\N
+  before	OK	(Y+48.5)÷LOG(0.5)-0.5
+  after	OK	-(Y+48.5)÷LOG(2)-0.5
+defint	35	23	2	35	8192	65536	ATAN(7)	π÷4	π
+  before	OK	0.75×π×ATAN(7)
+  after	OK	3×π×ATAN(7)÷4
+defint	33	23	0	33	8192	65536	1.5	π÷4	2
+  before	OK	-0.375×π+3
+  after	OK	-3×π÷8+3
+defint	35	23	2	35	8192	65536	(COS(2))×(((X)^(3))+((-4)÷(X)))	1	π
+  before	OK	-0.25×COS(2)-4×COS(2)×(LN(π)-0.0625×π^4)
+  after	OK	-0.25×COS(2)-4×COS(2)×(LN(π)-π^4÷16)
+subst	1	23	0	1	8192	65536	(((2)-(π))÷((2)×(1E3)))×(((π)×(Y))×(3))	(ACOS(1.5))÷((Y)×(0.5))	\N
+  before	OK	-0.0015×Y×π×(π-2)
+  after	OK	-3×Y×π×(π-2)÷2000
+defint	33	23	1	33	8192	65536	((2)+(1E3))^((7)×((-4)-(2)))	π÷4	-2
+  before	OK	-2÷1002^42-0.25×π÷1002^42
+  after	OK	-2÷1002^42-π÷4÷1002^42
+simplify	35	23	1	35	8192	65536	LOG(((π)÷(1E3))÷(-4))	\N	\N
+  before	OK	LOG(-0.00025×π)
+  after	OK	LOG(-π÷4000)
+collect	35	23	1	35	8192	65536	(0.5)+((((X)×(π))+(SGN(X)))-((0.5)×(π)))	\N	\N
+  before	OK	π×X+(-0.5×π+0.5)+SGN(X)
+  after	OK	π×X+(-π÷2+0.5)+SGN(X)
+defint	35	23	1	35	8192	65536	(((π)^(π))+((Y)-(X)))-(INV((0.5)+(X)))	π÷4	2
+  before	OK	2×Y+LN(0.25×π+0.5)-LN(2.5)+2×π^π-0.25×π^(π+1)+0.03125×π^2-0.25×Y×π-2
+  after	OK	2×Y+LN(π÷4+0.5)-LN(2.5)+2×π^π-0.25×π^(π+1)+π^2÷32-Y×π÷4-2
+subst	1	23	1	1	8192	65536	(((π)÷(2))^(3))+((SIN(0.5))×(X))	((1.5)^(3))÷(ABS(X))	\N
+  before	OK	0.125×π^3+3.375×SIN(0.5)÷ABS(X)
+  after	OK	π^3÷8+3.375×SIN(0.5)÷ABS(X)
+defint	33	23	1	33	65536	65536	COS(ABS((7)^(1E3)))	π÷4	-2
+  before	OK	-2×COS(7^1000)-0.25×π×COS(7^1000)
+  after	OK	-2×COS(7^1000)-π×COS(7^1000)÷4
+simplify	1	23	1	1	65536	65536	(π)×(1.5)	\N	\N
+  before	OK	1.5×π
+  after	OK	3×π÷2
+defint	35	23	0	35	8192	65536	0.5	-1	π
+  before	OK	0.5×π+0.5
+  after	OK	π÷2+0.5
+defint	1	23	0	1	65536	65536	((SIN(2))÷(7))-(ASIN(1E3))	π÷4	2
+  before	OK	2×SIN(2)÷7-2×ASIN(1000)-π×SIN(2)÷28+0.25×π×ASIN(1000)
+  after	OK	2×SIN(2)÷7-2×ASIN(1000)-π×SIN(2)÷28+π×ASIN(1000)÷4
+defint	35	23	2	35	8192	65536	(Y)×(Y)	π÷4	3
+  before	OK	3×Y^2-0.25×Y^2×π
+  after	OK	3×Y^2-Y^2×π÷4
+defint	33	23	0	33	65536	65536	(7)^(((Y)^(1.5))÷(3))	π÷4	2
+  before	OK	2×7^(Y^1.5÷3)-0.25×π×7^(Y^1.5÷3)
+  after	OK	2×7^(Y^1.5÷3)-π×7^(Y^1.5÷3)÷4
+simplify	35	23	0	35	65536	65536	(ABS(X))^(SGN((3)^((1.5)×(π))))	\N	\N
+  before	OK	ABS(X)^SGN(3^(1.5×π))
+  after	OK	ABS(X)^SGN(3^(3×π÷2))
+defint	1	23	0	1	65536	65536	1.5	0.5	π
+  before	OK	1.5×π-0.75
+  after	OK	3×π÷2-0.75
+simplify	33	23	1	33	8192	65536	(LOG(0.5))÷(((ATAN(X))×(LOG(2)))+(7))	\N	\N
+  before	OK	LOG(0.5)÷(LOG(2)×ATAN(X)+7)
+  after	OK	-LOG(2)÷(LOG(2)×ATAN(X)+7)
+simplify	35	23	1	35	65536	65536	(SGN(((X)÷(X))×(ALOG(Y))))×((((3)+(X))+((π)+(0.5)))+(((1E3)-(2))+(X)))	\N	\N
+  before	OK	2×SGN(ALOG(Y))×(X+0.5×π+500.75)
+  after	OK	2×SGN(ALOG(Y))×(X+π÷2+500.75)
+subst	35	23	1	35	65536	65536	(X)×(((π)^(7))×((0.5)÷(1E3)))	(-4)^((2)-(X))	\N
+  before	OK	0.0005×π^7×(-4)^(-X+2)
+  after	OK	π^7×(-4)^(-X+2)÷2000
+defint	1	23	0	1	8192	65536	X	0	π
+  before	OK	0.5×π^2
+  after	OK	π^2÷2
+collect	1	23	1	1	8192	65536	ABS(((LN(0.5))^(ACOS(2)))×(Y))	\N	\N
+  before	OK	ABS(Y×LN(0.5)^ACOS(2))
+  after	OK	ABS(Y×(-LN(2))^ACOS(2))
+derive	1	23	2	1	8192	65536	(X)+((π)÷(COS(X)))	\N	\N
+  before	OK	0.005×π^2×SIN(X)÷COS(X)^2+1
+  after	OK	π^2×SIN(X)÷200÷COS(X)^2+1
+defint	33	23	2	33	65536	65536	π	0.5	π
+  before	OK	-0.5×π+π^2
+  after	OK	-π÷2+π^2
+expand	35	23	1	35	8192	65536	(X)-((((X)+(X))-((π)×(7)))×((1.5)÷(SGN(3))))	\N	\N
+  before	OK	X-3×X÷SGN(3)+10.5×π÷SGN(3)
+  after	OK	X-3×X÷SGN(3)+21×π÷2÷SGN(3)
+simplify	33	23	0	33	8192	65536	ALOG(((π)×((Y)×(1.5)))+(((Y)÷(3))-((3)÷(1.5))))	\N	\N
+  before	OK	ALOG(Y÷3+1.5×Y×π-2)
+  after	OK	ALOG(Y÷3+3×Y×π÷2-2)
+defint	35	23	1	35	65536	65536	3	π÷4	π
+  before	OK	2.25×π
+  after	OK	9×π÷4
+defint	35	23	0	35	8192	65536	((ASIN(7))÷(2))^(((2)+(Y))×(1.5))	π÷4	2
+  before	OK	2×(0.5×ASIN(7))^(1.5×Y+3)-0.25×π×(0.5×ASIN(7))^(1.5×Y+3)
+  after	OK	2×(0.5×ASIN(7))^(1.5×Y+3)-π×(0.5×ASIN(7))^(1.5×Y+3)÷4
+defint	1	23	1	1	65536	65536	1.5	π÷4	π
+  before	OK	1.125×π
+  after	OK	9×π÷8
+expand	33	23	2	33	65536	65536	(0.5)×((π)÷(SQ(-4)))	\N	\N
+  before	OK	0.03125×π
+  after	OK	π÷32
+subst	1	23	2	1	65536	65536	(ALOG((X)×(7)))÷(ABS((2)÷(π)))	((X)^(Y))÷((7)-(Y))	\N
+  before	OK	0.5×π×ALOG(-7×X^Y÷(Y-7))
+  after	OK	π×ALOG(-7×X^Y÷(Y-7))÷2
+collect	35	23	0	35	65536	65536	(INV((X)×(1E3)))×((((7)-(X))×((π)÷(-4)))×(((X)+(1E3))^((X)-(0.5))))	\N	\N
+  before	OK	0.00025×π×(X+1000)^(X-0.5)-0.00175×π×(X+1000)^(X-0.5)÷X
+  after	OK	π×(X+1000)^(X-0.5)÷4000-7×π×(X+1000)^(X-0.5)÷4000÷X
+defint	35	23	0	35	8192	65536	(SGN((0.5)+(Y)))+(((X)^(7))+(X))	0	π
+  before	OK	0.5×π^2+0.125×π^8+π×SGN(Y+0.5)
+  after	OK	π^2÷2+π^8÷8+π×SGN(Y+0.5)
+defint	35	23	1	35	8192	65536	7	π÷4	1
+  before	OK	-1.75×π+7
+  after	OK	-7×π÷4+7
+derive	35	24	0	35	8192	65536	(π)×((0.5)×(((Y)×(1.5))÷((X)-(1.5))))	\N	\N
+  before	OK	0.75×π÷(X-1.5)
+  after	OK	3×π÷4÷(X-1.5)
+expand	33	23	1	33	65536	65536	TAN((((0.5)-(7))×(0.5))×(((-4)÷(3))-((π)-(2))))	\N	\N
+  before	OK	TAN(3.25×π-13÷6)
+  after	OK	TAN(13×π÷4-13÷6)
+defint	35	23	2	35	8192	65536	Y	π÷4	3
+  before	OK	3×Y-0.25×Y×π
+  after	OK	3×Y-Y×π÷4
+expand	35	23	1	35	8192	65536	((SQ((-4)+(Y)))÷(SQ((Y)÷(X))))-((((X)-(X))^(TAN(-4)))+(((X)+(π))÷(2)))	\N	\N
+  before	OK	-0.5×X-0.5×π+X^2-0^TAN(-4)+16×X^2÷Y^2-8×X^2÷Y
+  after	OK	-0.5×X-π÷2+X^2-0^TAN(-4)+16×X^2÷Y^2-8×X^2÷Y
+subst	35	23	2	35	8192	65536	(((π)^(2))×(X))÷(TAN(7))	(TAN(3))÷((1E3)×(0.5))	\N
+  before	OK	0.002×π^2×TAN(3)÷TAN(7)
+  after	OK	π^2×TAN(3)÷500÷TAN(7)
+defint	35	23	2	35	8192	65536	X	1	π
+  before	OK	0.5×π^2-0.5
+  after	OK	π^2÷2-0.5
+defint	1	23	1	1	8192	65536	(SGN((3)-(7)))×(X)	1	π
+  before	OK	-0.5×SGN(-4)+0.5×π^2×SGN(-4)
+  after	OK	-0.5×SGN(-4)+π^2×SGN(-4)÷2
+integrate	1	23	1	1	8192	65536	((0.5)÷((ABS(0.5))÷(ABS(1E3))))+(((LN(0.5))-(π))+(((7)-(Y))×(X)))	\N	\N
+  before	OK	1000×X-X×π+X×LN(0.5)-0.5×X^2×(Y-7)
+  after	OK	1000×X-X×π-X×LN(2)-0.5×X^2×(Y-7)
+derive	1	23	2	1	8192	65536	(SIN(((2)-(0.5))-((X)+(π))))×(((ALOG(-4))-(7))+(ALOG((3)×(7))))	\N	\N
+  before	OK	-0.005×π×COS(-X-π+1.5)×(ALOG(-4)+ALOG(21)-7)
+  after	OK	-π×COS(-X-π+1.5)×(ALOG(-4)+ALOG(21)-7)÷200
+derive	35	24	2	35	65536	65536	((((π)-(3))^((3)-(1E3)))÷(Y))^((((π)^(7))×((1.5)-(1E3)))×(ALOG((1E3)×(Y))))	\N	\N
+  before	OK	998.5×(1÷Y÷(π-3)^997)^(-998.5×π^7×ALOG(1000×Y))×(π^7×ALOG(1000×Y)÷Y-1000×π^7×LN(1÷Y÷(π-3)^997)×LN(10)×ALOG(1000×Y))
+  after	OK	998.5×(1÷Y÷(π-3)^997)^(-1997×π^7×ALOG(1000×Y)÷2)×(π^7×ALOG(1000×Y)÷Y-1000×π^7×LN(1÷Y÷(π-3)^997)×LN(10)×ALOG(1000×Y))
+defint	35	23	0	35	8192	65536	(2)×(0.5)	π÷4	1
+  before	OK	-0.25×π+1
+  after	OK	-π÷4+1
+integrate	35	23	1	35	8192	65536	(2)×(((3)÷((1.5)-(X)))+((0.5)×((π)×(0.5))))	\N	\N
+  before	OK	-6×LN(ABS(-X+1.5))+0.5×X×π
+  after	OK	-6×LN(ABS(-X+1.5))+X×π÷2
+derive	35	23	2	35	65536	65536	(ABS(SIN((0.5)÷(X))))÷(INV(3))	\N	\N
+  before	OK	-0.0075×π×COS(0.5÷X)×SGN(SIN(0.5÷X))÷X^2
+  after	OK	-3×π×COS(0.5÷X)×SGN(SIN(0.5÷X))÷400÷X^2
+expand	1	23	1	1	65536	65536	((COS(LOG(0.5)))÷(COSH((2)^(0.5))))÷((0.5)+(SINH(X)))	\N	\N
+  before	OK	2×COS(LOG(0.5))÷(COSH(SQRT(2))+2×SINH(X)×COSH(SQRT(2)))
+  after	OK	2×COS(-LOG(2))÷(COSH(SQRT(2))+2×SINH(X)×COSH(SQRT(2)))
+defint	35	23	0	35	8192	65536	(X)+(((π)×(1.5))×(SGN(π)))	0	3
+  before	OK	4.5×π×SGN(π)+4.5
+  after	OK	9×π×SGN(π)÷2+4.5
+derive	33	24	1	33	8192	65536	((((1.5)-(Y))-((π)^(1.5)))-((Y)+(1.5)))÷(LN(0.5))	\N	\N
+  before	OK	-2÷LN(0.5)
+  after	OK	2÷LN(2)
+subst	35	23	1	35	8192	65536	((ASIN(X))×((X)^(1E3)))+(LN(X))	(-4)^((3)×(-4))	\N
+  before	OK	LN(1÷16777216)+ASIN(1÷16777216)×(1÷16777216)^1000
+  after	OK	-LN(16777216)+ASIN(1÷16777216)×(1÷16777216)^1000
+defint	33	23	0	33	8192	65536	1.5	π÷4	1
+  before	OK	-0.375×π+1.5
+  after	OK	-3×π÷8+1.5
+defint	1	23	2	1	8192	65536	(π)+(1E3)	0.5	1
+  before	OK	0.5×π+500
+  after	OK	π÷2+500
+subst	1	23	1	1	8192	65536	(ALOG((X)^(7)))-(((π)÷(1E3))^((3)^(Y)))	((X)+(1E3))^((-4)÷(1E3))	\N
+  before	OK	ALOG(1÷(X+1000)^0.028)-(0.001×π)^(3^Y)
+  after	OK	ALOG(1÷(X+1000)^0.028)-(π÷1000)^(3^Y)
+expand	35	23	0	35	8192	65536	(((ABS(π))÷((2)×(1E3)))-(((0.5)-(Y))+((0.5)^(0.5))))-(X)	\N	\N
+  before	OK	-X+Y+0.0005×π-SQRT(0.5)-0.5
+  after	OK	-X+Y+π÷2000-SQRT(0.5)-0.5
+expand	35	23	1	35	8192	65536	(TANH(((Y)+(π))×((X)×(1.5))))÷(((ACOS(X))^(ABS(1E3)))÷(Y))	\N	\N
+  before	OK	Y×TANH(1.5×X×Y+1.5×X×π)÷ACOS(X)^1000
+  after	OK	Y×TANH(1.5×X×Y+3×X×π÷2)÷ACOS(X)^1000
+defint	35	23	1	35	65536	65536	((Y)+(ALOG(π)))÷(X)	0.5	3
+  before	OK	-LN(0.5)×(Y+ALOG(π))+LN(3)×(Y+ALOG(π))
+  after	OK	LN(2)×(Y+ALOG(π))+LN(3)×(Y+ALOG(π))
+defint	35	23	1	35	8192	65536	7	π÷4	3
+  before	OK	-1.75×π+21
+  after	OK	-7×π÷4+21
+simplify	35	23	0	35	8192	65536	(LOG(0.5))×((((3)^(X))^(-4))÷(1E3))	\N	\N
+  before	OK	0.001×LOG(0.5)×3^(-4×X)
+  after	OK	-0.001×LOG(2)×3^(-4×X)
+integrate	33	24	1	33	8192	65536	((ACOS((-4)×(X)))-((ASIN(3))+(SGN(X))))+((((7)÷(1E3))×(π))×(0.5))	\N	\N
+  before	OK	0.0035×Y×π+Y×ACOS(-4×X)-Y×(ASIN(3)+SGN(X))
+  after	OK	7×Y×π÷2000+Y×ACOS(-4×X)-Y×(ASIN(3)+SGN(X))
+simplify	35	23	1	35	65536	65536	ACOS((((π)÷(3))×((X)×(1.5)))×(((1E3)×(Y))^(X)))	\N	\N
+  before	OK	ACOS(0.5×X×π×(1000×Y)^X)
+  after	OK	ACOS(X×π×(1000×Y)^X÷2)
+defint	35	23	1	35	8192	65536	3	π÷4	π
+  before	OK	2.25×π
+  after	OK	9×π÷4
+defint	1	23	0	1	65536	65536	X	0	π
+  before	OK	0.5×π^2
+  after	OK	π^2÷2
+defint	35	23	1	35	65536	65536	TANH(0.5)	π÷4	3
+  before	OK	3×TANH(0.5)-0.25×π×TANH(0.5)
+  after	OK	3×TANH(0.5)-π×TANH(0.5)÷4
+defint	35	23	0	35	8192	65536	(ALOG(LN(1E3)))×((LOG(1E3))÷(2))	-1	-2
+  before	OK	-0.5×LOG(1000)×ALOG(LN(1000))
+  after	OK	-1.5×ALOG(LN(1000))
+defint	35	23	2	35	8192	65536	π	π÷4	3
+  before	OK	3×π-0.25×π^2
+  after	OK	3×π-π^2÷4
+simplify	35	23	0	35	8192	65536	(7)×((π)×(((-4)-(X))×(1.5)))	\N	\N
+  before	OK	-10.5×π×(X+4)
+  after	OK	-21×π×(X+4)÷2
+subst	35	23	2	35	8192	65536	(((X)÷(-4))×(π))^(((1E3)×(1E3))-(ACOS(3)))	(COS(Y))+(Y)	\N
+  before	OK	(-0.25×π×(Y+COS(Y)))^(-ACOS(3)+1000000)
+  after	OK	(-π×(Y+COS(Y))÷4)^(-ACOS(3)+1000000)
+collect	35	23	2	35	8192	65536	((X)^(7))÷(((π)÷(1E3))-(((7)×(7))-((Y)÷(7))))	\N	\N
+  before	OK	7÷(Y+0.007×π-343)×X^7
+  after	OK	7÷(Y+7×π÷1000-343)×X^7
+defint	35	23	2	35	65536	65536	X	π÷4	π
+  before	OK	0.46875×π^2
+  after	OK	15×π^2÷32
+expand	1	23	1	1	8192	65536	(EXP(((0.5)×(π))×(π)))÷(3)	\N	\N
+  before	OK	EXP(0.5×π^2)÷3
+  after	OK	EXP(π^2÷2)÷3
+defint	35	23	0	35	8192	65536	(EXP(1.5))-(((1E3)×(1.5))×(X))	π÷4	2
+  before	OK	2×EXP(1.5)+46.875×π^2-0.25×π×EXP(1.5)-3000
+  after	OK	2×EXP(1.5)+375×π^2÷8-π×EXP(1.5)÷4-3000
+simplify	1	23	2	1	65536	65536	((((1E3)÷(1E3))+(1.5))÷(X))÷((((7)÷(1.5))^(LOG(0.5)))^(-4))	\N	\N
+  before	OK	2.5×(14÷3)^(4×LOG(0.5))÷X
+  after	OK	2.5×(14÷3)^(-4×LOG(2))÷X
