@@ -12,6 +12,9 @@
  *   casim pdiv "<f>" X "<g>" RAD      the quotient and remainder of f by g over Q, "q; r" (CAS 010)
  *   casim pgcd "<f>" X "<g>" RAD      the gcd of f and g, primitive with a positive leading coefficient (CAS 010)
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
+ *   casim steps "<text>" X RAD       derive's steps, one a line, each indented by its depth: RULE: d/dX(u) = ...
+ *                                    (work/steps-derive.md); --one-line: the results only; --tsv: k, depth,
+ *                                    T or R (template or result), the rule and the text, tab-separated
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
@@ -47,6 +50,25 @@ static casim_status run(int op, const char *text, int var, const char *repl, int
     return casim_run(&rq, out, out_cap, arena, arena_cap);
 }
 
+/* every step of derive's working, through casim_step page by page, as a student would walk it */
+static casim_status steps(const char *text, int var, int angle, size_t arena_cap, int flags, int tsv)
+{
+    casim_req rq = {CASIM_DERIVE, text, model, var, NULL, 0, angle, NULL};
+    casim_step_info info;
+    char out[OUT];
+    casim_status st = casim_step(&rq, -1, flags, &info, out, out_cap, arena, arena_cap);
+    for (int k = 0; st == CASIM_OK && k < info.count; k++) {
+        if ((st = casim_step(&rq, k, flags, &info, out, out_cap, arena, arena_cap)) != CASIM_OK) break;
+        if (tsv) printf("%d\t%d\t%c\t%s\t%s\n", k, info.depth, info.line == CASIM_STEP_TEMPLATE ? 'T' : 'R',
+                        casim_rule_name(info.rule), out);
+        else printf("%*s%s: %s\n", 2 * info.depth, "", casim_rule_name(info.rule), out);
+    }
+    if (st != CASIM_OK) printf("%s\n", st == CASIM_NO_ROOM ? "NO_ROOM" : st == CASIM_TOO_LONG ? "TOO_LONG"
+                              : st == CASIM_SYNTAX ? "SYNTAX" : st == CASIM_NOT_DIFFERENTIABLE ? "NOT_DIFFERENTIABLE"
+                              : "BAD_ARG");
+    return st;
+}
+
 static int model_arg(const char *a)
 {
     return strcmp(a, "STU") == 0 ? CASIM_MODEL_STU : strcmp(a, "33") == 0 ? CASIM_MODEL_33
@@ -56,12 +78,14 @@ static int model_arg(const char *a)
 int main(int argc, char **argv)
 {
     size_t cap = 8192;
-    int min_arena = 0, op, var = 0, angle = CASIM_RAD, i = 1, args;
+    int min_arena = 0, op, var = 0, angle = CASIM_RAD, i = 1, args, one_line = 0, tsv = 0;
     const char *repl = NULL;
     char out[OUT];
     casim_status st;
     for (; i < argc && strncmp(argv[i], "--", 2) == 0; i++) {
         if (strcmp(argv[i], "--min-arena") == 0) min_arena = 1;
+        else if (strcmp(argv[i], "--one-line") == 0) one_line = 1;
+        else if (strcmp(argv[i], "--tsv") == 0) tsv = 1;
         else if (strcmp(argv[i], "--arena") == 0 && i + 1 < argc) cap = strtoul(argv[++i], NULL, 10);
         else if (strcmp(argv[i], "--cap") == 0 && i + 1 < argc) {
             out_cap = strtoul(argv[++i], NULL, 10);
@@ -74,6 +98,13 @@ int main(int argc, char **argv)
         else goto usage;
     }
     if (cap > sizeof arena || i >= argc) goto usage;
+    if (strcmp(argv[i], "steps") == 0) {
+        const char *a = argv[argc - 1];
+        if (argc - i != 4 || strlen(argv[i + 2]) != 1) goto usage;
+        angle = strcmp(a, "DEG") == 0 ? CASIM_DEG : strcmp(a, "RAD") == 0 ? CASIM_RAD
+              : strcmp(a, "GRAD") == 0 ? CASIM_GRAD : -1;
+        return steps(argv[i + 1], argv[i + 2][0] - 'A', angle, cap, one_line ? CASIM_STEPS_ONE_LINE : 0, tsv) == CASIM_OK ? 0 : 1;
+    }
     op = strcmp(argv[i], "derive") == 0 ? OP_DERIVE : strcmp(argv[i], "simplify") == 0 ? OP_SIMPLIFY
        : strcmp(argv[i], "expand") == 0 ? OP_EXPAND : strcmp(argv[i], "collect") == 0 ? OP_COLLECT
        : strcmp(argv[i], "subst") == 0 ? OP_SUBST : strcmp(argv[i], "solve") == 0 ? OP_SOLVE
@@ -137,6 +168,7 @@ usage:
 
 
                     "       casim [--arena N] [--min-arena] pdiv|pgcd \"<f>\" X \"<g>\" RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--one-line] [--tsv] steps \"<text>\" X RAD|DEG|GRAD\n"
 
 
                     "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"

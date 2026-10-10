@@ -211,6 +211,26 @@ NOT_NUMERIC, NO_ROOM, BAD_ARG (an equation), TOO_LONG.
 | `casim factor "X^3-6×X^2+12×X-8" X RAD` | `(X-2)^3` |
 | `casim factor "SIN(X)+1" X RAD` | `NOT_POLYNOMIAL` |
 
+### steps: derive's working, a step a page
+
+`steps "<text>" X` prints the working of derive as a student would walk it (work/steps-derive.md): each rule first
+with its parts still to do (`d/dX(u)` for each), then each part's own steps, indented, then the rule's result. The
+last line is derive's answer. `--one-line` prints the results only, the answer first. A part without X is one
+CONSTANT step; X itself is VARIABLE. In C, `casim_step(rq, k, flags, &info, out, ...)` returns page k of the same
+walk, with its depth, line and rule (`casim_rule_name` names it), so a caller can page forwards and backwards; each
+call is complete in itself. Statuses: derive's, and NO_ROOM when the steps don't fit the arena.
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps "X^2×SIN(X)" X RAD` | `PRODUCT: d/dX(X^2×SIN(X)) = d/dX(X^2)×SIN(X)+X^2×d/dX(SIN(X)) /   POWER: d/dX(X^2) = 2×X /   SIN: d/dX(SIN(X)) = COS(X) / PRODUCT: d/dX(X^2×SIN(X)) = 2×X×SIN(X)+X^2×COS(X)` |
+| `casim steps "X×SIN(X)" X RAD` | `PRODUCT: d/dX(X×SIN(X)) = d/dX(X)×SIN(X)+X×d/dX(SIN(X)) /   VARIABLE: d/dX(X) = 1 /   SIN: d/dX(SIN(X)) = COS(X) / PRODUCT: d/dX(X×SIN(X)) = SIN(X)+X×COS(X)` |
+| `casim steps "3×X^2" X RAD` | `CONSTANT MULTIPLE: d/dX(3×X^2) = 3×d/dX(X^2) /   POWER: d/dX(X^2) = 2×X / CONSTANT MULTIPLE: d/dX(3×X^2) = 6×X` |
+| `casim steps "SIN(X^2)" X RAD` | `CHAIN: d/dX(SIN(X^2)) = COS(X^2)×d/dX(X^2) /   POWER: d/dX(X^2) = 2×X / CHAIN: d/dX(SIN(X^2)) = 2×X×COS(X^2)` |
+| `casim steps "2^X+π^2" X RAD` | `SUM: d/dX(π^2+2^X) = d/dX(π^2)+d/dX(2^X) /   CONSTANT: d/dX(π^2) = 0 /   EXPONENTIAL: d/dX(2^X) = LN(2)×2^X / SUM: d/dX(π^2+2^X) = LN(2)×2^X` |
+| `casim steps "X^X" X RAD` | `GENERAL POWER: d/dX(X^X) = X^X×(LN(X)+1)` |
+| `casim steps "X^2=Y+3×X" X RAD` | `BOTH SIDES: d/dX(X^2)=d/dX(3×X+Y) /   POWER: d/dX(X^2) = 2×X /   SUM: d/dX(3×X+Y) = d/dX(3×X)+d/dX(Y) /     CONSTANT MULTIPLE: d/dX(3×X) = 3 /     CONSTANT: d/dX(Y) = 0 /   SUM: d/dX(3×X+Y) = 3 / BOTH SIDES: 2×X=3` |
+| `casim --one-line steps "X^2×SIN(X)" X RAD` | `PRODUCT: d/dX(X^2×SIN(X)) = 2×X×SIN(X)+X^2×COS(X) /   POWER: d/dX(X^2) = 2×X /   SIN: d/dX(SIN(X)) = COS(X)` |
+
 ### pdiv, pgcd, cancel: polynomial division
 
 The polynomials are read as solve reads them, with degree ≤ 12 and coefficients ≤ 10^7.

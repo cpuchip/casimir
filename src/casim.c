@@ -128,6 +128,8 @@ typedef struct {
     int sub_var, sub_count;     /* subst: the variable replaced, and how often */
     ref sub_val;                /* its canonical replacement */
     ref small[SMALL], pi;
+    bool steps;                 /* show steps: derive records each node's (before, after, depth) as it returns */
+    ref step_last;              /* the last step recorded; each links to the one before */
 } ctx;
 
 #define SPARE ((ref)1)          /* what an exhausted arena gives: a leaf that nothing writes */
@@ -172,7 +174,7 @@ static bool enter(ctx *c)
 /* The guarded walks (each a wrapper of the body named with a trailing _). */
 static int cmp(const ctx *c, ref a, ref b);
 static ref canon(ctx *c, ref r);
-static ref deriv(ctx *c, ref r);
+static inline __attribute__((always_inline)) ref deriv(ctx *c, ref r);
 
 /* ---- the arena ---- */
 
@@ -2053,7 +2055,8 @@ static ref one_pm_sq(ctx *c, ref u, int sign_one, int sign_sq)
 }
 
 /* d/dx f(u) = f'(u)·u' for the function node r. */
-static ref deriv_fn(ctx *c, ref r, ref du)
+/* Inline, always: show steps' templates call it too, and as a call of its own it moved deriv_'s code. */
+static inline __attribute__((always_inline)) ref deriv_fn(ctx *c, ref r, ref du)
 {
     ref u = nd(c, r)->a, m1 = small(c, C_M1);
     switch (nd(c, r)->id) {
@@ -2132,11 +2135,36 @@ static ref deriv_(ctx *c, ref r)
     }
 }
 
-static ref deriv(ctx *c, ref r)
+/* Show steps (work/steps-derive.md): one step in one 8-byte unit, linked backwards. */
+typedef struct {
+    ref prev, before, after, pad;
+} step_t;
+
+static step_t *step_at(const ctx *c, ref s)
+{
+    return (step_t *)(void *)(c->mem + (size_t)s * 8u);
+}
+
+/* A node's step, as it returns (a leaf makes none). Out of line: off deriv_'s recursive frame. */
+static __attribute__((noinline)) void note(ctx *c, ref r, ref v)
+{
+    int k = nd(c, r)->kind;
+    ref s;
+    if (k == K_NUM || k == K_VAR || k == K_PI || v == SPARE || c->st != CASIM_OK || !(s = grab(c, 8))) return;
+    step_at(c, s)->prev = c->step_last;
+    step_at(c, s)->before = r;
+    step_at(c, s)->after = v;
+    c->step_last = s;
+}
+
+/* Inline, always: a call of its own would be a frame at every level of the recursion (32 bytes on the S3, 46
+   levels: three times the stack's margin). make check's frame gate refuses a build where it is not. */
+static inline __attribute__((always_inline)) ref deriv(ctx *c, ref r)
 {
     ref v;
     if (!enter(c)) return SPARE;
     v = deriv_(c, r);
+    if (c->steps) note(c, r, v);
     c->depth--;
     return v;
 }
@@ -2723,6 +2751,291 @@ static bool contains(const ctx *c, ref r, int var)
     v = contains_(c, r, var);
     ((ctx *)c)->depth--;
     return v;
+}
+
+/* ---- show steps (work/steps-derive.md) ---- */
+
+static bool model_ok(int m);
+
+/* The walk over a derive's steps: each node's template line (its rule with the parts still to do), its parts' steps,
+   then its result; with CASIM_STEPS_ONE_LINE, its result then its parts. It counts every step and prints step k. */
+typedef struct {
+    int k, at, flags;
+    casim_step_info *info;
+    ref r;                      /* step k's node */
+} walk_t;
+
+static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT MULTIPLE", "PRODUCT", "POWER",
+                                        "EXPONENTIAL", "GENERAL POWER", "CHAIN", "BOTH SIDES"};
+
+const char *casim_rule_name(int rule)
+{
+    if (rule >= 0 && rule < CASIM_RULE_FUNCTION) return RULE_NAME[rule];
+    if (rule >= CASIM_RULE_FUNCTION && rule < CASIM_RULE_FUNCTION + (int)(sizeof FNAME / sizeof FNAME[0]))
+        return FNAME[rule - CASIM_RULE_FUNCTION];
+    return "";
+}
+
+static bool is_var(const ctx *c, ref r)
+{
+    return nd(c, r)->kind == K_VAR && nd(c, r)->id == c->var;
+}
+
+/* whether var occurs in r: asked of r's children, as the walk has already entered r (asking of r itself would
+   count r's level twice, and a derivative at the depth guard's edge would page as NO_ROOM) */
+static __attribute__((noinline)) bool dep(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    switch (x->kind) {
+    case K_VAR: return x->id == c->var;
+    case K_FN: return contains(c, x->a, c->var);
+    case K_POW:
+    case K_EQ: return contains(c, x->a, c->var) || contains(c, x->b, c->var);
+    case K_ADD:
+    case K_MUL:
+        for (int i = 0; i < x->n; i++)
+            if (contains(c, list(c, x->a)[i], c->var)) return true;
+        return false;
+    default: return false;
+    }
+}
+
+static __attribute__((noinline)) int rule_of(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    int n = 0;
+    if (!dep(c, r)) return CASIM_RULE_CONSTANT;
+    switch (x->kind) {
+    case K_VAR: return CASIM_RULE_VARIABLE;
+    case K_ADD: return CASIM_RULE_SUM;
+    case K_EQ: return CASIM_RULE_BOTH_SIDES;
+    case K_MUL:
+        for (int i = 0; i < x->n; i++) n += contains(c, list(c, x->a)[i], c->var);
+        return n == 1 ? CASIM_RULE_CONSTANT_MULTIPLE : CASIM_RULE_PRODUCT;
+    case K_POW:
+        if (!contains(c, x->b, c->var)) return CASIM_RULE_POWER;
+        return contains(c, x->a, c->var) ? CASIM_RULE_GENERAL_POWER : CASIM_RULE_EXPONENTIAL;
+    case K_FN: return is_var(c, x->a) ? CASIM_RULE_FUNCTION + x->id : CASIM_RULE_CHAIN;
+    default: return CASIM_RULE_CONSTANT;
+    }
+}
+
+/* r's i-th part under its rule (what its template differentiates), or 0 */
+static __attribute__((noinline)) ref part(ctx *c, ref r, int rule, int i)
+{
+    const node *x = nd(c, r);
+    switch (rule) {
+    case CASIM_RULE_SUM: return i < x->n ? list(c, x->a)[i] : 0;
+    case CASIM_RULE_PRODUCT:
+    case CASIM_RULE_CONSTANT_MULTIPLE:
+        for (int j = 0; j < x->n; j++)
+            if (contains(c, list(c, x->a)[j], c->var) && i-- == 0) return list(c, x->a)[j];
+        return 0;
+    case CASIM_RULE_POWER: return i == 0 ? x->a : 0;
+    case CASIM_RULE_EXPONENTIAL: return i == 0 ? x->b : 0;
+    case CASIM_RULE_GENERAL_POWER: return i == 0 ? x->b : i == 1 ? x->a : 0;     /* v, then u, as the template */
+    case CASIM_RULE_CHAIN: return i == 0 ? x->a : 0;
+    case CASIM_RULE_BOTH_SIDES: return i == 0 ? x->a : i == 1 ? nd(c, r)->b : 0;
+    default: return 0;
+    }
+}
+
+/* whether r's rule has a template: a part that is not var itself (X^2, SIN(X), 3×X are one line) */
+static bool has_template(ctx *c, ref r, int rule)
+{
+    ref p;
+    for (int i = 0; (p = part(c, r, rule, i)) != 0; i++)
+        if (!is_var(c, p)) return true;
+    return false;
+}
+
+/* r, in parentheses when its level is below min. The steps' own (not print_in: another caller of print_in moved
+   gcc's inlining of it in put_factor, and every level of a power chain's printing paid a frame for it on the S3) */
+static __attribute__((noinline)) void put_whole(ctx *c, out_t *w, ref r, int min)
+{
+    bool paren = level(c, r) < min;
+    if (paren) puts_(w, "(");
+    print(c, w, r);
+    if (paren) puts_(w, ")");
+}
+
+static void put_dvar(ctx *c, out_t *w, ref r)
+{
+    char d[6] = {'d', '/', 'd', (char)('A' + c->var), '(', '\0'};
+    puts_(w, d);
+    print(c, w, r);
+    puts_(w, ")");
+}
+
+/* a product's template: Σ over its parts j of the product with factor j as d/dX(fj) */
+static void put_product_rule(ctx *c, out_t *w, ref r)
+{
+    const node *x = nd(c, r);
+    int n = x->n, start = has_coef(c, list(c, x->a), n), terms = 0;
+    bool neg_ = start && num_negative(c, list(c, x->a)[0]);
+    for (int j = start; j < n; j++) {
+        int items = 0;
+        if (!contains(c, list(c, x->a)[j], c->var)) continue;
+        if (terms++ && !neg_) puts_(w, "+");
+        if (start) {
+            rat k = *val(c, list(c, x->a)[0]);
+            if (k.p < 0) puts_(w, "-"), k.p = -k.p;
+            if (!rat_is(&k, 1, 1)) {
+                ref kn = num(c, &k);
+                put_factor(c, w, kn, 2);
+                items++;
+            }
+        }
+        for (int i = start; i < n; i++) {          /* the numerator, d/dX(fj) in fj's place */
+            if (i != j && below(c, list(c, x->a)[i])) continue;
+            if (items++) puts_(w, TIMES);
+            if (i == j) put_dvar(c, w, list(c, x->a)[i]);
+            else put_factor(c, w, list(c, x->a)[i], 2);
+        }
+        if (!items) puts_(w, "1");
+        for (int i = start; i < n; i++) {          /* then ÷ each other factor with a negative exponent */
+            if (i == j || !below(c, list(c, x->a)[i])) continue;
+            puts_(w, DIVIDE);
+            put_factor(c, w, list(c, x->a)[i], 3);
+        }
+    }
+}
+
+/* r's template line's right side, by its rule */
+static __attribute__((noinline)) void put_template(ctx *c, out_t *w, ref r, int rule)
+{
+    const node *x = nd(c, r);
+    ref t;
+    switch (rule) {
+    case CASIM_RULE_SUM:
+        for (int i = 0; i < x->n; i++) {
+            if (i) puts_(w, "+");
+            put_dvar(c, w, list(c, x->a)[i]);
+        }
+        return;
+    case CASIM_RULE_PRODUCT:
+    case CASIM_RULE_CONSTANT_MULTIPLE: put_product_rule(c, w, r); return;
+    case CASIM_RULE_POWER:          /* n×u^(n-1)×d/dX(u) */
+        t = mul2(c, x->b, power(c, x->a, add2(c, x->b, small(c, C_M1))));
+        break;
+    case CASIM_RULE_EXPONENTIAL:    /* a^u×LN(a)×d/dX(u) */
+        t = mul2(c, r, fn(c, F_LN, x->a));
+        break;
+    case CASIM_RULE_GENERAL_POWER:  /* u^v×(d/dX(v)×LN(u)+v×d/dX(u)÷u) */
+        put_whole(c, w, r, 2);
+        puts_(w, TIMES "(");
+        put_dvar(c, w, x->b);
+        puts_(w, TIMES "LN(");
+        print(c, w, x->a);
+        puts_(w, ")+");
+        put_whole(c, w, x->b, 2);
+        puts_(w, TIMES);
+        put_dvar(c, w, x->a);
+        puts_(w, DIVIDE);
+        put_whole(c, w, x->a, 5);                           /* the whole u: ÷(1÷X), not ÷X */
+        puts_(w, ")");
+        return;
+    case CASIM_RULE_CHAIN: t = deriv_fn(c, r, small(c, C_1)); break;      /* f'(u)×d/dX(u) */
+    case CASIM_RULE_BOTH_SIDES:
+        put_dvar(c, w, x->a);
+        puts_(w, "=");
+        put_dvar(c, w, nd(c, r)->b);
+        return;
+    default: return;
+    }
+    if (c->st != CASIM_OK) return;
+    put_whole(c, w, t, 2);
+    puts_(w, TIMES);
+    put_dvar(c, w, part(c, r, rule, 0));
+}
+
+/* r's recorded derivative (var's is 1, a constant's 0) */
+static ref step_after(ctx *c, ref r, int rule)
+{
+    if (rule == CASIM_RULE_VARIABLE) return small(c, C_1);
+    if (rule == CASIM_RULE_CONSTANT) return small(c, C_0);
+    for (ref s = c->step_last; s; s = step_at(c, s)->prev)
+        if (step_at(c, s)->before == r) return step_at(c, s)->after;
+    if (c->st == CASIM_OK) c->st = CASIM_NO_ROOM;       /* not recorded: the steps did not fit */
+    return SPARE;
+}
+
+/* one line of the walk: counted, and noted when it is step k (printed after the walk, at depth 0, as plain derive
+   prints its answer: printed inside the walk, the root's answer would start a level deeper) */
+static __attribute__((noinline)) void emit(walk_t *W, ref r, int rule, int depth, int line)
+{
+    if (W->at++ != W->k) return;
+    W->info->depth = depth;
+    W->info->line = line;
+    W->info->rule = rule;
+    W->r = r;
+}
+
+/* step k's text, from what the walk noted */
+static __attribute__((noinline)) void put_step(ctx *c, out_t *w, const casim_step_info *info, ref r)
+{
+    if (info->line == CASIM_STEP_RESULT && info->rule == CASIM_RULE_BOTH_SIDES) {
+        print(c, w, step_after(c, r, info->rule));
+        return;
+    }
+    if (info->rule != CASIM_RULE_BOTH_SIDES) {
+        put_dvar(c, w, r);
+        puts_(w, " = ");
+    }
+    if (info->line == CASIM_STEP_TEMPLATE) put_template(c, w, r, info->rule);
+    else print(c, w, step_after(c, r, info->rule));
+}
+
+static void walk(ctx *c, ref r, int depth, walk_t *W)
+{
+    int rule;
+    bool tmpl, one = W->flags & CASIM_STEPS_ONE_LINE;
+    ref p;
+    if (!enter(c)) return;
+    rule = rule_of(c, r);
+    tmpl = has_template(c, r, rule);
+    if (one || !tmpl) emit(W, r, rule, depth, CASIM_STEP_RESULT);
+    else emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);
+    if (tmpl)
+        for (int i = 0; (p = part(c, r, rule, i)) != 0 && c->st == CASIM_OK; i++) walk(c, p, depth + 1, W);
+    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_RESULT);
+    c->depth--;
+}
+
+casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
+                        void *arena, size_t arena_cap)
+{
+    ctx c;
+    ref n = SPARE, root;
+    out_t w = {out, cap, 0, false};
+    walk_t W;
+    casim_step_info none;
+    if (!info) info = &none;
+    memset(info, 0, sizeof *info);
+    if (cap) out[0] = '\0';
+    if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
+        rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
+        return CASIM_BAD_ARG;
+    if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
+    start(&c, rq->eqn, rq->angle, arena, arena_cap);
+    c.rtl = rq->model == CASIM_MODEL_STU;
+    c.var = rq->var;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK) n = canon(&c, n);
+    root = n;
+    c.steps = true;
+    if (c.st == CASIM_OK) n = deriv(&c, n);
+    c.steps = false;
+    if (c.st == CASIM_OK && (n == SPARE || n == 0)) c.st = CASIM_NO_ROOM;
+    if (c.st != CASIM_OK) return cap ? finish(&c, n, out, cap) : c.st;       /* SYNTAX's place, a refused name */
+    W.k = k, W.at = 0, W.flags = flags, W.info = info, W.r = 0;
+    walk(&c, root, 0, &W);
+    info->count = W.at;
+    if (c.st == CASIM_OK && k >= W.at) c.st = CASIM_BAD_ARG;
+    if (c.st == CASIM_OK && k >= 0) put_step(&c, &w, info, W.r);
+    if (c.st == CASIM_OK && w.full) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK && cap) out[0] = '\0';
+    return c.st;
 }
 
 /* Whether expand opens r (a sum): every sum, or with collect's variable, a sum that holds it. */

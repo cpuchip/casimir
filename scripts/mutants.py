@@ -387,6 +387,45 @@ MUTANTS = {
         ("src/casim.c", "!is_num(c, x->a) || val(c, x->a)->p <= 0) return -1;",
          "(is_num(c, x->a) && val(c, x->a)->p <= 0)) return -1;"),
     ],
+    # show steps (work/steps-derive.md): deriv given a frame of its own; the walk counting a node's level twice (deep
+    # derivatives page NO_ROOM); a product template losing its d/dX, or its denominators' ÷; the general power's
+    # divisor printed as its base; two rules swapped; one-line order not the answer first; a step's result looked up
+    # wrongly; steps recorded with steps off (plain derive's arena grows)
+    "steps-deriv-noinline": [
+        ("src/casim.c", "static inline __attribute__((always_inline)) ref deriv(ctx *c, ref r)\n{",
+         "static __attribute__((noinline)) ref deriv(ctx *c, ref r)\n{"),
+        ("src/casim.c", "static inline __attribute__((always_inline)) ref deriv(ctx *c, ref r);",
+         "static __attribute__((noinline)) ref deriv(ctx *c, ref r);"),
+    ],
+    "steps-depth-twice": [
+        ("src/casim.c", "    if (!dep(c, r)) return CASIM_RULE_CONSTANT;",
+         "    if (!dep(c, r) || !contains(c, r, c->var)) return CASIM_RULE_CONSTANT;"),
+    ],
+    "steps-product-no-dvar": [
+        ("src/casim.c", "            if (i == j) put_dvar(c, w, list(c, x->a)[i]);", "            if (i == j) put_factor(c, w, list(c, x->a)[i], 2);"),
+    ],
+    "steps-product-denominators": [
+        ("src/casim.c", "            if (i != j && below(c, list(c, x->a)[i])) continue;", "            if (0) continue;"),
+    ],
+    "steps-general-power-divisor": [
+        ("src/casim.c", "        put_whole(c, w, x->a, 5);", "        put_factor(c, w, x->a, 3);"),
+    ],
+    "steps-rules-swapped": [
+        ("src/casim.c", "        return n == 1 ? CASIM_RULE_CONSTANT_MULTIPLE : CASIM_RULE_PRODUCT;",
+         "        return n == 1 ? CASIM_RULE_PRODUCT : CASIM_RULE_CONSTANT_MULTIPLE;"),
+    ],
+    "steps-one-line-last": [
+        ("src/casim.c", "    if (one || !tmpl) emit(W, r, rule, depth, CASIM_STEP_RESULT);\n    else emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);",
+         "    if (!one && tmpl) emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);"),
+        ("src/casim.c", "    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_RESULT);", "    emit(W, r, rule, depth, CASIM_STEP_RESULT);"),
+    ],
+    "steps-after-lookup": [
+        ("src/casim.c", "        if (step_at(c, s)->before == r) return step_at(c, s)->after;",
+         "        if (step_at(c, s)->before != r) return step_at(c, s)->after;"),
+    ],
+    "steps-recorded-off": [
+        ("src/casim.c", "    if (c->steps) note(c, r, v);", "    note(c, r, v);"),
+    ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
     ],

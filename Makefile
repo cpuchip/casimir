@@ -36,12 +36,13 @@ CORE_LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 .PHONY: all check test check-abn size wasm clean
 all: $(LIB) build/casim build/hello build/golden_check
 
-check: all build/frames.ok build/symbols.ok build/gcdprimes_check check-abn
+check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check check-abn
 	scripts/run-tests.sh build/gcdprimes_check
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
 	scripts/doc-examples.py
 	scripts/log-values.py
+	scripts/step-values.py
 
 test: check build/clang.ok $(TESTS)
 	scripts/run-tests.sh $(TESTS)
@@ -96,6 +97,11 @@ build/frames.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/frame_control.c Makefile
 	for f in $(CASIM_SRC); do $(CC) $(CFLAGS) $(FRAME) -I$(ABN) -Isrc -c -o /dev/null $$f || exit 1; done
 	if $(CC) $(CFLAGS) $(FRAME) -c -o /dev/null tests/frame_control.c 2>/dev/null; then \
 	    echo "frame guard: the 2 KB control compiled, so the guard checks nothing"; exit 1; fi
+	touch $@
+
+# derive's recursion keeps its frame: deriv() stays inline, with a planted noinline control (work/steps-derive.md)
+build/inline.ok: $(CASIM_SRC) $(CASIM_HDRS) scripts/inline-check.sh
+	CC="$(CC)" scripts/inline-check.sh
 	touch $@
 
 # The site's wasm build is clang: casim's sources under a pinned clang 18 -Wall -Wextra -Werror too (abacus #5430,

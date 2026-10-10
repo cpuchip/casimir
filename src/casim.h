@@ -113,6 +113,34 @@ typedef struct {
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
 
+/* Show steps (work/steps-derive.md): the working of rq, one step a page, for derive (CASIM_DERIVE; another op is
+   BAD_ARG). casim_step runs rq with steps on and prints step k into out, "d/dX(before) = after", where after is
+   the rule applied with its parts still to do (a template line) or the step's result. The walk is top-down: a
+   node's template line, its parts' steps, then its result; the root's result is the last step and is plain
+   derive's answer. CASIM_STEPS_ONE_LINE leaves out the template lines (the root's result is then step 0). k < 0
+   only counts. Each call is complete in itself: page k again or k ± 1 with the same rq. info gets the count, and
+   for step k its depth (0 for the root), its line and its rule. NO_ROOM when the steps don't fit the arena (plain
+   derive may still); BAD_ARG for k >= count; TOO_LONG when the step's text passes cap. An equation's lines are
+   d/dX(a)=d/dX(b) and its derived equation. */
+#define CASIM_STEPS_ONE_LINE 1
+#define CASIM_STEP_TEMPLATE 0
+#define CASIM_STEP_RESULT 1
+enum {
+    CASIM_RULE_SUM, CASIM_RULE_CONSTANT, CASIM_RULE_VARIABLE, CASIM_RULE_CONSTANT_MULTIPLE, CASIM_RULE_PRODUCT,
+    CASIM_RULE_POWER, CASIM_RULE_EXPONENTIAL, CASIM_RULE_GENERAL_POWER, CASIM_RULE_CHAIN, CASIM_RULE_BOTH_SIDES,
+    CASIM_RULE_FUNCTION         /* + k: the derivative of a function of var itself, its name from casim_rule_name */
+};
+typedef struct {
+    int count;                  /* the steps */
+    int depth;                  /* step k's: 0 for the root, 1 for its parts, ... */
+    int line;                   /* CASIM_STEP_TEMPLATE or CASIM_STEP_RESULT */
+    int rule;                   /* CASIM_RULE_... */
+} casim_step_info;
+casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
+                        void *arena, size_t arena_cap);
+/* A rule's name, uppercase and short (SUM, PRODUCT, CHAIN, SIN, ...); "" for an id that is none. */
+const char *casim_rule_name(int rule);
+
 /* Unit CAS 005: the real roots of eqn (L=R as L-R=0, an expression as expr=0), a polynomial in var (0-25)
    with exact rational coefficients, read as model. out is one line, its status first (abacus #4841):
      SOLVED: X=2; X=3            every irreducible factor over Q has degree <= 2 (a root's multiplicity

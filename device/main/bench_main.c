@@ -1,7 +1,9 @@
 /* casim's on-chip bench: for each case (generated from the host CLI), the derivative on the S3 must
  * be byte-for-byte the host's (derive or simplify); then its time (min and median of REPS runs, esp_timer), the smallest
  * arena that gives OK (bisection), and the stack it takes: one derivative run in a fresh worker task,
- * whose high-water mark less an idle worker's is casim's own. The report repeats, so a reader that attaches late still
+ * whose high-water mark less an idle worker's is casim's own. Then show steps (work/steps-derive.md): for each derive
+ * that is OK, every page timed once and the last (the root's result, after the whole walk) REPS times, the stack of
+ * one page, and the last page must end in the host's answer. The report repeats, so a reader that attaches late still
  * gets a whole one (BENCH BEGIN ... DEVICE DONE). */
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +32,14 @@ typedef struct {
 static unsigned char arena[ARENA_MAX] __attribute__((aligned(8)));
 static char out[OUT_MAX];
 static result res[768];         /* more than case_count (checked in app_main) */
+
+typedef struct {
+    int count, ok;          /* the pages; the last ends in the host's answer */
+    int64_t us_max, us_med; /* the slowest page, once each; the last page's median */
+    unsigned stack;         /* bytes of stack the last page takes */
+} paged;
+
+static paged pg[768];
 static unsigned stack_free, stack_base, base_max;
 
 /* The calculator's own call (CAS 004): op and texts as the case has them, each read as its stamp. */
@@ -39,12 +49,22 @@ static casim_status run(const bench_case *k, size_t arena_cap)
     return casim_run(&rq, out, OUT_MAX, arena, arena_cap);
 }
 
+/* show steps' page k of k's derivative */
+static casim_status page(const bench_case *k, int at, casim_step_info *info)
+{
+    casim_req rq = {(casim_op)k->op, k->expr, k->model, k->var, k->repl, k->model, k->angle, k->repl2};
+    return casim_step(&rq, at, 0, info, out, OUT_MAX, arena, ARENA_MAX);
+}
+
 typedef struct {
     const bench_case *k;    /* NULL: the idle baseline */
     unsigned free;
     TaskHandle_t parent;
+    int at;                 /* >= 0: show steps' page at (page_worker) */
 } job;
 
+/* The run's worker, as it was before show steps: a local of its own here would move casim's stack by its size and
+   not the idle baseline's (the baseline never touches it), so pages have their own worker below. */
 static void worker(void *arg)
 {
     job *j = arg;
@@ -54,13 +74,23 @@ static void worker(void *arg)
     vTaskDelete(NULL);
 }
 
-/* The stack a fresh task used to run k (FreeRTOS fills a new stack with a known value). */
-static unsigned stack_used(const bench_case *k)
+static void page_worker(void *arg)
 {
-    job j = {k, 0, xTaskGetCurrentTaskHandle()};
+    job *j = arg;
+    casim_step_info info;
+    page(j->k, j->at, &info);
+    j->free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
+    xTaskNotifyGive(j->parent);
+    vTaskDelete(NULL);
+}
+
+/* The stack a fresh task used to run k, or page at of it (FreeRTOS fills a new stack with a known value). */
+static unsigned stack_used(const bench_case *k, int at)
+{
+    job j = {k, 0, xTaskGetCurrentTaskHandle(), at};
     int tries = 0;
     /* the idle task frees the last worker's stack: wait for it rather than report nonsense */
-    while (xTaskCreate(worker, "casim_w", WSTACK, &j, 5, NULL) != pdPASS)
+    while (xTaskCreate(k && at >= 0 ? page_worker : worker, "casim_w", WSTACK, &j, 5, NULL) != pdPASS)
         if (++tries > 50) return WSTACK + 1;    /* shown as more than the stack: a failed measurement */
         else vTaskDelay(pdMS_TO_TICKS(20));
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -101,15 +131,52 @@ static void run_cases(void)
     stack_free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     /* the idle worker's own use, the least of several: one sample moved 520-720 bytes between builds, and
        the least gives the larger, safer figure for casim */
-    stack_base = base_max = stack_used(NULL);
+    stack_base = base_max = stack_used(NULL, -1);
     for (int i = 0; i < 7; i++) {
-        unsigned b = stack_used(NULL);
+        unsigned b = stack_used(NULL, -1);
         if (b < stack_base) stack_base = b;
         if (b > base_max) base_max = b;
     }
     for (int i = 0; i < case_count; i++) {
-        unsigned u = stack_used(&cases[i]);
+        unsigned u = stack_used(&cases[i], -1);
         res[i].stack = u > stack_base ? u - stack_base : 0;    /* a loop-only case uses less than idle's noise */
+    }
+}
+
+/* show steps on each derive the host answered OK */
+static void run_pages(void)
+{
+    for (int i = 0; i < case_count; i++) {
+        const bench_case *k = &cases[i];
+        casim_step_info info;
+        int64_t t[REPS];
+        size_t lw = strlen(k->want), lo;
+        pg[i].count = 0;
+        if (k->op != 0 || k->status != CASIM_OK || page(k, -1, &info) != CASIM_OK) continue;
+        pg[i].count = info.count;
+        pg[i].us_max = 0;
+        for (int at = 0; at < info.count; at++) {
+            int64_t t0 = esp_timer_get_time(), dt;
+            page(k, at, &info);
+            dt = esp_timer_get_time() - t0;
+            if (dt > pg[i].us_max) pg[i].us_max = dt;
+        }
+        for (int r = 0; r < REPS; r++) {
+            int64_t t0 = esp_timer_get_time();
+            page(k, pg[i].count - 1, &info);
+            t[r] = esp_timer_get_time() - t0;
+        }
+        qsort(t, REPS, sizeof t[0], cmp64);
+        pg[i].us_med = t[REPS / 2];
+        /* the last page is the root's result: "d/dX(...) = <answer>", or the derived equation itself */
+        lo = strlen(out);
+        pg[i].ok = page(k, pg[i].count - 1, &info) == CASIM_OK && info.depth == 0 && info.line == CASIM_STEP_RESULT &&
+                   lo >= lw && strcmp(out + lo - lw, k->want) == 0 &&
+                   (lo == lw || (lo > lw + 3 && strncmp(out + lo - lw - 3, " = ", 3) == 0));
+        {
+            unsigned u = stack_used(k, pg[i].count - 1);
+            pg[i].stack = u > stack_base ? u - stack_base : 0;
+        }
     }
 }
 
@@ -117,6 +184,7 @@ static void bench_task(void *arg)
 {
     (void)arg;
     run_cases();
+    run_pages();
     for (;;) {
         int pass = 1;
         printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS);
@@ -130,6 +198,23 @@ static void bench_task(void *arg)
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
                    k->status ? -k->status : (int)strlen(k->want),
                    res[i].ok ? "same" : "DIFFERENT");
+        }
+        {
+            int n = 0, worst = -1;
+            unsigned smax = 0;
+            printf("STEPS %-20s %5s %8s %8s %6s %s\n", "case", "pages", "page_max", "last_med", "stack", "last");
+            for (int i = 0; i < case_count; i++) {
+                if (!pg[i].count) continue;
+                n++;
+                pass &= pg[i].ok;
+                if (worst < 0 || pg[i].us_max > pg[worst].us_max) worst = i;
+                if (pg[i].stack > smax) smax = pg[i].stack;
+                printf("STEPS %-20s %5d %8lld %8lld %6u %s\n", cases[i].name, pg[i].count, (long long)pg[i].us_max,
+                       (long long)pg[i].us_med, pg[i].stack, pg[i].ok ? "same" : "DIFFERENT");
+            }
+            if (worst >= 0)
+                printf("steps: %d derivatives paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
+                       (long long)pg[worst].us_max, cases[worst].name, smax);
         }
         printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u (8 samples, %u to "
                "%u); a case's stack is its worker's use less %u\n",
