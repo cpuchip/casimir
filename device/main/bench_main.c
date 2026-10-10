@@ -1,9 +1,9 @@
 /* casim's on-chip bench: for each case (generated from the host CLI), the derivative on the S3 must
  * be byte-for-byte the host's (derive or simplify); then its time (min and median of REPS runs, esp_timer), the smallest
  * arena that gives OK (bisection), and the stack it takes: one derivative run in a fresh worker task,
- * whose high-water mark less an idle worker's is casim's own. Then show steps (work/steps-derive.md): for each derive
- * that is OK, every page timed once and the last (the root's result, after the whole walk) REPS times, the stack of
- * one page, and the last page must end in the host's answer. The report repeats, so a reader that attaches late still
+ * whose high-water mark less an idle worker's is casim's own. Then show steps (work/steps-derive.md, steps-integrate.md):
+ * for each derive and integrate that is OK, every page timed once and the last (the root's result) REPS times, the
+ * stack of one page, and the last page must end in the host's answer. The report repeats, so a reader that attaches late still
  * gets a whole one (BENCH BEGIN ... DEVICE DONE). */
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +21,12 @@
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536
+/* The calculator's budget for casim's stack (CAS 002b, 12 KB), and what it must leave (abacus #6224): the worst case
+   plus one interrupt frame, which a tick saves on the task stack at any point (192 bytes, measured on this bench by
+   a delay sweep across one tick, #6222; IDF's portasm.S switches to the interrupt stack after the first frame). */
+#define STACK_BUDGET 12288
+#define IRQ_FRAME 192
+#define STACK_FLOOR 256
 
 typedef struct {
     int ok;                 /* the S3's text equals the host's */
@@ -143,7 +149,7 @@ static void run_cases(void)
     }
 }
 
-/* show steps on each derive the host answered OK */
+/* show steps on each derive and integrate the host answered OK */
 static void run_pages(void)
 {
     for (int i = 0; i < case_count; i++) {
@@ -152,7 +158,8 @@ static void run_pages(void)
         int64_t t[REPS];
         size_t lw = strlen(k->want), lo;
         pg[i].count = 0;
-        if (k->op != 0 || k->status != CASIM_OK || page(k, -1, &info) != CASIM_OK) continue;
+        if ((k->op != CASIM_DERIVE && k->op != CASIM_INTEGRATE) || k->status != CASIM_OK || page(k, -1, &info) != CASIM_OK)
+            continue;
         pg[i].count = info.count;
         pg[i].us_max = 0;
         for (int at = 0; at < info.count; at++) {
@@ -213,8 +220,20 @@ static void bench_task(void *arg)
                        (long long)pg[i].us_med, pg[i].stack, pg[i].ok ? "same" : "DIFFERENT");
             }
             if (worst >= 0)
-                printf("steps: %d derivatives paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
+                printf("steps: %d derivatives and integrals paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
                        (long long)pg[worst].us_max, cases[worst].name, smax);
+        }
+        {
+            unsigned worst = 0;
+            int wi = 0;
+            for (int i = 0; i < case_count; i++) {
+                if (res[i].stack > worst) worst = res[i].stack, wi = i;
+                if (pg[i].count && pg[i].stack > worst) worst = pg[i].stack, wi = i;
+            }
+            printf("stack budget: worst %u (%s) + interrupt %u = %u of %u, leaving %d (floor %u)\n", worst,
+                   cases[wi].name, IRQ_FRAME, worst + IRQ_FRAME, STACK_BUDGET,
+                   (int)STACK_BUDGET - (int)(worst + IRQ_FRAME), STACK_FLOOR);
+            if (worst + IRQ_FRAME + STACK_FLOOR > STACK_BUDGET) pass = 0;
         }
         printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u (8 samples, %u to "
                "%u); a case's stack is its worker's use less %u\n",

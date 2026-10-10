@@ -12,9 +12,10 @@
  *   casim pdiv "<f>" X "<g>" RAD      the quotient and remainder of f by g over Q, "q; r" (CAS 010)
  *   casim pgcd "<f>" X "<g>" RAD      the gcd of f and g, primitive with a positive leading coefficient (CAS 010)
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
- *   casim steps "<text>" X RAD       derive's steps, one a line, each indented by its depth: RULE: d/dX(u) = ...
- *                                    (work/steps-derive.md); --one-line: the results only; --tsv: k, depth,
- *                                    T or R (template or result), the rule and the text, tab-separated
+ *   casim steps [integrate] "<text>" X RAD  derive's (or integrate's) steps, one a line, each indented by its
+ *                                    depth: RULE: d/dX(u) = ... (work/steps-derive.md, steps-integrate.md);
+ *                                    --one-line: the results only; --tsv: k, depth, T or R (template or result), the
+ *                                    rule and the text, tab-separated
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
@@ -51,9 +52,9 @@ static casim_status run(int op, const char *text, int var, const char *repl, int
 }
 
 /* every step of derive's working, through casim_step page by page, as a student would walk it */
-static casim_status steps(const char *text, int var, int angle, size_t arena_cap, int flags, int tsv)
+static casim_status steps(int op, const char *text, int var, int angle, size_t arena_cap, int flags, int tsv)
 {
-    casim_req rq = {CASIM_DERIVE, text, model, var, NULL, 0, angle, NULL};
+    casim_req rq = {(casim_op)op, text, model, var, NULL, 0, angle, NULL};
     casim_step_info info;
     char out[OUT];
     casim_status st = casim_step(&rq, -1, flags, &info, out, out_cap, arena, arena_cap);
@@ -65,7 +66,7 @@ static casim_status steps(const char *text, int var, int angle, size_t arena_cap
     }
     if (st != CASIM_OK) printf("%s\n", st == CASIM_NO_ROOM ? "NO_ROOM" : st == CASIM_TOO_LONG ? "TOO_LONG"
                               : st == CASIM_SYNTAX ? "SYNTAX" : st == CASIM_NOT_DIFFERENTIABLE ? "NOT_DIFFERENTIABLE"
-                              : "BAD_ARG");
+                              : st == CASIM_NOT_INTEGRABLE ? "NOT_INTEGRABLE" : "BAD_ARG");
     return st;
 }
 
@@ -100,10 +101,13 @@ int main(int argc, char **argv)
     if (cap > sizeof arena || i >= argc) goto usage;
     if (strcmp(argv[i], "steps") == 0) {
         const char *a = argv[argc - 1];
+        int sop = CASIM_DERIVE;
+        if (i + 1 < argc && (strcmp(argv[i + 1], "integrate") == 0 || strcmp(argv[i + 1], "derive") == 0))
+            sop = argv[i + 1][0] == 'i' ? CASIM_INTEGRATE : CASIM_DERIVE, i++;
         if (argc - i != 4 || strlen(argv[i + 2]) != 1) goto usage;
         angle = strcmp(a, "DEG") == 0 ? CASIM_DEG : strcmp(a, "RAD") == 0 ? CASIM_RAD
               : strcmp(a, "GRAD") == 0 ? CASIM_GRAD : -1;
-        return steps(argv[i + 1], argv[i + 2][0] - 'A', angle, cap, one_line ? CASIM_STEPS_ONE_LINE : 0, tsv) == CASIM_OK ? 0 : 1;
+        return steps(sop, argv[i + 1], argv[i + 2][0] - 'A', angle, cap, one_line ? CASIM_STEPS_ONE_LINE : 0, tsv) == CASIM_OK ? 0 : 1;
     }
     op = strcmp(argv[i], "derive") == 0 ? OP_DERIVE : strcmp(argv[i], "simplify") == 0 ? OP_SIMPLIFY
        : strcmp(argv[i], "expand") == 0 ? OP_EXPAND : strcmp(argv[i], "collect") == 0 ? OP_COLLECT
@@ -168,7 +172,7 @@ usage:
 
 
                     "       casim [--arena N] [--min-arena] pdiv|pgcd \"<f>\" X \"<g>\" RAD|DEG|GRAD\n"
-                    "       casim [--arena N] [--one-line] [--tsv] steps \"<text>\" X RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--one-line] [--tsv] steps [integrate] \"<text>\" X RAD|DEG|GRAD\n"
 
 
                     "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"

@@ -113,22 +113,27 @@ typedef struct {
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
 
-/* Show steps (work/steps-derive.md): the working of rq, one step a page, for derive (CASIM_DERIVE; another op is
-   BAD_ARG). casim_step runs rq with steps on and prints step k into out, "d/dX(before) = after", where after is
-   the rule applied with its parts still to do (a template line) or the step's result. The walk is top-down: a
-   node's template line, its parts' steps, then its result; the root's result is the last step and is plain
-   derive's answer. CASIM_STEPS_ONE_LINE leaves out the template lines (the root's result is then step 0). k < 0
-   only counts. Each call is complete in itself: page k again or k ± 1 with the same rq. info gets the count, and
-   for step k its depth (0 for the root), its line and its rule. NO_ROOM when the steps don't fit the arena (plain
-   derive may still); BAD_ARG for k >= count; TOO_LONG when the step's text passes cap. An equation's lines are
-   d/dX(a)=d/dX(b) and its derived equation. */
+/* Show steps (work/steps-derive.md, work/steps-integrate.md): the working of rq, one step a page, for derive and
+   integrate (CASIM_DERIVE, CASIM_INTEGRATE; another op is BAD_ARG). casim_step runs rq with steps on and prints step
+   k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate, where after is the rule
+   applied with its parts still to do (a template line) or the step's result; integrate's CHECK lines are
+   "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the root's result is
+   the last step and is the op's own answer (never a "+C"). CASIM_STEPS_ONE_LINE leaves out the template lines (for
+   derive the root's result is then step 0). k < 0 only counts. Each call is complete in itself: page k again or
+   k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its rule.
+   NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the step's
+   text passes cap. An equation's derive lines are d/dX(a)=d/dX(b) and its derived equation. */
 #define CASIM_STEPS_ONE_LINE 1
 #define CASIM_STEP_TEMPLATE 0
 #define CASIM_STEP_RESULT 1
 enum {
     CASIM_RULE_SUM, CASIM_RULE_CONSTANT, CASIM_RULE_VARIABLE, CASIM_RULE_CONSTANT_MULTIPLE, CASIM_RULE_PRODUCT,
     CASIM_RULE_POWER, CASIM_RULE_EXPONENTIAL, CASIM_RULE_GENERAL_POWER, CASIM_RULE_CHAIN, CASIM_RULE_BOTH_SIDES,
-    CASIM_RULE_FUNCTION         /* + k: the derivative of a function of var itself, its name from casim_rule_name */
+    CASIM_RULE_RECIPROCAL,      /* integrate: 1÷(aX+b), to LN(ABS(aX+b))÷a */
+    CASIM_RULE_POLYNOMIAL,      /* integrate: a product multiplied out, then term by term */
+    CASIM_RULE_CHECK,           /* integrate: the term's answer differentiated back to the term */
+    CASIM_RULE_FUNCTION         /* + k: a function of var itself (derive), or of aX+b (integrate's table), its name
+                                   from casim_rule_name */
 };
 typedef struct {
     int count;                  /* the steps */

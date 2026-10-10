@@ -231,6 +231,23 @@ call is complete in itself. Statuses: derive's, and NO_ROOM when the steps don't
 | `casim steps "X^2=Y+3×X" X RAD` | `BOTH SIDES: d/dX(X^2)=d/dX(3×X+Y) /   POWER: d/dX(X^2) = 2×X /   SUM: d/dX(3×X+Y) = d/dX(3×X)+d/dX(Y) /     CONSTANT MULTIPLE: d/dX(3×X) = 3 /     CONSTANT: d/dX(Y) = 0 /   SUM: d/dX(3×X+Y) = 3 / BOTH SIDES: 2×X=3` |
 | `casim --one-line steps "X^2×SIN(X)" X RAD` | `PRODUCT: d/dX(X^2×SIN(X)) = 2×X×SIN(X)+X^2×COS(X) /   POWER: d/dX(X^2) = 2×X /   SIN: d/dX(SIN(X)) = COS(X)` |
 
+`steps integrate "<text>" X` walks integrate the same way (work/steps-integrate.md). Each integrand is shown as it
+was typed and each answer in canonical form, without "+C". The steps are:
+- SUM splits a sum into its terms;
+- CONSTANT MULTIPLE takes the constant out;
+- a table form (POWER, RECIPROCAL, EXP, SIN, …) first states its substitution `∫(SIN(U))dU÷2, U=2×X` when the
+  argument is aX+b, not X itself;
+- POLYNOMIAL multiplies a product out;
+- every term's CHECK differentiates its answer back before its result.
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps integrate "X^2+SIN(2×X)" X RAD` | `SUM: ∫(X^2+SIN(2×X))dX = ∫(X^2)dX+∫(SIN(2×X))dX /   CHECK: d/dX(X^3÷3) = X^2 /   POWER: ∫(X^2)dX = X^3÷3 /   SIN: ∫(SIN(2×X))dX = ∫(SIN(U))dU÷2, U=2×X /   CHECK: d/dX(-0.5×COS(2×X)) = SIN(2×X) /   SIN: ∫(SIN(2×X))dX = -0.5×COS(2×X) / SUM: ∫(X^2+SIN(2×X))dX = -0.5×COS(2×X)+X^3÷3` |
+| `casim steps integrate "3×COS(X)" X RAD` | `CONSTANT MULTIPLE: ∫(3×COS(X))dX = 3×∫(COS(X))dX /   COS: ∫(COS(X))dX = SIN(X) / CHECK: d/dX(3×SIN(X)) = 3×COS(X) / CONSTANT MULTIPLE: ∫(3×COS(X))dX = 3×SIN(X)` |
+| `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(0.5×LN(ABS(2×X+1))) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = 0.5×LN(ABS(2×X+1))` |
+| `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-0.5×X^2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-0.5×X^2+X^3÷3` |
+| `casim steps integrate "5-EXP(3×X)" X RAD` | `SUM: ∫(5-EXP(3×X))dX = ∫(5)dX-∫(EXP(3×X))dX /   CHECK: d/dX(5×X) = 5 /   CONSTANT: ∫(5)dX = 5×X /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 / SUM: ∫(5-EXP(3×X))dX = 5×X-EXP(3×X)÷3` |
+
 ### pdiv, pgcd, cancel: polynomial division
 
 The polynomials are read as solve reads them, with degree ≤ 12 and coefficients ≤ 10^7.
@@ -273,8 +290,9 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
   simplify returns TOO_LONG past 191 bytes, whatever cap the caller gives. derive and simplify fill the caller's cap.
 - **The arena.** The calculator gives Casimir 8 KiB, and the visible examples are measured there. A larger arena
   answers more (the command line's default is 8,192; `--arena` changes it). At most 524,280 bytes of it are used.
-- **The depth guard.** Nesting past 46 levels is NO_ROOM, so the stack Casimir uses is bounded: about 12 KB on the
-  ESP32-S3.
+- **The depth guard.** Nesting past 46 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,808
+  bytes on the ESP32-S3, plus one interrupt frame (192 bytes there) that a tick saves on the running task's stack.
+  A task of 12 KB holds both with 288 bytes to spare.
 - **Polynomials.** solve, factor, pdiv, pgcd and cancel take degree ≤ 12 and coefficients ≤ 10^7 once the polynomial
   is cleared to integers.
 - **Numbers.** Exact rationals with numerator and denominator below 2^62. Past that, a number is kept as typed and

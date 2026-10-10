@@ -99,7 +99,12 @@ trip point: 49 measured 12,464 bytes worst and 48 measured 12,064. In CAS 004 th
 found to move with the build (520 or 720 bytes; stable within a run), which put 48's worst at 12,272 against
 the 12,288 ceiling: no margin, so abacus moved the guard to 47 (#4797). CAS 009 and 010 brought the worst to 12,048
 (measured: +32 was the bench's own run() frame, no longer inlined once casim_req gained repl2; +16 was casim_run's
-frame, 48 to 64 bytes, with CAS 010's three cases), 240 bytes of margin, so abacus moved it to 46 (#5634). The parser
+frame, 48 to 64 bytes, with CAS 010's three cases), 240 bytes of margin, so abacus moved it to 46 (#5634). Show steps'
+bench found that a tick's interrupt saves one 192-byte frame on the running task's stack at any point (a delay swept
+across one tick moved a long solve case by exactly that, #6222; IDF's interrupt path switches stacks after it, so
+one frame, not one a level). The budget is the worst case plus that frame, 11,808 + 192 = 12,000 of 12,288; the
+bench reports it and fails under 256 bytes to spare (abacus #6224). The calculator runs Casimir on a 32 KB task
+(soroban #6236), so the 12 KB is the library's promise to its other users. The parser
 is a loop and a left chain
 of powers prints in one, so neither counts. The constructors (sum, product, power) are not counted: they
 recurse one level on their own, under a walk that is.

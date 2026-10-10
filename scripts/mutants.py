@@ -426,6 +426,39 @@ MUTANTS = {
     "steps-recorded-off": [
         ("src/casim.c", "    if (c->steps) note(c, r, v);", "    note(c, r, v);"),
     ],
+    # show steps 2 (integrate, work/steps-integrate.md): a factor's result run again with the sign flipped (a recompute
+    # that differs from integrate's own answer); the substitution's ÷a taking b; a SUM template's signs flipped; a
+    # divisor's 1÷ lost in CONSTANT MULTIPLE's template; no CHECK lines; the typed printer losing parentheses; the
+    # cached constants kept past the arena's reset; the root's result line missing
+    "isteps-recompute-sign": [
+        ("src/casim.c", "    return integ_factor(c, t->before, t->flags & 2 ? -1 : 1, c->var);",
+         "    return integ_factor(c, t->before, t->flags & 2 ? 1 : -1, c->var);"),
+    ],
+    "isteps-subst-a": [
+        ("src/casim.c", "        put_whole(c, w, num(c, &lin[1]), 5);", "        put_whole(c, w, num(c, &lin[0]), 5);"),
+    ],
+    "isteps-sum-signs": [
+        ("src/casim.c", "        puts_(w, (nd(c, z)->kind == K_BSUB ? -sign : sign) < 0 ? \"-\" : \"+\");",
+         "        puts_(w, (nd(c, z)->kind == K_BSUB ? sign : -sign) < 0 ? \"-\" : \"+\");"),
+    ],
+    "isteps-cm-divisor": [
+        ("src/casim.c", "    put_raw_integral(c, w, g, s < 0);", "    put_raw_integral(c, w, g, s < 0 && 0);"),
+    ],
+    "isteps-no-check": [
+        ("src/casim.c", "    if (rec && checked) irecord(c, depth, CASIM_RULE_CHECK, CASIM_STEP_RESULT, t, 1, VIA_TERM);",
+         "    if (0 && rec && checked) irecord(c, depth, CASIM_RULE_CHECK, CASIM_STEP_RESULT, t, 1, VIA_TERM);"),
+    ],
+    "isteps-raw-parens": [
+        ("src/casim.c", "    bool paren = raw_level(c, r) < min || (nd(c, r)->kind == K_NEG && !lead);",
+         "    bool paren = raw_level(c, r) < min - 1 || (nd(c, r)->kind == K_NEG && !lead);"),
+    ],
+    "isteps-stale-constants": [
+        ("src/casim.c", "        if (c->small[j] >= parsed / 8u) c->small[j] = 0;", "        if (0) c->small[j] = 0;"),
+    ],
+    "isteps-no-root-result": [
+        ("src/casim.c", "    if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, r0, 1, VIA_SUM);",
+         "    if (rec && own && depth) irecord(c, depth, rule, CASIM_STEP_RESULT, r0, 1, VIA_SUM);"),
+    ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
     ],

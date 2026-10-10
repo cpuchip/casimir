@@ -128,7 +128,7 @@ typedef struct {
     int sub_var, sub_count;     /* subst: the variable replaced, and how often */
     ref sub_val;                /* its canonical replacement */
     ref small[SMALL], pi;
-    bool steps;                 /* show steps: derive records each node's (before, after, depth) as it returns */
+    bool steps;                 /* show steps: derive records each node's (before, after) as it returns */
     ref step_last;              /* the last step recorded; each links to the one before */
 } ctx;
 
@@ -154,7 +154,8 @@ static rat *rt(const ctx *c, ref r)
 /* Every structural walk (canonical form, derivative, comparison, printing) enters through enter(): past
    CASIM_DEPTH_MAX nested entries the call returns NO_ROOM (TOO_LONG before CAS 004). So the stack is bounded by construction, not
    by the inputs measured: the limit was set on the S3 so that the deepest case of every kind of nesting
-   stays within 12 KB (unit CAS 002b; abacus's ruling, #4236). The sum, product and power constructors
+   stays within 12 KB with one interrupt frame (192 B on the S3: a tick saves it on the running task's stack) on top
+   (unit CAS 002b; abacus's ruling, #4236; the frame, #6222). The sum, product and power constructors
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
 #ifndef CASIM_DEPTH_MAX
@@ -2766,7 +2767,8 @@ typedef struct {
 } walk_t;
 
 static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT MULTIPLE", "PRODUCT", "POWER",
-                                        "EXPONENTIAL", "GENERAL POWER", "CHAIN", "BOTH SIDES"};
+                                        "EXPONENTIAL", "GENERAL POWER", "CHAIN", "BOTH SIDES", "RECIPROCAL",
+                                        "POLYNOMIAL", "CHECK"};
 
 const char *casim_rule_name(int rule)
 {
@@ -3002,6 +3004,9 @@ static void walk(ctx *c, ref r, int depth, walk_t *W)
     c->depth--;
 }
 
+static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
+                              void *arena, size_t arena_cap);
+
 casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                         void *arena, size_t arena_cap)
 {
@@ -3011,6 +3016,7 @@ casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *
     walk_t W;
     casim_step_info none;
     if (!info) info = &none;
+    if (rq && rq->op == CASIM_INTEGRATE) return do_isteps(rq, k, flags, info, out, cap, arena, arena_cap);
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
     if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
@@ -4529,6 +4535,42 @@ static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
 }
 
 /* ∫ (u)^n, u = aX + b linear (a, b rational, a != 0): (u)^(n+1)/((n+1) a), or LN(ABS(u))/a for n = -1. */
+/* Integrate's steps (work/steps-integrate.md): after integrate has answered, a walk of the typed text that takes the
+   same decisions (irec_sum, irec_term, irec_factor below) records each step in order: the typed subtree it applies
+   to, its rule, its line, the sign of a divisor and the call that gives its result. That call runs again when the
+   step is printed, so no step keeps an answer, and integrate itself is unchanged with steps off. The records sit at
+   the arena's top, which is free once the text is parsed. */
+enum { VIA_TERM, VIA_FACTOR, VIA_SUM };
+
+typedef struct {
+    ref prev, before;
+    uint8_t rule, depth, flags, pad;    /* flags: 1 a result line, 2 a divisor, the call in 4 and 8 */
+} istep_t;
+
+static istep_t *istep_at(const ctx *c, ref s)
+{
+    return (istep_t *)(void *)(c->mem + (size_t)s * 8u);
+}
+
+static __attribute__((noinline)) void irecord(ctx *c, int depth, int rule, int line, ref before, int s, int via)
+{
+    ref at;
+    if (c->st != CASIM_OK) return;
+    if (c->used + 8 > c->top) {
+        c->st = CASIM_NO_ROOM;
+        return;
+    }
+    c->top -= 8;
+    at = (ref)(c->top / 8u);
+    istep_at(c, at)->prev = c->step_last;
+    istep_at(c, at)->before = before;
+    istep_at(c, at)->rule = (uint8_t)rule;
+    istep_at(c, at)->depth = (uint8_t)depth;
+    istep_at(c, at)->flags = (uint8_t)((line == CASIM_STEP_RESULT) | (s < 0) << 1 | via << 2);
+    istep_at(c, at)->pad = 0;
+    c->step_last = at;
+}
+
 static ref integ_linpow(ctx *c, ref u, const rat *lin, const rat *n)
 {
     rat np1, k;
@@ -4864,6 +4906,443 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+
+/* canon_const's twin for the steps' walk and templates: a second caller of canon_const moved gcc's inlining of it in
+   integ_checked (16 bytes off its frame on the S3), and integrate stays as it was with steps off. */
+static __attribute__((noinline)) ref steps_const(ctx *c, ref r, int var)
+{
+    ref k = small(c, C_1), z = r;
+    while (nd(c, z)->kind == K_BMUL || nd(c, z)->kind == K_BDIV) {
+        ref o = nd(c, z)->b;
+        if (!raw_has_var(c, o, var)) {
+            ref oc = canon(c, o);
+            k = mul2(c, k, nd(c, z)->kind == K_BMUL ? oc : power(c, oc, small(c, C_M1)));
+        }
+        z = nd(c, z)->a;
+    }
+    if (!raw_has_var(c, z, var)) k = mul2(c, k, canon(c, z));
+    return k;
+}
+
+/* The walk that records integrate's steps: integ's own decisions taken again on the typed text (integrate answered,
+   so each branch here is one it took). own: the level records its result line (a factor that is its whole term
+   leaves it to the term); rec false only classifies (a minus through a factor is one step). */
+static int irec_term(ctx *c, ref t, int depth, bool checked, bool own, bool rec);
+
+static ref bare(ctx *c, ref r, int *sign);
+
+static int irec_sum(ctx *c, ref r0, int depth, bool own, bool rec)
+{
+    int sign, m = 0, rule;
+    ref r = bare(c, r0, &sign), y = r;
+    bool sum = nd(c, r)->kind == K_BADD || nd(c, r)->kind == K_BSUB;
+    if (!sum && sign > 0) return irec_term(c, r, depth, true, own, rec);
+    if (!enter(c)) return 0;
+    rule = sum ? CASIM_RULE_SUM : CASIM_RULE_CONSTANT_MULTIPLE;
+    if (rec) irecord(c, depth, rule, CASIM_STEP_TEMPLATE, r0, 1, VIA_SUM);
+    if (!sum) irec_term(c, r, depth + 1, true, true, rec);          /* a minus through one term */
+    else {
+        while (nd(c, y)->kind == K_BADD || nd(c, y)->kind == K_BSUB) m++, y = nd(c, y)->a;
+        irec_term(c, y, depth + 1, true, true, rec);
+        for (int i = m - 1; i >= 0 && c->st == CASIM_OK; i--) {
+            ref z = r;
+            for (int j = 0; j < i; j++) z = nd(c, z)->a;
+            irec_term(c, nd(c, z)->b, depth + 1, true, true, rec);
+        }
+    }
+    if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, r0, 1, VIA_SUM);
+    c->depth--;
+    return rule;
+}
+
+/* a factor's rule, as integ_factor decides it; its substitution's template and its result recorded */
+static int irec_factor(ctx *c, ref f0, int s, int depth, bool own, bool rec)
+{
+    int negs = 0, rule = CASIM_RULE_POLYNOMIAL;
+    ref f = f0;
+    const node *x;
+    rat *lin = NULL, *p, n;
+    bool done = false;
+    while (nd(c, f)->kind == K_GROUP || nd(c, f)->kind == K_NEG) {
+        if (nd(c, f)->kind == K_NEG) negs++;
+        f = nd(c, f)->a;
+    }
+    x = nd(c, f);
+    if (!enter(c)) return 0;
+    if (negs % 2) {
+        rule = irec_factor(c, f, s, depth, false, false);           /* a minus through: one step */
+        if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, f0, s, VIA_FACTOR);
+        c->depth--;
+        return rule;
+    }
+    if (s > 0 && (x->kind == K_BADD || x->kind == K_BSUB)) {
+        rule = irec_sum(c, f, depth, own, rec);                     /* a constant times a sum */
+        c->depth--;
+        return rule;
+    }
+    if (s > 0 && (x->kind == K_BMUL || x->kind == K_BDIV)) {
+        rule = irec_term(c, f, depth, false, false, rec);           /* a product inside a minus or parentheses */
+        if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, f0, s, VIA_FACTOR);
+        c->depth--;
+        return rule;
+    }
+    if (x->kind == K_RFN) {
+        int id = x->id;
+        done = true;
+        if (id == F_SQRT || id == F_SQ || id == F_INV) {
+            rat_int(&n, id == F_SQ ? 2 : -1);
+            if (id == F_SQRT) rat_make(&n, 1, 2);
+            if (s < 0) n.p = -n.p;
+            if (linear(c, x->a, c->var, &lin)) rule = rat_is(&n, -1, 1) ? CASIM_RULE_RECIPROCAL : CASIM_RULE_POWER;
+        } else if (linear(c, x->a, c->var, &lin)) rule = CASIM_RULE_FUNCTION + id;
+    }
+    if (!done && x->kind == K_BPOW && nd(c, x->a)->kind != K_BPOW) {
+        rat *e;
+        if (poly_of(c, x->b, c->var, &e) && pdeg(e) == 0 && linear(c, x->a, c->var, &lin)) {
+            n = e[0];
+            if (s < 0) n.p = -n.p;
+            rule = rat_is(&n, -1, 1) ? CASIM_RULE_RECIPROCAL : CASIM_RULE_POWER;
+            done = true;
+        }
+    }
+    if (!done && s < 0 && linear(c, f, c->var, &lin)) rule = CASIM_RULE_RECIPROCAL, done = true;
+    if (!done && poly_of(c, f, c->var, &p) && pdeg(p) == 1) rule = CASIM_RULE_POWER, lin = p;
+    if (rec && lin && !(rat_is(&lin[1], 1, 1) && rat_is(&lin[0], 0, 1)))
+        irecord(c, depth, rule, CASIM_STEP_TEMPLATE, f0, s, VIA_FACTOR);
+    if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, f0, s, VIA_FACTOR);
+    c->depth--;
+    return rule;
+}
+
+/* a term's steps, as integ_term (and integ_checked when checked) take it */
+static int irec_term(ctx *c, ref t, int depth, bool checked, bool own, bool rec)
+{
+    int rule, nv = 0, m = 0, s = 1;
+    ref y = t, g = 0, k;
+    if (!enter(c)) return 0;
+    if (!raw_has_var(c, t, c->var)) rule = CASIM_RULE_CONSTANT;
+    else {
+        rat e;
+        bool ns = false, cm;
+        while (nd(c, y)->kind == K_BMUL || nd(c, y)->kind == K_BDIV) m++, y = nd(c, y)->a;
+        if (raw_has_var(c, y, c->var)) nv++, g = y, s = 1;
+        for (int i = m - 1; i >= 0; i--) {              /* the right sides, left to right; the last holding var */
+            ref z = t;
+            for (int j = 0; j < i; j++) z = nd(c, z)->a;
+            if (raw_has_var(c, nd(c, z)->b, c->var)) nv++, g = nd(c, z)->b, s = nd(c, z)->kind == K_BDIV ? -1 : 1;
+        }
+        k = steps_const(c, t, c->var);
+        cm = !is_k(c, k, 1, 1);
+        if (nv == 1 && !mono_pow(c, g, c->var, &e, &ns)) {
+            if (cm) {
+                if (rec) irecord(c, depth, CASIM_RULE_CONSTANT_MULTIPLE, CASIM_STEP_TEMPLATE, t, 1, VIA_TERM);
+                irec_factor(c, g, s, depth + 1, true, rec);
+                rule = CASIM_RULE_CONSTANT_MULTIPLE;
+            } else rule = irec_factor(c, g, s, depth, false, rec);
+        } else if (nv == 1) {
+            int r1;
+            if (s < 0) e.p = -e.p;
+            r1 = rat_is(&e, -1, 1) ? CASIM_RULE_RECIPROCAL : CASIM_RULE_POWER;
+            if (cm) {
+                if (rec) irecord(c, depth, CASIM_RULE_CONSTANT_MULTIPLE, CASIM_STEP_TEMPLATE, t, 1, VIA_TERM);
+                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_FACTOR);
+                rule = CASIM_RULE_CONSTANT_MULTIPLE;
+            } else rule = r1;
+        } else {
+            if (rec) irecord(c, depth, CASIM_RULE_POLYNOMIAL, CASIM_STEP_TEMPLATE, t, 1, VIA_TERM);
+            rule = CASIM_RULE_POLYNOMIAL;
+        }
+    }
+    if (rec && checked) irecord(c, depth, CASIM_RULE_CHECK, CASIM_STEP_RESULT, t, 1, VIA_TERM);
+    if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, t, 1, VIA_TERM);
+    c->depth--;
+    return rule;
+}
+
+/* ---- integrate's steps (work/steps-integrate.md): printed from the records, each result its call run again ---- */
+
+/* A typed subtree as typed: numbers as written, the operators between, parentheses where the tree needs them (a
+   lower operation inside a higher, the right side of - and ÷ holding its own kind, a minus not leading a sum, either
+   side of a power unless it is a single item). The left side of every integrate step, so the student sees what
+   they wrote; answers stay in canonical form. */
+static int raw_level(const ctx *c, ref r)
+{
+    switch (nd(c, r)->kind) {
+    case K_BADD:
+    case K_BSUB: return 1;
+    case K_BMUL:
+    case K_BDIV: return 2;
+    case K_NEG: return 3;
+    case K_BPOW: return 4;
+    default: return 5;
+    }
+}
+
+static void raw_print(ctx *c, out_t *w, ref r, int min);
+
+static __attribute__((noinline)) void raw_side(ctx *c, out_t *w, ref r, int min, bool lead)
+{
+    bool paren = raw_level(c, r) < min || (nd(c, r)->kind == K_NEG && !lead);
+    if (paren) puts_(w, "(");
+    raw_print(c, w, r, paren ? 0 : min);
+    if (paren) puts_(w, ")");
+}
+
+static void raw_print(ctx *c, out_t *w, ref r, int min)
+{
+    const node *x = nd(c, r);
+    static const char *const OP[] = {"+", "-", TIMES, DIVIDE, "^"};
+    (void)min;
+    if (!enter(c)) return;
+    switch (x->kind) {
+    case K_BADD:
+    case K_BSUB:
+    case K_BMUL:
+    case K_BDIV:
+    case K_BPOW: {
+        int lv = raw_level(c, r), op = x->kind - K_BADD;
+        raw_side(c, w, x->a, lv == 4 ? 5 : lv, lv == 1);
+        puts_(w, OP[op]);
+        raw_side(c, w, nd(c, r)->b, lv == 4 ? 5 : lv + 1, false);
+        break;
+    }
+    case K_NEG:
+        puts_(w, "-");
+        raw_side(c, w, x->a, 3, false);
+        break;
+    case K_GROUP:
+        puts_(w, "(");
+        raw_print(c, w, x->a, 0);
+        puts_(w, ")");
+        break;
+    case K_RFN:
+        puts_(w, FNAME[x->id]);
+        puts_(w, "(");
+        raw_print(c, w, x->a, 0);
+        puts_(w, ")");
+        break;
+    case K_LIT:
+    case K_VAR:
+    case K_PI: print(c, w, r); break;
+    default: print(c, w, canon(c, r)); break;          /* an opaque name or function: its canonical text */
+    }
+    c->depth--;
+}
+
+/* ∫(t)dX for a typed t, as typed (a divisor's as 1÷t) */
+static void put_raw_integral(ctx *c, out_t *w, ref t, bool divisor)
+{
+    char d[3] = {'d', (char)('A' + c->var), '\0'};
+    puts_(w, "\xe2\x88\xab(");
+    if (divisor) {
+        puts_(w, "1" DIVIDE);
+        raw_side(c, w, t, 5, false);
+    } else raw_print(c, w, t, 0);
+    puts_(w, ")");
+    puts_(w, d);
+}
+
+static void put_integral(ctx *c, out_t *w, ref t)
+{
+    char d[3] = {'d', (char)('A' + c->var), '\0'};
+    puts_(w, "\xe2\x88\xab(");
+    print(c, w, t);
+    puts_(w, ")");
+    puts_(w, d);
+}
+
+/* the call that gave the record's result, run again (steps off) */
+static ref irecompute(ctx *c, const istep_t *t)
+{
+    const rat *poly = NULL;
+    int via = t->flags >> 2 & 3;
+    if (via == VIA_SUM) return integ(c, t->before, c->var);
+    if (via == VIA_TERM) return integ_term(c, t->before, c->var, &poly);
+    return integ_factor(c, t->before, t->flags & 2 ? -1 : 1, c->var);
+}
+
+/* a typed subtree with its groups and minuses taken off; *sign the minuses' sign */
+static ref bare(ctx *c, ref r, int *sign)
+{
+    *sign = 1;
+    while (nd(c, r)->kind == K_GROUP || nd(c, r)->kind == K_NEG) {
+        if (nd(c, r)->kind == K_NEG) *sign = -*sign;
+        r = nd(c, r)->a;
+    }
+    return r;
+}
+
+/* SUM's template: each term's integral, with its sign, as integ takes them */
+static void put_sum_template(ctx *c, out_t *w, ref r0)
+{
+    int sign, m = 0;
+    ref r = bare(c, r0, &sign), y = r;
+    if (nd(c, r)->kind != K_BADD && nd(c, r)->kind != K_BSUB) {     /* a minus through one term */
+        puts_(w, "-");
+        put_raw_integral(c, w, r, false);
+        return;
+    }
+    while (nd(c, y)->kind == K_BADD || nd(c, y)->kind == K_BSUB) m++, y = nd(c, y)->a;
+    if (sign < 0) puts_(w, "-");
+    put_raw_integral(c, w, y, false);
+    for (int i = m - 1; i >= 0; i--) {
+        ref z = r;
+        for (int j = 0; j < i; j++) z = nd(c, z)->a;
+        puts_(w, (nd(c, z)->kind == K_BSUB ? -sign : sign) < 0 ? "-" : "+");
+        put_raw_integral(c, w, nd(c, z)->b, false);
+    }
+}
+
+/* CONSTANT MULTIPLE's template: k×∫(g)dX, g the term's one factor holding var */
+static void put_cm_template(ctx *c, out_t *w, ref t)
+{
+    ref k = steps_const(c, t, c->var), z = t, g = 0;
+    int s = 1;
+    while (nd(c, z)->kind == K_BMUL || nd(c, z)->kind == K_BDIV) {
+        if (raw_has_var(c, nd(c, z)->b, c->var)) g = nd(c, z)->b, s = nd(c, z)->kind == K_BDIV ? -1 : 1;
+        z = nd(c, z)->a;
+    }
+    if (raw_has_var(c, z, c->var)) g = z, s = 1;
+    if (!g) return;
+    put_whole(c, w, k, 2);
+    puts_(w, TIMES);
+    put_raw_integral(c, w, g, s < 0);
+}
+
+/* a substitution's template: ∫(H(U))dU÷a, U=aX+b (U, or V when var is U) */
+static void put_subst_template(ctx *c, out_t *w, const istep_t *t)
+{
+    int sign, uid = c->var == 'U' - 'A' ? 'V' - 'A' : 'U' - 'A', id = -1;
+    ref f = bare(c, t->before, &sign), u = f, U = leaf(c, K_VAR, uid), H;
+    const node *x = nd(c, f);
+    rat *lin, n;
+    char d[3] = {'d', (char)('A' + uid), '\0'};
+    rat_int(&n, t->flags & 2 ? -1 : 1);
+    if (x->kind == K_RFN) {
+        id = x->id, u = x->a;
+        if (id == F_SQRT || id == F_SQ || id == F_INV) {
+            if (id == F_SQRT) rat_make(&n, t->flags & 2 ? -1 : 1, 2);
+            else rat_int(&n, (id == F_SQ ? 2 : -1) * (t->flags & 2 ? -1 : 1));
+            id = -1;
+        }
+    } else if (x->kind == K_BPOW) {
+        rat *e;
+        u = x->a;
+        if (!poly_of(c, x->b, c->var, &e)) return;
+        n = e[0];
+        if (t->flags & 2) n.p = -n.p;
+    }
+    if (!linear(c, u, c->var, &lin)) return;
+    H = id >= 0 ? fn(c, id, U) : power(c, U, num(c, &n));
+    if (rat_is(&lin[1], -1, 1)) puts_(w, "-");              /* ÷(-1) as a minus */
+    puts_(w, "\xe2\x88\xab(");
+    print(c, w, H);
+    puts_(w, ")");
+    puts_(w, d);
+    if (!rat_is(&lin[1], 1, 1) && !rat_is(&lin[1], -1, 1)) {
+        puts_(w, DIVIDE);
+        put_whole(c, w, num(c, &lin[1]), 5);
+    }
+    puts_(w, ", ");
+    puts_(w, d + 1);
+    puts_(w, "=");
+    print(c, w, canon(c, u));
+}
+
+/* step k's text */
+static __attribute__((noinline)) void put_istep(ctx *c, out_t *w, const istep_t *t)
+{
+    ref F;
+    if (t->rule == CASIM_RULE_CHECK) {          /* d/dX(F) = f */
+        char d[6] = {'d', '/', 'd', (char)('A' + c->var), '(', '\0'};
+        F = irecompute(c, t);
+        puts_(w, d);
+        print(c, w, F);
+        puts_(w, ") = ");
+        raw_print(c, w, t->before, 0);
+        return;
+    }
+    put_raw_integral(c, w, t->before, t->flags & 2);
+    puts_(w, " = ");
+    if (t->flags & 1) {
+        print(c, w, irecompute(c, t));
+        return;
+    }
+    switch (t->rule) {
+    case CASIM_RULE_SUM: put_sum_template(c, w, t->before); break;
+    case CASIM_RULE_CONSTANT_MULTIPLE:
+        if ((t->flags >> 2 & 3) == VIA_SUM) put_sum_template(c, w, t->before);
+        else put_cm_template(c, w, t->before);
+        break;
+    case CASIM_RULE_POLYNOMIAL:
+        c->sub_var = -1;
+        put_integral(c, w, expand_fully(c, canon(c, t->before)));
+        break;
+    default: put_subst_template(c, w, t);
+    }
+}
+
+/* the arena back to where parsing left it, the constants cached since dropped */
+static void unparse(ctx *c, size_t parsed)
+{
+    c->used = parsed;
+    for (int j = 0; j < SMALL; j++)
+        if (c->small[j] >= parsed / 8u) c->small[j] = 0;
+    if (c->pi >= parsed / 8u) c->pi = 0;
+}
+
+static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
+                              void *arena, size_t arena_cap)
+{
+    ctx c;
+    ref n = SPARE, F = SPARE, at;
+    out_t w = {out, cap, 0, false};
+    int count = 0, i;
+    size_t parsed;
+    memset(info, 0, sizeof *info);
+    if (cap) out[0] = '\0';
+    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
+        rq->angle > CASIM_GRAD)
+        return CASIM_BAD_ARG;
+    if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
+    start(&c, rq->eqn, rq->angle, arena, arena_cap);
+    c.rtl = rq->model == CASIM_MODEL_STU;
+    c.opaque = true;
+    c.var = rq->var;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;
+    parsed = c.used;
+    if (c.st == CASIM_OK) F = integ(&c, n, rq->var);       /* integrate itself: its answer, or its status */
+    if (c.st == CASIM_OK && (F == SPARE || F == 0)) c.st = CASIM_NO_ROOM;
+    if (c.st != CASIM_OK) return cap ? finish(&c, F, out, cap) : c.st;
+    /* a step points only at the typed tree (below parsed) and its records (at the top): the run's nodes go, and the
+       recording walk's after it, so each page's call runs again in the arena the run had, less 8 bytes a step */
+    unparse(&c, parsed);
+    irec_sum(&c, n, 0, true, true);
+    unparse(&c, parsed);
+    if (c.st != CASIM_OK) return c.st;
+    for (at = c.step_last; at; at = istep_at(&c, at)->prev)
+        count += !(flags & CASIM_STEPS_ONE_LINE) || istep_at(&c, at)->flags & 1;
+    info->count = count;
+    if (k < 0) return CASIM_OK;
+    if (k >= count) return CASIM_BAD_ARG;
+    /* the records link backwards: step k is count - 1 - k back from the last */
+    for (at = c.step_last, i = count - 1;; at = istep_at(&c, at)->prev) {
+        if ((flags & CASIM_STEPS_ONE_LINE) && !(istep_at(&c, at)->flags & 1)) continue;
+        if (i-- == k) break;
+    }
+    {
+        istep_t t = *istep_at(&c, at);          /* a copy: printing allocates, and nothing may move it, but be sure */
+        info->depth = t.depth;
+        info->line = t.flags & 1 ? CASIM_STEP_RESULT : CASIM_STEP_TEMPLATE;
+        info->rule = t.rule;
+        put_istep(&c, &w, &t);
+    }
+    if (c.st == CASIM_OK && w.full) c.st = CASIM_TOO_LONG;
+    if (c.st != CASIM_OK && cap) out[0] = '\0';
+    return c.st;
 }
 
 /* ---- definite integrals (unit CAS 009) ----
