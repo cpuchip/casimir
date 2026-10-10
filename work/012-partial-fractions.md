@@ -48,9 +48,13 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
    - The powers of one factor appear in ascending order: A÷(X-1)+B÷(X-1)^2, as the books write it.
    - work/012-examples.txt fixes the exact spelling. It includes 7÷(9×(3×X-2)^2) for a constant numerator and
      (2×X-1)÷(3×(X^2-X+1)) for a linear one.
-5. **The factor order** (casim's lean 2, ruled yes): D1's order from solve's steps. That's linear factors by root
-   ascending, then quadratics by (a, b, c), then the rest. It is not factor's own order, so every place a student
-   sees factors agrees.
+5. **The factor order** (casim's lean 2, ruled yes): linear factors by root ascending, then quadratics by (a, b, c),
+   then the rest. It is not factor's own order.
+   - **X counts as the linear factor with root 0** (Q0013: 1÷(X+1)-1÷X+1÷X^2).
+   - Solve's steps (D1) put X^k first, because they take it out first. Partial fractions takes nothing out first, so
+     root order holds throughout.
+   - This file first said "D1's order" and gave the root order as its meaning. The two differ only on X, and the
+     examples (b958e04) follow the root order, as written here.
 6. **An unproven factor of degree ≥ 4** (casim's lean 4, ruled yes): decompose over the factors found, with status
    PARTIAL as factor gives it. The answer is still exact and still checked (rule 7). The status says only that a
    factor might split further.
