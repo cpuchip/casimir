@@ -70,12 +70,15 @@ reads back through casim's own parser to the value the judge reads; the answer i
   ×1.23 plain solve's time at the median, ×2.24 at most (V0012, a solve of under a millisecond); V0022 pages 27 steps
   at 144 ms each, and the slowest page of all is 308 ms, (2X-3)^4×(X^2-2)^4, whose plain solve takes 303 ms. The arena: plain solve's and
   512 bytes (the answer's slot, the printer's room), measured on the host over the corpus's 578.
-- The bench's per-case stacks: the worst and its budget are unchanged (11,808 + 192 = 12,000 of 12,288). A few
-  rows read differently from rc4's bench, both ways (−112 to +272 bytes), on derive's untouched steps too, and a
-  different few in each of four builds; the same binary twice reads identically, the rows that move change with the
-  bench binary alone (the same casim source under two bench builds: I0010 1,456 and 1,184, I0030 1,792 and 2,016),
-  and a delay before the page moves none of six of them across 27 phases. Casim's frames are rc4's, function by function: the readings follow the bench
-  binary, not casim. What in the binary moves them is not settled (+272 is more than one 192-byte tick frame).
+- The bench's per-case stacks: the worst and its budget were unchanged at 18c58af (11,808 + 192 = 12,000 of 12,288),
+  but a few rows read differently from rc4's bench, both ways (−112 to +272 bytes), on derive's untouched steps too,
+  and a different few in each build; the same binary twice read identically. Casim's frames are rc4's, function by
+  function. abacus's test (#6311): read with interrupts masked, every one of those rows, and the worst, is the same in
+  every build (three builds, two of them with different layouts; rc4's own 1,568 and 1,248 were raised readings), so
+  the motion is where an interrupt lands; but unmasked readings exceed masked ones by up to 272 bytes, more than one
+  192-byte frame (#6319), for a reason not yet found. So from rc5 the bench reads every case masked, the allowance is
+  two frames, 384 (or the excess measured, if larger), and the depth guard is 44: 11,328 + 384 = 11,712 of 12,288
+  (abacus #6321; docs/canonical-form.md).
 
 ## The oracle (abacus #6288)
 
@@ -93,6 +96,7 @@ reads back through casim's own parser to the value the judge reads; the answer i
 3. The steps compose: the last step is plain solve's answer byte for byte; k runs 0..count−1; a refusal is plain
    solve's status.
 4. The same page every time.
-5. The stack: the bench's worst + one interrupt frame leaves at least 256 of 12,288 bytes.
+5. The stack: the bench's worst + one interrupt frame leaves at least 256 of 12,288 bytes (from rc5: the worst read
+   masked + max(the excess measured, 2 × 192), abacus #6321).
 6. Steps that don't fit fail softly: NO_ROOM, plain solve still answers; one case is shown.
 7. The page cost on the S3, measured.

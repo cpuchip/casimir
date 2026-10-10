@@ -10,3 +10,6 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # A task that runs past its stack panics at the first byte (a hardware watchpoint), not later in the
 # scheduler (the canary alone let a casim overflow surface as LoadProhibited in vTaskSwitchContext).
 CONFIG_FREERTOS_WATCHPOINT_END_OF_STACK=y
+# Every stack is read with interrupts masked around the run (abacus #6321), and the slowest cases run past the interrupt
+# watchdog's default 300 ms (a factor case takes 0.85 s): 2 s, for this bench only.
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=2000

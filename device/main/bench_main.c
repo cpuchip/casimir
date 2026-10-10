@@ -3,12 +3,14 @@
  * arena that gives OK (bisection), and the stack it takes: one derivative run in a fresh worker task,
  * whose high-water mark less an idle worker's is casim's own. Then show steps (work/steps-derive.md, steps-integrate.md):
  * for each derive and integrate that is OK, every page timed once and the last (the root's result) REPS times, the
- * stack of one page, and the last page must end in the host's answer. The report repeats, so a reader that attaches late still
- * gets a whole one (BENCH BEGIN ... DEVICE DONE). */
+ * stack of one page, and the last page must end in the host's answer. Every stack is read with interrupts masked around
+ * the run (rc5, abacus #6321): the same in every build, where an unmasked reading moved with where a tick landed. The
+ * report repeats, so a reader that attaches late still gets a whole one (BENCH BEGIN ... DEVICE DONE). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "esp_rom_sys.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -21,12 +23,20 @@
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536
-/* The calculator's budget for casim's stack (CAS 002b, 12 KB), and what it must leave (abacus #6224): the worst case
-   plus one interrupt frame, which a tick saves on the task stack at any point (192 bytes, measured on this bench by
-   a delay sweep across one tick, #6222; IDF's portasm.S switches to the interrupt stack after the first frame). */
+/* The calculator's budget for casim's stack (CAS 002b, 12 KB), and what it must leave (abacus #6224): the worst case,
+   masked, plus an allowance for interrupts. One interrupt frame is 192 bytes (IDF v5.4.2's XT_STK_FRMSZ, abacus #6321;
+   the first measure, a delay swept across one tick, #6222), but unmasked readings exceeded masked ones by up to 272
+   (#6319), so the allowance is two frames or the excess this bench measures, whichever is larger (abacus #6321), until
+   the excess is explained. The worst case and IRQ_ROWS, the cases whose unmasked readings have moved, are each read
+   at IRQ_PHASES delays. */
 #define STACK_BUDGET 12288
 #define IRQ_FRAME 192
 #define STACK_FLOOR 256
+#define IRQ_PHASES 27
+#define IRQ_STEP_US 370
+static const char *const IRQ_ROWS[] = {"I0010", "I0001", "I0030", "ASIN nest, DEG",
+                                       "SQRT(X)÷… quotients", "192 pairs S0005+… D", "192 X×Y×… product D STU",
+                                       "(X+1)÷(X-1)×…", "192 (X+1)÷(X-1)×… D STU"};
 
 typedef struct {
     int ok;                 /* the S3's text equals the host's */
@@ -67,6 +77,8 @@ typedef struct {
     unsigned free;
     TaskHandle_t parent;
     int at;                 /* >= 0: show steps' page at (page_worker) */
+    int masked;             /* interrupts masked around the run (every reading but the sweep's) */
+    uint32_t delay;         /* the sweep's: a busy wait before the run, so ticks land elsewhere */
 } job;
 
 /* The run's worker, as it was before show steps: a local of its own here would move casim's stack by its size and
@@ -74,7 +86,10 @@ typedef struct {
 static void worker(void *arg)
 {
     job *j = arg;
+    if (j->delay) esp_rom_delay_us(j->delay);
+    if (j->masked) portDISABLE_INTERRUPTS();
     if (j->k) run(j->k, ARENA_MAX);
+    if (j->masked) portENABLE_INTERRUPTS();
     j->free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     xTaskNotifyGive(j->parent);
     vTaskDelete(NULL);
@@ -84,16 +99,20 @@ static void page_worker(void *arg)
 {
     job *j = arg;
     casim_step_info info;
+    if (j->delay) esp_rom_delay_us(j->delay);
+    if (j->masked) portDISABLE_INTERRUPTS();
     page(j->k, j->at, &info);
+    if (j->masked) portENABLE_INTERRUPTS();
     j->free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     xTaskNotifyGive(j->parent);
     vTaskDelete(NULL);
 }
 
-/* The stack a fresh task used to run k, or page at of it (FreeRTOS fills a new stack with a known value). */
-static unsigned stack_used(const bench_case *k, int at)
+/* The stack a fresh task used to run k, or page at of it (FreeRTOS fills a new stack with a known value): masked, or
+   unmasked after a delay (the sweep). */
+static unsigned stack_used(const bench_case *k, int at, int masked, uint32_t delay)
 {
-    job j = {k, 0, xTaskGetCurrentTaskHandle(), at};
+    job j = {k, 0, xTaskGetCurrentTaskHandle(), at, masked, delay};
     int tries = 0;
     /* the idle task frees the last worker's stack: wait for it rather than report nonsense */
     while (xTaskCreate(k && at >= 0 ? page_worker : worker, "casim_w", WSTACK, &j, 5, NULL) != pdPASS)
@@ -137,14 +156,14 @@ static void run_cases(void)
     stack_free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     /* the idle worker's own use, the least of several: one sample moved 520-720 bytes between builds, and
        the least gives the larger, safer figure for casim */
-    stack_base = base_max = stack_used(NULL, -1);
+    stack_base = base_max = stack_used(NULL, -1, 1, 0);
     for (int i = 0; i < 7; i++) {
-        unsigned b = stack_used(NULL, -1);
+        unsigned b = stack_used(NULL, -1, 1, 0);
         if (b < stack_base) stack_base = b;
         if (b > base_max) base_max = b;
     }
     for (int i = 0; i < case_count; i++) {
-        unsigned u = stack_used(&cases[i], -1);
+        unsigned u = stack_used(&cases[i], -1, 1, 0);
         res[i].stack = u > stack_base ? u - stack_base : 0;    /* a loop-only case uses less than idle's noise */
     }
 }
@@ -182,10 +201,44 @@ static void run_pages(void)
                    lo >= lw && strcmp(out + lo - lw, k->want) == 0 &&
                    (lo == lw || (lo > lw + 3 && strncmp(out + lo - lw - 3, " = ", 3) == 0));
         {
-            unsigned u = stack_used(k, pg[i].count - 1);
+            unsigned u = stack_used(k, pg[i].count - 1, 1, 0);
             pg[i].stack = u > stack_base ? u - stack_base : 0;
         }
     }
+}
+
+/* the interrupts' excess: each IRQ_ROWS case (its page, if paged) read unmasked at IRQ_PHASES delays, less its masked
+   reading */
+static unsigned irq_excess, irq_readings, irq_rows;
+static const char *irq_where = "";
+
+static void sweep(int i, int at)
+{
+    unsigned masked = at >= 0 ? pg[i].stack : res[i].stack;
+    irq_rows++;
+    for (int d = 0; d < IRQ_PHASES; d++) {
+        unsigned u = stack_used(&cases[i], at, 0, (uint32_t)d * IRQ_STEP_US);
+        u = u > stack_base ? u - stack_base : 0;
+        irq_readings++;
+        if (u > masked && u - masked > irq_excess) irq_excess = u - masked, irq_where = cases[i].name;
+    }
+}
+
+static void run_irq(void)
+{
+    int wi = 0, wat = -1;
+    unsigned worst = 0;
+    for (int i = 0; i < case_count; i++) {
+        if (res[i].stack > worst) worst = res[i].stack, wi = i, wat = -1;
+        if (pg[i].count && pg[i].stack > worst) worst = pg[i].stack, wi = i, wat = pg[i].count - 1;
+    }
+    sweep(wi, wat);                                     /* the worst, plain or paged */
+    for (int r = 0; r < (int)(sizeof IRQ_ROWS / sizeof IRQ_ROWS[0]); r++)
+        for (int i = 0; i < case_count; i++)
+            if (strcmp(cases[i].name, IRQ_ROWS[r]) == 0) {
+                sweep(i, pg[i].count ? pg[i].count - 1 : -1);
+                break;
+            }
 }
 
 static void bench_task(void *arg)
@@ -193,6 +246,7 @@ static void bench_task(void *arg)
     (void)arg;
     run_cases();
     run_pages();
+    run_irq();
     for (;;) {
         int pass = 1;
         printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS);
@@ -231,10 +285,13 @@ static void bench_task(void *arg)
                 if (res[i].stack > worst) worst = res[i].stack, wi = i;
                 if (pg[i].count && pg[i].stack > worst) worst = pg[i].stack, wi = i;
             }
-            printf("stack budget: worst %u (%s) + interrupt %u = %u of %u, leaving %d (floor %u)\n", worst,
-                   cases[wi].name, IRQ_FRAME, worst + IRQ_FRAME, STACK_BUDGET,
-                   (int)STACK_BUDGET - (int)(worst + IRQ_FRAME), STACK_FLOOR);
-            if (worst + IRQ_FRAME + STACK_FLOOR > STACK_BUDGET) pass = 0;
+            unsigned allow = irq_excess > 2 * IRQ_FRAME ? irq_excess : 2 * IRQ_FRAME;
+            printf("interrupts: unmasked readings exceed masked ones by up to %u bytes (%s), %u readings of %u rows at %d "
+                   "phases; one frame is %u\n", irq_excess, irq_where, irq_readings, irq_rows, IRQ_PHASES, IRQ_FRAME);
+            printf("stack budget: worst %u masked (%s) + interrupts %u (2 frames, or the excess if larger) = %u of %u, "
+                   "leaving %d (floor %u)\n", worst, cases[wi].name, allow, worst + allow, STACK_BUDGET,
+                   (int)STACK_BUDGET - (int)(worst + allow), STACK_FLOOR);
+            if (worst + allow + STACK_FLOOR > STACK_BUDGET || irq_rows == 0) pass = 0;
         }
         printf("stack: %u of %u bytes never touched by the bench task; an idle worker takes %u (8 samples, %u to "
                "%u); a case's stack is its worker's use less %u\n",
