@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals and factoring,
 from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C does: as a C
-library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0-rc1.
+library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0-rc2.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
