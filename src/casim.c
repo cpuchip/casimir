@@ -192,6 +192,19 @@ static ref grab(ctx *c, size_t bytes)
     return r;
 }
 
+/* bytes the arena holds already, where grab would put them next: their ref, the bytes kept (show steps reads what
+   do_solve left in the arena, at the places it grabbed them) */
+static ref held(ctx *c, size_t bytes)
+{
+    size_t need = (bytes + 7u) & ~(size_t)7u;
+    ref r;
+    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM;
+    if (c->st != CASIM_OK) return 0;
+    r = (ref)(c->used / 8u);
+    c->used += need;
+    return r;
+}
+
 static ref mk(ctx *c, int kind, ref a, ref b)
 {
     ref r = grab(c, sizeof(node));
@@ -2769,7 +2782,9 @@ typedef struct {
 
 static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT MULTIPLE", "PRODUCT", "POWER",
                                         "EXPONENTIAL", "GENERAL POWER", "CHAIN", "BOTH SIDES", "RECIPROCAL",
-                                        "POLYNOMIAL", "CHECK"};
+                                        "POLYNOMIAL", "CHECK", "INTEGER COEFFICIENTS", "COMMON FACTOR",
+                                        "LINEAR FACTOR", "QUADRATIC FACTOR", "LINEAR", "QUADRATIC FORMULA", "LEFT",
+                                        "ANSWER"};
 
 const char *casim_rule_name(int rule)
 {
@@ -3007,6 +3022,8 @@ static void walk(ctx *c, ref r, int depth, walk_t *W)
 static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                               void *arena, size_t arena_cap);
 
+static casim_status do_ssteps(const casim_req *rq, walk_t *W, out_t *w, void *arena, size_t arena_cap);
+
 casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                         void *arena, size_t arena_cap)
 {
@@ -3019,6 +3036,10 @@ casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *
     if (rq && rq->op == CASIM_INTEGRATE) return do_isteps(rq, k, flags, info, out, cap, arena, arena_cap);
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
+    if (rq && rq->op == CASIM_SOLVE) {
+        W.k = k, W.flags = flags, W.info = info;        /* five arguments: none on the stack (the S3 passes six) */
+        return do_ssteps(rq, &W, &w, arena, arena_cap);
+    }
     if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
         rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
         return CASIM_BAD_ARG;
@@ -3708,8 +3729,10 @@ typedef struct {
     int nfac;
 } solve_ws;
 
-/* h / (q x - p) exactly, into g; false when it does not divide or a step would overflow. */
-static bool div_lin(const ipoly *h, int64_t q, int64_t p, ipoly *g)
+/* h / (q x - p) exactly, into g; false when it does not divide or a step would overflow. This, div_quad, square_free,
+   quad_roots and put_root are always inline: solve inlined each (one caller) before show steps called them too, and
+   its frames on the S3 stay as they were. */
+static inline __attribute__((always_inline)) bool div_lin(const ipoly *h, int64_t q, int64_t p, ipoly *g)
 {
     int64_t r, t;
     int n = h->n;
@@ -3726,7 +3749,7 @@ static bool div_lin(const ipoly *h, int64_t q, int64_t p, ipoly *g)
 }
 
 /* h / (a x^2 + b x + c) exactly, into g. */
-static bool div_quad(const ipoly *h, int64_t a, int64_t b, int64_t c, ipoly *g)
+static inline __attribute__((always_inline)) bool div_quad(const ipoly *h, int64_t a, int64_t b, int64_t c, ipoly *g)
 {
     ipoly r = *h;
     int n = h->n;
@@ -3946,7 +3969,7 @@ static abn abn_of(int64_t v)
 
 /* d = k^2 r with r square-free: trial division to d's cube root, then what is left is 1, a prime, a prime
    squared or two primes (d <= 2.5E15: a quadratic factor's discriminant). */
-static void square_free(int64_t d, int64_t *k, int64_t *r)
+static inline __attribute__((always_inline)) void square_free(int64_t d, int64_t *k, int64_t *r)
 {
     *k = 1, *r = 1;
     for (int64_t p = 2; p * p * p <= d; p += p == 2 ? 1 : 2) {
@@ -4000,7 +4023,7 @@ static bool quad_root_ok(int64_t a, int64_t b, int64_t c, int64_t p, int64_t q)
    in lowest terms. A rational root is checked exactly against the quadratic before it is kept (the review
    of 93daf60: a discriminant of 0 printed two wrong roots); false when a check fails, so the caller counts
    the factor as unsolved rather than print anything. */
-static bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
+static inline __attribute__((always_inline)) bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
 {
     int64_t d = b * b - 4 * a * c, k, r, g;
     if (d < 0) return true;
@@ -4032,7 +4055,7 @@ static bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int m
     return true;
 }
 
-static void put_root(out_t *w, const iroot *x)
+static inline __attribute__((always_inline)) void put_root(out_t *w, const iroot *x)
 {
     if (!x->irr) {
         put_int(w, x->p);
@@ -4389,7 +4412,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
         } else pw(&c, n, var, co);
     }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
-    /* the tree is done with: its arena goes to the search */
+    /* the tree is done with: its arena goes to the search (show steps reads cr and ws here afterwards: do_ssteps) */
     c.used = mark;
     ws = grab(&c, sizeof(solve_ws));
     dq = grab(&c, SOLVE_DIVS * sizeof(int32_t));
@@ -4408,6 +4431,321 @@ casim_status casim_solve(const char *eqn, int var, int model, int angle, char *o
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- show steps, 3: solve (work/steps-solve.md; design #6286, approved #6288) ----
+   solve's own run, unchanged (the polynomial as typed, clear, put_solution), then a printer over what it leaves: the
+   moved coefficients, the cleared polynomial, the factors and what is left. No records: every page runs solve and
+   prints step k, the walk counting every step either way. */
+
+typedef struct {
+    int k, at, one;
+    size_t cap;                 /* the caller's: a step line's bound (the answer keeps plain solve's) */
+    casim_step_info *info;
+} sstep_t;
+
+/* the printer's room, in the arena: the typed text's comparison, what is left as each factor goes, the factors in
+   the order they print, a factor's roots */
+typedef struct {
+    ipoly g, cur, q, before;
+    ifac fs[SOLVE_DEG];
+    iroot r[2];
+    char t[SLOT];
+} sswork;
+
+/* whether this step is page k (counted either way); out starts afresh for it, but for the answer, already there */
+static bool ss_hit(sstep_t *S, out_t *w, int depth, int line, int rule)
+{
+    if (line == CASIM_STEP_TEMPLATE && S->one) return false;
+    if (S->at++ != S->k) return false;
+    S->info->depth = depth, S->info->line = line, S->info->rule = rule;
+    if (rule != CASIM_RULE_ANSWER) {
+        w->cap = S->cap, w->n = 0, w->full = false;
+        if (w->cap) w->o[0] = '\0';
+    }
+    return true;
+}
+
+/* co as a student writes it: descending powers, each coefficient a whole number or p÷q after its power */
+static void ss_rpoly(out_t *w, const rat *co, int var)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    bool any = false;
+    for (int k = SOLVE_DEG; k >= 0; k--) {
+        int64_t p = co[k].p, ap = p < 0 ? -p : p;
+        if (!p) continue;
+        if (p < 0) puts_(w, "-");
+        else if (any) puts_(w, "+");
+        if (ap != 1 || k == 0) put_int(w, ap);
+        if (k > 0) {
+            if (ap != 1) puts_(w, TIMES);
+            puts_(w, name);
+            if (k > 1) puts_(w, "^"), put_int(w, k);
+        }
+        if (co[k].q != 1) puts_(w, DIVIDE), put_int(w, co[k].q);
+        any = true;
+    }
+    if (!any) puts_(w, "0");
+}
+
+/* p the same way, in parentheses when paren and it has two terms or more */
+static __attribute__((noinline)) void ss_ipoly(out_t *w, const ipoly *p, int var, bool paren)
+{
+    rat r[SOLVE_DEG + 1];
+    int terms = 0;
+    for (int k = 0; k <= SOLVE_DEG; k++) r[k].p = k <= p->n ? p->a[k] : 0, r[k].q = 1, terms += r[k].p != 0;
+    if (paren && terms > 1) puts_(w, "(");
+    ss_rpoly(w, r, var);
+    if (paren && terms > 1) puts_(w, ")");
+}
+
+static void ss_fac_poly(const ifac *x, ipoly *p)
+{
+    if (x->deg == 1) p->n = 1, p->a[1] = x->a, p->a[0] = -x->b;
+    else p->n = 2, p->a[2] = x->a, p->a[1] = x->b, p->a[0] = x->c;
+}
+
+/* the order (#6288, D1): linear factors ascending by root (p/q: |p|, q <= 10^7, so the products are exact), then
+   quadratics ascending by (a, b, c) */
+static bool ss_before(const ifac *x, const ifac *y)
+{
+    if (x->deg != y->deg) return x->deg < y->deg;
+    if (x->deg == 1) return x->b * y->a < y->b * x->a;
+    return x->a != y->a ? x->a < y->a : x->b != y->b ? x->b < y->b : x->c < y->c;
+}
+
+/* X^zero × the first nf factors, each to its multiplicity, × rest (when it is not 1), = 0 */
+static void ss_product(out_t *w, int var, int zero, const ifac *fs, int nf, const ipoly *rest)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    bool any = false;
+    if (zero) {
+        puts_(w, name);
+        if (zero > 1) puts_(w, "^"), put_int(w, zero);
+        any = true;
+    }
+    for (int i = 0; i < nf; i++) {
+        ipoly p;
+        ss_fac_poly(&fs[i], &p);
+        if (any) puts_(w, TIMES);
+        ss_ipoly(w, &p, var, true);
+        if (fs[i].mult > 1) puts_(w, "^"), put_int(w, fs[i].mult);
+        any = true;
+    }
+    if (rest->n >= 1) {
+        if (any) puts_(w, TIMES);
+        ss_ipoly(w, rest, var, any);
+    }
+    puts_(w, "=0");
+}
+
+/* v, in parentheses when negative (a value in the discriminant's arithmetic) */
+static void ss_val(out_t *w, int64_t v)
+{
+    if (v < 0) puts_(w, "(");
+    put_int(w, v);
+    if (v < 0) puts_(w, ")");
+}
+
+/* a quadratic factor = 0: the formula's values or the discriminant (template), then its roots */
+static void ss_quadratic(sstep_t *S, out_t *w, sswork *W, const ifac *x, int var, bool solved, int nr)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    int64_t d = x->b * x->b - 4 * x->a * x->c, k = 0, r = 1;
+    ipoly p;
+    ss_fac_poly(x, &p);
+    if (d > 0) square_free(d, &k, &r);
+    if (!solved) {                  /* not reached (abacus #5077): quad_roots refused a check, so solve leaves it */
+        if (ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LEFT))
+            ss_ipoly(w, &p, var, false), puts_(w, "=0: DEGREE 2 LEFT");
+        return;
+    }
+    /* the formula's values are its result already (d square-free, nothing to take out, once): one line */
+    if (!(k == 1 && r > 1 && x->mult == 1) && ss_hit(S, w, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_QUADRATIC_FORMULA)) {
+        ss_ipoly(w, &p, var, false), puts_(w, "=0: ");
+        if (d < 0) {
+            ss_val(w, x->b), puts_(w, "^2-4"), puts_(w, TIMES), ss_val(w, x->a), puts_(w, TIMES), ss_val(w, x->c);
+            puts_(w, "="), put_int(w, d), puts_(w, "<0");
+        } else
+            for (int sg = -1; sg <= 1; sg += 2) {
+                if (sg > 0) puts_(w, "; ");
+                puts_(w, name), puts_(w, "=");
+                if (x->b) puts_(w, "("), put_int(w, -x->b), puts_(w, sg < 0 ? "-" : "+");
+                else if (sg < 0) puts_(w, "-");
+                puts_(w, "SQRT("), put_int(w, d), puts_(w, x->b ? "))" : ")"), puts_(w, DIVIDE), put_int(w, 2 * x->a);
+            }
+    }
+    if (ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_QUADRATIC_FORMULA)) {
+        ss_ipoly(w, &p, var, false), puts_(w, "=0: ");
+        if (nr == 0) puts_(w, "NO REAL ROOTS");
+        for (int j = 0; j < nr; j++) puts_(w, j ? "; " : ""), puts_(w, name), puts_(w, "="), put_root(w, &W->r[j]);
+    }
+}
+
+static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int var, bool eq, const char *typed,
+                                              const rat *co, const ipoly *f0, const solve_ws *s)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    ref wr = grab(c, sizeof(sswork));
+    sswork *W;
+    int zero = 0, nf = s->nfac;
+    bool same = true;
+    if (!wr) return;
+    W = (sswork *)(void *)nd(c, wr);
+    {
+        /* moved to one side and multiplied out, unless that is the text as typed */
+        out_t t = {W->t, SLOT, 0, false};
+        size_t n = strlen(typed);
+        ss_rpoly(&t, co, var), puts_(&t, "=0");
+        if (!t.full && strcmp(W->t, typed) != 0 && (eq || strncmp(W->t, typed, n) != 0 || strcmp(W->t + n, "=0") != 0) &&
+            ss_hit(S, w, 0, CASIM_STEP_RESULT, eq ? CASIM_RULE_BOTH_SIDES : CASIM_RULE_POLYNOMIAL))
+            puts_(w, W->t);
+        else if (t.full && ss_hit(S, w, 0, CASIM_STEP_RESULT, eq ? CASIM_RULE_BOTH_SIDES : CASIM_RULE_POLYNOMIAL))
+            ss_rpoly(w, co, var), puts_(w, "=0");
+    }
+    if (f0->n >= 1) {
+        for (int k = 0; k <= SOLVE_DEG; k++)
+            if (co[k].q != 1 || co[k].p != (k <= f0->n ? f0->a[k] : 0)) same = false;
+        if (!same && ss_hit(S, w, 0, CASIM_STEP_TEMPLATE, CASIM_RULE_INTEGER_COEFFICIENTS)) {
+            rat m, l;
+            if (!rat_make(&m, co[f0->n].q, co[f0->n].p) || !rat_make(&l, f0->a[f0->n], 1) || !rat_mul(&m, &m, &l)) {
+                c->st = CASIM_NO_ROOM;              /* f0 = co × m, m too big for a rat */
+                return;
+            }
+            puts_(w, "("), ss_rpoly(w, co, var), puts_(w, ")");
+            if (m.q == 1) puts_(w, TIMES), ss_val(w, m.p);
+            else if (m.p == 1) puts_(w, DIVIDE), put_int(w, m.q);
+            else puts_(w, TIMES), puts_(w, "("), put_int(w, m.p), puts_(w, DIVIDE), put_int(w, m.q), puts_(w, ")");
+            puts_(w, "=0");
+        }
+        if (!same && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_INTEGER_COEFFICIENTS))
+            ss_ipoly(w, f0, var, false), puts_(w, "=0");
+        W->g = *f0;
+        while (W->g.n >= 1 && W->g.a[0] == 0)
+            memmove(W->g.a, W->g.a + 1, (size_t)W->g.n * sizeof W->g.a[0]), W->g.n--, zero++;
+        if (zero && W->g.n >= 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR))
+            ss_product(w, var, zero, W->fs, 0, &W->g);
+        memcpy(W->fs, s->fac, (size_t)nf * sizeof W->fs[0]);
+        for (int i = 1; i < nf; i++) {
+            ifac t = W->fs[i];
+            int j = i;
+            while (j > 0 && ss_before(&t, &W->fs[j - 1])) W->fs[j] = W->fs[j - 1], j--;
+            W->fs[j] = t;
+        }
+        /* each factor divided out, to its multiplicity */
+        W->cur = W->g;
+        for (int i = 0; i < nf; i++) {
+            const ifac *x = &W->fs[i];
+            ipoly p;
+            int rule = x->deg == 1 ? CASIM_RULE_LINEAR_FACTOR : CASIM_RULE_QUADRATIC_FACTOR;
+            bool whole;
+            ss_fac_poly(x, &p);
+            whole = x->mult == 1 && W->cur.n == p.n && memcmp(W->cur.a, p.a, (size_t)(p.n + 1) * sizeof p.a[0]) == 0;
+            W->before = W->cur;
+            for (int m = 0; m < x->mult; m++) {
+                if (!(x->deg == 1 ? div_lin(&W->cur, x->a, x->b, &W->q) : div_quad(&W->cur, x->a, x->b, x->c, &W->q))) {
+                    c->st = CASIM_NO_ROOM;          /* not reached: solve divided each of them out */
+                    return;
+                }
+                W->cur = W->q;
+            }
+            if (whole) continue;                    /* what was left is this factor: the line before shows it */
+            if (ss_hit(S, w, 0, CASIM_STEP_TEMPLATE, rule)) {
+                ss_ipoly(w, &W->before, var, true), puts_(w, DIVIDE), ss_ipoly(w, &p, var, true);
+                if (x->mult > 1) puts_(w, "^"), put_int(w, x->mult);
+                puts_(w, "="), ss_ipoly(w, &W->cur, var, false);
+            }
+            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);
+        }
+        /* each factor = 0, in the same order */
+        if (zero && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
+            puts_(w, name);
+            if (zero > 1) puts_(w, "^"), put_int(w, zero);
+            puts_(w, "=0: "), puts_(w, name), puts_(w, "=0");
+            if (zero > 1) puts_(w, " (MULT "), put_int(w, zero), puts_(w, ")");
+        }
+        for (int i = 0; i < nf; i++) {
+            const ifac *x = &W->fs[i];
+            int nr = 0;
+            if (x->deg == 2) {
+                bool solved = quad_roots(W->r, &nr, x->a, x->b, x->c, x->mult);
+                ss_quadratic(S, w, W, x, var, solved, nr);
+            } else if (ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
+                ipoly p;
+                ss_fac_poly(x, &p);
+                rational_root(W->r, &nr, x->b, x->a, x->mult);
+                ss_ipoly(w, &p, var, false), puts_(w, "=0: "), puts_(w, name), puts_(w, "="), put_root(w, &W->r[0]);
+            }
+        }
+        if (W->cur.n >= 3 && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LEFT))
+            ss_ipoly(w, &W->cur, var, false), puts_(w, "=0: DEGREE "), put_int(w, W->cur.n), puts_(w, " LEFT");
+    }
+    ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+}
+
+/* casim_step for solve, page P->k with P->flags into o: do_solve itself, its answer in a slot at the arena's top
+   (plain solve's out and bound), then the walk over what it left in the arena: its coefficients and its factors, at
+   the places it grabbed them */
+/* do_ssteps keeps its five arguments in registers (the S3 passes six): GCC's IPA-SRA split them into more, two on the
+   stack, and casim_step's frame grew 16 bytes; noipa stops it. clang has neither. */
+#if defined(__clang__)
+#define SS_KEEP_ARGS __attribute__((noinline))
+#else
+#define SS_KEEP_ARGS __attribute__((noipa))
+#endif
+static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t *o, void *arena,
+                                                         size_t arena_cap)
+{
+    int k = P->k, flags = P->flags;
+    casim_step_info *info = P->info;
+    char *out = o->o;
+    size_t cap = o->cap;
+    ctx c;
+    size_t room = arena_cap > SLOT ? arena_cap - SLOT : 0;
+    char *ans = (char *)arena + room;
+    casim_status st;
+    ref cr, ws;
+    ipoly f0;
+    sstep_t S;
+    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
+        rq->angle > CASIM_GRAD)
+        return CASIM_BAD_ARG;
+    if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
+    st = arena_cap < SLOT ? CASIM_NO_ROOM
+                          : do_solve(rq->eqn, rq->var, rq->angle, ans, SLOT, arena, room, rq->model == CASIM_MODEL_STU);
+    if (st == CASIM_NO_ROOM) {
+        /* the slot took the room solve needed: plain solve's own run says whether it refuses (its status and out),
+           or answers, and then only the steps don't fit */
+        st = do_solve(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
+        if (cap) out[0] = st == CASIM_OK ? '\0' : out[0];
+        return st == CASIM_OK ? CASIM_NO_ROOM : st;
+    }
+    if (st != CASIM_OK) {
+        if (cap > strlen(ans)) memcpy(out, ans, strlen(ans) + 1);      /* what plain solve's out holds */
+        return st;
+    }
+    start(&c, rq->eqn, rq->angle, arena, room);
+    cr = held(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
+    ws = held(&c, sizeof(solve_ws));
+    held(&c, SOLVE_DIVS * sizeof(int32_t));
+    if (c.st != CASIM_OK || !clear(&c, (rat *)(void *)nd(&c, cr), &f0)) return CASIM_NO_ROOM;   /* not reached */
+    S.k = k, S.at = 0, S.one = (flags & CASIM_STEPS_ONE_LINE) != 0, S.cap = cap, S.info = info;
+    {
+        out_t w = {out, cap, 0, false};
+        /* an equation: its = (do_solve parsed it, so it is the one at the top) */
+        ss_walk(&c, &w, &S, rq->var, strchr(rq->eqn, '=') != NULL, rq->eqn, (rat *)(void *)nd(&c, cr), &f0,
+                (solve_ws *)(void *)nd(&c, ws));
+        info->count = S.at;
+        if (c.st != CASIM_OK) return c.st;
+        if (k < 0) return CASIM_OK;
+        if (k >= S.at) return CASIM_BAD_ARG;
+        if (info->rule == CASIM_RULE_ANSWER) {
+            w.n = 0, w.full = false;
+            puts_(&w, ans);
+        }
+        if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    }
+    return CASIM_OK;
 }
 
 /* ---- integrate (unit CAS 006) ----

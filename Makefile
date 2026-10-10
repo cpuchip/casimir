@@ -44,6 +44,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/log-values.py
 	scripts/step-values.py
 	scripts/istep-values.py
+	scripts/ssteps-values.py
 
 test: check build/clang.ok $(TESTS)
 	scripts/run-tests.sh $(TESTS)

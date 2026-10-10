@@ -466,6 +466,61 @@ MUTANTS = {
         ("src/casim.c", "                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_MONO);",
          "                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_FACTOR);"),
     ],
+    # show steps, 3: solve (work/steps-solve.md; abacus #6288 asked for the sort, a skipped skip, a missed factor step
+    # and a dropped multiplicity)
+    "ssteps-linear-order": [
+        ("src/casim.c", "    if (x->deg == 1) return x->b * y->a < y->b * x->a;", "    if (x->deg == 1) return x->b * y->a > y->b * x->a;"),
+    ],
+    "ssteps-quadratic-order": [
+        ("src/casim.c", "    return x->a != y->a ? x->a < y->a : x->b != y->b ? x->b < y->b : x->c < y->c;",
+         "    return x->a != y->a ? x->a < y->a : x->b != y->b ? x->b > y->b : x->c < y->c;"),
+    ],
+    "ssteps-whole-not-skipped": [
+        ("src/casim.c", "            if (whole) continue;", "            if (whole && 0) continue;"),
+    ],
+    "ssteps-missed-factor": [
+        ("src/casim.c", "            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);",
+         "            if (i != 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);"),
+    ],
+    "ssteps-product-mult": [
+        ("src/casim.c", "        ss_ipoly(w, &p, var, true);\n        if (fs[i].mult > 1) puts_(w, \"^\"), put_int(w, fs[i].mult);",
+         "        ss_ipoly(w, &p, var, true);\n        if (fs[i].mult > 2) puts_(w, \"^\"), put_int(w, fs[i].mult - 1);"),
+    ],
+    "ssteps-root-mult": [
+        ("src/casim.c", "                rational_root(W->r, &nr, x->b, x->a, x->mult);",
+         "                rational_root(W->r, &nr, x->b, x->a, x->mult > 1 ? x->mult - 1 : 1);"),
+    ],
+    "ssteps-discriminant": [
+        ("src/casim.c", "            ss_val(w, x->b), puts_(w, \"^2-4\")", "            ss_val(w, x->b), puts_(w, \"^2+4\")"),
+    ],
+    "ssteps-formula-repeats": [
+        ("src/casim.c", "    if (!(k == 1 && r > 1 && x->mult == 1) && ss_hit(S, w, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_QUADRATIC_FORMULA)) {",
+         "    if (ss_hit(S, w, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_QUADRATIC_FORMULA)) {"),
+    ],
+    "ssteps-move-as-typed": [
+        ("src/casim.c", "        if (!t.full && strcmp(W->t, typed) != 0 &&", "        if (!t.full &&"),
+    ],
+    "ssteps-multiplier": [
+        ("src/casim.c", "            if (m.q == 1) puts_(w, TIMES), ss_val(w, m.p);", "            if (m.q == 1) puts_(w, TIMES), ss_val(w, m.p + 1);"),
+    ],
+    "ssteps-division-of-what-is-left": [
+        ("src/casim.c", "                ss_ipoly(w, &W->before, var, true), puts_(w, DIVIDE), ss_ipoly(w, &p, var, true);",
+         "                ss_ipoly(w, &W->g, var, true), puts_(w, DIVIDE), ss_ipoly(w, &p, var, true);"),
+    ],
+    "ssteps-zero-mult": [
+        ("src/casim.c", "            if (zero > 1) puts_(w, \" (MULT \"), put_int(w, zero), puts_(w, \")\");\n        }\n        for (int i = 0; i < nf; i++) {",
+         "        }\n        for (int i = 0; i < nf; i++) {"),
+    ],
+    "ssteps-line-in-slot": [
+        ("src/casim.c", "        w->cap = S->cap, w->n = 0, w->full = false;", "        w->cap = S->cap < SLOT ? S->cap : SLOT, w->n = 0, w->full = false;"),
+    ],
+    "ssteps-answer-page": [
+        ("src/casim.c", "            puts_(&w, ans);", "            puts_(&w, ans + 1);"),
+    ],
+    "ssteps-one-line-template": [
+        ("src/casim.c", "    if (line == CASIM_STEP_TEMPLATE && S->one) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {",
+         "    if (line == CASIM_STEP_TEMPLATE && S->one && rule != CASIM_RULE_INTEGER_COEFFICIENTS) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {"),
+    ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
     ],

@@ -149,7 +149,7 @@ static void run_cases(void)
     }
 }
 
-/* show steps on each derive and integrate the host answered OK */
+/* show steps on each derive, integrate and solve the host answered OK */
 static void run_pages(void)
 {
     for (int i = 0; i < case_count; i++) {
@@ -158,7 +158,8 @@ static void run_pages(void)
         int64_t t[REPS];
         size_t lw = strlen(k->want), lo;
         pg[i].count = 0;
-        if ((k->op != CASIM_DERIVE && k->op != CASIM_INTEGRATE) || k->status != CASIM_OK || page(k, -1, &info) != CASIM_OK)
+        if ((k->op != CASIM_DERIVE && k->op != CASIM_INTEGRATE && k->op != CASIM_SOLVE) || k->status != CASIM_OK ||
+            page(k, -1, &info) != CASIM_OK)
             continue;
         pg[i].count = info.count;
         pg[i].us_max = 0;
@@ -175,7 +176,7 @@ static void run_pages(void)
         }
         qsort(t, REPS, sizeof t[0], cmp64);
         pg[i].us_med = t[REPS / 2];
-        /* the last page is the root's result: "d/dX(...) = <answer>", or the derived equation itself */
+        /* the last page is the root's result: "d/dX(...) = <answer>", or the derived equation, or solve's answer itself */
         lo = strlen(out);
         pg[i].ok = page(k, pg[i].count - 1, &info) == CASIM_OK && info.depth == 0 && info.line == CASIM_STEP_RESULT &&
                    lo >= lw && strcmp(out + lo - lw, k->want) == 0 &&
@@ -220,7 +221,7 @@ static void bench_task(void *arg)
                        (long long)pg[i].us_med, pg[i].stack, pg[i].ok ? "same" : "DIFFERENT");
             }
             if (worst >= 0)
-                printf("steps: %d derivatives and integrals paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
+                printf("steps: %d derivatives, integrals and solves paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
                        (long long)pg[worst].us_max, cases[worst].name, smax);
         }
         {

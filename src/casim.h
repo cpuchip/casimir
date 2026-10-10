@@ -113,16 +113,19 @@ typedef struct {
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
 
-/* Show steps (work/steps-derive.md, work/steps-integrate.md): the working of rq, one step a page, for derive and
-   integrate (CASIM_DERIVE, CASIM_INTEGRATE; another op is BAD_ARG). casim_step runs rq with steps on and prints step
-   k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate, where after is the rule
-   applied with its parts still to do (a template line) or the step's result; integrate's CHECK lines are
-   "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the root's result is
-   the last step and is the op's own answer (never a "+C"), with or without CASIM_STEPS_ONE_LINE, which leaves out the
-   template lines (abacus #6252: one rule for the firmware). k < 0 only counts. Each call is complete in itself: page k again or
-   k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its rule.
-   NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the step's
-   text passes cap. An equation's derive lines are d/dX(a)=d/dX(b) and its derived equation. */
+/* Show steps (work/steps-derive.md, steps-integrate.md, steps-solve.md): the working of rq, one step a page, for
+   derive, integrate and solve (CASIM_DERIVE, CASIM_INTEGRATE, CASIM_SOLVE; another op is BAD_ARG). casim_step runs rq
+   with steps on and prints step k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate,
+   where after is the rule applied with its parts still to do (a template line) or the step's result; integrate's
+   CHECK lines are "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the
+   root's result is the last step and is the op's own answer (never a "+C"), with or without CASIM_STEPS_ONE_LINE,
+   which leaves out the template lines (abacus #6252: one rule for the firmware). Solve's steps are the equation as
+   it stands, "...=0", at depth 0 (moved, cleared, each factor divided out) and each factor set to 0, "F=0: X=...",
+   at depth 1; its last step is solve's answer (ANSWER). k < 0 only counts. Each call is complete in itself: page k
+   again or k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its
+   rule. NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the
+   step's text passes cap (the count is the same whatever cap is); the op's own refusal otherwise. An equation's
+   derive lines are d/dX(a)=d/dX(b) and its derived equation. */
 #define CASIM_STEPS_ONE_LINE 1
 #define CASIM_STEP_TEMPLATE 0
 #define CASIM_STEP_RESULT 1
@@ -132,6 +135,14 @@ enum {
     CASIM_RULE_RECIPROCAL,      /* integrate: 1÷(aX+b), to LN(ABS(aX+b))÷a */
     CASIM_RULE_POLYNOMIAL,      /* integrate: a product multiplied out, then term by term */
     CASIM_RULE_CHECK,           /* integrate: the term's answer differentiated back to the term */
+    CASIM_RULE_INTEGER_COEFFICIENTS,    /* solve: whole coefficients with no common factor, the leading one positive */
+    CASIM_RULE_COMMON_FACTOR,   /* solve: the root 0's factor X^k taken out */
+    CASIM_RULE_LINEAR_FACTOR,   /* solve: a linear factor divided out (template: the division) */
+    CASIM_RULE_QUADRATIC_FACTOR,        /* solve: a quadratic factor divided out (template: the division) */
+    CASIM_RULE_LINEAR,          /* solve: a linear factor = 0 */
+    CASIM_RULE_QUADRATIC_FORMULA,       /* solve: a quadratic factor = 0 (template: the formula, or b^2-4ac < 0) */
+    CASIM_RULE_LEFT,            /* solve: a factor of degree 3 or more left */
+    CASIM_RULE_ANSWER,          /* solve: its answer, the last step */
     CASIM_RULE_FUNCTION         /* + k: a function of var itself (derive), or of aX+b (integrate's table), its name
                                    from casim_rule_name */
 };

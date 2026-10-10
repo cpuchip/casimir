@@ -249,6 +249,33 @@ was typed and each answer in canonical form, without "+C". The steps are:
 | `casim steps integrate "5-EXP(3×X)" X RAD` | `SUM: ∫(5-EXP(3×X))dX = ∫(5)dX-∫(EXP(3×X))dX /   CHECK: d/dX(5×X) = 5 /   CONSTANT: ∫(5)dX = 5×X /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 / SUM: ∫(5-EXP(3×X))dX = 5×X-EXP(3×X)÷3` |
 | `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 0.4×X^2.5 / CHECK: d/dX(-1.2×X^2.5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -1.2×X^2.5` |
 
+`steps solve "<text>" X` pages solve's working (work/steps-solve.md). Each line at the left is the equation as it
+stands, `…=0`, and each indented line is one factor set to 0, `F=0: X=…`. The polynomials print as a student writes
+them, in descending powers. The steps are:
+- BOTH SIDES (or POLYNOMIAL for an expression) moves everything to one side and multiplies it out; this is left out
+  when the equation was typed that way;
+- INTEGER COEFFICIENTS multiplies or divides by what makes the coefficients whole with no common factor, the first
+  one positive;
+- COMMON FACTOR takes out the root 0's factor X^k;
+- LINEAR FACTOR and QUADRATIC FACTOR divide out one factor, to its multiplicity: the division, then the product so
+  far (left out when what is left is that factor itself). A factor is found numerically and proven by this division,
+  which is exact;
+- then each factor = 0, in the order root 0, linear factors ascending by root, quadratics: LINEAR; QUADRATIC FORMULA,
+  the formula's values (or b^2-4ac when it is negative) then the roots, one line when the values are the roots
+  already; LEFT for a factor of degree 3 or more;
+- ANSWER is solve's own answer.
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve "X^2÷2-X÷3=1" X RAD` | `BOTH SIDES: X^2÷2-X÷3-1=0 / INTEGER COEFFICIENTS: (X^2÷2-X÷3-1)×6=0 / INTEGER COEFFICIENTS: 3×X^2-2×X-6=0 /   QUADRATIC FORMULA: 3×X^2-2×X-6=0: X=(2-SQRT(76))÷6; X=(2+SQRT(76))÷6 /   QUADRATIC FORMULA: 3×X^2-2×X-6=0: X=(1-SQRT(19))÷3; X=(1+SQRT(19))÷3 / ANSWER: SOLVED: X=(1-SQRT(19))÷3; X=(1+SQRT(19))÷3` |
+| `casim steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X^3-3×X+2)÷(X+2)=X^2-2×X+1 / LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X^2-2×X+1)÷(X-1)^2=1 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
+| `casim steps solve "X^3-X" X RAD` | `COMMON FACTOR: X×(X^2-1)=0 / LINEAR FACTOR: (X^2-1)÷(X+1)=X-1 / LINEAR FACTOR: X×(X+1)×(X-1)=0 /   LINEAR: X=0: X=0 /   LINEAR: X+1=0: X=-1 /   LINEAR: X-1=0: X=1 / ANSWER: SOLVED: X=-1; X=0; X=1` |
+| `casim steps solve "(X+3)×(X^3-2×X-5)" X RAD` | `POLYNOMIAL: X^4+3×X^3-2×X^2-11×X-15=0 / LINEAR FACTOR: (X^4+3×X^3-2×X^2-11×X-15)÷(X+3)=X^3-2×X-5 / LINEAR FACTOR: (X+3)×(X^3-2×X-5)=0 /   LINEAR: X+3=0: X=-3 /   LEFT: X^3-2×X-5=0: DEGREE 3 LEFT / ANSWER: PARTIAL, DEGREE 3 LEFT: X=-3` |
+| `casim steps solve "X^4+X^2=0" X RAD` | `COMMON FACTOR: X^2×(X^2+1)=0 /   LINEAR: X^2=0: X=0 (MULT 2) /   QUADRATIC FORMULA: X^2+1=0: 0^2-4×1×1=-4<0 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED: X=0 (MULT 2)` |
+| `casim steps solve "X+1=X+2" X RAD` | `BOTH SIDES: -1=0 / ANSWER: NO SOLUTION` |
+| `casim steps solve "(X^2-2)^2" X RAD` | `POLYNOMIAL: X^4-4×X^2+4=0 / QUADRATIC FACTOR: (X^4-4×X^2+4)÷(X^2-2)^2=1 / QUADRATIC FACTOR: (X^2-2)^2=0 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(8)÷2; X=SQRT(8)÷2 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2) / ANSWER: SOLVED: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2)` |
+| `casim --one-line steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
+
 ### pdiv, pgcd, cancel: polynomial division
 
 The polynomials are read as solve reads them, with degree ≤ 12 and coefficients ≤ 10^7.
@@ -288,7 +315,8 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
 ## The bounds
 
 - **191 bytes.** On the calculator an equation slot holds 191 bytes and its NUL. Every operation except derive and
-  simplify returns TOO_LONG past 191 bytes, whatever cap the caller gives. derive and simplify fill the caller's cap.
+  simplify returns TOO_LONG past 191 bytes, whatever cap the caller gives. derive and simplify fill the caller's cap,
+  and so does a step line (a solve's answer, its last step, still stops at 191 bytes, as solve's does).
 - **The arena.** The calculator gives Casimir 8 KiB, and the visible examples are measured there. A larger arena
   answers more (the command line's default is 8,192; `--arena` changes it). At most 524,280 bytes of it are used.
 - **The depth guard.** Nesting past 46 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,808

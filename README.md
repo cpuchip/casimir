@@ -26,7 +26,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | integrate, defint | an antiderivative from a table of forms; a definite integral, exactly |
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
-| steps | derive's working, a step a page, as a student walks it: each rule with its parts still to do, the parts, the result (`casim_step`) |
+| steps | the working of derive, integrate and solve, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
 
