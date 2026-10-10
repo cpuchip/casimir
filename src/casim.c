@@ -4514,8 +4514,63 @@ static bool ss_before(const ifac *x, const ifac *y)
     return x->a != y->a ? x->a < y->a : x->b != y->b ? x->b < y->b : x->c < y->c;
 }
 
-/* X^zero × the first nf factors, each to its multiplicity, × rest (when it is not 1), = 0 */
-static void ss_product(out_t *w, int var, int zero, const ifac *fs, int nf, const ipoly *rest)
+static bool ipmul(ipoly *a, const ipoly *b);
+
+/* whether p (degree >= 2, its leading coefficient positive) is r^k for a whole k >= 2, the largest k: r and k into
+   *r and *k. Each coefficient of r is solved for from the top (p's at X^(n-j) is k·c^(k-1)·r_(m-j) plus what the
+   ones above give), and r^k is multiplied back and compared: exact, false on any overflow. */
+static __attribute__((noinline)) bool ss_power(const ipoly *p, ipoly *r, int *k)
+{
+    for (int kk = p->n; kk >= 2; kk--) {
+        int m = p->n / kk;
+        int64_t lo = 1, hi = p->a[p->n], c = 0, lead = kk, t;
+        ipoly q;
+        bool ok = true;
+        if (p->n % kk) continue;
+        /* c with c^kk the leading coefficient, by bisection (a power past it, or past int64, is too big) */
+        while (lo <= hi && !c) {
+            int64_t mid = lo + (hi - lo) / 2;
+            bool big = false;
+            t = 1;
+            for (int i = 0; i < kk && !big; i++) big = __builtin_mul_overflow(t, mid, &t) || t > p->a[p->n];
+            if (!big && t == p->a[p->n]) c = mid;
+            else if (big) hi = mid - 1;
+            else lo = mid + 1;
+        }
+        for (int i = 1; i < kk && c && ok; i++) ok = !__builtin_mul_overflow(lead, c, &lead);   /* k·c^(k-1) */
+        if (!c || !ok) continue;
+        memset(r, 0, sizeof *r);
+        r->n = m;
+        r->a[m] = c;
+        for (int j = 1; j <= m && ok; j++) {
+            int64_t d;
+            q = *r;
+            for (int i = 1; i < kk && ok; i++) ok = ipmul(&q, r);
+            if (!ok || __builtin_sub_overflow(p->a[p->n - j], q.a[p->n - j], &d) || d % lead) ok = false;
+            else r->a[m - j] = d / lead;
+        }
+        q = *r;
+        for (int i = 1; i < kk && ok; i++) ok = ipmul(&q, r);
+        if (ok && q.n == p->n && memcmp(q.a, p->a, (size_t)(p->n + 1) * sizeof p->a[0]) == 0) {
+            *k = kk;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* what is left when nothing more is divided out: a perfect power as (r)^k, which shows why its degree is left */
+static void ss_left(out_t *w, const ipoly *rest, int var, bool paren)
+{
+    ipoly r;
+    int k;
+    if (rest->n >= 2 && ss_power(rest, &r, &k)) ss_ipoly(w, &r, var, true), puts_(w, "^"), put_int(w, k);
+    else ss_ipoly(w, rest, var, paren);
+}
+
+/* X^zero × the first nf factors, each to its multiplicity, × rest (when it is not 1), = 0; last: nothing more is
+   divided out of rest */
+static void ss_product(out_t *w, int var, int zero, const ifac *fs, int nf, const ipoly *rest, bool last)
 {
     char name[2] = {(char)('A' + var), '\0'};
     bool any = false;
@@ -4534,7 +4589,8 @@ static void ss_product(out_t *w, int var, int zero, const ifac *fs, int nf, cons
     }
     if (rest->n >= 1) {
         if (any) puts_(w, TIMES);
-        ss_ipoly(w, rest, var, any);
+        if (last) ss_left(w, rest, var, any);
+        else ss_ipoly(w, rest, var, any);
     }
     puts_(w, "=0");
 }
@@ -4624,7 +4680,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
         while (W->g.n >= 1 && W->g.a[0] == 0)
             memmove(W->g.a, W->g.a + 1, (size_t)W->g.n * sizeof W->g.a[0]), W->g.n--, zero++;
         if (zero && W->g.n >= 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR))
-            ss_product(w, var, zero, W->fs, 0, &W->g);
+            ss_product(w, var, zero, W->fs, 0, &W->g, nf == 0);
         memcpy(W->fs, s->fac, (size_t)nf * sizeof W->fs[0]);
         for (int i = 1; i < nf; i++) {
             ifac t = W->fs[i];
@@ -4653,16 +4709,17 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
             if (ss_hit(S, w, 0, CASIM_STEP_TEMPLATE, rule)) {
                 ss_ipoly(w, &W->before, var, true), puts_(w, DIVIDE), ss_ipoly(w, &p, var, true);
                 if (x->mult > 1) puts_(w, "^"), put_int(w, x->mult);
-                puts_(w, "="), ss_ipoly(w, &W->cur, var, false);
+                puts_(w, "=");
+                if (i == nf - 1) ss_left(w, &W->cur, var, false);     /* the last: what is left as the next line has it */
+                else ss_ipoly(w, &W->cur, var, false);
             }
-            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);
+            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur, i == nf - 1);
         }
         /* each factor = 0, in the same order */
-        if (zero && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
-            puts_(w, name);
-            if (zero > 1) puts_(w, "^"), put_int(w, zero);
-            puts_(w, "=0: "), puts_(w, name), puts_(w, "=0");
-            if (zero > 1) puts_(w, " (MULT "), put_int(w, zero), puts_(w, ")");
+        /* X^k = 0, k > 1 (X alone: the line above shows its root 0, and the answer has it) */
+        if (zero > 1 && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
+            puts_(w, name), puts_(w, "^"), put_int(w, zero), puts_(w, "=0: "), puts_(w, name);
+            puts_(w, "=0 (MULT "), put_int(w, zero), puts_(w, ")");
         }
         for (int i = 0; i < nf; i++) {
             const ifac *x = &W->fs[i];
@@ -4678,7 +4735,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
             }
         }
         if (W->cur.n >= 3 && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LEFT))
-            ss_ipoly(w, &W->cur, var, false), puts_(w, "=0: DEGREE "), put_int(w, W->cur.n), puts_(w, " LEFT");
+            ss_left(w, &W->cur, var, false), puts_(w, "=0: DEGREE "), put_int(w, W->cur.n), puts_(w, " LEFT");
     }
     ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
 }

@@ -479,8 +479,8 @@ MUTANTS = {
         ("src/casim.c", "            if (whole) continue;", "            if (whole && 0) continue;"),
     ],
     "ssteps-missed-factor": [
-        ("src/casim.c", "            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);",
-         "            if (i != 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur);"),
+        ("src/casim.c", "            if (ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur, i == nf - 1);",
+         "            if (i != 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, rule)) ss_product(w, var, zero, W->fs, i + 1, &W->cur, i == nf - 1);"),
     ],
     "ssteps-product-mult": [
         ("src/casim.c", "        ss_ipoly(w, &p, var, true);\n        if (fs[i].mult > 1) puts_(w, \"^\"), put_int(w, fs[i].mult);",
@@ -508,8 +508,20 @@ MUTANTS = {
          "                ss_ipoly(w, &W->g, var, true), puts_(w, DIVIDE), ss_ipoly(w, &p, var, true);"),
     ],
     "ssteps-zero-mult": [
-        ("src/casim.c", "            if (zero > 1) puts_(w, \" (MULT \"), put_int(w, zero), puts_(w, \")\");\n        }\n        for (int i = 0; i < nf; i++) {",
-         "        }\n        for (int i = 0; i < nf; i++) {"),
+        ("src/casim.c", "            puts_(w, \"=0 (MULT \"), put_int(w, zero), puts_(w, \")\");", "            puts_(w, \"=0\");"),
+    ],
+    # abacus #6311: X alone has no root line; a power left prints as one
+    "ssteps-root0-alone": [
+        ("src/casim.c", "        if (zero > 1 && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {",
+         "        if (zero && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {"),
+    ],
+    "ssteps-power-k": [
+        ("src/casim.c", "    if (rest->n >= 2 && ss_power(rest, &r, &k)) ss_ipoly(w, &r, var, true), puts_(w, \"^\"), put_int(w, k);",
+         "    if (rest->n >= 2 && ss_power(rest, &r, &k)) ss_ipoly(w, &r, var, true), puts_(w, \"^\"), put_int(w, k + 1);"),
+    ],
+    "ssteps-left-expanded": [
+        ("src/casim.c", "            ss_left(w, &W->cur, var, false), puts_(w, \"=0: DEGREE \"), put_int(w, W->cur.n), puts_(w, \" LEFT\");",
+         "            ss_ipoly(w, &W->cur, var, false), puts_(w, \"=0: DEGREE \"), put_int(w, W->cur.n), puts_(w, \" LEFT\");"),
     ],
     "ssteps-line-in-slot": [
         ("src/casim.c", "        w->cap = S->cap, w->n = 0, w->full = false;", "        w->cap = S->cap < SLOT ? S->cap : SLOT, w->n = 0, w->full = false;"),

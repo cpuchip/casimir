@@ -260,20 +260,22 @@ them, in descending powers. The steps are:
 - LINEAR FACTOR and QUADRATIC FACTOR divide out one factor, to its multiplicity: the division, then the product so
   far (left out when what is left is that factor itself). A factor is found numerically and proven by this division,
   which is exact;
-- then each factor = 0, in the order root 0, linear factors ascending by root, quadratics: LINEAR; QUADRATIC FORMULA,
-  the formula's values (or b^2-4ac when it is negative) then the roots, one line when the values are the roots
-  already; LEFT for a factor of degree 3 or more;
+- then each factor = 0, in the order root 0, linear factors ascending by root, quadratics: LINEAR (X^k=0 for the
+  root 0 when k > 1; X alone has no line, the product above shows it); QUADRATIC FORMULA, the formula's values (or
+  b^2-4ac when it is negative) then the roots, one line when the values are the roots already; LEFT for a factor of
+  degree 3 or more, as (F)^k when it is a power;
 - ANSWER is solve's own answer.
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
 | `casim steps solve "X^2÷2-X÷3=1" X RAD` | `BOTH SIDES: X^2÷2-X÷3-1=0 / INTEGER COEFFICIENTS: (X^2÷2-X÷3-1)×6=0 / INTEGER COEFFICIENTS: 3×X^2-2×X-6=0 /   QUADRATIC FORMULA: 3×X^2-2×X-6=0: X=(2-SQRT(76))÷6; X=(2+SQRT(76))÷6 /   QUADRATIC FORMULA: 3×X^2-2×X-6=0: X=(1-SQRT(19))÷3; X=(1+SQRT(19))÷3 / ANSWER: SOLVED: X=(1-SQRT(19))÷3; X=(1+SQRT(19))÷3` |
 | `casim steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X^3-3×X+2)÷(X+2)=X^2-2×X+1 / LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X^2-2×X+1)÷(X-1)^2=1 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
-| `casim steps solve "X^3-X" X RAD` | `COMMON FACTOR: X×(X^2-1)=0 / LINEAR FACTOR: (X^2-1)÷(X+1)=X-1 / LINEAR FACTOR: X×(X+1)×(X-1)=0 /   LINEAR: X=0: X=0 /   LINEAR: X+1=0: X=-1 /   LINEAR: X-1=0: X=1 / ANSWER: SOLVED: X=-1; X=0; X=1` |
+| `casim steps solve "X^3-X" X RAD` | `COMMON FACTOR: X×(X^2-1)=0 / LINEAR FACTOR: (X^2-1)÷(X+1)=X-1 / LINEAR FACTOR: X×(X+1)×(X-1)=0 /   LINEAR: X+1=0: X=-1 /   LINEAR: X-1=0: X=1 / ANSWER: SOLVED: X=-1; X=0; X=1` |
 | `casim steps solve "(X+3)×(X^3-2×X-5)" X RAD` | `POLYNOMIAL: X^4+3×X^3-2×X^2-11×X-15=0 / LINEAR FACTOR: (X^4+3×X^3-2×X^2-11×X-15)÷(X+3)=X^3-2×X-5 / LINEAR FACTOR: (X+3)×(X^3-2×X-5)=0 /   LINEAR: X+3=0: X=-3 /   LEFT: X^3-2×X-5=0: DEGREE 3 LEFT / ANSWER: PARTIAL, DEGREE 3 LEFT: X=-3` |
 | `casim steps solve "X^4+X^2=0" X RAD` | `COMMON FACTOR: X^2×(X^2+1)=0 /   LINEAR: X^2=0: X=0 (MULT 2) /   QUADRATIC FORMULA: X^2+1=0: 0^2-4×1×1=-4<0 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED: X=0 (MULT 2)` |
 | `casim steps solve "X+1=X+2" X RAD` | `BOTH SIDES: -1=0 / ANSWER: NO SOLUTION` |
 | `casim steps solve "(X^2-2)^2" X RAD` | `POLYNOMIAL: X^4-4×X^2+4=0 / QUADRATIC FACTOR: (X^4-4×X^2+4)÷(X^2-2)^2=1 / QUADRATIC FACTOR: (X^2-2)^2=0 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(8)÷2; X=SQRT(8)÷2 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2) / ANSWER: SOLVED: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2)` |
+| `casim steps solve "(X-1)×(X^3+X+1)^2" X RAD` | `POLYNOMIAL: X^7-X^6+2×X^5-X^3+X^2-X-1=0 / LINEAR FACTOR: (X^7-X^6+2×X^5-X^3+X^2-X-1)÷(X-1)=(X^3+X+1)^2 / LINEAR FACTOR: (X-1)×(X^3+X+1)^2=0 /   LINEAR: X-1=0: X=1 /   LEFT: (X^3+X+1)^2=0: DEGREE 6 LEFT / ANSWER: PARTIAL, DEGREE 6 LEFT: X=1` |
 | `casim --one-line steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
 
 ### pdiv, pgcd, cancel: polynomial division

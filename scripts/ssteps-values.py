@@ -293,6 +293,31 @@ def roots_of(text):
     return out
 
 
+def power_of(c):
+    """k >= 2 when the polynomial with coefficients c (ascending) is some r^k over Q, else 1"""
+    n = len(c) - 1
+    for k in range(n, 1, -1):
+        if n % k:
+            continue
+        m, lead = n // k, c[-1]
+        root = round(float(abs(lead)) ** (1.0 / k)) if lead > 0 else None
+        for r0 in ([root - 1, root, root + 1] if root else []):
+            if r0 <= 0 or F(r0) ** k != lead:
+                continue
+            r = [F(0)] * m + [F(r0)]
+            for j in range(1, m + 1):              # the coefficient of X^(n-j) fixes r's at X^(m-j)
+                q = [F(1)]
+                for _ in range(k):
+                    q = pmul(q, r)
+                r[m - j] = (c[n - j] - q[n - j]) / (k * F(r0) ** (k - 1))
+            q = [F(1)]
+            for _ in range(k):
+                q = pmul(q, r)
+            if q == c:
+                return k
+    return 1
+
+
 def key(f):
     """the order (#6288, D1): X, then linear by root, then quadratics by (a, b, c); a factor left last"""
     if f == "X":
@@ -367,7 +392,8 @@ def judge(rows, e, var, model, plain, tv):
                     why.append(f"step {k} {rule}: {text}: its divisor is not one factor of that degree")
                 elif nxt[3] != rule or after is None:
                     why.append(f"step {k}: {text}: the next step is not its product, {rule}")
-                elif (q == "1" and after[-1] != dv[0]) or (q != "1" and (after[-1] != (q, 1) or after[-2] != dv[0])):
+                elif (q == "1" and after[-1] != dv[0]) or (q != "1" and (after[-1] != (factors_of(q) or [(q, 1)])[0] or
+                                                                  after[-2] != dv[0])):
                     why.append(f"step {k}: {text}: the next line {nxt[4]} does not add {f} and leave {q}")
                 for x in POINTS:
                     fv = ev(f, x)
@@ -398,6 +424,9 @@ def judge(rows, e, var, model, plain, tv):
                     m = re.fullmatch(r"DEGREE (\d+) LEFT", rest)
                     if not m or int(m.group(1)) != len(c) - 1 or len(c) < 4:
                         why.append(f"step {k}: {text}: not its degree, or below 3")
+                    base = (factors_of(fpart) or [(fpart, 1)])[0][0]
+                    if power_of(coeffs(base)) > 1:
+                        why.append(f"step {k}: {text}: what is left is a power, not printed as one")
                 elif rule == "QUADRATIC FORMULA" and line == "T" and rest.endswith("<0"):
                     arith, dv = rest.removesuffix("<0").split("=")
                     if len(c) != 3 or ev(arith, F(0)) != QR(int(dv)) or int(dv) >= 0 or \
@@ -425,9 +454,8 @@ def judge(rows, e, var, model, plain, tv):
     # the factors: the last product line's, at depth 1, in the order, each line adding one
     try:
         whole = d0[-1][4].removesuffix("=0") if d0 else None
-        fl = factors_of(whole) if whole else None
-        if fl is None or (len(fl) == 1 and fl[0][1] == 1 and not d1):
-            fl = []
+        product = bool(d0) and d0[-1][3] in ("COMMON FACTOR", "LINEAR FACTOR", "QUADRATIC FACTOR")
+        fl = factors_of(whole) if product else []
         listed = []
         for r in d1:
             if r[2] != "R":
@@ -437,19 +465,30 @@ def judge(rows, e, var, model, plain, tv):
             if m:
                 listed.append(("X", int(m.group(1) or 1)))
                 continue
+            if r[3] == "LEFT":                  # a power left prints as (F)^k
+                listed.append((factors_of(f) or [(f, 1)])[0])
+                continue
             rs = roots_of(rest)
             if rs and len({m for _, m in rs}) != 1:
                 why.append(f"step {r[0]}: {r[4]}: its roots differ in multiplicity")
             listed.append((f, rs[0][1] if rs else None))
+        if fl and fl[0] == ("X", 1) and (not listed or listed[0][0] != "X"):
+            fl = fl[1:]                         # X alone has no line of its own: the product shows its root 0
         if fl:
             if [f for f, _ in fl] != [f for f, _ in listed]:
                 why.append(f"the depth-1 factors {[f for f, _ in listed]} are not the product's {[f for f, _ in fl]}")
             for (f, n), (_, m) in zip(fl, listed):
                 if m is not None and m != n:
                     why.append(f"{f}: (MULT {m}) at depth 1, ^{n} in the product")
-        elif len(listed) == 1 and listed[0][0] != "X":
-            if not proportional([float(ev(listed[0][0], x).a) ** (listed[0][1] or 1) for x in POINTS], tv):
-                why.append(f"the one factor {listed[0][0]} is not the typed L-R")
+        elif listed:                            # no product line: the factors, multiplied, are the typed L-R
+            vals = []
+            for x in POINTS:
+                v = 1.0
+                for f, m in listed:
+                    v *= float(ev(f, x).a) ** (m or 1)
+                vals.append(v)
+            if not proportional(vals, tv):
+                why.append(f"the factors {listed} are not the typed L-R")
         keys = [key(f) for f, _ in listed]
         if keys != sorted(keys):
             why.append(f"the factors are not in the order: {[f for f, _ in listed]}")
@@ -461,7 +500,7 @@ def judge(rows, e, var, model, plain, tv):
             if a is None or b is None or b[:len(a) - 1] != a[:-1] or len(b) - len(a) not in (0, 1):
                 why.append(f"step {k1} does not add one factor to step {k0}")
         # every root zeroes the whole polynomial
-        full = whole if whole else (listed[0][0] if len(listed) == 1 else None)
+        full = whole if whole else (listed[0][0] if len(listed) == 1 else None)   # a polynomial all roots zero
         if full:
             for r in d1:
                 rest = r[4].split("=0: ", 1)[1] if "=0: " in r[4] else ""
@@ -532,7 +571,10 @@ def check(e, var, angle, model, counts):
 LONG = ("(X-1)×(X^11+1234567×X^10-1345678×X^9+1456789×X^8-1567891×X^7+1678912×X^6-1789123×X^5+1891234×X^4-1912345×X^3"
         "+1123456×X^2-1234561×X+1345671)")
 AIMED = [(LONG, "X", "RAD", "35"), ("(X^2-2)^5", "X", "RAD", "35"), ("(X^2+X+1)^3×(X-2)^2", "X", "RAD", "35"),
-         ("X^3×(3×X^2-5)^2=0", "X", "RAD", "35"), ("(2×X+1)^4×(X^2-3)^3", "X", "RAD", "35")]
+         ("X^3×(3×X^2-5)^2=0", "X", "RAD", "35"), ("(2×X+1)^4×(X^2-3)^3", "X", "RAD", "35"),
+         # a power left (abacus #6311: H01143's shape) and X alone beside other factors
+         ("(X^3+6×X^2+6×X+3)^4", "X", "RAD", "35"), ("(X-1)×(X^3+X+1)^2", "X", "RAD", "35"),
+         ("X^3×(X^3+2)^2", "X", "RAD", "35"), ("(2×X^3+X+1)^3=1", "X", "RAD", "35"), ("X×(X^2-4)", "X", "RAD", "35")]
 
 
 def known_inputs():
@@ -644,6 +686,11 @@ def planted():
          ["1", "1", "R", "QUADRATIC FORMULA", "X^2+X+1=0: NO REAL ROOTS"], ["2", "0", "R", "ANSWER", "NO REAL ROOTS"]]
     if not judge(q, "X^2+X+1", "X", "35", "NO REAL ROOTS", typed_values("X^2+X+1", "X", "35")):
         accepted.append("a wrong discriminant")
+    e = "(X^3+X+1)^2"
+    p = [["0", "0", "R", "POLYNOMIAL", "X^6+2×X^4+2×X^3+X^2+2×X+1=0"],
+         ["1", "1", "R", "LEFT", "X^6+2×X^4+2×X^3+X^2+2×X+1=0: DEGREE 6 LEFT"], ["2", "0", "R", "ANSWER", "PARTIAL, DEGREE 6 LEFT"]]
+    if not judge(p, e, "X", "35", "PARTIAL, DEGREE 6 LEFT", typed_values(e, "X", "35")):
+        accepted.append("a power left printed expanded")
     return accepted, []
 
 
@@ -669,7 +716,7 @@ def main():
             failed += 1
             print(f"FAIL scripts/ssteps-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why[:6]))
     print(f"solve steps: {len(cases)} equations ({len(cases) - n} from the corpus, the docs and aimed ones), {counts['lines']} "
-          f"steps judged exactly and read back by casim (one line past 191 bytes); the judge refused its eight planted faults\n"
+          f"steps judged exactly and read back by casim (one line past 191 bytes); the judge refused its nine planted faults\n"
           f"checks: {len(cases)} failed: {failed}")
     sys.exit(1 if failed or control else 0)
 

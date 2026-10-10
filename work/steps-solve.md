@@ -21,7 +21,8 @@ Depth 0 is the equation as it stands, `…=0`; depth 1 is each factor set to 0, 
   with what is left, `(X+2)×(X^2-2×X+1)=0`. Left out when what was left is that factor itself (the line before
   already shows it). The factor is found numerically and proven by the division; no candidate test is a step.
 - Then each factor = 0, at depth 1:
-  - the root 0: `X=0`, with ` (MULT k)` for X^k;
+  - the root 0, for X^k with k > 1: `X^3=0: X=0 (MULT 3)`. X alone has no line of its own: the product line above
+    shows it and the answer has its root (abacus #6311);
   - **LINEAR:** `2×X-3=0: X=3÷2`, ` (MULT k)` for a factor to the k;
   - **QUADRATIC FORMULA:** the template has the formula's values, unsimplified: `3×X^2-2×X-6=0:
     X=(2-SQRT(76))÷6; X=(2+SQRT(76))÷6` (`X=-SQRT(8)÷2; X=SQRT(8)÷2` when b is 0); with a negative discriminant
@@ -29,7 +30,10 @@ Depth 0 is the equation as it stands, `…=0`; depth 1 is each factor set to 0, 
     `(-2)^2-4×3×(-6)`). The result has the roots as the answer prints them, `X=(1-SQRT(19))÷3; X=(1+SQRT(19))÷3`,
     or NO REAL ROOTS. The template is left out when it already prints the roots as the result does (d square-free,
     nothing to reduce, once): `X^2-X-1=0: X=(1-SQRT(5))÷2; X=(1+SQRT(5))÷2` is one line;
-  - **LEFT:** a factor of degree 3 or more that solve leaves, `X^3-2×X-5=0: DEGREE 3 LEFT`.
+  - **LEFT:** a factor of degree 3 or more that solve leaves, `X^3-2×X-5=0: DEGREE 3 LEFT`. One that is a power
+    prints as one, in the LEFT line, the product line that leaves it and the division before: `(X^3+6×X^2+6×X+3)^4=0:
+    DEGREE 12 LEFT` (abacus #6311: 299 of the hidden set's 654 left factors are powers). Its k-th root is solved for
+    exactly and multiplied back before it prints; the answer, DEGREE 12, is solve's.
 - **ANSWER:** solve's own answer, the last step either way.
 
 CASIM_STEPS_ONE_LINE leaves out the template lines (INTEGER COEFFICIENTS', the divisions, the formula's values and
