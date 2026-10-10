@@ -3688,6 +3688,7 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
     case CASIM_PGCD:
         return casim_pgcd(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_CANCEL: return casim_cancel(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_PARTFRAC: return casim_partfrac(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -6705,6 +6706,12 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
             /* the reduced quotient: (kf / kg) × (fi / gd) ÷ (gi / gd), checked (rule 5) */
             ipoly *bk = &P->back;
             ref num_t;
+            if (fi->n < 0) {
+                /* 0÷den: all of den cancels (the gcd of 0 and den is den's), so 0 and den's rows (CAS 012, abacus
+                   #6437: NO_ROOM here named a resource that had not run out) */
+                puts_(&w, "0");
+                goto rows;
+            }
             if (!div_poly(fi, gd, nr) || !div_poly(gi, gd, dr) || !ipmul((*bk = *nr, bk), gd) ||
                 memcmp(bk->a, fi->a, (size_t)(fi->n + 1) * sizeof fi->a[0]) != 0 || !ipmul((*bk = *dr, bk), gd) ||
                 memcmp(bk->a, gi->a, (size_t)(gi->n + 1) * sizeof gi->a[0]) != 0)
@@ -6719,7 +6726,7 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
             num_t = poly_tree(&c, q, var);
             if (dr->n > 0) num_t = mul2(&c, num_t, power(&c, ipoly_tree(&c, dr, var), small(&c, C_M1)));
             print(&c, &w, num_t);
-            {
+        rows: {
                 ref dqr = grab(&c, SOLVE_DIVS * sizeof(int32_t));
                 if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
                 removed_rows(&c, &w, gd, var, (solve_ws *)(void *)nd(&c, wr), (int32_t *)(void *)nd(&c, dqr), P);
@@ -6755,4 +6762,493 @@ casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_poly(CASIM_CANCEL, eqn, var, NULL, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU, false);
+}
+
+/* ---- partial fractions over Q (unit CAS 012) ---- */
+
+/* n÷d's terms over d's factors over Q: the polynomial part, then for each factor f to the k a numerator of degree below
+   deg f over each f^j, j = 1..k (rule 3: extended Euclid, then the digits in base f). The arithmetic runs only after
+   the input's parse has returned (rule 11): do_partfrac reads, pf_work computes, so a 44-deep input never carries
+   pf_work's frame. */
+
+#define PF_N (SOLVE_DEG + 1)
+
+/* A test build (tests/pfcheck_check.c) defines this to spoil a numerator before rule 7's check, which must then refuse:
+   the check guards a computation that is right, so nothing else reaches it. */
+#ifndef CASIM_PF_PLANT
+#define CASIM_PF_PLANT(pool, used) ((void)0)
+#endif
+
+/* kept at the arena's top while factor runs below it: the input cleared, and factor's texts */
+typedef struct {
+    ipoly n, d;                 /* primitive integer polynomials */
+    rat kn, kd;                 /* their contents: the input is (kn n) ÷ (kd d) */
+    char dtext[SLOT], ftext[SLOT];
+} pfkeep;
+
+typedef struct {
+    int64_t f[PF_N];            /* the factor, primitive with a positive lead (int64: 8 KB holds 12 of them) */
+    int deg;
+    int k;                      /* its multiplicity in d, after the cancelling */
+    int gone;                   /* how many times the gcd took it out (rule 2) */
+    int off;                    /* its numerators in the pool: over f^j, deg f coefficients from off + (j-1) deg f */
+} pffac;
+
+/* below the kept block, once factor is done with the arena */
+typedef struct {
+    rat n[PF_N], d[PF_N], poly[PF_N], r[PF_N], P[PF_N], Q[PF_N], A[PF_N], t[8][PF_N];
+    pffac fac[SOLVE_DEG];
+    rat pool[SOLVE_DEG];        /* every numerator's coefficients: there are deg d of them */
+    int nf;
+} pfwork;
+
+/* o += a b (sub: o -= a b); false on an overflow. One call for every product the section sums: at -O2 the rationals'
+   add and multiply would otherwise be inlined at each of its loops (CAS 012 rule 11, the flash) */
+/* the rationals' make, multiply, add and compare, out of line for this section: inlined at its many call sites they
+   cost kilobytes of flash (rule 11) */
+static __attribute__((noinline)) bool pf_rmake(rat *r, int64_t p, int64_t q) { return rat_make(r, p, q); }
+static __attribute__((noinline)) bool pf_rmul(rat *r, const rat *x, const rat *y) { return rat_mul(r, x, y); }
+static __attribute__((noinline)) bool pf_radd(rat *r, const rat *x, const rat *y) { return rat_add(r, x, y); }
+static __attribute__((noinline)) int pf_rcmp(const rat *x, const rat *y) { return rat_cmp(x, y); }
+static __attribute__((noinline)) void pf_puts(out_t *w, const char *s) { puts_(w, s); }
+static __attribute__((noinline)) void pf_int(out_t *w, int64_t v) { put_int(w, v); }
+
+/* o = a, a polynomial */
+static void pf_copy(rat *o, const rat *a)
+{
+    memmove(o, a, PF_N * sizeof(rat));
+}
+
+static __attribute__((noinline)) bool pf_fma(rat *o, const rat *a, const rat *b, bool sub)
+{
+    rat t;
+    if (a->p == 0 || b->p == 0) return true;
+    if (!pf_rmul(&t, a, b)) return false;
+    if (sub) t.p = -t.p;
+    return pf_radd(o, o, &t);
+}
+
+/* o = a b; false past degree 12 or on an overflow */
+static bool pf_mul(rat *o, const rat *a, const rat *b)
+{
+    int da = rdeg(a), db = rdeg(b);
+    pzero(o);
+    if (da < 0 || db < 0) return true;
+    if (da + db > SOLVE_DEG) return false;
+    for (int i = 0; i <= da; i++)
+        for (int j = 0; j <= db; j++)
+            if (!pf_fma(&o[i + j], &a[i], &b[j], false)) return false;
+    return true;
+}
+
+/* o = a - b (o may be a or b) */
+static bool pf_sub(rat *o, const rat *a, const rat *b)
+{
+    rat one = {1, 1};
+    for (int i = 0; i < PF_N; i++) {
+        rat t = b[i];
+        o[i] = a[i];
+        if (!pf_fma(&o[i], &one, &t, true)) return false;
+    }
+    return true;
+}
+
+/* a = q b + r, deg r < deg b (b nonzero; r is not a or b) */
+static bool pf_div(const rat *a, const rat *b, rat *q, rat *r)
+{
+    int na = rdeg(a), nb = rdeg(b);
+    rat inv;
+    if (nb < 0) return false;
+    pzero(q);
+    memmove(r, a, PF_N * sizeof(rat));
+    if (!pf_rmake(&inv, b[nb].q, b[nb].p)) return false;
+    for (int i = na; i >= nb; i--) {
+        if (r[i].p == 0) continue;
+        if (!pf_rmul(&q[i - nb], &r[i], &inv)) return false;
+        for (int j = 0; j <= nb; j++) {
+            if (!pf_fma(&r[i - nb + j], &q[i - nb], &b[j], true)) return false;
+        }
+    }
+    return true;
+}
+
+/* o = a b mod P for deg b < deg P, by Horner in a's coefficients: o X mod P, plus a_i b; every step stays below deg P,
+   so a degree-11 remainder times an inverse never passes 12 (o is not a or b) */
+static bool pf_mulmod(rat *o, const rat *a, const rat *b, const rat *P)
+{
+    int np = rdeg(P);
+    rat inv, lead;
+    pzero(o);
+    if (!pf_rmake(&inv, P[np].q, P[np].p)) return false;
+    for (int i = rdeg(a); i >= 0; i--) {
+        lead = o[np - 1];
+        for (int x = np - 1; x > 0; x--) o[x] = o[x - 1];               /* o X, its X^np term in lead */
+        rat_int(&o[0], 0);
+        if (lead.p != 0) {
+            if (!pf_rmul(&lead, &lead, &inv)) return false;
+            for (int x = 0; x < np; x++) {                               /* minus lead/P_np P */
+                if (!pf_fma(&o[x], &lead, &P[x], true)) return false;
+            }
+        }
+        if (a[i].p != 0)
+            for (int x = 0; x < np; x++) {
+                if (!pf_fma(&o[x], &a[i], &b[x], false)) return false;
+            }
+    }
+    return true;
+}
+
+/* s with s Q = 1 mod P and deg s < deg P, by extended Euclid; false when P and Q are not coprime. t: 6 polynomials */
+static bool pf_inverse(const rat *Q, const rat *P, rat *s, rat (*t)[PF_N])
+{
+    rat *r0 = t[0], *r1 = t[1], *s0 = t[2], *s1 = t[3], *q = t[4], *x = t[5], inv;
+    pf_copy(r0, P);
+    if (!pf_div(Q, P, q, r1)) return false;
+    pzero(s0), pzero(s1), rat_int(&s1[0], 1);
+    while (rdeg(r1) > 0) {
+        /* r1 and s1 made monic in r1 first: the invariant s Q = r mod P holds for both, and the numbers stay small */
+        if (!pf_rmake(&inv, r1[rdeg(r1)].q, r1[rdeg(r1)].p)) return false;
+        for (int i = 0; i < PF_N; i++)
+            if ((r1[i].p && !pf_rmul(&r1[i], &r1[i], &inv)) || (s1[i].p && !pf_rmul(&s1[i], &s1[i], &inv))) return false;
+        if (!pf_div(r0, r1, q, x)) return false;
+        pf_copy(r0, r1), pf_copy(r1, x);
+        if (!pf_mul(x, q, s1) || !pf_sub(x, s0, x)) return false;
+        pf_copy(s0, s1), pf_copy(s1, x);
+    }
+    if (rdeg(r1) < 0 || !pf_rmake(&inv, r1[0].q, r1[0].p)) return false;
+    for (int i = 0; i < PF_N; i++)
+        if (s1[i].p && !pf_rmul(&s1[i], &s1[i], &inv)) return false;
+    return pf_div(s1, P, q, s);
+}
+
+/* an integer polynomial, descending, as a student writes it */
+static void pf_ipoly(out_t *w, const rat *p, int var)
+{
+    char v[2] = {(char)('A' + var), 0};
+    bool first = true;
+    for (int i = rdeg(p); i >= 0; i--) {
+        int64_t a = p[i].p;
+        if (a == 0) continue;
+        if (a < 0) pf_puts(w, "-"), a = -a;
+        else if (!first) pf_puts(w, "+");
+        first = false;
+        if (i == 0 || a != 1) pf_int(w, a);
+        if (i > 0 && a != 1) pf_puts(w, TIMES);
+        if (i > 0) pf_puts(w, v);
+        if (i > 1) pf_puts(w, "^"), pf_int(w, i);
+    }
+    if (first) pf_puts(w, "0");
+}
+
+/* the polynomial part, descending, each coefficient an integer or p÷q after its power (rule 4: 3×X÷2+9÷2) */
+static void pf_rpoly(out_t *w, const rat *p, int var)
+{
+    char v[2] = {(char)('A' + var), 0};
+    bool first = true;
+    for (int i = rdeg(p); i >= 0; i--) {
+        int64_t a = p[i].p;
+        if (a == 0) continue;
+        if (a < 0) pf_puts(w, "-"), a = -a;
+        else if (!first) pf_puts(w, "+");
+        first = false;
+        if (i == 0 || a != 1) pf_int(w, a);
+        if (i > 0 && a != 1) pf_puts(w, TIMES);
+        if (i > 0) pf_puts(w, v);
+        if (i > 1) pf_puts(w, "^"), pf_int(w, i);
+        if (p[i].q != 1) pf_puts(w, DIVIDE), pf_int(w, p[i].q);
+    }
+}
+
+/* num ÷ f^j as rule 4 writes it: c×(N)÷(m×(F)^j), N primitive with a positive lead, in parentheses only when it is a
+   sum, the sign out front, c and m dropped when 1. ip: room for N. */
+static bool pf_term(out_t *w, const rat *num, const rat *f, int j, int var, bool first, rat *ip)
+{
+    int64_t l = 1, g = 0;
+    int dn = rdeg(num), terms = 0;
+    rat k;
+    for (int i = 0; i <= dn; i++)
+        if (num[i].p != 0 && !mul64(&l, l, num[i].q / gcd64(l, num[i].q))) return false;
+    pzero(ip);
+    for (int i = 0; i <= dn; i++) {
+        if (num[i].p != 0 && !mul64(&ip[i].p, num[i].p, l / num[i].q)) return false;
+        g = gcd64(g, ip[i].p);
+    }
+    if (ip[dn].p < 0) g = -g;
+    for (int i = 0; i <= dn; i++) ip[i].p /= g, terms += ip[i].p != 0;
+    if (!pf_rmake(&k, g, l)) return false;                       /* num = k N */
+    if (k.p < 0) pf_puts(w, "-"), k.p = -k.p;
+    else if (!first) pf_puts(w, "+");
+    if (dn == 0) pf_int(w, k.p);
+    else {
+        if (k.p != 1) pf_int(w, k.p), pf_puts(w, TIMES);
+        if (terms > 1) pf_puts(w, "(");
+        pf_ipoly(w, ip, var);
+        if (terms > 1) pf_puts(w, ")");
+    }
+    pf_puts(w, DIVIDE);
+    if (k.q != 1) pf_puts(w, "("), pf_int(w, k.q), pf_puts(w, TIMES);
+    if (rdeg(f) == 1 && f[0].p == 0 && f[1].p == 1) pf_ipoly(w, f, var);         /* X alone */
+    else pf_puts(w, "("), pf_ipoly(w, f, var), pf_puts(w, ")");
+    if (j > 1) pf_puts(w, "^"), pf_int(w, j);
+    if (k.q != 1) pf_puts(w, ")");
+    return true;
+}
+
+/* numerator j of F, from the pool */
+static void pf_get(const pfwork *W, const pffac *F, int j, rat *o)
+{
+    pzero(o);
+    for (int i = 0; i < F->deg; i++) o[i] = W->pool[F->off + (j - 1) * F->deg + i];
+}
+
+/* F's factor as rationals */
+static rat *pf_f(const pffac *F, rat *o)
+{
+    pzero(o);
+    for (int i = 0; i <= F->deg; i++) o[i].p = F->f[i];
+    return o;
+}
+
+/* rule 5's order: linear factors by root ascending (X is root 0), quadratics by (a, b, c), then the rest by degree,
+   then by their coefficients from the lead down */
+static int pf_cmp(const pffac *x, const pffac *y)
+{
+    if (x->deg != y->deg) return x->deg < y->deg ? -1 : 1;
+    if (x->deg == 1) {
+        rat rx, ry;
+        pf_rmake(&rx, -x->f[0], x->f[1]), pf_rmake(&ry, -y->f[0], y->f[1]);
+        return pf_rcmp(&rx, &ry);
+    }
+    for (int i = x->deg; i >= 0; i--)
+        if (x->f[i] != y->f[i]) return x->f[i] < y->f[i] ? -1 : 1;
+    return 0;
+}
+
+/* factor's printed product, read back into W's factors: a chain of × of F, (F) or (F)^k. co: room for one polynomial */
+static bool pf_factors(ctx *c, ref t, int var, pfwork *W, rat *co)
+{
+    pffac *F;
+    while (nd(c, t)->kind == K_GROUP) t = nd(c, t)->a;
+    if (nd(c, t)->kind == K_BMUL)
+        return pf_factors(c, nd(c, t)->a, var, W, co) && pf_factors(c, nd(c, t)->b, var, W, co);
+    if (W->nf >= SOLVE_DEG) return false;
+    F = &W->fac[W->nf++];
+    F->k = 1;
+    if (nd(c, t)->kind == K_BPOW) {
+        pw(c, nd(c, t)->b, var, co);
+        if (c->st != CASIM_OK || rdeg(co) != 0 || co[0].q != 1 || co[0].p < 2 || co[0].p > SOLVE_DEG) return false;
+        F->k = (int)co[0].p;
+        t = nd(c, t)->a;
+    }
+    pw(c, t, var, co);
+    if (c->st != CASIM_OK || (F->deg = rdeg(co)) < 1 || co[F->deg].p < 0) return false;
+    for (int i = 0; i <= SOLVE_DEG; i++) {
+        if (co[i].q != 1) return false;                         /* factor's factors are integer polynomials */
+        F->f[i] = co[i].p;
+    }
+    return true;
+}
+
+/* an ipoly as rationals, times k */
+static bool pf_rats(rat *o, const ipoly *f, const rat *k)
+{
+    pzero(o);
+    for (int i = 0; i <= f->n; i++) {
+        rat_int(&o[i], 0);
+        o[i].p = f->a[i];
+        if (!pf_rmul(&o[i], &o[i], k)) return false;
+    }
+    return true;
+}
+
+/* everything after the input's parse: factor d, the numerators, the check (rule 7), the text */
+static __attribute__((noinline)) casim_status pf_work(pfkeep *K, int var, int angle, char *out, size_t ocap, void *arena,
+                                                      size_t room)
+{
+    ctx c;
+    ref t, wr;
+    out_t w = {out, ocap, 0, false};
+    pfwork *W;
+    casim_status fs = CASIM_OK;
+    int used = 0;
+    bool first = true;
+    K->ftext[0] = '\0';
+    if (K->d.n >= 1) {
+        /* d (primitive, its lead positive) factored by factor, called whole: its code and frames are factor's */
+        out_t dt = {K->dtext, SLOT, 0, false};
+        rat *ip = (rat *)arena;                                  /* scratch until factor starts (8-aligned) */
+        pzero(ip);
+        for (int i = 0; i <= K->d.n; i++) ip[i].p = K->d.a[i];
+        pf_ipoly(&dt, ip, var);
+        if (dt.full) return CASIM_NO_ROOM;
+        fs = do_factor(K->dtext, var, angle, K->ftext, SLOT, arena, room, false);
+        if (fs != CASIM_OK && fs != CASIM_PARTIAL) return fs == CASIM_TOO_LONG ? CASIM_NO_ROOM : fs;
+    }
+    start(&c, K->ftext[0] ? K->ftext : "1", angle, arena, room);
+    c.opaque = true;
+    wr = grab(&c, sizeof(pfwork));
+    t = c.st == CASIM_OK ? parse(&c) : SPARE;
+    if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+    W = (pfwork *)(void *)nd(&c, wr);
+    if (!pf_rats(W->n, &K->n, &K->kn) || !pf_rats(W->d, &K->d, &K->kd)) return CASIM_NO_ROOM;
+    if (K->d.n >= 1) {
+        if (!pf_factors(&c, t, var, W, W->t[0])) return CASIM_NO_ROOM;
+        for (int i = 1; i < W->nf; i++)
+            for (int j = i; j > 0 && pf_cmp(&W->fac[j - 1], &W->fac[j]) > 0; j--) {
+                pffac x = W->fac[j];
+                W->fac[j] = W->fac[j - 1], W->fac[j - 1] = x;
+            }
+        /* rule 2: the gcd out first, a factor at a time while it divides n exactly (0 is divided by all of d) */
+        for (int i = 0; i < W->nf; i++) {
+            pffac *F = &W->fac[i];
+            rat *f = pf_f(F, W->t[7]);
+            F->gone = 0;
+            while (F->k > 0) {
+                if (!pf_div(W->n, f, W->t[0], W->t[1])) return CASIM_NO_ROOM;
+                if (rdeg(W->t[1]) >= 0) break;
+                pf_copy(W->n, W->t[0]);
+                if (!pf_div(W->d, f, W->t[0], W->t[1]) || rdeg(W->t[1]) >= 0) return CASIM_NO_ROOM;
+                pf_copy(W->d, W->t[0]);
+                F->k--, F->gone++;
+            }
+        }
+    }
+    if (!pf_div(W->n, W->d, W->poly, W->r)) return CASIM_NO_ROOM;
+    if (rdeg(W->d) >= 1) {
+        /* each factor power P = f^k against Q = d ÷ P: A = r s mod P with s Q = 1 mod P, then A's digits in base f */
+        for (int i = 0; i < W->nf; i++) {
+            pffac *F = &W->fac[i];
+            int df = F->deg;
+            rat *f = pf_f(F, W->t[7]);
+            F->off = used;
+            if (F->k == 0) continue;                             /* all of it cancelled */
+            pzero(W->P), rat_int(&W->P[0], 1);
+            for (int m = 0; m < F->k; m++) {
+                if (!pf_mul(W->A, W->P, f)) return CASIM_NO_ROOM;
+                pf_copy(W->P, W->A);
+            }
+            if (!pf_div(W->d, W->P, W->Q, W->A) || rdeg(W->A) >= 0) return CASIM_NO_ROOM;
+            if (!pf_inverse(W->Q, W->P, W->t[6], W->t) || !pf_mulmod(W->A, W->r, W->t[6], W->P)) return CASIM_NO_ROOM;
+            if (used + F->k * df > SOLVE_DEG) return CASIM_NO_ROOM;
+            for (int j = F->k; j >= 1; j--) {
+                if (!pf_div(W->A, f, W->t[0], W->t[1])) return CASIM_NO_ROOM;
+                pf_copy(W->A, W->t[0]);
+                for (int x = 0; x < df; x++) W->pool[used + (j - 1) * df + x] = W->t[1][x];
+            }
+            used += F->k * df;
+        }
+        CASIM_PF_PLANT(W->pool, used);
+    }
+    /* rule 7, before anything prints, for every answer: n = poly d + Σ num_j d ÷ f^j exactly. Checked in an equivalent
+       form whose numbers stay small (the sum's terms have unrelated denominators, and summed they pass 2^62 where the
+       answer does not): n = poly d + r, and for each factor power P = f^k with cofactor Q = d ÷ P, the numerators
+       rebuilt as A = Σ num_j f^(k-j) satisfy A Q = r mod P. Then r - Σ A Q is divisible by every P, so by d, and its
+       degree is below d's: it is 0. */
+    if (!pf_mul(W->t[1], W->poly, W->d)) return CASIM_NO_ROOM;
+    for (int x = 0; x < PF_N; x++)
+        if (!pf_radd(&W->t[1][x], &W->t[1][x], &W->r[x]) || pf_rcmp(&W->t[1][x], &W->n[x]) != 0) return CASIM_NO_ROOM;
+    for (int i = 0; i < W->nf; i++) {
+        pffac *F = &W->fac[i];
+        rat *f = pf_f(F, W->t[7]);
+        if (F->k == 0) continue;
+        pzero(W->P), rat_int(&W->P[0], 1), pzero(W->A);
+        for (int j = 1; j <= F->k; j++) {
+            if (!pf_mul(W->t[0], W->P, f) || !pf_mul(W->t[1], W->A, f)) return CASIM_NO_ROOM;
+            pf_copy(W->P, W->t[0]);
+            pf_get(W, F, j, W->t[6]);
+            for (int x = 0; x < PF_N; x++) W->t[6][x].p = -W->t[6][x].p;
+            if (!pf_sub(W->A, W->t[1], W->t[6])) return CASIM_NO_ROOM;            /* A = A f + num_j */
+        }
+        if (!pf_div(W->d, W->P, W->Q, W->t[2]) || rdeg(W->t[2]) >= 0 || !pf_div(W->Q, W->P, W->t[0], W->t[3]) ||
+            !pf_mulmod(W->t[4], W->A, W->t[3], W->P) || !pf_div(W->r, W->P, W->t[0], W->t[5]))
+            return CASIM_NO_ROOM;
+        for (int x = 0; x < PF_N; x++)
+            if (pf_rcmp(&W->t[4][x], &W->t[5][x]) != 0) return CASIM_NO_ROOM;     /* never printed unchecked */
+    }
+    /* rule 4's text: the polynomial part, then each factor's terms by ascending power */
+    if (rdeg(W->poly) >= 0) pf_rpoly(&w, W->poly, var), first = false;
+    for (int i = 0; i < W->nf; i++)
+        for (int j = 1; j <= W->fac[i].k; j++) {
+            pf_get(W, &W->fac[i], j, W->t[1]);
+            if (rdeg(W->t[1]) < 0) continue;
+            if (!pf_term(&w, W->t[1], pf_f(&W->fac[i], W->t[7]), j, var, first, W->t[0])) return out[0] = '\0', CASIM_NO_ROOM;
+            first = false;
+        }
+    if (first) pf_puts(&w, "0");
+    /* rule 2: CANCEL's rows for what the gcd removed: X=a for a linear factor, ascending (rule 5's order is by root),
+       then the rest as one polynomial, as CANCEL prints it */
+    {
+        ipoly *rest = &K->n, b;                                  /* n is done with */
+        char v[2] = {(char)('A' + var), 0};
+        rest->n = 0, rest->a[0] = 1;
+        for (int i = 0; i < W->nf; i++) {
+            pffac *F = &W->fac[i];
+            if (F->gone == 0) continue;
+            if (F->deg == 1) {
+                pf_puts(&w, "; "), pf_puts(&w, v), pf_puts(&w, "=");
+                pf_int(&w, -F->f[0]);
+                if (F->f[1] != 1) pf_puts(&w, DIVIDE), pf_int(&w, F->f[1]);
+                continue;
+            }
+            b.n = F->deg;
+            for (int x = 0; x <= b.n; x++) b.a[x] = F->f[x];
+            for (int m = 0; m < F->gone; m++)
+                if (!ipmul(rest, &b)) return out[0] = '\0', CASIM_NO_ROOM;
+        }
+        if (rest->n >= 1) {
+            pf_puts(&w, "; ");
+            print(&c, &w, ipoly_tree(&c, rest, var));
+            pf_puts(&w, "=0");
+        }
+    }
+    if (c.st != CASIM_OK) return out[0] = '\0', CASIM_NO_ROOM;
+    if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    return fs;
+}
+
+/* the reading: n÷d as CANCEL reads it (rule 1), cleared to the kept block at the arena's top; then pf_work */
+static __attribute__((noinline)) casim_status do_partfrac(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                          void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, t;
+    size_t ocap = cap < SLOT ? cap : SLOT, room, skip = (size_t)(-(uintptr_t)arena & 7u);
+    unsigned char *base = (unsigned char *)arena + skip;         /* the arena may have any alignment */
+    pfkeep *K;
+    rat *co;
+    if (cap) out[0] = '\0';
+    if (!eqn) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (arena_cap < skip + sizeof(pfkeep) + sizeof(pfwork) + 64) return out[0] = '\0', CASIM_NO_ROOM;
+    room = (arena_cap - skip - sizeof(pfkeep)) & ~(size_t)7;
+    K = (pfkeep *)(void *)(base + room);
+    start(&c, eqn, angle, base, room);
+    c.rtl = rtl;
+    c.opaque = true;
+    co = (rat *)(void *)nd(&c, grab(&c, PF_N * sizeof(rat)));
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;          /* an equation */
+    if (c.st != CASIM_OK || cap == 0) return finish(&c, SPARE, out, ocap);
+    for (t = n; nd(&c, t)->kind == K_GROUP;) t = nd(&c, t)->a;
+    /* num÷den, as typed: the top division's two sides (no division: den is 1) */
+    pw(&c, nd(&c, t)->kind == K_BDIV ? nd(&c, t)->a : t, var, co);
+    if (c.st != CASIM_OK || !clear(&c, co, &K->n)) return finish(&c, SPARE, out, ocap);
+    if (K->n.n < 0) rat_int(&K->kn, 0), K->n.n = 0, K->n.a[0] = 1;
+    else if (!pf_rmake(&K->kn, 1, K->n.a[K->n.n]) || !pf_rmul(&K->kn, &co[K->n.n], &K->kn))
+        return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    if (nd(&c, t)->kind == K_BDIV) pw(&c, nd(&c, t)->b, var, co);
+    else pzero(co), rat_int(&co[0], 1);
+    if (c.st != CASIM_OK || !clear(&c, co, &K->d)) return finish(&c, SPARE, out, ocap);
+    if (K->d.n < 0) return c.st = CASIM_UNDEFINED, finish(&c, SPARE, out, ocap);   /* ÷0 */
+    if (!pf_rmake(&K->kd, 1, K->d.a[K->d.n]) || !pf_rmul(&K->kd, &co[K->d.n], &K->kd))
+        return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    return pf_work(K, var, angle, out, ocap, base, room);
+}
+
+casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_partfrac(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }

@@ -16,7 +16,7 @@ import createCasimirModule from "./casim.js";
 export const STATUSES = ["OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM", "NOT_POLYNOMIAL",
     "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED", "IMPROPER"];
 export const OPS = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor", "defint",
-    "pdiv", "pgcd", "cancel"];
+    "pdiv", "pgcd", "cancel", "partfrac"];
 const ANGLES = { DEG: 0, RAD: 1, GRAD: 2 };
 const MODELS = { STU: 1, 33: 33, 35: 35 };
 
@@ -61,5 +61,6 @@ export async function loadCasimir(moduleOptions = {}) {
         pdiv: (f, g, opts) => call("pdiv", f, opts, g),
         pgcd: (f, g, opts) => call("pgcd", f, opts, g),
         cancel: (text, opts) => call("cancel", text, opts),
+        partfrac: (text, opts) => call("partfrac", text, opts),
     };
 }

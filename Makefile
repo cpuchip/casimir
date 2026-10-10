@@ -36,8 +36,8 @@ CORE_LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 .PHONY: all check test check-abn size wasm clean
 all: $(LIB) build/casim build/hello build/golden_check
 
-check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check check-abn
-	scripts/run-tests.sh build/gcdprimes_check
+check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check build/pfcheck_check check-abn
+	scripts/run-tests.sh build/gcdprimes_check build/pfcheck_check
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
 	scripts/doc-examples.py
@@ -45,6 +45,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/step-values.py
 	scripts/istep-values.py
 	scripts/ssteps-values.py
+	scripts/partfrac-values.py
 
 test: check build/clang.ok $(TESTS)
 	scripts/run-tests.sh $(TESTS)
@@ -85,6 +86,10 @@ check-abn:
 
 # CAS 010's gcd on small primes: one translation unit with src/casim.c (its prime list swapped)
 build/gcdprimes_check: tests/gcdprimes_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_intel.o
+	$(CC) $(CFLAGS) -I$(ABN) -Isrc -Itests -o $@ $< build/abn_intel.o build/intel/libbid.a -lm
+
+# CAS 012's rule 7 check, reached by spoiling a numerator: one translation unit with src/casim.c
+build/pfcheck_check: tests/pfcheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_intel.o
 	$(CC) $(CFLAGS) -I$(ABN) -Isrc -Itests -o $@ $< build/abn_intel.o build/intel/libbid.a -lm
 
 # No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.

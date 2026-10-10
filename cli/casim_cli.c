@@ -12,6 +12,7 @@
  *   casim pdiv "<f>" X "<g>" RAD      the quotient and remainder of f by g over Q, "q; r" (CAS 010)
  *   casim pgcd "<f>" X "<g>" RAD      the gcd of f and g, primitive with a positive leading coefficient (CAS 010)
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
+ *   casim partfrac "<n÷d>" X RAD      n÷d in partial fractions over Q, then the removed values (CAS 012)
  *   casim steps [integrate|solve] "<text>" X RAD  derive's (or integrate's, or solve's) steps, one a line, each
  *                                    indented by its depth: RULE: d/dX(u) = ... (work/steps-derive.md,
  *                                    steps-integrate.md, steps-solve.md);
@@ -38,7 +39,8 @@ static unsigned char arena[1 << 20];
 
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
        OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR,
-       OP_DEFINT = CASIM_DEFINT, OP_PDIV = CASIM_PDIV, OP_PGCD = CASIM_PGCD, OP_CANCEL = CASIM_CANCEL };
+       OP_DEFINT = CASIM_DEFINT, OP_PDIV = CASIM_PDIV, OP_PGCD = CASIM_PGCD, OP_CANCEL = CASIM_CANCEL,
+       OP_PARTFRAC = CASIM_PARTFRAC };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
@@ -117,12 +119,14 @@ int main(int argc, char **argv)
        : strcmp(argv[i], "subst") == 0 ? OP_SUBST : strcmp(argv[i], "solve") == 0 ? OP_SOLVE
        : strcmp(argv[i], "integrate") == 0 ? OP_INTEGRATE : strcmp(argv[i], "factor") == 0 ? OP_FACTOR
        : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : strcmp(argv[i], "pdiv") == 0 ? OP_PDIV
-       : strcmp(argv[i], "pgcd") == 0 ? OP_PGCD : strcmp(argv[i], "cancel") == 0 ? OP_CANCEL : -1;
-    args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR || op == OP_CANCEL ? 4
+       : strcmp(argv[i], "pgcd") == 0 ? OP_PGCD : strcmp(argv[i], "cancel") == 0 ? OP_CANCEL
+       : strcmp(argv[i], "partfrac") == 0 ? OP_PARTFRAC : -1;
+    args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR || op == OP_CANCEL ||
+           op == OP_PARTFRAC ? 4
          : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT ? 6 : 3;
     if (op < 0 || argc - i != args) goto usage;
     if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ||
-        op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL) {
+        op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL || op == OP_PARTFRAC) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
@@ -179,6 +183,7 @@ usage:
 
 
                     "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--min-arena] partfrac \"<n÷d>\" X RAD|DEG|GRAD\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

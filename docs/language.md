@@ -296,6 +296,33 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
 | `casim pgcd "X^3-X" X "X^2+2×X+1" RAD` | `X+1` |
 | `casim cancel "(X^2-1)÷(X^2+2×X+1)" X RAD` | `(X-1)÷(X+1); X=-1` |
 | `casim cancel "(X^4-4)÷(X^2-2)" X RAD` | `X^2+2; X^2-2=0` |
+| `casim cancel "0÷(X+1)" X RAD` | `0; X=-1` |
+
+### partfrac: partial fractions over the rationals
+
+partfrac reads `n÷d` as cancel does (or a polynomial) and writes it as a polynomial part and a sum of proper fractions
+over d's factors over Q (work/012-partial-fractions.md):
+- a common factor of n and d comes out first, and the values it removed follow as cancel's rows (`; X=1`);
+- the polynomial part comes first, descending, each coefficient a whole number or p÷q after its power (`3×X÷2+9÷2`);
+- then each factor F of d to the power k, as a term over F^j for j = 1 to k, ascending: `c×(N)÷(m×(F)^j)`, with N a
+  primitive integer polynomial of degree below F's, its lead positive, in parentheses only when it is a sum, the sign
+  out front, and c and m left out when 1;
+- the factors in order of their roots: the linear ones by root ascending (X is the root 0, in its place among them),
+  then the quadratics by their coefficients (a, b, c), then the rest;
+- the answer is checked exactly against n÷d before it prints (n = q×d + r, and each factor's numerators against r);
+  a factor of degree 4 or more that factor cannot prove
+  irreducible gives PARTIAL, with the answer still exact over the factors found.
+
+It takes the same bounds as cancel. Statuses: PARTIAL, UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM (also when the
+exact arithmetic passes 2^62), BAD_ARG, TOO_LONG.
+
+| Command | Prints |
+|---|---|
+| `casim partfrac "(3×X+5)÷((X-3)×(X+4))" X RAD` | `1÷(X+4)+2÷(X-3)` |
+| `casim partfrac "(X^4+1)÷(X^3+1)" X RAD` | `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))` |
+| `casim partfrac "(7×X^2+9×X-1)÷(3×X-2)^4" X RAD` | `7÷(9×(3×X-2)^2)+55÷(9×(3×X-2)^3)+73÷(9×(3×X-2)^4)` |
+| `casim partfrac "(X^2-1)÷((X-1)×(X+2))" X RAD` | `1-1÷(X+2); X=1` |
+| `casim partfrac "1÷(1-X^4)" X RAD` | `1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1))` |
 
 ## The statuses
 
@@ -307,7 +334,7 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
 | 3 | TOO_LONG | the answer does not fit: past cap, or past 191 bytes where the operation has that bound | "" |
 | 4 | BAD_ARG | an argument out of range, or an equation where an expression is needed | "" |
 | 5 | NO_ROOM | the arena ran out, the depth guard stopped a walk, or a bound (degree, coefficient) was passed | "" |
-| 6 | NOT_POLYNOMIAL | solve, factor and the polynomial operations: not a polynomial in var as typed | "" |
+| 6 | NOT_POLYNOMIAL | solve, factor and the polynomial operations (partfrac too): not a polynomial in var as typed | "" |
 | 7 | NOT_NUMERIC | the same: a coefficient that is not an exact rational | "" |
 | 8 | NOT_INTEGRABLE | integrate and defint: not a form in the table, or the check did not close | "" |
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
@@ -325,7 +352,7 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
   bytes on the ESP32-S3, read with interrupts masked, plus an allowance of 384 for interrupts (two 192-byte frames;
   unmasked readings have exceeded masked ones by up to 272 bytes, 270 readings of 10 cases on the bench, for a reason
   not yet found). A task of 12 KB holds both with 576 bytes to spare.
-- **Polynomials.** solve, factor, pdiv, pgcd and cancel take degree ≤ 12 and coefficients ≤ 10^7 once the polynomial
+- **Polynomials.** solve, factor, pdiv, pgcd, cancel and partfrac take degree ≤ 12 and coefficients ≤ 10^7 once the polynomial
   is cleared to integers.
 - **Numbers.** Exact rationals with numerator and denominator below 2^62. Past that, a number is kept as typed and
   not folded.

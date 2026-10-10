@@ -20,7 +20,7 @@
 #define ARENA (1 << 19)
 
 static const char *const OPS[] = {"derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                  "defint", "pdiv", "pgcd", "cancel"};
+                                  "defint", "pdiv", "pgcd", "cancel", "partfrac"};
 static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
                                        "NOT_POLYNOMIAL", "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED",
                                        "IMPROPER"};

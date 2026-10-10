@@ -18,6 +18,7 @@ ANGLE = {"DEG": 0, "RAD": 1, "GRAD": 2}
 MODEL = {"STU": 1, "33": 33, "35": 35}
 SEED = 20261009
 RANDOM_CASES = 6000
+PARTFRAC_CASES = 800
 
 
 def esc(s):
@@ -69,7 +70,7 @@ def examples():
                 yield line("simplify", f[2], angle=f[3], model=f[4])
             elif unit == "009":
                 yield line("defint", f[2], "X", f[5], f[6], repl=f[3], repl2=f[4])
-            elif unit == "010":
+            elif unit in ("010", "012"):
                 yield line(f[1], f[2], "X", model=f[4], repl=None if f[3] == "-" else f[3])
             else:
                 raise SystemExit(f"golden.py: {name}: no reader for this unit's columns")
@@ -120,10 +121,32 @@ def generated():
             yield line(op, "(" + rational_roots() + ")÷(" + rational_roots() + ")", "X", angle, model, arena=arena)
 
 
+def generated_partfrac():
+    """CAS 012's own seeded fractions, a source of its own so the corpus's earlier lines keep their seed's stream:
+    planted linear, quadratic and repeated factors, an improper numerator, a common factor, an unfactorable cubic"""
+    rng = random.Random(SEED + 12)
+
+    def factor():
+        r = rng.random()
+        if r < 0.6:
+            return f"({rng.randint(1, 4)}×X{rng.randint(-6, 6):+d})"
+        return rng.choice(["(X^2+1)", "(X^2-2)", "(X^2+X+1)", "(2×X^2-X+3)", "(X^3-2)", "X"])
+
+    def num(maxdeg):
+        return "+".join(f"{rng.randint(-9, 9)}×X^{k}" for k in range(rng.randint(1, maxdeg + 1)))
+
+    for _ in range(PARTFRAC_CASES):
+        den = "×".join(factor() + rng.choice(["", "", "", "^2", "^3"]) for _ in range(rng.randint(1, 4)))
+        common = rng.choice(["", "", "", f"(X{rng.randint(-5, 5):+d})×"])
+        text = f"{common}({num(rng.randint(0, 7))})÷({common}{den})"
+        yield line("partfrac", text, "X", rng.choice(["RAD", "DEG"]), rng.choice(["35", "35", "33", "STU"]),
+                   arena=rng.choice([8192, 8192, 65536]))
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"# Casimir's golden corpus (CAS 011): scripts/golden.py's inputs (S3 bench cases, work/ examples, seed {SEED})")
-    for src in (bench, examples, generated):
+    for src in (bench, examples, generated, generated_partfrac):
         for row in src():
             print(row)
 

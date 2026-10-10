@@ -105,7 +105,7 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
-    if op in ("derive", "collect", "solve", "integrate", "factor", "cancel"):
+    if op in ("derive", "collect", "solve", "integrate", "factor", "cancel", "partfrac"):
         return m + [op, expr, var, angle]
     if op in ("subst", "pdiv", "pgcd"):
         return m + [op, expr, var, repl, angle]
@@ -281,6 +281,29 @@ def all_cases():
             ("k deg 12 over deg 12", "cancel", "(X^12-1)÷(X^12+X^6-X^4-X^2+1)", None),
             ("k (X-1)..(X-6)", "cancel", "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)÷((X-1)×(X-3)×(X-5)×(X+7))", None)]:
         rows.append((name, f_, "X", "RAD", op, g_, "35"))
+    # CAS 012: partial fractions, the visible examples, the heaviest forms, and n÷d nested across the guard in each side
+    # (the reading's frame is the one a deep input carries; the arithmetic runs after the parse returns, rule 11)
+    with open(os.path.join(ROOT, "work", "012-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], "X", "RAD", "partfrac", None, p[4]))
+    for name, expr in [
+            ("r 12 linear", "1÷(" + "×".join(f"(X{-i:+d})" if i else "X" for i in range(-5, 7)) + ")"),
+            ("r 10 linear", "1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))"),
+            ("r (X^3-2)^4", "(X^11+1)÷(X^3-2)^4"),
+            ("r (X^2+X+1)^6", "(X^5-3)÷(X^2+X+1)^6"),
+            ("r mixed deg 12", "(X^12+1)÷((X-1)^3×(X^2+X+1)^2×(X+2)×(X^2+3))"),
+            ("r cancel deg 12", "(X^6-1)×(X+5)÷((X^6-1)×(X-2)^3×(X^2+2)×(X+1))"),
+            ("r non-monic powers", "(X^4+1)÷((3×X+7)^3×(5×X-11)^3)")]:
+        rows.append((name, expr, "X", "RAD", "partfrac", None, "35"))
+    for n in range(20, 58, 4):
+        rows.append((f"r nest num {n}", "(" * n + "X" + "+1)" * n + f"÷(X^2-{n * n})", "X", "RAD", "partfrac", None, "35"))
+        rows.append((f"r nest den {n}", "1÷(" + "(" * n + "X" + "+1)" * n + f"-{n})", "X", "RAD", "partfrac", None, "35"))
+    for n in range(36, 58, 2):      # nests the reading walks down, across the guard (NOT_POLYNOMIAL or NO_ROOM)
+        rows.append((f"r sweep X^( {n}", "1÷(" + "X^(" * n + "X" + ")" * n + ")", "X", "RAD", "partfrac", None, "35"))
+        rows.append((f"r sweep 1÷(1+ {n}", "1÷(1+" * n + "X" + ")" * n, "X", "RAD", "partfrac", None, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))

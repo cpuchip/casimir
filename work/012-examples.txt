@@ -11,10 +11,9 @@
 #   -4×X^2+X^4+4=0, which is (X^2-2)^2), while the terms are in rule 4's.
 # - Q0031 is NO_ROOM by int64 in rule 3's method (an intermediate of the extended Euclid), though its answer's numbers
 #   fit; Q0032 and Q0033 are rule 1's bounds; Q0034 is 194 bytes.
-# - Q0035: another letter is NOT_NUMERIC, as CANCEL and SOLVE return it (casim.h: "a coefficient not an exact
-#   rational (another letter, ...)"); rule 1 says NOT_POLYNOMIAL (asked of abacus).
-# - Q0040: 0÷d cancels all of d (pgcd(0, d) is d's primitive part, CAS 010), so 0 and d's rows; CANCEL returns NO_ROOM
-#   for 0÷(X+1) today (asked of abacus).
+# - Q0035: another letter is NOT_NUMERIC, as CANCEL and SOLVE return it (ruled at ad8e589, abacus #6437).
+# - Q0040: 0÷d cancels all of d (pgcd(0, d) is d's primitive part, CAS 010), so 0 and d's rows; CANCEL gives the
+#   same since CAS 012 (its NO_ROOM there fixed as a sibling, abacus #6437; work/010-examples.txt P0025).
 # ID | op | text | second (-) | model | the answer, or the status
 Q0001 | partfrac | (3×X+5)÷((X-3)×(X+4)) | - | 35 | 1÷(X+4)+2÷(X-3)
 Q0002 | partfrac | (X^4+1)÷(X^3+1) | - | 35 | X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))

@@ -20,6 +20,7 @@
 
 #define REPS 15
 #define ARENA_MAX 32768
+#define CASES_MAX 1024          /* more than case_count (checked in app_main): 838 at CAS 012 */
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536
@@ -47,7 +48,7 @@ typedef struct {
 
 static unsigned char arena[ARENA_MAX] __attribute__((aligned(8)));
 static char out[OUT_MAX];
-static result res[768];         /* more than case_count (checked in app_main) */
+static result res[CASES_MAX];
 
 typedef struct {
     int count, ok;          /* the pages; the last ends in the host's answer */
@@ -55,7 +56,7 @@ typedef struct {
     unsigned stack;         /* bytes of stack the last page takes */
 } paged;
 
-static paged pg[768];
+static paged pg[CASES_MAX];
 static unsigned stack_free, stack_base, base_max;
 
 /* The calculator's own call (CAS 004): op and texts as the case has them, each read as its stamp. */
@@ -255,7 +256,7 @@ static void bench_task(void *arg)
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvifnqgk"[k->op], k->chars,
+            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvifnqgkr"[k->op], k->chars,
                    (long long)res[i].us_min,
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
                    k->status ? -k->status : (int)strlen(k->want),

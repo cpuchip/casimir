@@ -97,7 +97,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_35 35
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
-               CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL } casim_op;
+               CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL, CASIM_PARTFRAC } casim_op;
 
 typedef struct {
     casim_op op;
@@ -213,5 +213,13 @@ casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, i
    when it has no rational root. A gcd of 1 prints the quotient in canonical form with no rows. */
 casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                           size_t arena_cap);
+
+/* Unit CAS 012, PARTFRAC: eqn typed as num÷den (or a polynomial), as CANCEL reads it, in partial fractions over Q: the
+   polynomial part, then for each factor F of den over Q (in rule 5's order: linear by root, quadratics by (a, b, c), the
+   rest) and each power j of it, c×(N)÷(m×(F)^j) with deg N < deg F; then CANCEL's rows for what a common factor removed.
+   Checked exactly before it prints. PARTIAL when a factor of den of degree >= 4 is not proven irreducible (the answer
+   is still exact over the factors found). Statuses as CANCEL's, and TOO_LONG past 191 bytes. */
+casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap);
 
 #endif

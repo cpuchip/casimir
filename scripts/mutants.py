@@ -536,6 +536,45 @@ MUTANTS = {
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
     ],
+    # 012 (abacus's list, "a numerator not reduced below deg f"): the digits in base f always have degree below f's, so
+    # the nearest fault the code can make is the product A = r s left unreduced mod P; rule 7's check must refuse it
+    "pf-num-not-reduced": [
+        ("src/casim.c", "        if (lead.p != 0) {\n            if (!pf_rmul(&lead, &lead, &inv)) return false;",
+         "        if (0) {\n            if (!pf_rmul(&lead, &lead, &inv)) return false;"),
+    ],
+    # 012: the base-f digits stored in reverse, the numerator over f^k as the one over f
+    "pf-digits-reversed": [
+        ("src/casim.c", "W->pool[used + (j - 1) * df + x] = W->t[1][x];", "W->pool[used + (F->k - j) * df + x] = W->t[1][x];"),
+    ],
+    # 012: a term's sign lost
+    "pf-sign-flipped": [
+        ("src/casim.c", '    if (k.p < 0) pf_puts(w, "-"), k.p = -k.p;\n    else if (!first) pf_puts(w, "+");',
+         '    if (k.p < 0) k.p = -k.p;\n    if (!first) pf_puts(w, "+");'),
+    ],
+    # 012: the polynomial part of an improper fraction dropped
+    "pf-poly-part-dropped": [
+        ("src/casim.c", "    if (rdeg(W->poly) >= 0) pf_rpoly(&w, W->poly, var), first = false;",
+         "    if (0) pf_rpoly(&w, W->poly, var), first = false;"),
+    ],
+    # 012: CANCEL's rows dropped
+    "pf-rows-dropped": [
+        ("src/casim.c", "            if (F->gone == 0) continue;\n            if (F->deg == 1) {",
+         "            continue;\n            if (F->deg == 1) {"),
+    ],
+    # 012: rule 7's identity check skipped (only tests/pfcheck_check's spoiled numerators reach it)
+    "pf-check-skipped": [
+        ("src/casim.c", "            if (pf_rcmp(&W->t[4][x], &W->t[5][x]) != 0) return CASIM_NO_ROOM;     /* never printed unchecked */",
+         "            if (0) return CASIM_NO_ROOM;     /* never printed unchecked */"),
+    ],
+    # 012: rule 5's sort skipped: the factors in factor's own order
+    "pf-sort-skipped": [
+        ("src/casim.c", "        for (int i = 1; i < W->nf; i++)\n            for (int j = i; j > 0 && pf_cmp(",
+         "        for (int i = W->nf; i < W->nf; i++)\n            for (int j = i; j > 0 && pf_cmp("),
+    ],
+    # 012's sibling (abacus #6437): CANCEL's 0÷den back to NO_ROOM
+    "cancel-zero-numerator": [
+        ("src/casim.c", "            if (fi->n < 0) {\n                /* 0÷den", "            if (0) {\n                /* 0÷den"),
+    ],
 }
 
 
