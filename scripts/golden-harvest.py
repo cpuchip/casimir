@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mutants  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REF = "826060e"                 # the corpus's source (cas-pi-form re-recorded its moved lines there)
+REF = "24380e8"                 # the corpus's source (cas-pi-form re-recorded its moved lines at 826060e, the depth guard its at 24380e8)
 PER_MUTANT = 3
 ARENA_MAX, CAP_MAX = 1 << 19, 65536
 CC = os.environ.get("CC", "cc")
