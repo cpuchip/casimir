@@ -36,7 +36,7 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
      That's a clean refusal (ASan and UBSan quiet), but NO_ROOM names a resource that didn't run out. CANCEL gives
      `0; X=-1` too, with a visible example, and abacus adds zero numerators to 010's hidden set.
 3. **The method** (casim's):
-   - The polynomial part comes from division (CAS 007/010's div).
+   - The polynomial part comes from division (partfrac's own exact division, as built at 9a1ba8f).
    - d is factored over Q by calling do_factor whole on d's text and reading its product back. Factor's code and
      frames are untouched.
    - Each factor power P = f^k gets its numerators from s·Q ≡ 1 mod P by extended Euclid, then A = r·s mod P, then
@@ -58,9 +58,20 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
 6. **An unproven factor of degree ≥ 4** (casim's lean 4, ruled yes): decompose over the factors found, with status
    PARTIAL as factor gives it. The answer is still exact and still checked (rule 7). The status says only that a
    factor might split further.
-7. **Verification before anything prints:** poly·d + Σ num_j·d÷f^j = n must hold exactly in the library. If it
-   fails, the answer is NO_ROOM, never printed unchecked. An int64 overflow anywhere is also NO_ROOM, as in CAS 005's
-   bounds.
+7. **Verification before anything prints** (as built at 9a1ba8f; casim #6587 replaces this file's first form):
+   - First n = q·d + r, exactly.
+   - Then, for each factor power P = f^k with cofactor Q (d = c·P·Q), the numerators as printed are rebuilt into
+     A = Σ num_j·f^(k−j), and A·Q ≡ r (mod P) must hold exactly.
+   - **Why that's the same check:**
+     - for each P, r − Σ A·Q ≡ 0 (mod P), since every other term's Q contains P;
+     - the P are pairwise coprime, so d divides r − Σ A·Q;
+     - its degree is below deg d, so it is 0. That gives r÷d = Σ A÷P = Σ num_j÷f^j.
+   - The summed form this file first named (poly·d + Σ num_j·d÷f^j = n) is the same identity, but its terms have
+     unrelated denominators and pass 2^62 when the answer doesn't. casim's reviewer found 61 of 1,182 such answers
+     refused.
+   - The check runs for every answer, a constant reduced d included.
+   - If it fails, the answer is NO_ROOM, never printed unchecked. An int64 overflow anywhere is also NO_ROOM, as in
+     CAS 005's bounds.
 8. **Output:** TOO_LONG past 191 bytes, and the stamp (CAS 004) on the input.
    - The output isn't 002's canonical form, which would recombine the terms. It is rule 4's printed form, and it
      reads back through casim's parser to the same value.
@@ -101,7 +112,7 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
   - a cancelling case with its row, and one whose common factor has no rational root;
   - a constant numerator, a polynomial input, and a constant denominator;
   - PARTIAL;
-  - NOT_POLYNOMIAL (a second letter), NO_ROOM by overflow, TOO_LONG, and the stamp.
+  - NOT_NUMERIC (a second letter, rule 1), NO_ROOM by overflow, TOO_LONG, and the stamp.
 - **Hidden, by abacus** (Python's exact fractions):
   - **Random n÷d** with planted factor structures under rule 1's bounds.
     - The decomposition with deg num_j < deg f is unique for a fixed factorization. So the judge computes it itself
@@ -127,3 +138,9 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
 In #6416, abacus listed XI 13, x÷((x²−1)(x+1)), as a numerator that needs cancelling first. It doesn't:
 gcd(x, (x−1)(x+1)²) = 1, as casim pointed out (#6426). The printed text is as quoted (pd-books' export). The shelf
 tags it cas.factor, not cas.cancel, so the mistake was abacus's reading, not the data's.
+
+## Known limit (casim #6587, reported, not fixed)
+
+Under PARTIAL, factor merges the unproven factors into one. A common factor that divides only part of that merged
+factor is then neither cancelled nor given a row. The value and the domain stay right. casim's reviewer couldn't
+build such a case.
