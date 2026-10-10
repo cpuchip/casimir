@@ -64,7 +64,7 @@ each product its `×`.
 Each operation is one call: `casim_run` with the operation in the request (casim.h), or one function per operation.
 Its answer goes in `out` with a status. Every operation also returns:
 - SYNTAX for text it cannot read;
-- NO_ROOM when the arena runs out, or when nesting passes the depth guard (46 levels);
+- NO_ROOM when the arena runs out, or when nesting passes the depth guard (44 levels);
 - BAD_ARG for a variable, angle or model out of range.
 
 The statuses particular to each operation are listed under it.
@@ -321,9 +321,10 @@ Statuses: UNDEFINED, NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM, BAD_ARG, TOO_LONG.
   and so does a step line (a solve's answer, its last step, still stops at 191 bytes, as solve's does).
 - **The arena.** The calculator gives Casimir 8 KiB, and the visible examples are measured there. A larger arena
   answers more (the command line's default is 8,192; `--arena` changes it). At most 524,280 bytes of it are used.
-- **The depth guard.** Nesting past 46 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,808
-  bytes on the ESP32-S3, plus one interrupt frame (192 bytes there) that a tick saves on the running task's stack.
-  A task of 12 KB holds both with 288 bytes to spare.
+- **The depth guard.** Nesting past 44 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,328
+  bytes on the ESP32-S3, read with interrupts masked, plus an allowance of 384 for interrupts (two 192-byte frames;
+  unmasked readings have exceeded masked ones by up to 272 bytes, 270 readings of 10 cases on the bench, for a reason
+  not yet found). A task of 12 KB holds both with 576 bytes to spare.
 - **Polynomials.** solve, factor, pdiv, pgcd and cancel take degree ≤ 12 and coefficients ≤ 10^7 once the polynomial
   is cleared to integers.
 - **Numbers.** Exact rationals with numerator and denominator below 2^62. Past that, a number is kept as typed and

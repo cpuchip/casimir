@@ -92,7 +92,7 @@ Two fresh-eyes review passes found each of these cases; each is a test in tests/
 ## The depth guard (units CAS 002b, 003 and 004)
 
 Every structural walk (canonical form, derivative, expansion, comparison, printing, compaction) counts its
-nesting; past 46 the call returns NO_ROOM (TOO_LONG before CAS 004, which split the two: TOO_LONG is now only
+nesting; past 44 the call returns NO_ROOM (TOO_LONG before CAS 004, which split the two: TOO_LONG is now only
 a result that does not fit). So the stack is bounded by construction (abacus's ruling: at most 12 KB). The
 limit was 52 in CAS 002b. CAS 003's walks made deeper frames, and it was calibrated again on the S3 at the
 trip point: 49 measured 12,464 bytes worst and 48 measured 12,064. In CAS 004 the bench's idle baseline was
@@ -102,28 +102,35 @@ the 12,288 ceiling: no margin, so abacus moved the guard to 47 (#4797). CAS 009 
 frame, 48 to 64 bytes, with CAS 010's three cases), 240 bytes of margin, so abacus moved it to 46 (#5634). Show steps'
 bench found that a tick's interrupt saves one 192-byte frame on the running task's stack at any point (a delay swept
 across one tick moved a long solve case by exactly that, #6222; IDF's interrupt path switches stacks after it, so
-one frame, not one a level). The budget is the worst case plus that frame, 11,808 + 192 = 12,000 of 12,288; the
-bench reports it and fails under 256 bytes to spare (abacus #6224). The calculator runs Casimir on a 32 KB task
-(soroban #6236), so the 12 KB is the library's promise to its other users. The parser
+one frame, not one a level), and the budget became the worst case plus that frame, 11,808 + 192 = 12,000 of 12,288,
+failing under 256 bytes to spare (abacus #6224). Solve's steps then found per-case readings that moved with the
+bench's own build; read with interrupts masked, every case is the same in every build, and the unmasked readings
+exceed the masked ones by up to 272 bytes (#6319), more than one 192-byte frame (IDF v5.4.2's XT_STK_FRMSZ, read in its
+source, abacus #6321), for a reason not yet found. So rc5's bench measures every case masked, the allowance is two
+frames, 384 bytes, or the excess measured if larger, and the guard is 44: 11,328 + 384 = 11,712 of 12,288, 576 to
+spare (abacus #6321; the rc5 bench: worst masked 11,328, STU's X^X^… of 44 levels, refused at the guard; the excess
+up to 272 bytes over 270 unmasked readings of 10 cases at 27 phases). The calculator runs Casimir on a 32 KB task (soroban #6236), so the 12 KB is the library's
+promise to its other users. The parser
 is a loop and a left chain
 of powers prints in one, so neither counts. The constructors (sum, product, power) are not counted: they
 recurse one level on their own, under a walk that is.
 
-What 46 refuses, measured on the host with the CLI (the count is the same on the chip); each edge is one level below
-47's:
+What 44 refuses, measured on the host with the CLI (the count is the same on the chip); each edge is two levels below
+46's:
 
 | Nest | Answers to | NO_ROOM from |
 |---|---|---|
-| powers X^(X^(… , simplify and expand | 45 levels | 46 (185 bytes) |
-| powers X^(X^(… , derive | 43 levels | 44 (177 bytes) |
-| functions SIN(SIN(… , simplify | every 191-byte text (38 levels) | — (46 levels is 231 bytes) |
-| sums and products alternating: X+Y×(X+Y×(… , X×(Y+X×(… , 1÷(1+1÷(1+… | 22 levels | 23 (162 bytes) |
-| −(X+−(X+… | 22 levels | 23 (116 bytes) |
-| STU's X^X^…^X (a right chain) , simplify and expand | 46 levels | 47 (93 bytes) |
-| STU's X^X^…^X , derive | 44 levels | 45 (89 bytes) |
+| powers X^(X^(… , simplify and expand | 43 levels | 44 (177 bytes) |
+| powers X^(X^(… , derive | 41 levels | 42 (169 bytes) |
+| functions SIN(SIN(… , simplify | 43 levels (every 191-byte text: 38 levels) | 44 (221 bytes) |
+| sums and products alternating: X+Y×(X+Y×(… , X×(Y+X×(… , 1÷(1+1÷(1+… | 21 levels | 22 (155 bytes) |
+| −(X+−(X+… | 21 levels | 22 (111 bytes) |
+| STU's X^X^…^X (a right chain) , simplify and expand | 44 levels | 45 (89 bytes) |
+| STU's X^X^…^X , derive | 42 levels | 43 (85 bytes) |
 
-tests/derive_test.c pins two edges (SIN( simplify 45 and 46; X^( derive 43 and 44), so a move of the guard
-shows there first. A nest that alternates sums and products costs two levels for each written one (each is a
+tests/derive_test.c pins two edges (SIN( simplify 43 and 44; X^( derive 41 and 42), so a move of the guard
+shows there first. The golden corpus's lines at 45 and 46 levels moved to NO_ROOM with the guard
+(tests/golden/moved/depth-44.txt, 19 lines). A nest that alternates sums and products costs two levels for each written one (each is a
 sum node and a product node). At 52 such nests passed to 25 levels; at 48 and 47, some texts that simplified
 in CAS 002 are refused (X×(Y+X×(… at 25 levels, 176 bytes, simplified at 43bb21d), and at 47 a 189-byte power
 nest X^(X^(… of 47 levels is too. A refusal, not a wrong answer.

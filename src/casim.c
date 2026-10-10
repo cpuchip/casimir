@@ -154,12 +154,13 @@ static rat *rt(const ctx *c, ref r)
 /* Every structural walk (canonical form, derivative, comparison, printing) enters through enter(): past
    CASIM_DEPTH_MAX nested entries the call returns NO_ROOM (TOO_LONG before CAS 004). So the stack is bounded by construction, not
    by the inputs measured: the limit was set on the S3 so that the deepest case of every kind of nesting
-   stays within 12 KB with one interrupt frame (192 B on the S3: a tick saves it on the running task's stack) on top
-   (unit CAS 002b; abacus's ruling, #4236; the frame, #6222). The sum, product and power constructors
+   stays within 12 KB with interrupts on top (unit CAS 002b; abacus's ruling, #4236). An interrupt's frame is 192 B
+   on the S3, but readings with interrupts masked against unmasked showed up to 272 B more (#6319), so the allowance
+   is two frames, 384 B, until that is explained (abacus #6321). The sum, product and power constructors
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
 #ifndef CASIM_DEPTH_MAX
-#define CASIM_DEPTH_MAX 46              /* 47 until CAS 010's build left 240 B of the 12,288 (abacus #5634) */
+#define CASIM_DEPTH_MAX 44              /* 47 until CAS 010 (abacus #5634), 46 until rc5's allowance (#6321) */
 #endif
 
 static bool enter(ctx *c)

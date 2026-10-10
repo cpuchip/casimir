@@ -105,8 +105,9 @@ gzipped), most of it the decimal library's tables.
 - An equation slot on the calculator is 191 bytes. Every operation but derive and simplify stops at 191 bytes with
   TOO_LONG.
 - Polynomials have degree ≤ 12 and coefficients ≤ 10^7. Numbers are exact rationals below 2^62.
-- Nesting deeper than 46 levels is NO_ROOM, which bounds the stack: at most 11,808 bytes on the ESP32-S3, plus one
-  interrupt frame (192 bytes there) that a tick saves on the running task's stack. Size a task for 12 KB.
+- Nesting deeper than 44 levels is NO_ROOM, which bounds the stack: at most 11,328 bytes on the ESP32-S3, plus 384
+  for interrupts (two 192-byte frames; the bench has measured up to 272 bytes over the masked reading). Size a task
+  for 12 KB.
 - Built and tested with gcc and clang on Linux, emscripten, and ESP-IDF 5.4 on the ESP32-S3. macOS and MSVC are
   untested. Intel's library needs a different configuration on Windows.
 
