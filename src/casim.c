@@ -2759,7 +2759,8 @@ static bool contains(const ctx *c, ref r, int var)
 static bool model_ok(int m);
 
 /* The walk over a derive's steps: each node's template line (its rule with the parts still to do), its parts' steps,
-   then its result; with CASIM_STEPS_ONE_LINE, its result then its parts. It counts every step and prints step k. */
+   then its result; CASIM_STEPS_ONE_LINE leaves the template lines out. The last step is the answer either way. It
+   counts every step and notes step k. */
 typedef struct {
     int k, at, flags;
     casim_step_info *info;
@@ -2996,11 +2997,10 @@ static void walk(ctx *c, ref r, int depth, walk_t *W)
     if (!enter(c)) return;
     rule = rule_of(c, r);
     tmpl = has_template(c, r, rule);
-    if (one || !tmpl) emit(W, r, rule, depth, CASIM_STEP_RESULT);
-    else emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);
+    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);
     if (tmpl)
         for (int i = 0; (p = part(c, r, rule, i)) != 0 && c->st == CASIM_OK; i++) walk(c, p, depth + 1, W);
-    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_RESULT);
+    emit(W, r, rule, depth, CASIM_STEP_RESULT);         /* both ways the walk ends on the answer (abacus #6252) */
     c->depth--;
 }
 
@@ -4534,13 +4534,12 @@ static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
     return acc;
 }
 
-/* ∫ (u)^n, u = aX + b linear (a, b rational, a != 0): (u)^(n+1)/((n+1) a), or LN(ABS(u))/a for n = -1. */
 /* Integrate's steps (work/steps-integrate.md): after integrate has answered, a walk of the typed text that takes the
    same decisions (irec_sum, irec_term, irec_factor below) records each step in order: the typed subtree it applies
    to, its rule, its line, the sign of a divisor and the call that gives its result. That call runs again when the
    step is printed, so no step keeps an answer, and integrate itself is unchanged with steps off. The records sit at
    the arena's top, which is free once the text is parsed. */
-enum { VIA_TERM, VIA_FACTOR, VIA_SUM };
+enum { VIA_TERM, VIA_FACTOR, VIA_SUM, VIA_MONO };    /* VIA_MONO: a monomial as integ_term's powers of X take it */
 
 typedef struct {
     ref prev, before;
@@ -4571,6 +4570,7 @@ static __attribute__((noinline)) void irecord(ctx *c, int depth, int rule, int l
     c->step_last = at;
 }
 
+/* ∫ (u)^n, u = aX + b linear (a, b rational, a != 0): (u)^(n+1)/((n+1) a), or LN(ABS(u))/a for n = -1. */
 static ref integ_linpow(ctx *c, ref u, const rat *lin, const rat *n)
 {
     rat np1, k;
@@ -5047,7 +5047,7 @@ static int irec_term(ctx *c, ref t, int depth, bool checked, bool own, bool rec)
             r1 = rat_is(&e, -1, 1) ? CASIM_RULE_RECIPROCAL : CASIM_RULE_POWER;
             if (cm) {
                 if (rec) irecord(c, depth, CASIM_RULE_CONSTANT_MULTIPLE, CASIM_STEP_TEMPLATE, t, 1, VIA_TERM);
-                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_FACTOR);
+                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_MONO);
                 rule = CASIM_RULE_CONSTANT_MULTIPLE;
             } else rule = r1;
         } else {
@@ -5159,6 +5159,18 @@ static ref irecompute(ctx *c, const istep_t *t)
     const rat *poly = NULL;
     int via = t->flags >> 2 & 3;
     if (via == VIA_SUM) return integ(c, t->before, c->var);
+    if (via == VIA_MONO) {
+        /* X^e (SQRT(X)^3, INV(X^2): rule 6a) as integ_term's polynomial path integrates it: integ_factor would refuse
+           (abacus #6252) */
+        rat e, *one;
+        bool ns = false;
+        ref tr = grab(c, (SOLVE_DEG + 1) * sizeof(rat));
+        if (!tr || !mono_pow(c, t->before, c->var, &e, &ns)) return SPARE;
+        one = (rat *)(void *)nd(c, tr);
+        pzero(one), rat_int(&one[0], 1);
+        if (t->flags & 2) e.p = -e.p;
+        return e.p ? integ_poly_r(c, one, &e, c->var) : integ_poly(c, one, c->var);
+    }
     if (via == VIA_TERM) return integ_term(c, t->before, c->var, &poly);
     return integ_factor(c, t->before, t->flags & 2 ? -1 : 1, c->var);
 }

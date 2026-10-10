@@ -215,7 +215,7 @@ NOT_NUMERIC, NO_ROOM, BAD_ARG (an equation), TOO_LONG.
 
 `steps "<text>" X` prints the working of derive as a student would walk it (work/steps-derive.md): each rule first
 with its parts still to do (`d/dX(u)` for each), then each part's own steps, indented, then the rule's result. The
-last line is derive's answer. `--one-line` prints the results only, the answer first. A part without X is one
+last line is derive's answer. `--one-line` prints the results only, the answer still last. A part without X is one
 CONSTANT step; X itself is VARIABLE. In C, `casim_step(rq, k, flags, &info, out, ...)` returns page k of the same
 walk, with its depth, line and rule (`casim_rule_name` names it), so a caller can page forwards and backwards; each
 call is complete in itself. Statuses: derive's, and NO_ROOM when the steps don't fit the arena.
@@ -229,7 +229,7 @@ call is complete in itself. Statuses: derive's, and NO_ROOM when the steps don't
 | `casim steps "2^X+π^2" X RAD` | `SUM: d/dX(π^2+2^X) = d/dX(π^2)+d/dX(2^X) /   CONSTANT: d/dX(π^2) = 0 /   EXPONENTIAL: d/dX(2^X) = LN(2)×2^X / SUM: d/dX(π^2+2^X) = LN(2)×2^X` |
 | `casim steps "X^X" X RAD` | `GENERAL POWER: d/dX(X^X) = X^X×(LN(X)+1)` |
 | `casim steps "X^2=Y+3×X" X RAD` | `BOTH SIDES: d/dX(X^2)=d/dX(3×X+Y) /   POWER: d/dX(X^2) = 2×X /   SUM: d/dX(3×X+Y) = d/dX(3×X)+d/dX(Y) /     CONSTANT MULTIPLE: d/dX(3×X) = 3 /     CONSTANT: d/dX(Y) = 0 /   SUM: d/dX(3×X+Y) = 3 / BOTH SIDES: 2×X=3` |
-| `casim --one-line steps "X^2×SIN(X)" X RAD` | `PRODUCT: d/dX(X^2×SIN(X)) = 2×X×SIN(X)+X^2×COS(X) /   POWER: d/dX(X^2) = 2×X /   SIN: d/dX(SIN(X)) = COS(X)` |
+| `casim --one-line steps "X^2×SIN(X)" X RAD` | `POWER: d/dX(X^2) = 2×X /   SIN: d/dX(SIN(X)) = COS(X) / PRODUCT: d/dX(X^2×SIN(X)) = 2×X×SIN(X)+X^2×COS(X)` |
 
 `steps integrate "<text>" X` walks integrate the same way (work/steps-integrate.md). Each integrand is shown as it
 was typed and each answer in canonical form, without "+C". The steps are:
@@ -247,6 +247,7 @@ was typed and each answer in canonical form, without "+C". The steps are:
 | `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(0.5×LN(ABS(2×X+1))) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = 0.5×LN(ABS(2×X+1))` |
 | `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-0.5×X^2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-0.5×X^2+X^3÷3` |
 | `casim steps integrate "5-EXP(3×X)" X RAD` | `SUM: ∫(5-EXP(3×X))dX = ∫(5)dX-∫(EXP(3×X))dX /   CHECK: d/dX(5×X) = 5 /   CONSTANT: ∫(5)dX = 5×X /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 / SUM: ∫(5-EXP(3×X))dX = 5×X-EXP(3×X)÷3` |
+| `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 0.4×X^2.5 / CHECK: d/dX(-1.2×X^2.5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -1.2×X^2.5` |
 
 ### pdiv, pgcd, cancel: polynomial division
 

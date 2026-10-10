@@ -10,6 +10,7 @@ math, which shares no code with casim:
 import math
 import os
 import random
+import re
 import subprocess
 import sys
 
@@ -36,21 +37,33 @@ def expr(rnd, depth):
     return "(" + expr(rnd, depth - 1) + op + expr(rnd, depth - 1) + ")"
 
 
+FNS = {"ALOG": "alog", "LOG": "log10", "LN": "log", "SQRT": "sqrt", "SQ": "sq", "INV": "inv", "EXP": "exp",
+       "ABS": "abs", "SGN": "sgn", "SIN": "sin", "COS": "cos", "TAN": "tan", "ASIN": "asin", "ACOS": "acos",
+       "ATAN": "atan", "SINH": "sinh", "COSH": "cosh", "TANH": "tanh", "ASINH": "asinh", "ACOSH": "acosh",
+       "ATANH": "atanh"}
+
+
 def py(e):
+    """casim's text as Python: whole function names by table (an unknown one stays, and its value abstains)"""
     e = e.replace("×", "*").replace("÷", "/").replace("^", "**").replace("π", "pi")
-    for a, b in [("ALOG(", "alog("), ("LOG(", "log10("), ("LN(", "log("), ("SQRT(", "sqrt("), ("ATAN(", "atan("),
-                 ("SINH(", "sinh("), ("COSH(", "cosh("), ("SIN(", "sin("), ("COS(", "cos("), ("TAN(", "tan("),
-                 ("EXP(", "exp("), ("ABS(", "abs("), ("SGN(", "sgn(")]:
-        e = e.replace(a, b)
-    return e
+    e = re.sub(r"(?<![\w.])(\d+)(?![\w.])", r"\1.0", e)   # floats: 1000^16384 overflows, it is not computed exactly
+    return re.sub(r"\b([A-Z]{2,})\(", lambda m: FNS.get(m.group(1), m.group(1)) + "(", e)
 
 
 def env(x, deg):
-    k = math.pi / 180 if deg else 1.0
-    return {"__builtins__": {}, "pi": math.pi, "log": math.log, "log10": math.log10, "sqrt": math.sqrt,
-            "exp": math.exp, "alog": lambda u: 10 ** u, "abs": abs, "sgn": lambda u: (u > 0) - (u < 0),
-            "sin": lambda u: math.sin(u * k), "cos": lambda u: math.cos(u * k), "tan": lambda u: math.tan(u * k),
-            "atan": lambda u: math.atan(u) / k, "sinh": math.sinh, "cosh": math.cosh, "X": x, "Y": 1.7}
+    """deg: True or "DEG" for degrees, "GRAD" for grads, else radians"""
+    k = math.pi / 200 if deg == "GRAD" else math.pi / 180 if deg in (True, "DEG") else 1.0
+    d = {"__builtins__": {}, "pi": math.pi, "log": math.log, "log10": math.log10, "sqrt": math.sqrt,
+         "exp": math.exp, "alog": lambda u: 10 ** u, "abs": abs, "sgn": lambda u: (u > 0) - (u < 0),
+         "sq": lambda u: u * u, "inv": lambda u: 1 / u,
+         "sin": lambda u: math.sin(u * k), "cos": lambda u: math.cos(u * k), "tan": lambda u: math.tan(u * k),
+         "asin": lambda u: math.asin(u) / k, "acos": lambda u: math.acos(u) / k, "atan": lambda u: math.atan(u) / k,
+         "sinh": math.sinh, "cosh": math.cosh, "tanh": math.tanh, "asinh": math.asinh, "acosh": math.acosh,
+         "atanh": math.atanh}
+    for i, L in enumerate("ABCDEFGHIJKLMNOPQRSTUVWYZ"):       # every letter but X a constant (Y as before)
+        d[L] = 1.7 if L == "Y" else 1.1 + 0.07 * i
+    d["X"] = x
+    return d
 
 
 def value(e, x, deg):
@@ -59,8 +72,8 @@ def value(e, x, deg):
         if isinstance(v, complex):
             return None
         v = float(v)
-    except (ValueError, ZeroDivisionError, OverflowError, TypeError):
-        return None
+    except (ValueError, ZeroDivisionError, OverflowError, TypeError, NameError, SyntaxError):
+        return None             # undefined there, or a name the judge cannot evaluate: it abstains
     return v if math.isfinite(v) else None
 
 
@@ -163,9 +176,9 @@ def main():
                 rows = [r.split("\t") for r in out.rstrip("\n").split("\n")]
                 if [int(r[0]) for r in rows] != list(range(len(rows))):
                     why.append("k is not 0..count-1")
-                root = rows[0] if one else rows[-1]
+                root = rows[-1]                 # the answer last, both ways (abacus #6252)
                 if root[1] != "0" or root[2] != "R":
-                    why.append(f"the root's result is not step {0 if one else len(rows) - 1}")
+                    why.append(f"the root's result is not the last step, {len(rows) - 1}")
                 elif (root[4] if root[3] == "BOTH SIDES" else split_d(root[4])[1]) != pout:
                     why.append(f"the root's result {root[4]} is not derive's {pout}")
                 if steps(e, deg, one)[1] != out:
@@ -182,7 +195,8 @@ def main():
                 failed += 1
                 print(f"FAIL scripts/step-values.py: {e} ({'DEG' if deg else 'RAD'}, "
                       f"{'one line' if one else 'two lines'})\n  " + "\n  ".join(why))
-    print(f"step values: {len(cases)} expressions both ways ({len(FIXED)} fixed ones in RAD and DEG), {lines} steps, {lines - ABSTAINED[0]} judged at a point at least "
+    print(f"step values: {len(cases)} expressions both ways ({len(FIXED)} fixed ones in RAD and DEG), {lines} steps, "
+          f"{lines - ABSTAINED[0]} judged at a point at least "
           f"(the rest undefined or unstable there); the judge refused its two planted steps\n"
           f"checks: {2 * len(cases)} failed: {failed}")
     sys.exit(1 if failed else 0)

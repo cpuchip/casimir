@@ -14,7 +14,7 @@
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
  *   casim steps [integrate] "<text>" X RAD  derive's (or integrate's) steps, one a line, each indented by its
  *                                    depth: RULE: d/dX(u) = ... (work/steps-derive.md, steps-integrate.md);
- *                                    --one-line: the results only; --tsv: k, depth, T or R (template or result), the
+ *                                    --one-line: the results only (the answer still last); --tsv: k, depth, T or R, the
  *                                    rule and the text, tab-separated
  *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
  *   --min-arena                      also print the smallest arena that gives the same result

@@ -19,7 +19,8 @@ recorder, not a tree).
 
   A node whose parts are all leaves has no template (`d/dX(SIN(X)) = COS(X)` is one line). A subtree without X is
   one step, CONSTANT: `d/dX(…) = 0`, and nothing below it. Two lines is the default; the flag CASIM_STEPS_ONE_LINE
-  gives the result lines only.
+  gives the result lines only, in the same order: the answer is the last step either way (abacus #6252, one rule
+  for both ops and both modes; until then one line put the answer first).
 - **The API** is stateless: `casim_step(rq, k, flags, &info, out, cap, arena, arena_cap)` runs the op with steps on
   and prints step k. info carries the count, the depth, the line (template or result) and a rule id;
   `casim_rule_name(id)` gives an uppercase English name a caller may override. out holds only
@@ -35,8 +36,8 @@ recorder, not a tree).
    its result by value. abacus's hidden judge uses mpmath from a fresh seed; the public one (scripts/step-values.py)
    is in make check.
 3. **The steps compose.** The root's result line is byte-identical to plain derive's output for the same request,
-   and k runs 0..count−1 with no gap. (casim: the root's result line is step 0 with one line a rule, and the last
-   step with two, since the walk states the problem first and ends on the answer.)
+   and k runs 0..count−1 with no gap. (casim: the root's result line is the last step, with one line a rule or two,
+   since the walk states the problem first and ends on the answer; #6252 made one line end there too.)
 4. **The same page every time.** Page k twice gives identical bytes.
 5. **The stack is pinned.** deriv stays inline, the S3 bench shows the worst stack unchanged at 11,808 bytes, and a
    mutant that un-inlines it is caught. (casim: caught in make check by scripts/inline-check.sh, a gate on the

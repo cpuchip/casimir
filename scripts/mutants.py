@@ -389,7 +389,7 @@ MUTANTS = {
     ],
     # show steps (work/steps-derive.md): deriv given a frame of its own; the walk counting a node's level twice (deep
     # derivatives page NO_ROOM); a product template losing its d/dX, or its denominators' ÷; the general power's
-    # divisor printed as its base; two rules swapped; one-line order not the answer first; a step's result looked up
+    # divisor printed as its base; two rules swapped; one-line order not ending on the answer; a step's result looked up
     # wrongly; steps recorded with steps off (plain derive's arena grows)
     "steps-deriv-noinline": [
         ("src/casim.c", "static inline __attribute__((always_inline)) ref deriv(ctx *c, ref r)\n{",
@@ -414,10 +414,11 @@ MUTANTS = {
         ("src/casim.c", "        return n == 1 ? CASIM_RULE_CONSTANT_MULTIPLE : CASIM_RULE_PRODUCT;",
          "        return n == 1 ? CASIM_RULE_PRODUCT : CASIM_RULE_CONSTANT_MULTIPLE;"),
     ],
-    "steps-one-line-last": [
-        ("src/casim.c", "    if (one || !tmpl) emit(W, r, rule, depth, CASIM_STEP_RESULT);\n    else emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);",
-         "    if (!one && tmpl) emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);"),
-        ("src/casim.c", "    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_RESULT);", "    emit(W, r, rule, depth, CASIM_STEP_RESULT);"),
+    "steps-one-line-first": [
+        ("src/casim.c", "    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);",
+         "    if (tmpl && !one) emit(W, r, rule, depth, CASIM_STEP_TEMPLATE);\n    if (one) emit(W, r, rule, depth, CASIM_STEP_RESULT);"),
+        ("src/casim.c", "    emit(W, r, rule, depth, CASIM_STEP_RESULT);         /* both ways the walk ends on the answer (abacus #6252) */",
+         "    if (!one) emit(W, r, rule, depth, CASIM_STEP_RESULT);"),
     ],
     "steps-after-lookup": [
         ("src/casim.c", "        if (step_at(c, s)->before == r) return step_at(c, s)->after;",
@@ -458,6 +459,12 @@ MUTANTS = {
     "isteps-no-root-result": [
         ("src/casim.c", "    if (rec && own) irecord(c, depth, rule, CASIM_STEP_RESULT, r0, 1, VIA_SUM);",
          "    if (rec && own && depth) irecord(c, depth, rule, CASIM_STEP_RESULT, r0, 1, VIA_SUM);"),
+    ],
+    # abacus #6252: a monomial's result through integ_factor (which refuses rule 6a's SQRT(X)^3, INV(X^2)) instead of
+    # the polynomial path integrate took: the walk refuses where integrate answers; the corpus check must see it
+    "isteps-mono-via-factor": [
+        ("src/casim.c", "                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_MONO);",
+         "                if (rec) irecord(c, depth + 1, r1, CASIM_STEP_RESULT, g, s, VIA_FACTOR);"),
     ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),

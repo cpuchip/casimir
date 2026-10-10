@@ -18,14 +18,19 @@ checked by differentiating its answer back.
 - **CHECK** (its own rule id, so a caller may hide it), before each term's result: `d/dX(F) = f`.
 
 Integrands print as typed; answers in canonical form; no step carries "+C" (the firmware draws it beside the answer,
-unit 048). The last step is the root's result, integrate's own answer.
+unit 048). The last step is the root's result, integrate's own answer, with or without CASIM_STEPS_ONE_LINE: one rule
+for both ops and both modes (abacus #6252).
 
 ## How
 
 - Integrate itself is unchanged with steps off: casim_step runs it, and only once it has answered does a second walk
-  of the typed text (irec_sum, irec_term, irec_factor) take the same decisions and record the steps. Hooks inside
-  integrate, the first build, moved its frames on the S3 (+80 bytes a level of nesting); the walk keeps them as they
-  were, measured function by function against 1.0.0-rc3.
+  of the typed text (irec_sum, irec_term, irec_factor) take the same decisions and record the steps. Each result is
+  integrate's own call run again: integ_factor, integ_term, integ, or (VIA_MONO) the polynomial path's integ_poly_r
+  for a monomial under a constant. That last was integ_factor at first, which refuses rule 6a's SQRT(X)^3 and
+  INV(X^2): abacus's hidden run found 84 cases where the walk refused what integrate answered (#6252). So the check
+  runs the walk on every integrate the golden corpus and the docs hold, and on aimed inputs the corpus lacks.
+- Hooks inside integrate, the first build, moved its frames on the S3 (+80 bytes a level of nesting); the walk keeps
+  them as they were, measured function by function against 1.0.0-rc3.
 - A record is the typed subtree, the rule, the line, a divisor's sign and the call that gives its result; 8 bytes at
   the arena's top. No record keeps an answer: each result is its call run again when its page prints. After the run
   and after the recording, the arena goes back to where parsing left it (the cached constants made since go too), so
@@ -38,7 +43,8 @@ unit 048). The last step is the root's result, integrate's own answer.
 1. Steps off is byte-identical: the golden corpus, integrate's frames on the S3, and the bench's per-case stacks.
 2. Every step is right by value: a result's and a CHECK's F differentiates to the integrand; a template differentiates
    to it too, each ∫(w)dX taken as w and a substitution's ∫(H(U))dU÷a, U=L as H(L)×L'÷a. abacus's hidden judge
-   (judge_steps.py) and the public one (scripts/istep-values.py, make check).
+   (judge_isteps.py) and the public one (scripts/istep-values.py, make check). The walk refuses nothing integrate
+   answers but for NO_ROOM: checked on every golden and doc integrate input, and on aimed ones (#6252).
 3. The steps compose: the last step is integrate's answer byte for byte; k runs 0..count−1.
 4. The same page every time.
 5. The stack: the bench's worst + one interrupt frame leaves at least 256 of 12,288 bytes (#6224).

@@ -118,8 +118,8 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
    k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate, where after is the rule
    applied with its parts still to do (a template line) or the step's result; integrate's CHECK lines are
    "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the root's result is
-   the last step and is the op's own answer (never a "+C"). CASIM_STEPS_ONE_LINE leaves out the template lines (for
-   derive the root's result is then step 0). k < 0 only counts. Each call is complete in itself: page k again or
+   the last step and is the op's own answer (never a "+C"), with or without CASIM_STEPS_ONE_LINE, which leaves out the
+   template lines (abacus #6252: one rule for the firmware). k < 0 only counts. Each call is complete in itself: page k again or
    k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its rule.
    NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the step's
    text passes cap. An equation's derive lines are d/dX(a)=d/dX(b) and its derived equation. */

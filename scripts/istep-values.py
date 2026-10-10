@@ -6,7 +6,10 @@ evaluator, which shares no code with casim):
   - a template line, ∫(f)dX = T: T's derivative is f, taking each ∫(w)dX as w and a substitution
     ∫(H(U))dU÷a, U=L as H(L)×L'÷a (so a wrong a or L is seen);
   - the root's result (the last step) is plain integrate's answer, byte for byte; k runs 0..count-1; a second run is
-    identical.
+    identical;
+  - every integrate the golden corpus and docs/language.md hold that integrate answers, in its own model, variable and
+    angle, pages to the end (a walk that refuses where integrate answers, but for NO_ROOM, fails: abacus #6252), its
+    steps judged as above.
     scripts/istep-values.py [N] [SEED]     (default 600 expressions, seed 20261010)"""
 import importlib.util
 import os
@@ -26,6 +29,9 @@ LIN = ["X", "2×X", "2×X+1", "3-X", "X+0.5", "0.5×X-1"]
 
 def term(rnd):
     r, u = rnd.random(), rnd.choice(LIN)
+    if r < 0.1:                         # rule 6a's spellings of a power of X (abacus #6252)
+        return rnd.choice(["", "2×", "(-3)×", "4×"]) + rnd.choice(["SQRT(X)^3", "INV(X^2)", "SQ(X)", "INV(X)", "X^2÷X^5",
+                                                                  "SQRT(X)×X", "X÷SQRT(X)", "INV(SQRT(X))"])
     if r < 0.25:
         return rnd.choice(["", "2×", "3×", "0.5×", "-", "π×"]) + rnd.choice(["X", "X^2", "X^3", "X^(-2)", "SQRT(X)", "1"])
     if r < 0.55:
@@ -101,10 +107,66 @@ def wrong(rule, line, text, deg):
 BIG = ["--arena", "524280"]         # values judged with room to spare; the 8 KB budget's soft NO_ROOM counted apart
 
 
-def steps(e, deg, one, arena=BIG):
-    args = [CLI, "--tsv"] + arena + (["--one-line"] if one else []) + ["steps", "integrate", e, "X", "DEG" if deg else "RAD"]
+ANGLE = {"0": "DEG", "1": "RAD", "2": "GRAD"}
+MODEL = {"35": "35", "33": "33", "1": "STU"}
+
+
+def steps(e, deg, one, arena=BIG, var="X", angle=None, model="35"):
+    args = [CLI, "--tsv", "--model", model] + arena + (["--one-line"] if one else []) + [
+        "steps", "integrate", e, var, angle or ("DEG" if deg else "RAD")]
     p = subprocess.run(args, stdout=subprocess.PIPE, text=True, encoding="utf-8")
     return p.returncode, p.stdout
+
+
+# integrate inputs the corpus lacks, kept here: abacus's hidden cases H00075 and H00002 (#6252), where the walk once
+# refused what integrate answers, and rule 6a's spellings of a power of X under a constant
+AIMED = [("(-3)×SQRT(X)^3", "X", "DEG", "STU"),
+         ("2×X×SQRT(X)+(-2)÷((-1÷2)×X-1)+4×INV(X^2)", "X", "DEG", "STU")] + [
+    (k + f, "X", "RAD", "35") for k in ("3×", "-2×", "0.5×", "π×") for f in (
+        "SQRT(X)^3", "INV(X^2)", "SQ(X)", "INV(X)", "SQRT(X)×X", "X÷SQRT(X)", "INV(SQRT(X))", "X^2÷X^5")]
+
+
+def known_inputs():
+    """(text, var, angle, model) of every integrate in the golden corpus, docs/language.md and AIMED"""
+    out = set(AIMED)
+    for line in open(os.path.join(ROOT, "tests", "golden", "corpus.txt"), encoding="utf-8"):
+        f = line.rstrip("\n").split("\t")
+        if f[0] == "integrate" and "\\" not in f[7]:
+            out.add((f[7], chr(65 + int(f[2])), ANGLE[f[3]], MODEL.get(f[1], "35")))
+    for m in re.finditer(r'`casim (?:steps )?integrate "([^"]+)" ([A-Z]) (RAD|DEG|GRAD)`',
+                         open(os.path.join(ROOT, "docs", "language.md"), encoding="utf-8").read()):
+        out.add((m.group(1), m.group(2), m.group(3), "35"))
+    return sorted(out)
+
+
+def check_known():
+    """every known integrate input integrate answers must page to the end, right by value; returns the failures"""
+    failed = n = 0
+    for e, var, angle, model in known_inputs():
+        p = subprocess.run([CLI, "--model", model] + BIG + ["integrate", e, var, angle], stdout=subprocess.PIPE,
+                           text=True, encoding="utf-8")
+        if p.returncode != 0:
+            continue
+        n += 1
+        rc, out = steps(e, False, False, var=var, angle=angle, model=model)
+        last = out.rstrip("\n").split("\n")[-1]
+        why = []
+        if rc != 0 and last != "NO_ROOM":
+            why.append(f"integrate answers, its steps end {last}")
+        elif rc == 0:
+            rows = [r.split("\t") for r in out.rstrip("\n").split("\n")]
+            if split_int(rows[-1][4])[1] != p.stdout.strip():
+                why.append(f"the last step {rows[-1][4]} is not integrate's {p.stdout.strip()}")
+            if var == "X":              # the evaluator knows X (and Y as a constant)
+                for r in rows:
+                    w = wrong(r[3], r[2], r[4], angle)
+                    if w:
+                        why.append(f"step {r[0]} {r[3]}: {r[4]}: {w}")
+        if why:
+            failed += 1
+            print(f"FAIL scripts/istep-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why))
+    print(f"integrate steps on the corpus, the docs and {len(AIMED)} aimed inputs: {n} integrate answers, {failed} failed")
+    return failed
 
 
 def main():
@@ -151,9 +213,10 @@ def main():
                 failed += 1
                 print(f"FAIL scripts/istep-values.py: {e} ({'DEG' if deg else 'RAD'}, "
                       f"{'one line' if one else 'two lines'})\n  " + "\n  ".join(why))
+    known = check_known()
     print(f"integrate step values: {ok} of {n} expressions integrable, both ways, {lines} steps; {soft} fit 8 KB plain "
-          f"but not with steps; the judge refused its three planted steps\nchecks: {2 * ok} failed: {failed}")
-    sys.exit(1 if failed else 0)
+          f"but not with steps; the judge refused its three planted steps\nchecks: {2 * ok} failed: {failed + known}")
+    sys.exit(1 if failed or known else 0)
 
 
 if __name__ == "__main__":
