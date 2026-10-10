@@ -19,14 +19,22 @@ It's also the step a student does by hand between cancelling (CAS 010) and integ
 1. **The input:** as CANCEL reads it (CAS 010 rule 2): a quotient n÷d typed as one expression, or a polynomial, under
    010's bounds (degree ≤ 12, coefficients ≤ 10^7 once cleared).
    - Polynomials in var with rational coefficients only.
-   - Another letter is NOT_POLYNOMIAL. Thompson XIX 11 (b÷(x²−a²)) is out of reach, as is any form with letters as
-     coefficients (casim #6404).
+   - Another letter is NOT_NUMERIC, as CANCEL and SOLVE return it ("a coefficient not an exact rational"). This
+     follows casim #6436, which corrects this file's first wording, NOT_POLYNOMIAL; one op shouldn't differ from the
+     others. Thompson XIX 11 (b÷(x²−a²)) is out of reach, as is any form with letters as coefficients (casim #6404).
    - A polynomial input, or a denominator that's a constant, prints its polynomial (no fractions to split).
 2. **Common factors cancel first, with CANCEL's rows** (casim's lean, ruled yes).
    - The gcd of n and d comes out first. Then the reduced quotient is decomposed.
    - The removed values print as CANCEL's rows after the decomposition: `; X=1`, or `; X^2-2=0` for a factor with no
      rational root.
    - So `(X^2-1)÷((X-1)×(X+2))` gives `1-1÷(X+2); X=1`. The answer never silently widens the domain.
+   - The rows are spelled exactly as CANCEL spells them, in 002's order (e.g. `-4×X^2+X^4+4=0`). Limits will read
+     both ops' rows, so they stay one spelling.
+   - **A zero numerator:** `0÷(X+1)` gives `0; X=-1`. By 010's own rule, pgcd(0, d) is d's primitive part, so all
+     of d cancels.
+   - **CANCEL's sibling fix, in this unit:** CANCEL returns NO_ROOM on 0÷d today, because div_poly refuses 0÷gcd.
+     That's a clean refusal (ASan and UBSan quiet), but NO_ROOM names a resource that didn't run out. CANCEL gives
+     `0; X=-1` too, with a visible example, and abacus adds zero numerators to 010's hidden set.
 3. **The method** (casim's):
    - The polynomial part comes from division (CAS 007/010's div).
    - d is factored over Q by calling do_factor whole on d's text and reading its product back. Factor's code and
