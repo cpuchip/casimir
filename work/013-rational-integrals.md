@@ -46,8 +46,13 @@ fractions in every calculus course.
    closes(): derive it back, apply the check-only rewrites, expand the difference to 0. Together with partfrac's
    rule-7 identity, the term checks prove F′ = n÷d. A term that doesn't close means the whole answer is refused, never
    printed unchecked.
-7. **The printed form:** integrate's canonical form, one answer style per op. The terms are joined in partfrac's order,
-   polynomial part first. No "+C", as with integrate's other answers.
+7. **The printed form:** the canonical form of the whole sum, exactly as integrate prints every other answer, one answer
+   style per op.
+   - The checked terms are rebuilt as one sum before printing. Each term is still checked by closes() first (rule 6),
+     with the arena reset after each.
+   - No "+C".
+   - This corrects the first wording, "joined in partfrac's order" (casim #6709): it disagreed with the canonical
+     form whenever 002's order differs from partfrac's, as I0024's did.
 8. **A cancelling integrand is refused (NOT_INTEGRABLE),** keeping CAS 006's guarantee (casim #6707, which corrects this
    rule's first wording, "answers for the reduced function"):
    - integrate never prints an antiderivative that's defined where the integrand isn't;
