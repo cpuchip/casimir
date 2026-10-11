@@ -48,8 +48,15 @@ fractions in every calculus course.
    printed unchecked.
 7. **The printed form:** integrate's canonical form, one answer style per op. The terms are joined in partfrac's order,
    polynomial part first. No "+C", as with integrate's other answers.
-8. **No rows:** integrate answers for the reduced function, as it does for its other forms, and the values a common
-   factor removed aren't printed. This is a choice: a student who wants the domain asks CANCEL or PARTFRAC.
+8. **A cancelling integrand is refused (NOT_INTEGRABLE),** keeping CAS 006's guarantee (casim #6707, which corrects this
+   rule's first wording, "answers for the reduced function"):
+   - integrate never prints an antiderivative that's defined where the integrand isn't;
+   - so when partfrac's gcd isn't 1 (something cancelled), the rational path refuses;
+   - X^2÷X, (X^2+X)÷X and (X^2-1)÷((X-1)×(X+2)) stay NOT_INTEGRABLE, while 1÷(X^2-1) and the other reduced forms
+     answer;
+   - a student who wants the reduced function's integral cancels first (CANCEL or PARTFRAC), and then sees the
+     removed values as rows.
+   - The 0.9.0 release's published guarantee ("an exact answer, or a status that says why not") reads the same way.
 9. **Bounds, decision 68 with decision 80's budget:**
    - **Frames:** no existing frame moves. The prototype measured do_irational at 240 B and ir_term at 192 B. On the stack
      the path is partfrac's own (bench worst about 3 KB) plus about 240 B. The masked bench gives the worst through the
