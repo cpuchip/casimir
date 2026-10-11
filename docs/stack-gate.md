@@ -74,8 +74,8 @@ its calls. A row whose deepest function reaches one gets the watchpoint, or adds
 **Measured on casim's image (2026-10-11): the control fails broadly.** Of 345 functions in casim, abn and libbid, 97
 change their `entry a1, N` under -finstrument-functions, in both directions (add 224 to 144, abn_div 192 to 176,
 casim_integrate 48 to 64): the hooks move gcc's inlining. One function, libbid's short_sqrt128, uses movsp. So for
-casim, S from this build doesn't stand for the product on most rows, and casim's S isn't measured yet. Until it is,
-casim's figure stays the interim one below.
+casim, S from this build doesn't stand for the product on most rows. casim's S is measured with the level-5 sampler
+instead (below).
 
 ## The checks on the figure
 
@@ -94,9 +94,20 @@ casim's figure stays the interim one below.
 - casim (scripts/device.sh, device/main/bench_main.c):
   - **Today's figure (interim):** the worst masked row + max(384, the sweep's largest excess), against 12,288 with the
     256 floor. It is a bound only if no row's unwritten room exceeds 192. On I0030's page it is 144 (measured).
-  - **S:** not measured yet. The min-sp build failed its control on casim (above); the next method is to be agreed.
+  - **S, measured 2026-10-11 with the level-5 sampler** (soroban's, abacus-firmware fcfafdf; on a scratch copy of
+    casim's bench until it is cleared for this repository). The timer and the worker are pinned to one core. Each
+    worker sets the window to its own fresh stack, so M and S come from one masked run on one image. Each row runs at
+    three periods (337, 480 and 613 cycles).
+    - Controls: FULL R = 32; ROOM R = 5,872 (predicted at least 5,900: the part written at the top was larger than
+      allowed for); I0030's page R = 144 in bid128_ext_fma, as the raw capture found.
+    - Over 1,058 rows (861 cases and their last pages): the worst M + R + I is 11,520, at STU chain X^ 44 d with R = 32,
+      leaving 768 of the 12,288 (floor 256).
+    - R exceeds 192 on 99 rows, up to 400, all shallow (M about 1,936). The owner there is casim's fn, whose whole
+      frame is 128: several unwritten frames sit below the watermark at once. So the interim "masked + 384" is not a
+      bound row by row; it holds for the gate only because those rows are far from the worst.
+    - S is still a sample, three runs per row.
   - **The sweep:** ten rows and the worst, at 27 delays, as now.
-  - **The watchpoint:** on the worst rows, once S has a method.
+  - **The watchpoint:** on the worst rows, next.
 - The firmware (soroban, scripts/resources.py board, Rev A head-less):
   - **Rows:** two shapes × three states. The shapes are the 153-unit mix at unit 047's deepest site, and 19 levels of
     SIN( in RAD. The states are factory, one equation, and a full image (66 equations, A–Z, statistics). The keys are
