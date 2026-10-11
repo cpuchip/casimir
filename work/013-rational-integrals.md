@@ -73,7 +73,7 @@ fractions in every calculus course.
    - **Time:** the S3's worst, as before.
 10. **Steps, as a second build of this unit after the answers are accepted:** integrate's walk for a rational integrand
     is partfrac's pages, then each term's ∫ and its CHECK. The rule ids come from the block at 256 and up, added only at
-    the end.
+    the end. The answers were accepted at 62bc1d8 (abacus 248fa47), and the steps are specified in "Steps" below.
 
 ## Acceptance
 
@@ -107,3 +107,99 @@ fractions in every calculus course.
   - the S3's own table stays casim's per-unit record.
 - **The device:** the S3 bench byte-identical to the host. Golden byte-identical for every other op, and every earlier
   hidden set rerun.
+
+## Steps (rule 10's second build)
+
+From casim's measured C prototype (#6924, scratch, over 62bc1d8), with abacus's rulings (a)–(d) of #6834 and the
+answers to #6924's six questions. The answers don't change: every op's golden and every earlier hidden set stay
+byte-identical; only rational integrands gain a walk.
+
+### S1. The walk
+
+The root is at depth 0. Each part sits one level below the line that introduces it (#6834 (c)).
+
+1. **PARTIAL FRACTIONS** (template, 262): ∫(n÷d)dX = ∫(<partfrac's answer>)dX.
+2. **partfrac's own pages,** at depth 1, unchanged.
+3. **SUM,** template and result, at depth 1, when there is more than one term. Each term's walk goes a level down.
+4. **The polynomial part:** the table's walk on its text, unchanged.
+5. **A linear term c÷(m(aX+b)^j):**
+   - CONSTANT MULTIPLE takes c÷m out;
+   - then the table's walk on 1÷(aX+b)^j, unchanged (RECIPROCAL or POWER, its substitution, CHECK);
+   - then CONSTANT MULTIPLE's result, canon(c÷m × piece), which equals that term's piece of the final answer.
+6. **A quadratic term (BX+C)÷(m f),** f = aX²+bX+c with D < 0:
+   - **SPLIT** (263), when both parts are present: ∫(term)dX = k1×∫((2aX+b)÷f)dX + k2×∫(1÷f)dX. With one part:
+     CONSTANT MULTIPLE, or nothing when the multiple is 1.
+   - **LOG DERIVATIVE** (264): ∫((2aX+b)÷f)dX = ∫(1÷U)dU, U=f; CHECK; result LN(f) in canonical form, with no ABS
+     (rule 4).
+   - **COMPLETE THE SQUARE** (265), a result line: X^2+2×X+5=(X+1)^2+4, or 4×X^2+9=4×(X^2+9÷4).
+   - **ARCTANGENT** (266): ∫(1÷f)dX = ∫(1÷(U^2+k))dU, U=X+b÷(2a), with ÷a after dU when a≠1; CHECK; the result as
+     ir_term builds it, with the angle factor in DEG and GRAD (rule 4).
+7. **PARTIAL FRACTIONS result:** ∫(n÷d)dX = integrate's answer, byte for byte. The walk ends on the answer
+   (#6251's rule for every op).
+
+### S2. The rulings on #6924's questions
+
+1. **Every CHECK is proved.** Each CHECK line, including the quadratic parts', is proved by closes() before it prints.
+   A CHECK that doesn't close is a bug. The walk is refused (softly, as with NO_ROOM: the answer stays), and the
+   build's own check over every corpus input fails on it. No line claims an identity it hasn't checked. Measure the cost on the S3
+   (S6).
+2. **When partfrac changes nothing,** skip PARTIAL FRACTIONS and partfrac's pages, both template and result.
+   - "Changes nothing" has one definition: partfrac's answer, in canonical form, is byte-equal to the canonical n÷d.
+     It isn't a heuristic on the factor count. 1÷(4×X^2+9) is skipped; (X^4+1)÷(X^3+1) and 1÷(X^2-1) are not.
+   - The walk is then the one term's walk, with the root ∫(n÷d)dX and the last page integrate's answer.
+3. **COMPLETE THE SQUARE is skipped only when b = 0 and a = 1** (X^2+1, X^2+4). 4×X^2+9 keeps it, because factoring
+   out a is a rewrite the student needs to see. With it, ARCTANGENT drops "U=X" and reads ∫(1÷(X^2+k))dX directly.
+4. **STU:** every page follows the request's model, as every walk does.
+   - The two notations read differently in one place only: a chained power (X^3^2 groups left in 35).
+   - So the build may print the generated texts once, if it proves they hold no chained power. Add a check in make
+     test that fails if any page of an STU or 35 walk contains `^n^` (a number, or a closing bracket, between two ^).
+   - Where a chain could arise, bracket it, as the 35 model prints today.
+   - abacus's judge parses every page under the request's model.
+5. **Ids:** PARTIAL FRACTIONS 262, SPLIT 263, LOG DERIVATIVE 264, COMPLETE THE SQUARE 265, ARCTANGENT 266. They are
+   added after COEFFICIENTS (261) in casim.h, each with its comment, and casim_rule_name covers them. Nothing below 262
+   moves.
+6. **Recounting on every call is fine** while the slowest page stays under 1 s on the S3. Past that, the answer is
+   soroban's page cache (#6834 (d)), not a casim API change.
+
+### S3. Bounds
+
+- **Frames:** no existing frame moves. The prototype moved casim_step 240 → 224, so the build moves the hook and the
+  frame-table gate proves it. The new frames are listed (prototype: do_irsteps 752, irs_fprime 240, do_isteps_all 192,
+  pf_term 112). do_irsteps is the one to shrink: keep do_irational's whole arena without a reserved top slot (that cost
+  94 DEG cases to NO_ROOM in the prototype).
+- **Arena:** 8,192 B. The prototype's worst was 7,984 B. Past it, the walk's NO_ROOM is soft, as in solve's oracle 6:
+  the answer stays, and only the walk is refused. Report the corpus's worst and the count.
+- **Flash:** the prototype is +8,851 B (146,212 → 155,063 of 262,144). Stop and report at twice that.
+- **Stack:** the masked bench's worst (11,328 today; 11,712 with the 384 allowance) must not rise. Report the 013 page
+  stacks.
+- **Time:** the slowest S3 page, with the proved CHECKs, under 1 s.
+
+### S4. Acceptance
+
+- **Visible examples** in work/013-steps-examples.txt, written by casim:
+  - XIX 9, 10, 12 and 13 walked;
+  - a linear power to the 3rd;
+  - a quadratic with both SPLIT parts, and one with only the ATAN part;
+  - each skip of S2.2 and S2.3, and one case that keeps each;
+  - DEG and GRAD;
+  - an STU request beside its 35 twin;
+  - a soft NO_ROOM.
+- **Hidden, by abacus:** the CAS 013 hidden set's answered cases (seed 13013 × 3000), walked on the build and judged:
+  - composition: the root is the template and the last page is integrate's answer byte for byte; depths follow S1;
+    two runs give the same bytes;
+  - every line by value at two points in the case's angle mode. ∫ templates are compared as integrands, and
+    substitutions are taken as h(U)×U′ (judge_isteps's form). RESULT lines are checked by F′ = their integrand. CHECK
+    lines must be true;
+  - the ids in S2.5, and no others outside the table's;
+  - the skips exactly where S2.2 and S2.3 define them;
+  - every page parsing under the request's model;
+  - the planted faults that must each go red: k1 off by one, ÷a dropped after dU, a CHECK printed on a false identity,
+    a skip where partfrac changed something, and ABS on LOG DERIVATIVE's LN.
+- **Mutants:**
+  - closes() skipped on a quadratic CHECK;
+  - SPLIT's k2 off;
+  - the angle factor dropped in ARCTANGENT's result in DEG;
+  - ABS added to LOG DERIVATIVE;
+  - S2.3's skip widened to b ≠ 0;
+  - the chained-power check removed while a planted chain prints.
+- **Device:** the S3 bench byte-identical to the host, every 013 row paged, and the slowest page reported.
