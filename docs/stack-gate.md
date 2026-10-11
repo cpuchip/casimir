@@ -87,7 +87,23 @@ instead (below).
 2. **The watchpoint, on the product image, on the worst few rows.**
    - A data watchpoint (DBREAK) on the masked watermark's address, then the row run again.
    - The first write there stops with the writer's PC and A1.
-   - Owner and depth must agree with the min-sp build. Where they do, the min-sp build is trusted for the other rows.
+   - The writer's stack pointer is a lower bound on S, not S itself: a deeper frame that writes nothing lies below
+     it. So S must be at least the writer's depth, and the two are equal when the deepest frame writes its own
+     bottom.
+   - Measured on casim's bench (2026-10-11):
+     - STU chain X^ 44 d (the worst): the writer is __bid128_from_string, 32 below the watermark, equal to the
+       sampler's R.
+     - I0030's page: the writer is bid___div_128_by_128, at the watermark (0); the sampler's R is 144, inside
+       bid128_ext_fma.
+     - probe SIN nest S: the writer is 272 below; the sampler's R is 400, the difference being fn's whole 128-byte
+       frame, unwritten.
+
+**What the masked watermark already holds.** Masking stops interrupts, not exceptions. libbid's division and square
+root use the S3's single-precision FPU, so a task's first FPU instruction takes IDF's lazy coprocessor exception,
+which saves a frame on the task stack. On the SIN nest rows that frame is the masked watermark: the watchpoint's
+writer there is IDF's _xt_context_save. It is in M already. It does not add to I either: the exception keeps EXCM
+until it returns, so no level 1-3 interrupt lands inside it, and one 192-byte frame bounds either event at any
+moment.
 
 ## Who runs what
 
@@ -107,7 +123,7 @@ instead (below).
       bound row by row; it holds for the gate only because those rows are far from the worst.
     - S is still a sample, three runs per row.
   - **The sweep:** ten rows and the worst, at 27 delays, as now.
-  - **The watchpoint:** on the worst rows, next.
+  - **The watchpoint:** on the worst row, I0030's page and a SIN nest row (above): consistent with the sampler on all three.
 - The firmware (soroban, scripts/resources.py board, Rev A head-less):
   - **Rows:** two shapes × three states. The shapes are the 153-unit mix at unit 047's deepest site, and 19 levels of
     SIN( in RAD. The states are factory, one equation, and a full image (66 equations, A–Z, statistics). The keys are
