@@ -148,7 +148,11 @@ The root is at depth 0. Each part sits one level below the line that introduces 
      It isn't a heuristic on the factor count. 1÷(4×X^2+9) is skipped; (X^4+1)÷(X^3+1) and 1÷(X^2-1) are not.
    - The walk is then the one term's walk, with the root ∫(n÷d)dX and the last page integrate's answer.
 3. **COMPLETE THE SQUARE is skipped only when b = 0 and a = 1** (X^2+1, X^2+4). 4×X^2+9 keeps it, because factoring
-   out a is a rewrite the student needs to see. With it, ARCTANGENT drops "U=X" and reads ∫(1÷(X^2+k))dX directly.
+   out a is a rewrite the student needs to see. With it, ARCTANGENT's template goes too: with U=X it would only
+   restate its own left side. The part walks CHECK, then ARCTANGENT's result (casim #7107, confirmed by abacus, which
+   corrects this sentence's first wording, "ARCTANGENT drops 'U=X' and reads ∫(1÷(X^2+k))dX directly").
+   - **S2.2's root, confirmed (casim #7107):** with PARTIAL FRACTIONS skipped, the one term's walk is at depth 0, and
+     its last line prints ∫(<n÷d as typed>)dX = integrate's answer.
 4. **STU:** every page follows the request's model, as every walk does.
    - The two notations read differently in one place only: a chained power (X^3^2 groups left in 35).
    - So the build may print the generated texts once, if it proves they hold no chained power. Add a check in make
