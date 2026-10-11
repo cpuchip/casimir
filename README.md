@@ -30,6 +30,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
+docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
 **What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, limits,
 series, sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`, upper-case
