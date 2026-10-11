@@ -23,7 +23,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | simplify | one canonical text for each expression, with exact numbers and exact values (SIN(π÷6) is 0.5) |
 | expand, collect, subst | distribute and multiply out; gather the powers of a variable; replace a variable |
 | solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2) |
-| integrate, defint | an antiderivative from a table of forms; a definite integral, exactly |
+| integrate, defint | an antiderivative from a table of forms, and of a rational function through its partial fractions; a definite integral, exactly |
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
@@ -31,9 +31,9 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 
 docs/language.md is the input language, with every operation's statuses and examples.
 
-**What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, integrals
-of rational functions, limits, series, sums, trigonometric identities, matrices. The input uses the calculator's
-notation (`×`, `÷`, `π`, upper-case names) and doesn't read implied products (`2X`).
+**What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, limits,
+series, sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`, upper-case
+names) and doesn't read implied products (`2X`).
 
 ## The guarantee
 
@@ -114,30 +114,32 @@ gzipped), most of it the decimal library's tables.
 
 ## How it's tested
 
-- **The developer tests** (`make test`; 18 programs, about 115,000 checks) read every answer back through an
+- **The developer tests** (`make test`; 19 programs, about 118,000 checks) read every answer back through an
   independent evaluator and compare values. That evaluator is the calculator firmware's own core, which is private, so
   these tests need its clone (CORE_REPO) at the commit in CORE_PIN. They are collect, core_link, defint, derive,
   exact, examples, expand, factor, fuzz, integrate, opaque, pairs, partfrac, poly, simplify, solve, stamp, subst and
   syntax
   (tests/*_test.c).
 - **The standalone checks** (`make check`, and CI) need nothing private:
-  - the golden test, 8,799 calls whose exact answers were recorded from earlier sources, so a change shows up;
-  - the frame and symbol gates;
-  - a gcd check on small primes, and partfrac's rule-7 check reached by spoiling a numerator;
+  - the golden test, 8,861 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
+    where one is;
+  - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
+    check reached by spoiling a term;
   - check-abn;
   - the examples in docs/language.md.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 133 deliberate faults, each of which the tests
-  must catch; `make test` catches all 133 (the full run at CAS 012). When there were 80, the standalone checks first
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 146 deliberate faults, each of which the tests
+  must catch; `make test` catches all 146 (at CAS 013). When there were 80, the standalone checks first
   caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose each fault
   were added to the golden corpus, 34 lines found by scripts/golden-harvest.py, and the standalone checks then caught
   80 of 80. Those lines were chosen because they catch those 16 faults, so a fault unlike them can still need the
   developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
-- **The S3 bench** (scripts/device.sh) runs 838 cases on the chip, through the ESP-IDF component, and requires every
+- **The S3 bench** (scripts/device.sh) runs 861 cases on the chip, through the ESP-IDF component, and requires every
   answer to be byte-identical to the host's.
 
 ## How it was made

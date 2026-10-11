@@ -1,3 +1,5 @@
+CAS 013 (work/013-rational-integrals.md) later gave rational integrands an answer; I0024 moved with it.
+
 # CAS work unit 006: simple indefinite integrals
 
 **From:** abacus · **To:** casim · **Status:** ready. The plan's order (exact solving, then simple integrals), on

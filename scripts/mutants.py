@@ -126,8 +126,8 @@ MUTANTS = {
         ("src/casim.c", "        case F_EXP: r = fn(c, F_EXP, uc); break;", "        case F_EXP: r = fn(c, F_EXP, mul2(c, uc, small(c, C_2))); break;"),
     ],
     "integ-stamp-ignored": [
-        ("src/casim.c", "    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
-         "    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
+        ("src/casim.c", "    st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
+         "    st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
     ],
     "integ-plus-c": [
         ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */",
@@ -608,6 +608,41 @@ MUTANTS = {
     "psteps-one-line": [
         ("src/casim.c", "static __attribute__((noinline)) bool ps_hit(pstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one) return false;",
          "static __attribute__((noinline)) bool ps_hit(pstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (0) return false;"),
+    ],
+    # 013 (abacus's list): a term's check skipped at both call sites (tests/ircheck_check's spoiled terms reach it; the
+    # macro's default is not the place: ircheck_check defines its own)
+    "irat-check-skipped": [
+        ("src/casim.c", "if (c.st != CASIM_OK || !CASIM_IR_CLOSES(&c, F, f)) return c.st == CASIM_OK",
+         "if (c.st != CASIM_OK || ((void)f, 0)) return c.st == CASIM_OK"),
+        ("src/casim.c", "                    if (c.st != CASIM_OK || !CASIM_IR_CLOSES(&c, F, f))\n",
+         "                    if (c.st != CASIM_OK || ((void)f, 0))\n"),
+    ],
+    # 013: ABS dropped on a linear factor's LN (the check closes without it: the text moves)
+    "irat-abs-dropped": [
+        ("src/casim.c", "        if (j == 1) return mul2(c, ir_rat(c, nm[0].p, q), fn(c, F_LN, fn(c, F_ABS, ft)));",
+         "        if (j == 1) return mul2(c, ir_rat(c, nm[0].p, q), fn(c, F_LN, ft));"),
+    ],
+    # 013: ATAN's angle factor dropped
+    "irat-angle-dropped": [
+        ("src/casim.c", "mul2(c, fn(c, F_ATAN, mul2(c, u, power(c, root, small(c, C_M1)))), angle_factor(c, false)));",
+         "mul2(c, fn(c, F_ATAN, mul2(c, u, power(c, root, small(c, C_M1)))), small(c, C_1)));"),
+    ],
+    # 013: ATAN's argument off by its 2a
+    "irat-atan-2a": [
+        ("src/casim.c", "        u = add2(c, mul2(c, ir_rat(c, 2 * a, 1), x), ir_rat(c, b, 1));    /* 2aX + b */",
+         "        u = add2(c, mul2(c, ir_rat(c, a, 1), x), ir_rat(c, b, 1));    /* 2aX + b */"),
+    ],
+    # 013: a refused form let through (D > 0 and quadratic powers into the D < 0 formula; ircheck_check without the
+    # check sees it)
+    "irat-refused-let-through": [
+        ("src/casim.c", "    if (F->deg == 2 && j == 1 && D < 0) {", "    if (F->deg == 2) {"),
+    ],
+    # 013: the hook moved inside do_integrate (the frame table catches it)
+    "irat-hook-in-do-integrate": [
+        ("src/casim.c", "    return st == CASIM_NOT_INTEGRABLE ? do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;",
+         "    return st;"),
+        ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);",
+         "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    if (c.st == CASIM_NOT_INTEGRABLE) return do_irational(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);"),
     ],
 }
 

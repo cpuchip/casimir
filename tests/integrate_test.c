@@ -226,11 +226,20 @@ static void outside(void)
     refused("X×EXP(X)", CASIM_NOT_INTEGRABLE);
     refused("X×EXP(X^2)", CASIM_NOT_INTEGRABLE);            /* a substitution that is not linear */
     refused("SIN(X^2)", CASIM_NOT_INTEGRABLE);
-    refused("1÷(X^2-1)", CASIM_NOT_INTEGRABLE);             /* partial fractions */
-    refused("1÷(X^2+1)", CASIM_NOT_INTEGRABLE);
+    refused("1÷(X^2-2)", CASIM_NOT_INTEGRABLE);             /* D > 0, not a square (CAS 013 rule 5) */
+    refused("1÷(X^2+1)^2", CASIM_NOT_INTEGRABLE);           /* a quadratic squared (CAS 013 rule 5) */
     refused("SIN(X)^2", CASIM_NOT_INTEGRABLE);
     refused("SIN(X)×COS(X)", CASIM_NOT_INTEGRABLE);
-    refused("X^2÷X", CASIM_NOT_INTEGRABLE);                 /* as typed (rule 6) */
+    refused("SIN(X)+1÷(X^2-1)", CASIM_NOT_INTEGRABLE);      /* mixed (CAS 013 rule 1): X^2÷X answers since 013 */
+    refused("(X+A)÷(X^2-1)", CASIM_NOT_INTEGRABLE);         /* another letter: integrate's status kept (CAS 013, #6686) */
+    refused("1÷(X^3-2)", CASIM_NOT_INTEGRABLE);             /* a cubic factor */
+    refused("(X^2+1)^6", CASIM_NOT_INTEGRABLE);             /* degree 12: its X^13 is past the bound (CAS 013 rule 2) */
+    {
+        /* an arena too small for partfrac to start: the table's refusal stands (CAS 013 rule 2, the review) */
+        char out[OUT];
+        casim_status st = integ("X^X", CASIM_RAD, CASIM_MODEL_35, out, 5500);
+        CHECK(st == CASIM_NOT_INTEGRABLE, "integrate X^X at 5,500 B: %d", (int)st);
+    }
     refused("2^X", CASIM_NOT_INTEGRABLE);
     refused("ABS(X)", CASIM_NOT_INTEGRABLE);
     refused("SIN(A×X)", CASIM_NOT_INTEGRABLE);              /* a linear argument's coefficients are numbers */
@@ -300,6 +309,106 @@ static void visible(void)
     CHECK(n == 35, "%d visible examples, want 35", n);
 }
 
+/* CAS 013: work/013-examples.txt at the 8 KB arena, each answer byte for byte (rule 7 joins the terms, each in 002's
+   form, so the file's text is compared as it is) and by value in its angle mode */
+static void visible013(void)
+{
+    static unsigned char small[8192];
+    FILE *fp = fopen("work/013-examples.txt", "r");
+    char line[2048];
+    int n = 0;
+    CHECK(fp != NULL, "work/013-examples.txt not found");
+    if (!fp) return;
+    while (fgets(line, sizeof line, fp)) {
+        char *f[8], *s = line, out[OUT], why[256] = "";
+        int k = 0, angle;
+        casim_req rq;
+        casim_status st;
+        if (line[0] == '#') continue;
+        line[strcspn(line, "\r\n")] = '\0';
+        while (k < 8) {
+            char *bar = strstr(s, " | ");
+            f[k++] = s;
+            if (!bar) break;
+            *bar = '\0';
+            s = bar + 3;
+        }
+        if (k < 7) continue;
+        n++;
+        angle = strcmp(f[4], "DEG") == 0 ? CASIM_DEG : strcmp(f[4], "GRAD") == 0 ? CASIM_GRAD : CASIM_RAD;
+        rq = (casim_req){CASIM_INTEGRATE, f[2], CASIM_MODEL_35, f[3][0] - 'A', NULL, 0, angle, NULL};
+        st = casim_run(&rq, out, OUT, small, sizeof small);
+        if (strcmp(f[6], "NOT_INTEGRABLE") == 0) CHECK(st == CASIM_NOT_INTEGRABLE, "%s: %d \"%s\"", f[0], (int)st, out);
+        else if (strcmp(f[6], "NO_ROOM") == 0) CHECK(st == CASIM_NO_ROOM, "%s: %d \"%s\"", f[0], (int)st, out);
+        else if (strcmp(f[6], "TOO_LONG") == 0) CHECK(st == CASIM_TOO_LONG, "%s: %d \"%s\"", f[0], (int)st, out);
+        else {
+            CHECK(st == CASIM_OK && strcmp(out, f[6]) == 0, "%s: integrate %s: %d \"%s\", want \"%s\"", f[0], f[2], (int)st,
+                  out, f[6]);
+            CHECK(st != CASIM_OK || by_value(f[2], out, angle, why, sizeof why), "%s: %s = %s: %s", f[0], f[2], out, why);
+        }
+    }
+    fclose(fp);
+    CHECK(n == 19, "%d CAS 013 examples, want 19", n);
+}
+
+/* CAS 013: seeded n÷d over planted factors (linear to the 3rd power, quadratics with D < 0), each integrated in the
+   three angle modes and judged by value (the core's own evaluation): F' = f at points and F(b) - F(a) against
+   Simpson. A NO_ROOM or TOO_LONG is counted, not judged; any other refusal fails. */
+static unsigned long long seed013 = 0x013u;
+static int rnd013(int lo, int hi)
+{
+    seed013 = seed013 * 6364136223846793005ull + 1442695040888963407ull;
+    return lo + (int)((seed013 >> 33) % (unsigned long long)(hi - lo + 1));
+}
+
+static void rational(void)
+{
+    /* roots outside by_value's points and intervals (a weak pole inside an interval escapes its detection) */
+    static const char *const LIN[] = {"(X-2)", "(X+2)", "(2×X-5)", "(3×X+7)", "X", "(X-4)"};
+    static const char *const QUAD[] = {"(X^2+1)", "(X^2+X+1)", "(2×X^2-X+3)", "(X^2+4)", "(X^2-2×X+5)"};
+    int judged = 0, refused_ = 0, cancelled = 0;
+    for (int trial = 0; trial < 300; trial++) {
+        char text[512], out[OUT], why[256] = "";
+        int len = 0, used[11] = {0}, nf = rnd013(1, 3), deg = 0, angle = ANGLES[trial % 3];
+        casim_status st;
+        len += snprintf(text + len, sizeof text - (size_t)len, "(");
+        for (int k = rnd013(0, 3), first = 1; k >= 0; k--, first = 0)
+            len += snprintf(text + len, sizeof text - (size_t)len, first ? "%d×X^%d" : "%+d×X^%d", rnd013(-9, 9), k);
+        len += snprintf(text + len, sizeof text - (size_t)len, ")÷(");
+        for (int i = 0; i < nf; i++) {
+            int q = rnd013(0, 2) == 0, which = q ? rnd013(0, 4) : rnd013(0, 5), p = q ? 1 : rnd013(1, 3);
+            if (used[q * 6 + which]++) continue;
+            len += snprintf(text + len, sizeof text - (size_t)len, "%s%s^%d", deg ? "×" : "", q ? QUAD[which] : LIN[which], p);
+            deg += (q ? 2 : 1) * p;
+        }
+        snprintf(text + len, sizeof text - (size_t)len, ")");
+        if (deg == 0 || deg > 10) continue;
+        st = integ(text, angle, CASIM_MODEL_35, out, sizeof arena);
+        if (st == CASIM_NO_ROOM || st == CASIM_TOO_LONG) {
+            refused_++;
+            continue;
+        }
+        {
+            /* a common factor (partfrac prints its rows) is refused (rule 8, #6708) */
+            char pf[OUT];
+            casim_req rq = {CASIM_PARTFRAC, text, CASIM_MODEL_35, 'X' - 'A', NULL, 0, angle, NULL};
+            casim_status ps = casim_run(&rq, pf, OUT, arena, sizeof arena);
+            if (ps == CASIM_OK && strstr(pf, "; ")) {
+                CHECK(st == CASIM_NOT_INTEGRABLE, "integrate %s cancels (%s): status %d \"%s\"", text, pf, (int)st, out);
+                cancelled++;
+                continue;
+            }
+        }
+        CHECK(st == CASIM_OK, "integrate %s (angle %d): status %d", text, angle, (int)st);
+        if (st != CASIM_OK) continue;
+        judged++;
+        CHECK(by_value(text, out, angle, why, sizeof why), "integrate %s (angle %d) = %s: %s", text, angle, out, why);
+    }
+    printf("integrate: CAS 013, %d seeded rational integrands judged by value, %d refused for a common factor, %d NO_ROOM or "
+           "TOO_LONG\n", judged, cancelled, refused_);
+    CHECK(judged > 200, "%d judged", judged);
+}
+
 /* Every angle, every function form: by value. */
 static void angles(void)
 {
@@ -322,5 +431,7 @@ int main(void)
     stamp();
     visible();
     angles();
+    visible013();
+    rational();
     return check_done();
 }

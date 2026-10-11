@@ -139,6 +139,16 @@ def known_inputs():
     return sorted(out)
 
 
+rational_n = [0]
+
+
+def rational(e, var, model):
+    """whether e is a proper rational function (partfrac reads it, and its answer has a fraction over var): only CAS
+    013's path answers those; a polynomial, which the table answers, is never excused"""
+    p = subprocess.run([CLI, "--model", model, "partfrac", e, var, "RAD"], stdout=subprocess.PIPE, text=True, encoding="utf-8")
+    return p.returncode == 0 and ("÷(" in p.stdout or f"÷{var}" in p.stdout)
+
+
 def check_known():
     """every known integrate input integrate answers must page to the end, right by value; returns the failures"""
     failed = n = 0
@@ -151,6 +161,9 @@ def check_known():
         rc, out = steps(e, False, False, var=var, angle=angle, model=model)
         last = out.rstrip("\n").split("\n")[-1]
         why = []
+        if rc != 0 and last == "NOT_INTEGRABLE" and rational(e, var, model):
+            rational_n[0] += 1          # CAS 013's path: its steps are the unit's second build (rule 10), refused till then
+            continue
         if rc != 0 and last != "NO_ROOM":
             why.append(f"integrate answers, its steps end {last}")
         elif rc == 0:
@@ -165,7 +178,8 @@ def check_known():
         if why:
             failed += 1
             print(f"FAIL scripts/istep-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why))
-    print(f"integrate steps on the corpus, the docs and {len(AIMED)} aimed inputs: {n} integrate answers, {failed} failed")
+    print(f"integrate steps on the corpus, the docs and {len(AIMED)} aimed inputs: {n} integrate answers, {failed} failed"
+          f" ({rational_n[0]} rational ones through CAS 013, whose steps come in its second build)")
     return failed
 
 

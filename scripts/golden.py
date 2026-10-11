@@ -64,7 +64,7 @@ def examples():
                 yield line("subst", f[2], f[3], f[5], repl=f[4])
             elif unit in ("005", "007"):
                 yield line(f[1], f[2], f[3], model=f[4])
-            elif unit == "006":
+            elif unit in ("006", "013"):
                 yield line("integrate", f[2], f[3], f[4], f[5])
             elif unit == "008":
                 yield line("simplify", f[2], angle=f[3], model=f[4])

@@ -1,0 +1,12 @@
+# The golden lines CAS 013 (integrals of rational functions) moved: a rational integrand the table refused, that
+# cancels nothing (rule 8), is now integrated through partfrac. Each line's inputs, then its status and answer before
+# (0.9.0's NOT_INTEGRABLE) and after. Every other line is byte-identical.
+integrate	35	23	1	35	65536	65536	1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
+integrate	35	23	1	35	8192	192	1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
+integrate	35	23	1	35	8192	65536	1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))

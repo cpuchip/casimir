@@ -1,8 +1,8 @@
 # CAS unit 013 visible examples, written by casim from the rules (work/013-rational-integrals.md). Each antiderivative
 # was written by hand, term by term in partfrac's order (polynomial part first; linear factors by root, X as the
-# root 0; then the quadratics), without its +C. Each term was put through casim simplify (002's canonical form, as in
-# 006's examples), and the terms joined (rule 7: one canonical text per term, not one canonical sum). The integrator's
-# own output is never the reference.
+# root 0; then the quadratics), without its +C. The hand-written sum was put through casim simplify (002's canonical
+# form of the whole, as in 006's examples; rule 7 as corrected at #6709). The integrator's own output is never the
+# reference.
 # - J0001 to J0004 are Thompson's XIX 9, 10, 12 and 13 (1914; problem text from pd-books' export 265b2e4).
 #   XIX 9:  (5x+1)÷((x+2)(x-1)) = 3÷(x+2) + 2÷(x-1).
 #   XIX 10: (x²-3)÷((x+3)(x-1)(x-2)) = (3÷10)÷(x+3) + (1÷2)÷(x-1) + (1÷5)÷(x-2), by cover-up at -3, 1 and 2.
@@ -10,23 +10,24 @@
 #   XIX 13: 1÷(1-x⁴) = (1÷4)÷(x+1) - (1÷4)÷(x-1) + (1÷2)÷(x²+1).
 # - LN of a linear factor has ABS; LN of a quadratic with D < 0 has none (rule 4). ATAN carries π÷180 in DEG and π÷200
 #   in GRAD (J0012, J0013).
-# - J0011: the common factor X-1 cancels and no row is printed (rule 8).
+# - J0011: the common factor X-1 cancels, so it is refused (rule 8, #6708): the reduced function's antiderivative,
+#   X-LN(ABS(X+2)), would be defined at X = 1 where the integrand isn't (CAS 006's guarantee: X^2÷X stays refused).
 # - J0014 to J0017 are refused (rule 5, and rule 2 as ruled at #6686: integrate keeps NOT_INTEGRABLE for another
 #   letter). J0018 is NO_ROOM at the 8 KB arena: partfrac needs 8,216 B for ten linear factors.
 # ID | integrate | integrand | variable | angle | model | F (by hand), or the status
-J0001 | integrate | (5×X+1)÷(X^2+X-2) | X | RAD | 35 | 3×LN(ABS(X+2))+2×LN(ABS(X-1))
-J0002 | integrate | (X^2-3)÷(X^3-7×X+6) | X | RAD | 35 | 0.3×LN(ABS(X+3))+0.5×LN(ABS(X-1))+0.2×LN(ABS(X-2))
-J0003 | integrate | 4×X÷(X^4-1) | X | RAD | 35 | LN(ABS(X+1))+LN(ABS(X-1))-LN(X^2+1)
-J0004 | integrate | 1÷(1-X^4) | X | RAD | 35 | 0.25×LN(ABS(X+1))-0.25×LN(ABS(X-1))+0.5×ATAN(X)
-J0005 | integrate | 1÷(X^2-1) | X | RAD | 35 | -0.5×LN(ABS(X+1))+0.5×LN(ABS(X-1))
-J0006 | integrate | (X^4+1)÷(X^3+1) | X | RAD | 35 | 0.5×X^2+2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3
+J0001 | integrate | (5×X+1)÷(X^2+X-2) | X | RAD | 35 | 2×LN(ABS(X-1))+3×LN(ABS(X+2))
+J0002 | integrate | (X^2-3)÷(X^3-7×X+6) | X | RAD | 35 | 0.2×LN(ABS(X-2))+0.5×LN(ABS(X-1))+0.3×LN(ABS(X+3))
+J0003 | integrate | 4×X÷(X^4-1) | X | RAD | 35 | LN(ABS(X-1))+LN(ABS(X+1))-LN(X^2+1)
+J0004 | integrate | 1÷(1-X^4) | X | RAD | 35 | -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)
+J0005 | integrate | 1÷(X^2-1) | X | RAD | 35 | 0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
+J0006 | integrate | (X^4+1)÷(X^3+1) | X | RAD | 35 | 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2
 J0007 | integrate | 1÷(X^2+X+1) | X | RAD | 35 | 2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)
 J0008 | integrate | 1÷(4×X^2+9) | X | RAD | 35 | ATAN(2×X÷3)÷6
 J0009 | integrate | X÷(X^2+1) | X | RAD | 35 | 0.5×LN(X^2+1)
-J0010 | integrate | (X^2+1)÷(X-1)^3 | X | RAD | 35 | LN(ABS(X-1))-2÷(X-1)-1÷(X-1)^2
-J0011 | integrate | (X^2-1)÷((X-1)×(X+2)) | X | RAD | 35 | X-LN(ABS(X+2))
+J0010 | integrate | (X^2+1)÷(X-1)^3 | X | RAD | 35 | LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)
+J0011 | integrate | (X^2-1)÷((X-1)×(X+2)) | X | RAD | 35 | NOT_INTEGRABLE
 J0012 | integrate | 1÷(X^2+1) | X | DEG | 35 | π×ATAN(X)÷180
-J0013 | integrate | 1÷(1-X^4) | X | GRAD | 35 | 0.25×LN(ABS(X+1))-0.25×LN(ABS(X-1))+π×ATAN(X)÷400
+J0013 | integrate | 1÷(1-X^4) | X | GRAD | 35 | -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+π×ATAN(X)÷400
 J0014 | integrate | 1÷(X^2-2) | X | RAD | 35 | NOT_INTEGRABLE
 J0015 | integrate | 1÷(X^2+1)^2 | X | RAD | 35 | NOT_INTEGRABLE
 J0016 | integrate | SIN(X)+1÷(X^2-1) | X | RAD | 35 | NOT_INTEGRABLE

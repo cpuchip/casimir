@@ -383,8 +383,10 @@ answer. An equation is BAD_ARG.
 - SIN, COS and TAN carry the angle mode's factor (CAS 001 rule 3): 180÷π in DEG, 200÷π in GRAD; SINH, COSH, EXP
   and ALOG carry none;
 - anything else is NOT_INTEGRABLE: by parts (X×LN(X), X×EXP(X)), a substitution that is not linear
-  (X×EXP(X^2), SIN(X^2)), partial fractions (1÷(X^2−1)), SIN(X)^2, ABS(X), 2^X, and a quotient that would only
-  become a form by simplifying (X^2÷X: as typed).
+  (X×EXP(X^2), SIN(X^2)), SIN(X)^2, ABS(X), 2^X, and a quotient that would only become a form by simplifying
+  (X^2÷X: as typed). The table reads the integrand as typed; since CAS 013 a rational integrand it refuses is
+  integrated through partfrac (1÷(X^2−1) is 0.5×LN(ABS(X−1))−0.5×LN(ABS(X+1))), except where something cancels, which
+  stays refused (X^2÷X, CAS 006's guarantee: no antiderivative defined where the integrand isn't).
 
 **Every answer is checked exactly before it prints:** F is differentiated by casim's derive in the angle mode,
 and F′ − f, canonical and expanded, must be exactly 0. Two rewrites live in the check only (abacus #5124), never

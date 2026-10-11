@@ -1,6 +1,8 @@
 # CAS unit 006 visible examples, written by casim from the rules (work/006-integrals.md): each antiderivative
 # written by hand from the table, without its +C; the expected text is 002's canonical form of it (casim
 # simplify, the accepted contract), so the integrator's own output is never the reference.
+# I0024 moved with CAS 013 (work/013-rational-integrals.md): a rational integrand that cancels nothing is integrated
+# through partial fractions; before it, I0024 was NOT_INTEGRABLE (partial fractions were out of scope here).
 # ID | integrate | integrand | variable | angle | model | F (by hand), or the status
 I0001 | integrate | 3×X^2+2×X+1 | X | RAD | 35 | X^3+X^2+X
 I0002 | integrate | X^5 | X | RAD | 35 | X^6÷6
@@ -25,7 +27,7 @@ I0020 | integrate | X^2^3 | X | RAD | STU | X^9÷9
 I0021 | integrate | X^2^3 | X | RAD | 35 | X^7÷7
 I0022 | integrate | X×LN(X) | X | RAD | 35 | NOT_INTEGRABLE
 I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | NOT_INTEGRABLE
-I0024 | integrate | 1÷(X^2-1) | X | RAD | 35 | NOT_INTEGRABLE
+I0024 | integrate | 1÷(X^2-1) | X | RAD | 35 | -LN(ABS(X+1))÷2+LN(ABS(X-1))÷2
 I0025 | integrate | SIN(X)^2 | X | RAD | 35 | NOT_INTEGRABLE
 I0026 | integrate | X^2÷X | X | RAD | 35 | NOT_INTEGRABLE
 I0027 | integrate | 2^X | X | RAD | 35 | NOT_INTEGRABLE

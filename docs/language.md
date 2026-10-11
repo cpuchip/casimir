@@ -181,6 +181,28 @@ equation), TOO_LONG.
 | `casim integrate "X×EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X=1" X RAD` | `BAD_ARG` |
 
+When the table refuses, a rational integrand n÷d (as partfrac reads it) is integrated through its partial fractions
+(work/013-rational-integrals.md): the polynomial part by powers, c÷(aX+b)^j as LN(ABS(aX+b))÷a or by the power rule,
+and (pX+q)÷(aX^2+bX+c) with b^2−4ac < 0 as an LN (no ABS: the quadratic is positive) and an ATAN, which carries
+π÷180 in DEG and π÷200 in GRAD. Each term's antiderivative is differentiated back to its own term before anything
+prints, and the answer is the canonical form of their sum. It refuses (NOT_INTEGRABLE):
+- a quadratic factor with b^2−4ac > 0 that is not a square (X^2−2), or one to a power of 2 or more;
+- a factor of degree 3 or more;
+- a fraction where something cancels (X^2÷X): the reduced function's antiderivative would be defined where the
+  integrand isn't;
+- an integrand that mixes the two (SIN(X)+1÷(X^2−1)), or holds another letter.
+
+It answers NO_ROOM only when partfrac itself runs out of room (or past int64), never for a refusal of the form.
+
+| Command | Prints |
+|---|---|
+| `casim integrate "(5×X+1)÷(X^2+X-2)" X RAD` | `2×LN(ABS(X-1))+3×LN(ABS(X+2))` |
+| `casim integrate "1÷(1-X^4)" X RAD` | `-0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)` |
+| `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)` |
+| `casim integrate "1÷(X^2+1)" X DEG` | `π×ATAN(X)÷180` |
+| `casim integrate "X^2÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "1÷(X^2-2)" X RAD` | `NOT_INTEGRABLE` |
+
 ### defint: a definite integral, exactly
 
 `defint "<integrand>" X LO HI` gives F(HI) − F(LO), with integrate's checked F and the exact values above. The bounds

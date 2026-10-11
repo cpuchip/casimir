@@ -304,6 +304,19 @@ def all_cases():
     for n in range(36, 58, 2):      # nests the reading walks down, across the guard (NOT_POLYNOMIAL or NO_ROOM)
         rows.append((f"r sweep X^( {n}", "1÷(" + "X^(" * n + "X" + ")" * n + ")", "X", "RAD", "partfrac", None, "35"))
         rows.append((f"r sweep 1÷(1+ {n}", "1÷(1+" * n + "X" + ")" * n, "X", "RAD", "partfrac", None, "35"))
+    # CAS 013: integrals of rational functions, the visible examples and the heaviest forms
+    with open(os.path.join(ROOT, "work", "013-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], p[4], "integrate", None, p[5]))
+    for name, expr, angle in [
+            ("j mixed deg 11", "(X^11+1)÷((X-2)^3×(X^2+X+1)×(X+3)^2×(X^2+4)×(2×X-5)^2)", "RAD"),
+            ("j three quadratics", "(X^5+1)÷((X^2+1)×(X^2+X+1)×(2×X^2-X+3))", "DEG"),
+            ("j linear to the 6th", "(X^5+X+1)÷(3×X-2)^6", "RAD"),
+            ("j six linear", "1÷((X^2-1)×(X^2-4)×(X^2-9))", "GRAD")]:
+        rows.append((name, expr, "X", angle, "integrate", None, "35"))
     # the typed tree's walk at depth (the guard): ((((X+1)+1)+1)...-n, nested groups, swept across the limit
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))

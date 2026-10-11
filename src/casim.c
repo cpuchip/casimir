@@ -159,6 +159,11 @@ static rat *rt(const ctx *c, ref r)
    is two frames, 384 B, until that is explained (abacus #6321). The sum, product and power constructors
    are not counted: they recurse only one level on their own, and their depth is the walks' (counting them
    too made a nest of sums cost two units a level, against one for a nest of powers, at the same stack). */
+/* scripts/frame-table.py's control plants a frame here (in do_poly); otherwise nothing */
+#ifndef CASIM_FRAME_PLANT
+#define CASIM_FRAME_PLANT
+#endif
+
 #ifndef CASIM_DEPTH_MAX
 #define CASIM_DEPTH_MAX 44              /* 47 until CAS 010 (abacus #5634), 46 until rc5's allowance (#6321) */
 #endif
@@ -5285,6 +5290,9 @@ static __attribute__((noinline)) bool closes(ctx *c, ref F, ref f)
     return c->st == CASIM_OK && is_k(c, t, 0, 1);
 }
 
+static casim_status do_irational(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
+                                 bool rtl);
+
 static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int var, int angle, char *out, size_t cap,
                                                             void *arena, size_t arena_cap, bool rtl)
 {
@@ -5305,12 +5313,16 @@ static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int 
 
 /* ---- the API: CAS 006 ---- */
 
+/* CAS 013: when the table refuses, the integrand as a rational function (the hook here, not in do_integrate, keeps its
+   frame where it was) */
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                              size_t arena_cap)
 {
+    casim_status st;
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
-    return do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    return st == CASIM_NOT_INTEGRABLE ? do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
 }
 
 
@@ -6653,6 +6665,7 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
     size_t ocap = cap < SLOT ? cap : SLOT;
     out_t w = {out, ocap, 0, false};
     rat *f, *g, *q, *r, *s;
+    CASIM_FRAME_PLANT
     if (cap) out[0] = '\0';
     if (!eqn || (op != CASIM_CANCEL && !repl)) return CASIM_BAD_ARG;
     if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
@@ -7605,4 +7618,175 @@ static SS_KEEP_ARGS casim_status do_psteps(const casim_req *rq, walk_t *Pw, out_
         if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
     }
     return st;                                           /* PARTIAL on every page when partfrac's answer is */
+}
+
+/* ---- integrals of rational functions (unit CAS 013) ----
+   When integrate's table refuses, casim_integrate tries the integrand as a rational function: partfrac whole (its
+   arena fresh: factor needs most of 8 KB), then each term of its result by the forms of rule 4, each checked against
+   its own term by closes(); with partfrac's rule-7 identity the term checks prove F' = n÷d. The forms refused (rule
+   5): a quadratic with D > 0, a quadratic to a power >= 2, a factor of degree 3 or more. */
+
+static ref ir_rat(ctx *c, int64_t p, int64_t q)
+{
+    rat r;
+    if (!pf_rmake(&r, p, q)) return c->st = CASIM_NO_ROOM, SPARE;
+    return num(c, &r);
+}
+
+/* ∫ num ÷ F^j dX, its antiderivative's tree; SPARE (status NOT_INTEGRABLE) for a form the table has not */
+static __attribute__((noinline)) ref ir_term(ctx *c, const pffac *F, int j, const rat *nm, rat *tmp, int var)
+{
+    ref ft = poly_tree(c, pf_f(F, tmp), var), x = leaf(c, K_VAR, var);
+    int64_t q, bb, ac, D;
+    if (F->deg == 1) {
+        /* c ÷ (aX+b)^j: c÷a LN|aX+b| for j = 1, c÷(a(1-j)) (aX+b)^(1-j) after */
+        if (!mul64(&q, nm[0].q, F->f[1]) || (j > 1 && !mul64(&q, q, 1 - j))) return c->st = CASIM_NO_ROOM, SPARE;
+        if (j == 1) return mul2(c, ir_rat(c, nm[0].p, q), fn(c, F_LN, fn(c, F_ABS, ft)));
+        return mul2(c, ir_rat(c, nm[0].p, q), power(c, ft, ir_rat(c, 1 - j, 1)));
+    }
+    if (F->deg == 2 && (!mul64(&bb, F->f[1], F->f[1]) || !mul64(&ac, 4 * F->f[2], F->f[0]) || !add64(&D, bb, -ac)))
+        return c->st = CASIM_NO_ROOM, SPARE;
+    if (F->deg == 2 && j == 1 && D < 0) {
+        /* (B X + C) ÷ (a X^2 + b X + c), D = b^2 - 4ac < 0: B÷(2a) LN f + (C - B b÷(2a)) 2÷√(-D) ATAN((2aX+b)÷√(-D)), f > 0
+           everywhere so its LN has no ABS (rule 4); D > 0 is refused before anything is built (rule 5) */
+        int64_t a = F->f[2], b = F->f[1], k, r;
+        rat B = nm[1], C = nm[0], k1, k2, t;
+        ref g, u, root;
+        if (!pf_rmake(&t, 1, 2 * a) || !pf_rmul(&k1, &B, &t) || !pf_rmake(&t, -b, 1) || !pf_rmul(&t, &t, &k1) ||
+            !pf_radd(&k2, &C, &t))
+            return c->st = CASIM_NO_ROOM, SPARE;                     /* k1 = B÷(2a), k2 = C - B b÷(2a) */
+        u = add2(c, mul2(c, ir_rat(c, 2 * a, 1), x), ir_rat(c, b, 1));    /* 2aX + b */
+        square_free(-D, &k, &r);                                     /* √(-D) = k √r, r square-free */
+        root = r == 1 ? ir_rat(c, k, 1) : mul2(c, ir_rat(c, k, 1), power(c, ir_rat(c, r, 1), small(c, C_HALF)));
+        g = mul2(c, mul2(c, small(c, C_2), power(c, root, small(c, C_M1))),
+                 mul2(c, fn(c, F_ATAN, mul2(c, u, power(c, root, small(c, C_M1)))), angle_factor(c, false)));
+        return add2(c, mul2(c, num(c, &k1), fn(c, F_LN, ft)), mul2(c, num(c, &k2), g));
+    }
+    if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
+    return SPARE;
+}
+
+/* A test build (tests/ircheck_check.c) defines these to spoil a term before its check, or to take the check away (so
+   rule 5's refusals are seen to stand on their own); otherwise the term as built, and closes() */
+#ifndef CASIM_IR_PLANT
+#define CASIM_IR_PLANT(c, F) (F)
+#endif
+#ifndef CASIM_IR_CLOSES
+#define CASIM_IR_CLOSES(c, F, f) closes(c, F, f)
+#endif
+
+/* what the integration needs of partfrac's work area, moved down over its start (rule: arena) */
+typedef struct {
+    rat poly[PF_N];
+    pffac fac[SOLVE_DEG];
+    rat pool[SOLVE_DEG];
+    int nf;
+} irkeep;
+
+/* the arena back to mark, the constants cached since dropped (unparse's twin: they would point into reused room) */
+static void ir_reset(ctx *c, size_t mark)
+{
+    c->used = mark;
+    for (int j = 0; j < SMALL; j++)
+        if (c->small[j] >= mark / 8u) c->small[j] = 0;
+    if (c->pi >= mark / 8u) c->pi = 0;
+}
+
+/* integrate's table refused eqn: ∫ of it as a rational function, through partfrac (run whole, its arena fresh), a
+   term at a time, each term's antiderivative checked against the term by integrate's own check (closes) */
+static __attribute__((noinline)) casim_status do_irational(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                           void *arena, size_t arena_cap, bool rtl)
+{
+    size_t room = arena_cap > SLOT ? arena_cap - SLOT : 0, skip, room2, mark, ocap = cap < SLOT ? cap : SLOT;
+    char *ans = (char *)arena + room;
+    casim_status st;
+    ctx c;
+    ref wr, tr;
+    unsigned char *base;
+    irkeep *W;
+    rat *T;
+    out_t w = {out, ocap, 0, false};
+    skip = (size_t)(-(uintptr_t)arena & 7u);
+    if (arena_cap < SLOT + skip + sizeof(pfkeep) + sizeof(pfwork) + 64)
+        return CASIM_NOT_INTEGRABLE;            /* partfrac can't start: the table's refusal stands (rule 2) */
+    base = (unsigned char *)arena + skip;
+    room2 = (room - skip - sizeof(pfkeep)) & ~(size_t)7;
+    /* where partfrac keeps its block: pf_work clears its ftext first, so a mark left there says the reader refused
+       (bounds, letters, the form) and integrate keeps its NOT_INTEGRABLE (rule 2, #6686); a NO_ROOM from the working
+       itself (the arena, or int64) stays NO_ROOM */
+    ((pfkeep *)(void *)(base + room2))->ftext[0] = '\x01';     /* no factor text starts with it */
+    st = do_partfrac(eqn, var, angle, ans, SLOT, arena, room, rtl);
+    if (st == CASIM_NO_ROOM && ((pfkeep *)(void *)(base + room2))->ftext[0] != '\x01') return CASIM_NO_ROOM;
+    if (st != CASIM_OK && st != CASIM_TOO_LONG) return CASIM_NOT_INTEGRABLE;
+    start(&c, "1", angle, base, room2);
+    c.var = var;
+    {
+        /* partfrac's work area, compacted to what is needed: each part moved down (to below where it was) */
+        size_t m0 = c.used;
+        pfwork *P;
+        int nf;
+        wr = held(&c, sizeof(pfwork));
+        if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+        P = (pfwork *)(void *)nd(&c, wr);
+        W = (irkeep *)(void *)P;
+        nf = P->nf;
+        memmove(W->poly, P->poly, sizeof W->poly);
+        memmove(W->fac, P->fac, sizeof W->fac);
+        memmove(W->pool, P->pool, sizeof W->pool);
+        W->nf = nf;
+        ir_reset(&c, m0 + ((sizeof(irkeep) + 7u) & ~(size_t)7u));
+    }
+    /* rule 8 (#6708): a common factor cancelled means the reduced function's antiderivative would be defined where
+       the integrand isn't (CAS 006's guarantee: X^2÷X stays refused), so the path refuses */
+    for (int i = 0; i < W->nf; i++)
+        if (W->fac[i].gone) return CASIM_NOT_INTEGRABLE;
+    tr = grab(&c, 3 * PF_N * sizeof(rat));
+    if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+    T = (rat *)(void *)nd(&c, tr);
+    mark = c.used;
+    if (cap) out[0] = '\0';
+    /* two passes: each term checked against its own term by closes(), the arena back after each; then the checked
+       terms built again as one sum, printed in integrate's canonical form (rule 7: one answer style, the whole
+       sum's order) */
+    for (int pass = 0; pass < 2; pass++) {
+        ref acc = SPARE, F, f;
+        if (rdeg(W->poly) >= 0) {
+            /* the polynomial part: Σ q_k X^(k+1)÷(k+1) */
+            pzero(T);
+            for (int k = rdeg(W->poly); k >= 0; k--) {
+                rat t;
+                if (k + 1 > SOLVE_DEG) return CASIM_NOT_INTEGRABLE;     /* an X^13 term: past the bound, as before (rule 2) */
+                if (!pf_rmake(&t, 1, k + 1) || !pf_rmul(&T[k + 1], &W->poly[k], &t)) return CASIM_NO_ROOM;
+            }
+            F = poly_tree(&c, T, var);
+            if (pass == 0) {
+                F = CASIM_IR_PLANT(&c, F);
+                f = poly_tree(&c, W->poly, var);
+                if (c.st != CASIM_OK || !CASIM_IR_CLOSES(&c, F, f)) return c.st == CASIM_OK || c.st == CASIM_NOT_INTEGRABLE ? CASIM_NOT_INTEGRABLE : c.st;
+                ir_reset(&c, mark);
+            } else acc = F;
+        }
+        for (int i = 0; i < W->nf; i++)
+            for (int j = 1; j <= W->fac[i].k; j++) {
+                pzero(T);
+                for (int x = 0; x < W->fac[i].deg; x++) T[x] = W->pool[W->fac[i].off + (j - 1) * W->fac[i].deg + x];
+                if (rdeg(T) < 0) continue;
+                F = ir_term(&c, &W->fac[i], j, T, T + PF_N, var);
+                if (pass == 0) {
+                    F = CASIM_IR_PLANT(&c, F);
+                    f = mul2(&c, poly_tree(&c, T, var), power(&c, poly_tree(&c, pf_f(&W->fac[i], T + PF_N), var), ir_rat(&c, -j, 1)));
+                    if (c.st != CASIM_OK || !CASIM_IR_CLOSES(&c, F, f))
+                        return c.st == CASIM_OK || c.st == CASIM_NOT_INTEGRABLE ? CASIM_NOT_INTEGRABLE : c.st;
+                    ir_reset(&c, mark);
+                } else acc = acc == SPARE ? F : add2(&c, acc, F);
+            }
+        if (pass == 1) {
+            if (c.st != CASIM_OK) return c.st == CASIM_NOT_INTEGRABLE ? CASIM_NOT_INTEGRABLE : c.st;
+            if (acc == SPARE) pf_puts(&w, "0");
+            else print(&c, &w, canon(&c, acc));
+            if (c.st != CASIM_OK) return out[0] = '\0', c.st;
+        }
+    }
+    if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    return CASIM_OK;
 }
