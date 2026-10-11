@@ -16,8 +16,13 @@ fractions in every calculus course.
 1. **When:** integrate's table runs as today. Only when the table refuses (NOT_INTEGRABLE) does the rational path run.
    - The hook sits in casim_integrate's wrapper, not inside do_integrate, so do_integrate's frame (144 B) doesn't move.
    - A mixed integrand (SIN(X)+1÷(X^2-1)) stays NOT_INTEGRABLE.
-2. **The input:** a quotient n÷d of polynomials in var, as CAS 012 reads it (rule 1 there: the bounds, and NOT_NUMERIC
-   for another letter).
+2. **The input:** a quotient n÷d of polynomials in var, as CAS 012 reads it.
+   - **Integrate's status stays NOT_INTEGRABLE whenever the rational path can't answer** (casim #6685, which corrects
+     this rule's first wording). Another letter, NOT_POLYNOMIAL, a bound passed, and PARTIAL all keep integrate's
+     NOT_INTEGRABLE, so old inputs keep their statuses.
+   - The one exception is NO_ROOM: the arena ran out on an input that partfrac answers with more room.
+   - The only status changes are refusals that become answers. Their golden lines are listed in
+     tests/golden/moved/cas-013.txt.
 3. **The path:**
    - partfrac runs whole on n÷d, on the arena it needs;
    - each term of its structured result (the factors, numerators and polynomial part, not its printed text) is
@@ -81,6 +86,12 @@ fractions in every calculus course.
   - the angle factor dropped in DEG;
   - an ATAN argument off by its 2a;
   - a refused form let through;
-  - the hook moved inside do_integrate (the frame gate catches it).
+  - the hook moved inside do_integrate, caught by the new frame-table gate below.
+- **A frame-table gate in make check** (casim #6685's (a)):
+  - host gcc -fstack-usage is compared with a recorded table (tests/frames/host.su);
+  - an existing function whose frame changes or disappears fails, and a new function is listed;
+  - its control is a planted frame change, which must go red;
+  - it makes "no existing frame moves" a check for every unit from here on;
+  - the S3's own table stays casim's per-unit record.
 - **The device:** the S3 bench byte-identical to the host. Golden byte-identical for every other op, and every earlier
   hidden set rerun.
