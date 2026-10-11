@@ -27,7 +27,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
-| steps | the working of derive, integrate, solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
+| steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
 
@@ -127,12 +127,12 @@ gzipped), most of it the decimal library's tables.
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
     check reached by spoiling a term;
   - check-abn;
-  - the examples in docs/language.md.
+  - the examples in docs/language.md, and CAS 013's walks in work/013-steps-examples.txt.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 146 deliberate faults, each of which the tests
-  must catch; `make test` catches all 146 (at CAS 013). When there were 80, the standalone checks first
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 153 deliberate faults, each of which the tests
+  must catch; `make test` catches all 153 (at CAS 013's steps). When there were 80, the standalone checks first
   caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose each fault
   were added to the golden corpus, 34 lines found by scripts/golden-harvest.py, and the standalone checks then caught
   80 of 80. Those lines were chosen because they catch those 16 faults, so a fault unlike them can still need the

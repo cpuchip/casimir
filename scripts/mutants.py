@@ -548,9 +548,9 @@ MUTANTS = {
         ("src/casim.c", "W->pool[used + (j - 1) * df + x] = W->t[1][x];", "W->pool[used + (F->k - j) * df + x] = W->t[1][x];"),
     ],
     # 012: a term's sign lost
-    "pf-sign-flipped": [
-        ("src/casim.c", '    if (k.p < 0) pf_puts(w, "-"), k.p = -k.p;\n    else if (!first) pf_puts(w, "+");',
-         '    if (k.p < 0) k.p = -k.p;\n    if (!first) pf_puts(w, "+");'),
+    "pf-sign-flipped": [         # anchored at pf_term's own header: the steps' twin, irs_pterm, has the same body
+        ("src/casim.c", 'static bool pf_term(out_t *w, const rat *num, const rat *f, int j, int var, bool first, rat *ip)\n{\n    int64_t l = 1, g = 0;\n    int dn = rdeg(num), terms = 0;\n    rat k;\n    for (int i = 0; i <= dn; i++)\n        if (num[i].p != 0 && !mul64(&l, l, num[i].q / gcd64(l, num[i].q))) return false;\n    pzero(ip);\n    for (int i = 0; i <= dn; i++) {\n        if (num[i].p != 0 && !mul64(&ip[i].p, num[i].p, l / num[i].q)) return false;\n        g = gcd64(g, ip[i].p);\n    }\n    if (ip[dn].p < 0) g = -g;\n    for (int i = 0; i <= dn; i++) ip[i].p /= g, terms += ip[i].p != 0;\n    if (!pf_rmake(&k, g, l)) return false;                       /* num = k N */\n    if (k.p < 0) pf_puts(w, "-"), k.p = -k.p;\n    else if (!first) pf_puts(w, "+");',
+         'static bool pf_term(out_t *w, const rat *num, const rat *f, int j, int var, bool first, rat *ip)\n{\n    int64_t l = 1, g = 0;\n    int dn = rdeg(num), terms = 0;\n    rat k;\n    for (int i = 0; i <= dn; i++)\n        if (num[i].p != 0 && !mul64(&l, l, num[i].q / gcd64(l, num[i].q))) return false;\n    pzero(ip);\n    for (int i = 0; i <= dn; i++) {\n        if (num[i].p != 0 && !mul64(&ip[i].p, num[i].p, l / num[i].q)) return false;\n        g = gcd64(g, ip[i].p);\n    }\n    if (ip[dn].p < 0) g = -g;\n    for (int i = 0; i <= dn; i++) ip[i].p /= g, terms += ip[i].p != 0;\n    if (!pf_rmake(&k, g, l)) return false;                       /* num = k N */\n    if (k.p < 0) k.p = -k.p;\n    if (!first) pf_puts(w, "+");'),
     ],
     # 012: the polynomial part of an improper fraction dropped
     "pf-poly-part-dropped": [
@@ -643,6 +643,28 @@ MUTANTS = {
          "    return st;"),
         ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);",
          "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    if (c.st == CASIM_NOT_INTEGRABLE) return do_irational(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);"),
+    ],    # 013 steps (§S4): a quadratic part's proof skipped, the ATAN part's (ircheck_check's spoiled parts reach it)
+    "irs-check-skipped": [
+        ("src/casim.c", '        if (!CASIM_IRS_CLOSES(c, Fp, fp)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;\n        if (irs_hit(S, dn, CASIM_STEP_TEMPLATE, CASIM_RULE_LOG_DERIVATIVE))',
+         '        if (!((void)fp, 1)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;\n        if (irs_hit(S, dn, CASIM_STEP_TEMPLATE, CASIM_RULE_LOG_DERIVATIVE))'),
+    ],
+    # the LN part's proof skipped
+    "irs-check-skipped-ln": [
+        ("src/casim.c", '        if (!CASIM_IRS_CLOSES(c, Fp, fp)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;\n        if (square && irs_hit',
+         '        if (!((void)fp, 1)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;\n        if (square && irs_hit'),
+    ],
+    # SPLIT's k2 off (k2 = 2C): the template's value moves
+    "irs-k2-off": [("src/casim.c", '!pf_radd(&k2, &nm[0], &t)', '!pf_radd(&k2, &nm[0], &nm[0])')],
+    # the angle factor dropped from the ARCTANGENT part in DEG and GRAD (built in RAD; its proof still closes)
+    "irs-deg-dropped": [("src/casim.c", '        Fp = ir_term(c, F, 1, z, T + 2 * PF_N, var);\n', '        c->angle = CASIM_RAD, Fp = ir_term(c, F, 1, z, T + 2 * PF_N, var);\n')],
+    # ABS added to LOG DERIVATIVE's LN (it still closes: the judge's rule-4 check sees it)
+    "irs-abs-added": [("src/casim.c", '        Fp = fn(c, F_LN, poly_tree(c, f, var));\n', '        Fp = fn(c, F_LN, fn(c, F_ABS, poly_tree(c, f, var)));\n')],
+    # S2.3's skip widened to every monic quadratic (b != 0 too)
+    "irs-square-skip-widened": [("src/casim.c", 'square = !(b == 0 && a == 1);', "square = !(a == 1);")],
+    # the chained-power check taken away while a chain prints: the values still see it
+    "irs-chain-unchecked": [
+        ("src/casim.c", '            pf_puts(S->w, "^2+"), ps_rat(S->w, &kk);', '            pf_puts(S->w, "^1^2+"), ps_rat(S->w, &kk);'),
+        ("scripts/istep-values.py", 'CHAIN = re.compile(r"\\^(\\d+(\\.\\d+)?|\\([^()]*\\))\\^")', 'CHAIN = re.compile(r"(?!x)x")'),
     ],
 }
 

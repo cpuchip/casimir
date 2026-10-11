@@ -157,7 +157,13 @@ enum {
     CASIM_RULE_FORM,            /* partfrac: r÷d as an unknown numerator over each factor power */
     CASIM_RULE_CLEARED,         /* partfrac: the form multiplied by d */
     CASIM_RULE_COVER_UP,        /* partfrac: a linear factor's root in the cleared form (template), its unknown */
-    CASIM_RULE_COEFFICIENTS     /* partfrac: one power of X's coefficients equated (template), the unknowns left */
+    CASIM_RULE_COEFFICIENTS,    /* partfrac: one power of X's coefficients equated (template), the unknowns left */
+    CASIM_RULE_PARTIAL_FRACTIONS,   /* integrate (CAS 013): the integrand as its partial fractions (template), and
+                                       the answer (result) */
+    CASIM_RULE_SPLIT,           /* integrate: (B X + C) ÷ f as k1 × (2aX+b) ÷ f + k2 × 1 ÷ f, f a quadratic */
+    CASIM_RULE_LOG_DERIVATIVE,  /* integrate: ∫(f' ÷ f) dX = LN(f), U = f; no ABS, as f has no real root */
+    CASIM_RULE_COMPLETE_SQUARE, /* integrate: f = a × ((X + b÷(2a))^2 + k), a result line */
+    CASIM_RULE_ARCTANGENT       /* integrate: ∫(1 ÷ f) dX by U = X + b÷(2a), to an ATAN */
 };
 typedef struct {
     int count;                  /* the steps */

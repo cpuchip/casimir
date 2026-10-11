@@ -2791,7 +2791,9 @@ static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT
                                         "POLYNOMIAL", "CHECK", "INTEGER COEFFICIENTS", "COMMON FACTOR",
                                         "LINEAR FACTOR", "QUADRATIC FACTOR", "LINEAR", "QUADRATIC FORMULA", "LEFT",
                                         "ANSWER"};
-static const char *const RULE_EXT_NAME[] = {"POLYNOMIAL PART", "FACTOR", "FORM", "CLEARED", "COVER-UP", "COEFFICIENTS"};
+static const char *const RULE_EXT_NAME[] = {"POLYNOMIAL PART", "FACTOR", "FORM", "CLEARED", "COVER-UP", "COEFFICIENTS",
+                                               "PARTIAL FRACTIONS", "SPLIT", "LOG DERIVATIVE", "COMPLETE THE SQUARE",
+                                               "ARCTANGENT"};
 
 const char *casim_rule_name(int rule)
 {
@@ -5722,6 +5724,8 @@ static void unparse(ctx *c, size_t parsed)
     if (c->pi >= parsed / 8u) c->pi = 0;
 }
 
+static casim_status irs_refused(const casim_req *rq, int k, casim_step_info *info, const out_t *o, ctx *tc);
+
 static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                               void *arena, size_t arena_cap)
 {
@@ -5745,7 +5749,11 @@ static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_
     parsed = c.used;
     if (c.st == CASIM_OK) F = integ(&c, n, rq->var);       /* integrate itself: its answer, or its status */
     if (c.st == CASIM_OK && (F == SPARE || F == 0)) c.st = CASIM_NO_ROOM;
-    if (c.st != CASIM_OK) return cap ? finish(&c, F, out, cap) : c.st;
+    /* CAS 013: the table refused, so the rational walk (k, the five arguments and this one expression measured to keep
+       casim_step's frame at 240 on the S3; flags rides in info's line) */
+    if (c.st != CASIM_OK)
+        return c.st == CASIM_NOT_INTEGRABLE ? (info->line = flags, irs_refused(rq, k, info, &w, &c))
+                                            : cap ? finish(&c, F, out, cap) : c.st;
     /* a step points only at the typed tree (below parsed) and its records (at the top): the run's nodes go, and the
        recording walk's after it, so each page's call runs again in the arena the run had, less 8 bytes a step */
     unparse(&c, parsed);
@@ -7789,4 +7797,453 @@ static __attribute__((noinline)) casim_status do_irational(const char *eqn, int 
     }
     if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
     return CASIM_OK;
+}
+
+/* ---- show steps for integrals of rational functions (CAS 013's second build, rule 10) ----
+   work/013-rational-integrals.md §Steps. When integrate's table refuses and the rational path answers: PARTIAL
+   FRACTIONS (the integrand as partfrac writes it, partfrac's own pages a level down), each term's integral, then
+   integrate's answer. The polynomial part and each 1÷(aX+b)^j are the table's own walks run on their texts (the
+   multiple c÷m taken out first, so each piece is the answer's own); a quadratic's parts are this walk's, each CHECK
+   proved by closes() before it prints. Nothing is kept between calls: every call counts every page. */
+
+/* this section's own helpers, so integrate's walk and printers keep their inlining (frames unmoved) */
+/* pf_term's twin: partfrac's printers keep pf_term inlined */
+static __attribute__((noinline)) bool irs_pterm(out_t *w, const rat *num, const rat *f, int j, int var, bool first, rat *ip)
+{
+    int64_t l = 1, g = 0;
+    int dn = rdeg(num), terms = 0;
+    rat k;
+    for (int i = 0; i <= dn; i++)
+        if (num[i].p != 0 && !mul64(&l, l, num[i].q / gcd64(l, num[i].q))) return false;
+    pzero(ip);
+    for (int i = 0; i <= dn; i++) {
+        if (num[i].p != 0 && !mul64(&ip[i].p, num[i].p, l / num[i].q)) return false;
+        g = gcd64(g, ip[i].p);
+    }
+    if (ip[dn].p < 0) g = -g;
+    for (int i = 0; i <= dn; i++) ip[i].p /= g, terms += ip[i].p != 0;
+    if (!pf_rmake(&k, g, l)) return false;                       /* num = k N */
+    if (k.p < 0) pf_puts(w, "-"), k.p = -k.p;
+    else if (!first) pf_puts(w, "+");
+    if (dn == 0) pf_int(w, k.p);
+    else {
+        if (k.p != 1) pf_int(w, k.p), pf_puts(w, TIMES);
+        if (terms > 1) pf_puts(w, "(");
+        pf_ipoly(w, ip, var);
+        if (terms > 1) pf_puts(w, ")");
+    }
+    pf_puts(w, DIVIDE);
+    if (k.q != 1) pf_puts(w, "("), pf_int(w, k.q), pf_puts(w, TIMES);
+    if (rdeg(f) == 1 && f[0].p == 0 && f[1].p == 1) pf_ipoly(w, f, var);         /* X alone */
+    else pf_puts(w, "("), pf_ipoly(w, f, var), pf_puts(w, ")");
+    if (j > 1) pf_puts(w, "^"), pf_int(w, j);
+    if (k.q != 1) pf_puts(w, ")");
+    return true;
+}
+
+static __attribute__((noinline)) void irs_show(ctx *c, out_t *w, ref r)
+{
+    print(c, w, canon(c, r));
+}
+
+static __attribute__((noinline)) void irs_zero(rat *p)
+{
+    for (int k = 0; k < PF_N; k++) p[k].p = 0, p[k].q = 1;
+}
+
+static __attribute__((noinline)) void irs_reset(ctx *c, size_t mark)
+{
+    c->used = mark;
+    for (int j = 0; j < SMALL; j++)
+        if (c->small[j] >= mark / 8u) c->small[j] = 0;
+    if (c->pi >= mark / 8u) c->pi = 0;
+}
+
+/* numerator j of factor i, from the compacted pool (irkeep's layout, not pfwork's: pf_get would read the wrong place) */
+static void irs_num(const irkeep *W, int i, int j, rat *o)
+{
+    irs_zero(o);
+    for (int x = 0; x < W->fac[i].deg; x++) o[x] = W->pool[W->fac[i].off + (j - 1) * W->fac[i].deg + x];
+}
+
+typedef struct {
+    int k, at, flags;
+    int want;                   /* the page asked for is an answer line, printed last: 1 SUM's, 2 the root's */
+    bool skip;                  /* partfrac changed nothing (S2.2): the one term's walk is the root */
+    casim_step_info *info;
+    out_t *w;
+} irs_t;
+
+/* the next page: true when it is the one asked for (w cleared for it) */
+static __attribute__((noinline)) bool irs_hit(irs_t *S, int depth, int line, int rule)
+{
+    if (line == CASIM_STEP_TEMPLATE && (S->flags & CASIM_STEPS_ONE_LINE)) return false;
+    if (S->at++ != S->k) return false;
+    S->info->depth = depth, S->info->line = line, S->info->rule = rule;
+    S->w->n = 0, S->w->full = false;
+    if (S->w->cap) S->w->o[0] = '\0';
+    return true;
+}
+
+/* a term's last line: when the term is the root (S2.2) it is integrate's answer, printed at the end */
+static bool irs_last(irs_t *S, int depth, int rule)
+{
+    if (!S->skip) return irs_hit(S, depth, CASIM_STEP_RESULT, rule);
+    if (irs_hit(S, 0, CASIM_STEP_RESULT, rule)) S->want = 2;
+    return false;
+}
+
+/* another walk's pages as this walk's, down levels lower: the table's on a term's text, or partfrac's */
+static __attribute__((noinline)) casim_status irs_sub(irs_t *S, const casim_req *rq, int down, void *arena, size_t cap)
+{
+    casim_step_info si;
+    casim_status st = casim_step(rq, -1, S->flags, &si, NULL, 0, arena, cap);
+    if (st != CASIM_OK) return st;
+    if (S->k >= S->at && S->k < S->at + si.count) {
+        st = casim_step(rq, S->k - S->at, S->flags, S->info, S->w->o, S->w->cap, arena, cap);
+        S->info->depth += down;
+        if (st != CASIM_OK) return st;
+    }
+    S->at += si.count;
+    return CASIM_OK;
+}
+
+/* ")dX" */
+static void irs_dx(out_t *w, int var)
+{
+    char d[4] = {')', 'd', (char)('A' + var), '\0'};
+    pf_puts(w, d);
+}
+
+/* ∫(text)dX */
+static void irs_int(out_t *w, const char *text, int var)
+{
+    pf_puts(w, "\xe2\x88\xab("), pf_puts(w, text), irs_dx(w, var);
+}
+
+/* (F), or X alone */
+static void irs_f(out_t *w, const rat *f, int var)
+{
+    if (rdeg(f) == 1 && f[0].p == 0 && f[1].p == 1) pf_ipoly(w, f, var);
+    else pf_puts(w, "("), pf_ipoly(w, f, var), pf_puts(w, ")");
+}
+
+/* f' = 2a X + b, in parentheses when b is not 0 (a > 0: f's lead is positive) */
+static void irs_fprime(out_t *w, int64_t a, int64_t b, int var)
+{
+    char v[2] = {(char)('A' + var), '\0'};
+    if (b) pf_puts(w, "(");
+    pf_int(w, 2 * a), pf_puts(w, TIMES), pf_puts(w, v);
+    if (b) pf_puts(w, b > 0 ? "+" : "-"), pf_int(w, b > 0 ? b : -b), pf_puts(w, ")");
+}
+
+/* +|x| or -|x| */
+static void irs_signed(out_t *w, const rat *x)
+{
+    rat a = *x;
+    if (a.p < 0) a.p = -a.p, pf_puts(w, "-");
+    else pf_puts(w, "+");
+    ps_rat(w, &a);
+}
+
+/* the term's ∫(term)dX: as partfrac prints the term, or the root's when the term is the root */
+static void irs_lhs(irs_t *S, const char *root, const rat *nm, const rat *f, int j, int var, rat *ip)
+{
+    if (S->skip) irs_int(S->w, root, var);
+    else pf_puts(S->w, "\xe2\x88\xab("), irs_pterm(S->w, nm, f, j, var, true, ip), irs_dx(S->w, var);
+}
+
+/* each term's integral, with its sign, as partfrac's sum has them (SUM's template) */
+static __attribute__((noinline)) bool irs_terms(out_t *w, const irkeep *W, rat *T, int var)
+{
+    bool first = true;
+    if (rdeg(W->poly) >= 0) {
+        pf_puts(w, "\xe2\x88\xab("), pf_rpoly(w, W->poly, var), irs_dx(w, var);
+        first = false;
+    }
+    for (int i = 0; i < W->nf; i++)
+        for (int j = 1; j <= W->fac[i].k; j++) {
+            irs_num(W, i, j, T);
+            if (rdeg(T) < 0) continue;
+            if (T[rdeg(T)].p < 0) {
+                for (int x = 0; x <= rdeg(T); x++) T[x].p = -T[x].p;
+                pf_puts(w, "-");
+            } else if (!first) pf_puts(w, "+");
+            pf_puts(w, "\xe2\x88\xab(");
+            if (!irs_pterm(w, T, pf_f(&W->fac[i], T + PF_N), j, var, true, T + 2 * PF_N)) return false;
+            irs_dx(w, var);
+            first = false;
+        }
+    return true;
+}
+
+/* a linear term c ÷ (m (aX+b)^j) at depth D: CONSTANT MULTIPLE takes c÷m out (none when it is 1), the table's own walk
+   on 1÷(aX+b)^j a level down, then canon(c÷m × piece), the answer's own piece. sa, scap: the sub-walk's arena */
+static __attribute__((noinline)) casim_status irs_lin(irs_t *S, ctx *c, const pffac *F, int j, const rat *nm, rat *T,
+                                                      int D, casim_req *sub, unsigned char *sa, size_t scap,
+                                                      const char *root)
+{
+    rat *f = pf_f(F, T + PF_N);
+    bool one = nm[0].p == 1 && nm[0].q == 1;
+    out_t tw = {(char *)sub->eqn, SLOT, 0, false};
+    casim_status st;
+    pf_puts(&tw, "1" DIVIDE), irs_f(&tw, f, c->var);
+    if (j > 1) pf_puts(&tw, "^"), pf_int(&tw, j);
+    if (tw.full) return CASIM_NO_ROOM;
+    if (!one && irs_hit(S, D, CASIM_STEP_TEMPLATE, CASIM_RULE_CONSTANT_MULTIPLE)) {
+        irs_lhs(S, root, nm, f, j, c->var, T + 2 * PF_N), pf_puts(S->w, " = ");
+        ps_times(S->w, &nm[0]), irs_int(S->w, sub->eqn, c->var);
+    }
+    if ((st = irs_sub(S, sub, one ? D : D + 1, sa, scap)) != CASIM_OK) return st;
+    if (!one && irs_last(S, D, CASIM_RULE_CONSTANT_MULTIPLE)) {
+        irs_lhs(S, root, nm, f, j, c->var, T + 2 * PF_N), pf_puts(S->w, " = ");
+        irs_show(c, S->w, ir_term(c, F, j, nm, T + 2 * PF_N, c->var));
+    }
+    return c->st;
+}
+
+/* A test build (tests/ircheck_check.c) defines these to spoil a quadratic part's antiderivative before its proof, or
+   to take the proof away; otherwise the part as built, and closes() */
+#ifndef CASIM_IRS_PLANT
+#define CASIM_IRS_PLANT(c, F) (F)
+#endif
+#ifndef CASIM_IRS_CLOSES
+#define CASIM_IRS_CLOSES(c, F, f) closes(c, F, f)
+#endif
+
+/* a quadratic term (B X + C) ÷ (m f), f = aX^2 + bX + c with no real root, at depth D: SPLIT into k1 (2aX+b) ÷ f and
+   k2 1 ÷ f (with one part, CONSTANT MULTIPLE, or nothing when its multiple is 1), LOG DERIVATIVE, COMPLETE THE SQUARE
+   (but for X^2 + k, S2.3), ARCTANGENT. Each part's antiderivative is proved by closes() on every call, before any of
+   its lines prints: one that doesn't close refuses the walk (NO_ROOM, softly: integrate's answer stands). */
+static __attribute__((noinline)) casim_status irs_quad(irs_t *S, ctx *c, const pffac *F, const rat *nm, rat *T, int D,
+                                                       const char *root)
+{
+    int var = c->var, rs, dn;
+    int64_t a = F->f[2], b = F->f[1], bb, ac, Dq, a4;
+    rat *f = pf_f(F, T + PF_N), k1, k2, h, kk, t, z[2] = {{1, 1}, {0, 1}};
+    char u[2] = {(char)(var == 'U' - 'A' ? 'V' : 'U'), '\0'};
+    bool two, unit, square = !(b == 0 && a == 1);
+    size_t mark = c->used;
+    ref Fp, fp;
+    if (!mul64(&bb, b, b) || !mul64(&ac, 4 * a, F->f[0]) || !add64(&Dq, bb, -ac) || !mul64(&a4, 4 * a, a) ||
+        !pf_rmake(&t, 1, 2 * a) || !pf_rmul(&k1, &nm[1], &t) || !pf_rmake(&t, -b, 1) || !pf_rmul(&t, &t, &k1) ||
+        !pf_radd(&k2, &nm[0], &t) || !pf_rmake(&h, b, 2 * a) || !pf_rmake(&kk, -Dq, a4))
+        return CASIM_NO_ROOM;
+    two = k1.p && k2.p;
+    unit = !two && (k1.p ? k1.p == k1.q : k2.p == k2.q);
+    rs = two ? CASIM_RULE_SPLIT : CASIM_RULE_CONSTANT_MULTIPLE;
+    dn = unit ? D : D + 1;
+    if (!unit && irs_hit(S, D, CASIM_STEP_TEMPLATE, rs)) {
+        irs_lhs(S, root, nm, f, 1, var, T + 2 * PF_N), pf_puts(S->w, " = ");
+        if (k1.p) {
+            ps_times(S->w, &k1), pf_puts(S->w, "\xe2\x88\xab("), irs_fprime(S->w, a, b, var);
+            pf_puts(S->w, DIVIDE), irs_f(S->w, f, var), irs_dx(S->w, var);
+        }
+        if (k2.p) {
+            if (k1.p && k2.p > 0) pf_puts(S->w, "+");
+            ps_times(S->w, &k2), pf_puts(S->w, "\xe2\x88\xab(1" DIVIDE), irs_f(S->w, f, var), irs_dx(S->w, var);
+        }
+    }
+    if (k1.p) {
+        /* ∫ (2aX+b) ÷ f = LN(f), f > 0 everywhere */
+        rat *d = T + 2 * PF_N;
+        irs_zero(d), d[1].p = 2 * a, d[0].p = b;
+        Fp = fn(c, F_LN, poly_tree(c, f, var));
+        fp = mul2(c, poly_tree(c, d, var), power(c, poly_tree(c, f, var), small(c, C_M1)));
+        Fp = CASIM_IRS_PLANT(c, Fp);
+        if (c->st != CASIM_OK) return c->st;
+        if (!CASIM_IRS_CLOSES(c, Fp, fp)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;
+        if (irs_hit(S, dn, CASIM_STEP_TEMPLATE, CASIM_RULE_LOG_DERIVATIVE)) {
+            pf_puts(S->w, "\xe2\x88\xab("), irs_fprime(S->w, a, b, var), pf_puts(S->w, DIVIDE), irs_f(S->w, f, var);
+            irs_dx(S->w, var), pf_puts(S->w, " = \xe2\x88\xab(1" DIVIDE), pf_puts(S->w, u), pf_puts(S->w, ")d");
+            pf_puts(S->w, u), pf_puts(S->w, ", "), pf_puts(S->w, u), pf_puts(S->w, "="), pf_ipoly(S->w, f, var);
+        }
+        if (irs_hit(S, dn, CASIM_STEP_RESULT, CASIM_RULE_CHECK)) {
+            pf_puts(S->w, "d/d"), ps_letter(S->w, var), pf_puts(S->w, "("), irs_show(c, S->w, Fp);
+            pf_puts(S->w, ") = "), irs_fprime(S->w, a, b, var), pf_puts(S->w, DIVIDE), irs_f(S->w, f, var);
+        }
+        if (unit ? irs_last(S, dn, CASIM_RULE_LOG_DERIVATIVE) : irs_hit(S, dn, CASIM_STEP_RESULT, CASIM_RULE_LOG_DERIVATIVE)) {
+            pf_puts(S->w, "\xe2\x88\xab("), irs_fprime(S->w, a, b, var), pf_puts(S->w, DIVIDE), irs_f(S->w, f, var);
+            irs_dx(S->w, var), pf_puts(S->w, " = "), irs_show(c, S->w, Fp);
+        }
+        irs_reset(c, mark);
+    }
+    if (k2.p) {
+        /* ∫ 1 ÷ f, as ir_term builds it (the angle factor in DEG and GRAD) */
+        Fp = ir_term(c, F, 1, z, T + 2 * PF_N, var);
+        fp = power(c, poly_tree(c, f, var), small(c, C_M1));
+        Fp = CASIM_IRS_PLANT(c, Fp);
+        if (c->st != CASIM_OK) return c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;
+        if (!CASIM_IRS_CLOSES(c, Fp, fp)) return c->st == CASIM_OK || c->st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : c->st;
+        if (square && irs_hit(S, dn, CASIM_STEP_RESULT, CASIM_RULE_COMPLETE_SQUARE)) {
+            pf_ipoly(S->w, f, var), pf_puts(S->w, "=");
+            if (a != 1) pf_int(S->w, a), pf_puts(S->w, TIMES "(");
+            if (h.p) pf_puts(S->w, "(");
+            ps_letter(S->w, var);
+            if (h.p) irs_signed(S->w, &h), pf_puts(S->w, ")");
+            pf_puts(S->w, "^2+"), ps_rat(S->w, &kk);
+            if (a != 1) pf_puts(S->w, ")");
+        }
+        if (square && irs_hit(S, dn, CASIM_STEP_TEMPLATE, CASIM_RULE_ARCTANGENT)) {
+            pf_puts(S->w, "\xe2\x88\xab(1" DIVIDE), irs_f(S->w, f, var), irs_dx(S->w, var);
+            pf_puts(S->w, " = \xe2\x88\xab(1" DIVIDE "("), pf_puts(S->w, u), pf_puts(S->w, "^2+"), ps_rat(S->w, &kk);
+            pf_puts(S->w, "))d"), pf_puts(S->w, u);
+            if (a != 1) pf_puts(S->w, DIVIDE), pf_int(S->w, a);
+            pf_puts(S->w, ", "), pf_puts(S->w, u), pf_puts(S->w, "="), ps_letter(S->w, var);
+            if (h.p) irs_signed(S->w, &h);
+        }
+        if (irs_hit(S, dn, CASIM_STEP_RESULT, CASIM_RULE_CHECK)) {
+            pf_puts(S->w, "d/d"), ps_letter(S->w, var), pf_puts(S->w, "("), irs_show(c, S->w, Fp);
+            pf_puts(S->w, ") = 1" DIVIDE), irs_f(S->w, f, var);
+        }
+        if (unit ? irs_last(S, dn, CASIM_RULE_ARCTANGENT) : irs_hit(S, dn, CASIM_STEP_RESULT, CASIM_RULE_ARCTANGENT)) {
+            pf_puts(S->w, "\xe2\x88\xab(1" DIVIDE), irs_f(S->w, f, var), irs_dx(S->w, var), pf_puts(S->w, " = ");
+            irs_show(c, S->w, Fp);
+        }
+        irs_reset(c, mark);
+    }
+    if (!unit && irs_last(S, D, rs)) {
+        irs_lhs(S, root, nm, f, 1, var, T + 2 * PF_N), pf_puts(S->w, " = ");
+        irs_show(c, S->w, ir_term(c, F, 1, nm, T + 2 * PF_N, var));
+    }
+    return c->st;
+}
+
+/* an answer line, ∫(text)dX = integrate's answer: the answer into out with the whole arena, then moved right for its
+   left side (SUM's: partfrac's text, into the arena's top slot; the root's: the integrand as typed) */
+static __attribute__((noinline)) casim_status irs_answer(const casim_req *rq, int want, char *out, size_t cap,
+                                                         void *arena, size_t arena_cap, char *txt, size_t room)
+{
+    bool rtl = rq->model == CASIM_MODEL_STU;
+    const char *mid = rq->eqn;
+    size_t n, m, p;
+    casim_status st = do_irational(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
+    if (st != CASIM_OK) return st;
+    if (want == 1) {
+        if (do_partfrac(rq->eqn, rq->var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return out[0] = '\0', CASIM_NO_ROOM;
+        mid = txt;
+    }
+    n = strlen(out), m = strlen(mid), p = 4 + m + 3 + 3;    /* "∫(" text ")dX" " = " */
+    if (p + n + 1 > cap) return out[0] = '\0', CASIM_TOO_LONG;
+    memmove(out + p, out, n + 1);
+    memcpy(out, "\xe2\x88\xab(", 4);
+    memcpy(out + 4, mid, m);
+    out[4 + m] = ')', out[5 + m] = 'd', out[6 + m] = (char)('A' + rq->var);
+    memcpy(out + 7 + m, " = ", 3);
+    return CASIM_OK;
+}
+
+/* tc: integrate's walk's context, which refused (do_isteps): its arena is this walk's (aligned, as start() took it); o:
+   its out and cap. Six arguments, so casim_step passes none on the stack (its frame unmoved) */
+static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, int k, int flags, casim_step_info *info,
+                                                         const out_t *o, const ctx *tc)
+{
+    char *out = o->o;
+    size_t cap = o->cap, arena_cap = tc->cap;
+    void *arena = tc->mem;
+    irs_t S;
+    out_t w = {out, cap, 0, false};
+    casim_req sub = *rq;
+    casim_status st;
+    size_t room = arena_cap > SLOT ? arena_cap - SLOT : 0, skip, room2;
+    char *txt = (char *)arena + room;           /* partfrac's text, then each term's: the arena's top slot */
+    bool rtl = rq->model == CASIM_MODEL_STU;
+    int var = rq->var, nt, D;
+    ctx c;
+    irkeep *W;
+    rat *T;
+    memset(info, 0, sizeof *info);
+    if (cap) out[0] = '\0';
+    /* integrate's answer, or its refusal, with the whole arena (a slot kept at the top cost 94 DEG answers' walks in
+       the prototype); a small out borrows the slot */
+    st = cap >= SLOT ? do_irational(rq->eqn, var, rq->angle, out, cap, arena, arena_cap, rtl)
+                     : do_irational(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl);
+    if (st != CASIM_OK) return st;
+    if (do_partfrac(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return CASIM_NO_ROOM;
+    S.k = k, S.at = 0, S.flags = flags, S.info = info, S.w = &w, S.want = 0;
+    /* S2.2: partfrac changed nothing when its answer and the integrand have one canonical form */
+    start(&c, rq->eqn, rq->angle, arena, room);
+    c.var = var, c.rtl = rtl, c.opaque = true;
+    {
+        ref x = canon(&c, parse(&c)), y;
+        c.s = txt;
+        y = canon(&c, parse(&c));
+        if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+        S.skip = cmp(&c, x, y) == 0;
+    }
+    if (!S.skip) {
+        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, CASIM_RULE_PARTIAL_FRACTIONS))
+            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), irs_int(&w, txt, var);
+        sub.op = CASIM_PARTFRAC;
+        if ((st = irs_sub(&S, &sub, 1, arena, arena_cap)) != CASIM_OK) return st;
+    }
+    /* the terms: partfrac whole again (its pages used the arena), its work area compacted as do_irational's */
+    if (do_partfrac(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return CASIM_NO_ROOM;
+    skip = (size_t)(-(uintptr_t)arena & 7u);
+    room2 = (room - skip - sizeof(pfkeep)) & ~(size_t)7;
+    start(&c, "1", rq->angle, (unsigned char *)arena + skip, room2);
+    c.var = var, c.rtl = rtl, c.opaque = true;
+    {
+        size_t m0 = c.used;
+        ref wr = held(&c, sizeof(pfwork));
+        pfwork *P;
+        int nf;
+        if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+        P = (pfwork *)(void *)nd(&c, wr);
+        W = (irkeep *)(void *)P;
+        nf = P->nf;
+        memmove(W->poly, P->poly, sizeof W->poly);
+        memmove(W->fac, P->fac, sizeof W->fac);
+        memmove(W->pool, P->pool, sizeof W->pool);
+        W->nf = nf;
+        irs_reset(&c, m0 + ((sizeof(irkeep) + 7u) & ~(size_t)7u));
+        wr = grab(&c, 3 * PF_N * sizeof(rat));
+        if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+        T = (rat *)(void *)nd(&c, wr);
+    }
+    nt = rdeg(W->poly) >= 0;
+    for (int i = 0; i < W->nf; i++)
+        for (int j = 1; j <= W->fac[i].k; j++) {
+            irs_num(W, i, j, T);
+            nt += rdeg(T) >= 0;
+        }
+    D = S.skip ? 0 : nt > 1 ? 2 : 1;
+    if (!S.skip && nt > 1 && irs_hit(&S, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_SUM))
+        irs_int(&w, txt, var), pf_puts(&w, " = "), irs_terms(&w, W, T, var);
+    sub.op = CASIM_INTEGRATE, sub.eqn = txt;
+    if (rdeg(W->poly) >= 0) {
+        out_t tw = {txt, SLOT, 0, false};
+        pf_rpoly(&tw, W->poly, var);
+        if ((st = irs_sub(&S, &sub, D, c.mem + c.used, c.top - c.used)) != CASIM_OK) return st;
+    }
+    for (int i = 0; i < W->nf; i++)
+        for (int j = 1; j <= W->fac[i].k; j++) {
+            size_t mark = c.used;
+            irs_num(W, i, j, T);
+            if (rdeg(T) < 0) continue;
+            if (W->fac[i].deg == 1) st = irs_lin(&S, &c, &W->fac[i], j, T, T, D, &sub, c.mem + c.used, c.top - c.used, rq->eqn);
+            else st = irs_quad(&S, &c, &W->fac[i], T, T, D, rq->eqn);
+            if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? CASIM_NO_ROOM : st;
+            irs_reset(&c, mark);
+        }
+    if (!S.skip) {
+        if (nt > 1 && irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_SUM)) S.want = 1;
+        if (irs_hit(&S, 0, CASIM_STEP_RESULT, CASIM_RULE_PARTIAL_FRACTIONS)) S.want = 2;
+    }
+    info->count = S.at;
+    if (k < 0) return CASIM_OK;
+    if (k >= S.at) return CASIM_BAD_ARG;
+    if (S.want) return irs_answer(rq, S.want, out, cap, arena, arena_cap, txt, room);
+    if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    return CASIM_OK;
+}
+
+/* integrate's table refused (do_isteps, inlined in casim_step): this walk. Five arguments, flags riding in info's line
+   (do_isteps cleared info and set nothing since), from one expression with finish: measured on the S3, the other
+   placements moved casim_step's frame from 240 (six or more arguments 256; a separate line, or this call in finish's
+   place, 224) */
+static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, int k, casim_step_info *info,
+                                                          const out_t *o, ctx *tc)
+{
+    return do_irsteps(rq, k, info->line, info, o, tc);
 }

@@ -1,11 +1,13 @@
-/* CAS 013's check and refusals, reached by construction: a test build where each term's antiderivative can be spoiled
+/* CAS 013's check and refusals, reached by construction (and its steps' proof of each quadratic part, mode 3: a spoiled
+ * part must refuse the walk, softly, while integrate still answers): a test build where each term's antiderivative can be spoiled
  * (doubled) before its check, which must then refuse it (NOT_INTEGRABLE, never the spoiled text); and where the check
  * can be taken away, so rule 5's refused forms (D > 0, a quadratic to a power >= 2, a cubic) are seen to be refused by
  * rule 5 itself, not only by a check that fails. With neither, the same answers print. Not linked with the other
  * tests (it includes src/casim.c itself). */
-static int mode;                    /* 0 as built, 1 a term spoiled, 2 no check */
+static int mode;                    /* 0 as built, 1 a term spoiled, 2 no check, 3 a walk's quadratic part spoiled */
 #define CASIM_IR_PLANT(c, F) (mode == 1 ? mul2(c, F, small(c, C_2)) : (F))
 #define CASIM_IR_CLOSES(c, F, f) (mode == 2 || closes(c, F, f))
+#define CASIM_IRS_PLANT(c, F) (mode == 3 ? mul2(c, F, small(c, C_2)) : (F))
 #include "../src/casim.c"
 
 #include <stdio.h>
@@ -40,6 +42,28 @@ int main(void)
     for (int i = 0; i < (int)(sizeof refused / sizeof refused[0]); i++) {
         is(refused[i], 0, CASIM_NOT_INTEGRABLE);
         is(refused[i], 2, CASIM_NOT_INTEGRABLE);            /* refused by rule 5, not by a check that fails */
+    }
+    {
+        /* the walk's proofs: a spoiled LN or ATAN part refuses the walk (NO_ROOM), integrate's answer stands */
+        static const char *const quads[] = {"(X^4+1)÷(X^3+1)", "1÷(X^2+X+1)", "1÷(4×X^2+9)", "(X+3)÷(X^2+2×X+5)",
+                                            "1÷(1-X^4)"};
+        for (int i = 0; i < (int)(sizeof quads / sizeof quads[0]); i++) {
+            casim_req rq = {CASIM_INTEGRATE, quads[i], CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
+            casim_step_info info;
+            char out[256];
+            for (int m = 0; m <= 3; m += 3) {
+                casim_status st, want = m == 3 ? CASIM_NO_ROOM : CASIM_OK;
+                mode = m;
+                st = casim_step(&rq, -1, 0, &info, out, sizeof out, arena, sizeof arena);
+                checks++;
+                if (st != want) {
+                    failed++;
+                    printf("FAIL ircheck_check: steps integrate %s (mode %d): status %d, want %d\n", quads[i], m, (int)st,
+                           (int)want);
+                }
+            }
+            is(quads[i], 3, CASIM_OK);                      /* the spoil is the walk's: the answer is untouched */
+        }
     }
     printf("checks: %d failed: %d\n", checks, failed);
     return failed ? 1 : 0;

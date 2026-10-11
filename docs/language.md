@@ -271,6 +271,25 @@ was typed and each answer in canonical form, without "+C". The steps are:
 | `casim steps integrate "5-EXP(3×X)" X RAD` | `SUM: ∫(5-EXP(3×X))dX = ∫(5)dX-∫(EXP(3×X))dX /   CHECK: d/dX(5×X) = 5 /   CONSTANT: ∫(5)dX = 5×X /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 / SUM: ∫(5-EXP(3×X))dX = 5×X-EXP(3×X)÷3` |
 | `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 0.4×X^2.5 / CHECK: d/dX(-1.2×X^2.5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -1.2×X^2.5` |
 
+An integrand the table refuses but integrate answers as a rational function (CAS 013) walks through its partial
+fractions (work/013-rational-integrals.md §Steps; more in work/013-steps-examples.txt):
+- PARTIAL FRACTIONS rewrites the integrand as partfrac writes it, with partfrac's own pages a level down; it is left
+  out when partfrac's answer is the integrand itself in canonical form, and the one term's walk is then the whole;
+- SUM, then each term: the polynomial part and each c÷(m×(aX+b)^j) by the table's own steps, the constant c÷m taken
+  out first by CONSTANT MULTIPLE;
+- a quadratic f with no real root: SPLIT writes (B×X+C)÷f as a multiple of f'÷f and a multiple of 1÷f (CONSTANT
+  MULTIPLE when only one is there); LOG DERIVATIVE takes ∫(f'÷f)dX = LN(f), with no ABS since f is never 0;
+  COMPLETE THE SQUARE writes f = a×((X+h)^2+k), left out for X^2+k; ARCTANGENT substitutes U=X+h, and gives the ATAN
+  with the angle mode's factor;
+- each part's CHECK is proved before it prints, and the last line is integrate's answer.
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-0.5÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -0.5÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
+| `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(0.5×ATAN(0.5×X+0.5)) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = 0.5×ATAN(0.5×X+0.5) / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 0.5×LN(2×X+X^2+5)+ATAN(0.5×X+0.5)` |
+| `casim steps integrate '1÷(X^2+4)' X DEG` | `CHECK: d/dX(π×ATAN(0.5×X)÷360) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = π×ATAN(0.5×X)÷360` |
+| `casim --one-line steps integrate '4×X÷(X^4-1)' X RAD` | `FACTOR: X^4-1=(X+1)×(X-1)×(X^2+1) /   FORM: 4×X÷(X^4-1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 4×X=A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1) /     COVER-UP: A=1 /     COVER-UP: B=1 /     COEFFICIENTS: C=-2; D=0 /   ANSWER: 1÷(X+1)+1÷(X-1)-2×X÷(X^2+1) /     CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /     RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /       CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /       LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /     CONSTANT MULTIPLE: ∫(-2×X÷(X^2+1))dX = -LN(X^2+1) /   SUM: ∫(1÷(X+1)+1÷(X-1)-2×X÷(X^2+1))dX = LN(ABS(X-1))+LN(ABS(X+1))-LN(X^2+1) / PARTIAL FRACTIONS: ∫(4×X÷(X^4-1))dX = LN(ABS(X-1))+LN(ABS(X+1))-LN(X^2+1)` |
+
 `steps solve "<text>" X` pages solve's working (work/steps-solve.md). Each line at the left is the equation as it
 stands, `…=0`, and each indented line is one factor set to 0, `F=0: X=…`. The polynomials print as a student writes
 them, in descending powers. The steps are:
