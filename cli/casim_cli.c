@@ -13,7 +13,8 @@
  *   casim pgcd "<f>" X "<g>" RAD      the gcd of f and g, primitive with a positive leading coefficient (CAS 010)
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
  *   casim partfrac "<n÷d>" X RAD      n÷d in partial fractions over Q, then the removed values (CAS 012)
- *   casim steps [integrate|solve] "<text>" X RAD  derive's (or integrate's, or solve's) steps, one a line, each
+ *   casim steps [integrate|solve|partfrac] "<text>" X RAD  derive's (or integrate's, solve's, partfrac's) steps, one
+ *                                    a line, each
  *                                    indented by its depth: RULE: d/dX(u) = ... (work/steps-derive.md,
  *                                    steps-integrate.md, steps-solve.md);
  *                                    --one-line: the results only (the answer still last); --tsv: k, depth, T or R, the
@@ -54,15 +55,17 @@ static casim_status run(int op, const char *text, int var, const char *repl, int
     return casim_run(&rq, out, out_cap, arena, arena_cap);
 }
 
-/* every step of derive's (integrate's, solve's) working, through casim_step page by page, as a student would walk it */
+/* every step of derive's (integrate's, solve's, partfrac's) working, through casim_step page by page, as a student would
+   walk it; partfrac's PARTIAL on every page is printed once, after them */
 static casim_status steps(int op, const char *text, int var, int angle, size_t arena_cap, int flags, int tsv)
 {
     casim_req rq = {(casim_op)op, text, model, var, NULL, 0, angle, NULL};
     casim_step_info info;
     char out[OUT];
     casim_status st = casim_step(&rq, -1, flags, &info, out, out_cap, arena, arena_cap);
-    for (int k = 0; st == CASIM_OK && k < info.count; k++) {
-        if ((st = casim_step(&rq, k, flags, &info, out, out_cap, arena, arena_cap)) != CASIM_OK) break;
+    for (int k = 0; (st == CASIM_OK || st == CASIM_PARTIAL) && k < info.count; k++) {
+        st = casim_step(&rq, k, flags, &info, out, out_cap, arena, arena_cap);
+        if (st != CASIM_OK && st != CASIM_PARTIAL) break;
         if (tsv) printf("%d\t%d\t%c\t%s\t%s\n", k, info.depth, info.line == CASIM_STEP_TEMPLATE ? 'T' : 'R',
                         casim_rule_name(info.rule), out);
         else printf("%*s%s: %s\n", 2 * info.depth, "", casim_rule_name(info.rule), out);
@@ -70,7 +73,8 @@ static casim_status steps(int op, const char *text, int var, int angle, size_t a
     if (st != CASIM_OK) printf("%s\n", st == CASIM_NO_ROOM ? "NO_ROOM" : st == CASIM_TOO_LONG ? "TOO_LONG"
                               : st == CASIM_SYNTAX ? "SYNTAX" : st == CASIM_NOT_DIFFERENTIABLE ? "NOT_DIFFERENTIABLE"
                               : st == CASIM_NOT_INTEGRABLE ? "NOT_INTEGRABLE" : st == CASIM_NOT_POLYNOMIAL ? "NOT_POLYNOMIAL"
-                              : st == CASIM_NOT_NUMERIC ? "NOT_NUMERIC" : "BAD_ARG");
+                              : st == CASIM_NOT_NUMERIC ? "NOT_NUMERIC" : st == CASIM_PARTIAL ? "PARTIAL"
+                              : st == CASIM_UNDEFINED ? "UNDEFINED" : "BAD_ARG");
     return st;
 }
 
@@ -107,8 +111,9 @@ int main(int argc, char **argv)
         const char *a = argv[argc - 1];
         int sop = CASIM_DERIVE;
         if (i + 1 < argc && (strcmp(argv[i + 1], "integrate") == 0 || strcmp(argv[i + 1], "derive") == 0 ||
-                           strcmp(argv[i + 1], "solve") == 0))
-            sop = argv[i + 1][0] == 'i' ? CASIM_INTEGRATE : argv[i + 1][0] == 's' ? CASIM_SOLVE : CASIM_DERIVE, i++;
+                           strcmp(argv[i + 1], "solve") == 0 || strcmp(argv[i + 1], "partfrac") == 0))
+            sop = argv[i + 1][0] == 'i' ? CASIM_INTEGRATE : argv[i + 1][0] == 's' ? CASIM_SOLVE
+                : argv[i + 1][0] == 'p' ? CASIM_PARTFRAC : CASIM_DERIVE, i++;
         if (argc - i != 4 || strlen(argv[i + 2]) != 1) goto usage;
         angle = strcmp(a, "DEG") == 0 ? CASIM_DEG : strcmp(a, "RAD") == 0 ? CASIM_RAD
               : strcmp(a, "GRAD") == 0 ? CASIM_GRAD : -1;
@@ -179,7 +184,7 @@ usage:
 
 
                     "       casim [--arena N] [--min-arena] pdiv|pgcd \"<f>\" X \"<g>\" RAD|DEG|GRAD\n"
-                    "       casim [--arena N] [--one-line] [--tsv] steps [integrate|solve] \"<text>\" X RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--one-line] [--tsv] steps [integrate|solve|partfrac] \"<text>\" X RAD|DEG|GRAD\n"
 
 
                     "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"

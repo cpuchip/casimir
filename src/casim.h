@@ -113,15 +113,19 @@ typedef struct {
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap);
 
-/* Show steps (work/steps-derive.md, steps-integrate.md, steps-solve.md): the working of rq, one step a page, for
-   derive, integrate and solve (CASIM_DERIVE, CASIM_INTEGRATE, CASIM_SOLVE; another op is BAD_ARG). casim_step runs rq
+/* Show steps (work/steps-derive.md, steps-integrate.md, steps-solve.md, steps-partfrac.md): the working of rq, one step
+   a page, for derive, integrate, solve and partfrac (CASIM_DERIVE, CASIM_INTEGRATE, CASIM_SOLVE, CASIM_PARTFRAC;
+   another op is BAD_ARG). casim_step runs rq
    with steps on and prints step k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate,
    where after is the rule applied with its parts still to do (a template line) or the step's result; integrate's
    CHECK lines are "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the
    root's result is the last step and is the op's own answer (never a "+C"), with or without CASIM_STEPS_ONE_LINE,
    which leaves out the template lines (abacus #6252: one rule for the firmware). Solve's steps are the equation as
    it stands, "...=0", at depth 0 (moved, cleared, each factor divided out) and each factor set to 0, "F=0: X=...",
-   at depth 1; its last step is solve's answer (ANSWER). k < 0 only counts. Each call is complete in itself: page k
+   at depth 1; its last step is solve's answer (ANSWER). Partfrac's are the working a student writes: the common
+   factor out, the polynomial part, d's factors, the form with unknown numerators, the form cleared of d, then at depth
+   1 each linear factor's root (COVER-UP) and each power of X's coefficients (COEFFICIENTS), and partfrac's answer;
+   each page returns PARTIAL when partfrac does. k < 0 only counts. Each call is complete in itself: page k
    again or k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its
    rule. NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the
    step's text passes cap (the count is the same whatever cap is); the op's own refusal otherwise. An equation's
@@ -136,15 +140,24 @@ enum {
     CASIM_RULE_POLYNOMIAL,      /* integrate: a product multiplied out, then term by term */
     CASIM_RULE_CHECK,           /* integrate: the term's answer differentiated back to the term */
     CASIM_RULE_INTEGER_COEFFICIENTS,    /* solve: whole coefficients with no common factor, the leading one positive */
-    CASIM_RULE_COMMON_FACTOR,   /* solve: the root 0's factor X^k taken out */
+    CASIM_RULE_COMMON_FACTOR,   /* solve: the root 0's factor X^k taken out; partfrac: the gcd of n and d, with its rows */
     CASIM_RULE_LINEAR_FACTOR,   /* solve: a linear factor divided out (template: the division) */
     CASIM_RULE_QUADRATIC_FACTOR,        /* solve: a quadratic factor divided out (template: the division) */
     CASIM_RULE_LINEAR,          /* solve: a linear factor = 0 */
     CASIM_RULE_QUADRATIC_FORMULA,       /* solve: a quadratic factor = 0 (template: the formula, or b^2-4ac < 0) */
     CASIM_RULE_LEFT,            /* solve: a factor of degree 3 or more left */
     CASIM_RULE_ANSWER,          /* solve: its answer, the last step */
-    CASIM_RULE_FUNCTION         /* + k: a function of var itself (derive), or of aX+b (integrate's table), its name
-                                   from casim_rule_name */
+    CASIM_RULE_FUNCTION,        /* + k for k < 256: a function of var itself (derive), or of aX+b (integrate's table),
+                                   its name from casim_rule_name */
+    /* From 0.9.0 the numbers above never move, and rules are added only from CASIM_RULE_EXT on, at the end (abacus
+       #6612): FUNCTION + k stays below it. */
+    CASIM_RULE_EXT = 256,
+    CASIM_RULE_POLYNOMIAL_PART = CASIM_RULE_EXT,    /* partfrac: n÷d = q + r÷d */
+    CASIM_RULE_FACTOR,          /* partfrac: d as its factors over Q */
+    CASIM_RULE_FORM,            /* partfrac: r÷d as an unknown numerator over each factor power */
+    CASIM_RULE_CLEARED,         /* partfrac: the form multiplied by d */
+    CASIM_RULE_COVER_UP,        /* partfrac: a linear factor's root in the cleared form (template), its unknown */
+    CASIM_RULE_COEFFICIENTS     /* partfrac: one power of X's coefficients equated (template), the unknowns left */
 };
 typedef struct {
     int count;                  /* the steps */

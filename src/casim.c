@@ -2786,10 +2786,13 @@ static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT
                                         "POLYNOMIAL", "CHECK", "INTEGER COEFFICIENTS", "COMMON FACTOR",
                                         "LINEAR FACTOR", "QUADRATIC FACTOR", "LINEAR", "QUADRATIC FORMULA", "LEFT",
                                         "ANSWER"};
+static const char *const RULE_EXT_NAME[] = {"POLYNOMIAL PART", "FACTOR", "FORM", "CLEARED", "COVER-UP", "COEFFICIENTS"};
 
 const char *casim_rule_name(int rule)
 {
     if (rule >= 0 && rule < CASIM_RULE_FUNCTION) return RULE_NAME[rule];
+    if (rule >= CASIM_RULE_EXT && rule < CASIM_RULE_EXT + (int)(sizeof RULE_EXT_NAME / sizeof RULE_EXT_NAME[0]))
+        return RULE_EXT_NAME[rule - CASIM_RULE_EXT];
     if (rule >= CASIM_RULE_FUNCTION && rule < CASIM_RULE_FUNCTION + (int)(sizeof FNAME / sizeof FNAME[0]))
         return FNAME[rule - CASIM_RULE_FUNCTION];
     return "";
@@ -3024,6 +3027,7 @@ static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_
                               void *arena, size_t arena_cap);
 
 static casim_status do_ssteps(const casim_req *rq, walk_t *W, out_t *w, void *arena, size_t arena_cap);
+static casim_status do_psteps(const casim_req *rq, walk_t *W, out_t *w, void *arena, size_t arena_cap);
 
 casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                         void *arena, size_t arena_cap)
@@ -3040,6 +3044,10 @@ casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *
     if (rq && rq->op == CASIM_SOLVE) {
         W.k = k, W.flags = flags, W.info = info;        /* five arguments: none on the stack (the S3 passes six) */
         return do_ssteps(rq, &W, &w, arena, arena_cap);
+    }
+    if (rq && rq->op == CASIM_PARTFRAC) {
+        W.k = k, W.flags = flags, W.info = info;
+        return do_psteps(rq, &W, &w, arena, arena_cap);
     }
     if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
         rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
@@ -7251,4 +7259,350 @@ casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_partfrac(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- partfrac's steps (work/steps-partfrac.md) ----
+   casim_step for CASIM_PARTFRAC: do_partfrac itself, its answer in a slot at the arena's top, then a walk over what it
+   left: its kept block and its work area, at the places it put them (held, not zeroed). A page's text is computed only
+   for the page asked for; every page is counted on every call. */
+
+typedef struct {
+    int k, at;
+    bool one;
+    size_t cap;
+    casim_step_info *info;
+} pstep_t;
+
+/* the printer's room, after partfrac's work area */
+typedef struct {
+    rat cof[PF_N], t[PF_N], u[PF_N];
+    int letter[SOLVE_DEG];      /* each unknown's letter, 0-25 (the variable skipped) */
+    int fi[SOLVE_DEG], fj[SOLVE_DEG], fe[SOLVE_DEG];     /* its factor, power, and the power of X it multiplies */
+    rat val[SOLVE_DEG], cm[SOLVE_DEG];
+    bool known[SOLVE_DEG];
+    int nu;
+} pswork;
+
+static __attribute__((noinline)) bool ps_hit(pstep_t *S, out_t *w, int depth, int line, int rule)
+{
+    if (line == CASIM_STEP_TEMPLATE && S->one) return false;
+    if (S->at++ != S->k) return false;
+    S->info->depth = depth, S->info->line = line, S->info->rule = rule;
+    if (rule != CASIM_RULE_ANSWER) {
+        w->cap = S->cap, w->n = 0, w->full = false;
+        if (w->cap) w->o[0] = '\0';
+    }
+    return true;
+}
+
+static __attribute__((noinline)) void ps_letter(out_t *w, int l)
+{
+    char v[2] = {(char)('A' + l), 0};
+    pf_puts(w, v);
+}
+
+/* a rational as a student writes it: -p÷q */
+static __attribute__((noinline)) void ps_rat(out_t *w, const rat *x)
+{
+    pf_int(w, x->p);
+    if (x->q != 1) pf_puts(w, DIVIDE), pf_int(w, x->q);
+}
+
+/* p at a, exactly; false on an overflow */
+static __attribute__((noinline)) bool ps_at(const rat *p, const rat *a, rat *v)
+{
+    rat x = {1, 1};
+    rat_int(v, 0);
+    for (int m = 0; m <= rdeg(p); m++)
+        if (!pf_fma(v, &p[m], &x, false) || !pf_rmul(&x, &x, a)) return false;
+    return true;
+}
+
+/* (F) or X, then ^j */
+static void ps_fac(out_t *w, const pffac *F, int j, rat *tmp, int var)
+{
+    rat *f = pf_f(F, tmp);
+    if (F->deg == 1 && F->f[0] == 0 && F->f[1] == 1) pf_ipoly(w, f, var);
+    else pf_puts(w, "("), pf_ipoly(w, f, var), pf_puts(w, ")");
+    if (j > 1) pf_puts(w, "^"), pf_int(w, j);
+}
+
+/* a polynomial in rule 4's polynomial-part spelling, or 0 */
+static void ps_rpoly(out_t *w, const rat *p, int var)
+{
+    if (rdeg(p) < 0) pf_puts(w, "0");
+    else pf_rpoly(w, p, var);
+}
+
+/* d = lc×F1^k1×F2^k2..., the factors with a power left */
+static __attribute__((noinline)) void ps_factors(out_t *w, const pfwork *W, const rat *lc, rat *tmp, int var)
+{
+    bool first = true;
+    ps_rpoly(w, W->d, var), pf_puts(w, "=");
+    if (!(lc->p == 1 && lc->q == 1)) ps_rat(w, lc), pf_puts(w, TIMES);
+    for (int i = 0; i < W->nf; i++)
+        if (W->fac[i].k) {
+            if (!first) pf_puts(w, TIMES);
+            ps_fac(w, &W->fac[i], W->fac[i].k, tmp, var), first = false;
+        }
+}
+
+/* p as one side of a quotient: in parentheses when it is a sum, or (as a divisor) a product */
+static void ps_side(out_t *w, const rat *p, int var, bool divisor)
+{
+    int terms = 0, d = rdeg(p);
+    for (int i = 0; i <= d; i++) terms += p[i].p != 0;
+    bool bare = terms <= 1 && (d <= 0 ? p[0].q == 1 : (p[d].p == 1 && p[d].q == 1));
+    bool paren = terms > 1 || (divisor && !bare);
+    if (paren) pf_puts(w, "(");
+    ps_rpoly(w, p, var);
+    if (paren) pf_puts(w, ")");
+}
+
+/* "+p" after another term: a single negative term as "-|p|", anything else "+" and its side */
+static __attribute__((noinline)) void ps_plus(out_t *w, const rat *p, int var)
+{
+    int terms = 0, d = rdeg(p);
+    for (int i = 0; i <= d; i++) terms += p[i].p != 0;
+    if (terms == 1 && p[d].p < 0) {
+        rat *q = (rat *)p;                          /* negated in place and back */
+        q[d].p = -q[d].p, pf_puts(w, "-"), ps_side(w, q, var, false), q[d].p = -q[d].p;
+    } else pf_puts(w, "+"), ps_side(w, p, var, false);
+}
+
+/* c×, as a coefficient: nothing for 1, - for -1 */
+static __attribute__((noinline)) void ps_times(out_t *w, const rat *c)
+{
+    if (c->p == 1 && c->q == 1) return;
+    if (c->p == -1 && c->q == 1) pf_puts(w, "-");
+    else ps_rat(w, c), pf_puts(w, TIMES);
+}
+
+/* the unknown numerator over F^j: U, or (U×X+V), (U×X^2+V×X+W) ... */
+static void ps_numer(out_t *w, const pswork *P, int first, int deg, int var)
+{
+    char v[2] = {(char)('A' + var), 0};
+    if (deg > 1) pf_puts(w, "(");
+    for (int e = deg - 1, u = first; e >= 0; e--, u++) {
+        if (u > first) pf_puts(w, "+");
+        ps_letter(w, P->letter[u]);
+        if (e >= 1) pf_puts(w, TIMES), pf_puts(w, v);
+        if (e >= 2) pf_puts(w, "^"), pf_int(w, e);
+    }
+    if (deg > 1) pf_puts(w, ")");
+}
+
+/* the cofactor d ÷ f_i^j as its factors (lc left out): the other factors to their powers, then f_i^(k-j) */
+static __attribute__((noinline)) bool ps_cofactor_text(out_t *w, const pfwork *W, int i, int j, rat *tmp, int var)
+{
+    bool any = false;
+    for (int x = 0; x < W->nf; x++) {
+        int p = x == i ? W->fac[x].k - j : W->fac[x].k;
+        if (p <= 0) continue;
+        pf_puts(w, TIMES), ps_fac(w, &W->fac[x], p, tmp, var);
+        any = true;
+    }
+    return any;
+}
+
+static __attribute__((noinline)) void ps_walk(pstep_t *S, out_t *w, pfwork *W, pswork *P, const char *ans, int var)
+{
+    char v[2] = {(char)('A' + var), 0};
+    bool cancelled = false, factored;
+    rat lc;
+    /* lc: d over the product of its factors' leads */
+    {
+        rat t;
+        lc = W->d[rdeg(W->d) < 0 ? 0 : rdeg(W->d)];
+        for (int i = 0; i < W->nf; i++)
+            for (int m = 0; m < W->fac[i].k; m++) {
+                pf_rmake(&t, 1, W->fac[i].f[W->fac[i].deg]);
+                pf_rmul(&lc, &lc, &t);
+            }
+    }
+    for (int i = 0; i < W->nf; i++) cancelled = cancelled || W->fac[i].gone > 0;
+    /* COMMON FACTOR: the typed quotient and the reduced one, with CANCEL's rows (they end the answer too) */
+    if (cancelled && ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR)) {
+        /* the input, cleared: the reduced n and d times what cancelled (the kept block's n is the rows' room now) */
+        pf_copy(P->t, W->n), pf_copy(P->u, W->d);
+        for (int i = 0; i < W->nf; i++)
+            for (int m = 0; m < W->fac[i].gone; m++) {
+                pf_mul(P->cof, P->t, pf_f(&W->fac[i], P->cm)), pf_copy(P->t, P->cof);
+                pf_mul(P->cof, P->u, pf_f(&W->fac[i], P->cm)), pf_copy(P->u, P->cof);
+            }
+        ps_side(w, P->t, var, false), pf_puts(w, DIVIDE), ps_side(w, P->u, var, true), pf_puts(w, "=");
+        ps_side(w, W->n, var, false), pf_puts(w, DIVIDE), ps_side(w, W->d, var, true);
+        { const char *r = strstr(ans, "; "); if (r) pf_puts(w, r); }
+    }
+    if (rdeg(W->d) < 1) {
+        ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+        return;
+    }
+    /* POLYNOMIAL PART */
+    if (rdeg(W->poly) >= 0 && ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_POLYNOMIAL_PART)) {
+        ps_side(w, W->n, var, false), pf_puts(w, DIVIDE), ps_side(w, W->d, var, true), pf_puts(w, "=");
+        ps_rpoly(w, W->poly, var), ps_plus(w, W->r, var), pf_puts(w, DIVIDE), ps_side(w, W->d, var, true);
+    }
+    /* FACTOR: left out when d is one factor to the first power and lc is 1 */
+    {
+        int live = 0, kmax = 0;
+        for (int i = 0; i < W->nf; i++) live += W->fac[i].k > 0, kmax = W->fac[i].k > kmax ? W->fac[i].k : kmax;
+        factored = live > 1 || kmax > 1 || !(lc.p == 1 && lc.q == 1);
+        if (live == 1 && kmax == 1) {
+            /* one factor to the first power: r÷d is already its own partial fraction (lc's FACTOR line, if any) */
+            if (factored && ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_FACTOR)) ps_factors(w, W, &lc, P->t, var);
+            ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+            return;
+        }
+    }
+    if (factored && ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_FACTOR)) ps_factors(w, W, &lc, P->t, var);
+    /* the unknowns: letters A, B, ... skipping the variable, factor by factor, power by power, the X's highest first */
+    P->nu = 0;
+    for (int i = 0, l = 0; i < W->nf; i++)
+        for (int j = 1; j <= W->fac[i].k; j++)
+            for (int e = W->fac[i].deg - 1; e >= 0; e--) {
+                if (l == var) l++;
+                P->letter[P->nu] = l++, P->fi[P->nu] = i, P->fj[P->nu] = j, P->fe[P->nu] = e, P->known[P->nu] = false;
+                P->nu++;
+            }
+    /* FORM */
+    if (ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_FORM)) {
+        ps_side(w, W->r, var, false), pf_puts(w, DIVIDE), ps_side(w, W->d, var, true), pf_puts(w, "=");
+        for (int u = 0; u < P->nu; u += W->fac[P->fi[u]].deg) {
+            if (u) pf_puts(w, "+");
+            ps_numer(w, P, u, W->fac[P->fi[u]].deg, var), pf_puts(w, DIVIDE), ps_fac(w, &W->fac[P->fi[u]], P->fj[u], P->t, var);
+        }
+    }
+    /* CLEARED: r = lc×(Σ numerator × cofactor) */
+    if (ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_CLEARED)) {
+        bool wrap = !(lc.p == 1 && lc.q == 1) && P->nu > W->fac[P->fi[0]].deg;    /* more than one term */
+        ps_rpoly(w, W->r, var), pf_puts(w, "=");
+        if (wrap) ps_rat(w, &lc), pf_puts(w, TIMES "(");
+        else ps_times(w, &lc);
+        for (int u = 0; u < P->nu; u += W->fac[P->fi[u]].deg) {
+            if (u) pf_puts(w, "+");
+            ps_numer(w, P, u, W->fac[P->fi[u]].deg, var);
+            ps_cofactor_text(w, W, P->fi[u], P->fj[u], P->t, var);
+        }
+        if (wrap) pf_puts(w, ")");
+    }
+    /* the values, from partfrac's own numerators (the pool), in the unknowns' order */
+    for (int u = 0; u < P->nu; u++) {
+        pf_get(W, &W->fac[P->fi[u]], P->fj[u], P->t);
+        P->val[u] = P->t[P->fe[u]];
+    }
+    /* COVER-UP: each linear factor's root a leaves only its top power's unknown: r(a) = c U, c the cofactor at a */
+    for (int u = 0; u < P->nu; u++) {
+        pffac *F = &W->fac[P->fi[u]];
+        if (F->deg != 1 || P->fj[u] != F->k) continue;
+        P->known[u] = true;
+        if (ps_hit(S, w, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_COVER_UP)) {
+            rat a, rv, c = lc, fv;
+            pf_rmake(&a, -F->f[0], F->f[1]);
+            ps_at(W->r, &a, &rv);
+            for (int i = 0; i < W->nf; i++) {
+                if (i == P->fi[u]) continue;
+                ps_at(pf_f(&W->fac[i], P->t), &a, &fv);
+                for (int m = 0; m < W->fac[i].k; m++) pf_rmul(&c, &c, &fv);
+            }
+            pf_puts(w, v), pf_puts(w, "="), ps_rat(w, &a), pf_puts(w, ": "), ps_rat(w, &rv), pf_puts(w, "=");
+            ps_times(w, &c), ps_letter(w, P->letter[u]);
+        }
+        if (ps_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_COVER_UP)) ps_letter(w, P->letter[u]), pf_puts(w, "="), ps_rat(w, &P->val[u]);
+    }
+    /* COEFFICIENTS: the rest, every power of X from deg d - 1 down, the known values moved across */
+    {
+        bool rest = false;
+        for (int u = 0; u < P->nu; u++) rest = rest || !P->known[u];
+        if (rest) {
+            for (int m = rdeg(W->d) - 1; m >= 0; m--) {
+                if (ps_hit(S, w, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_COEFFICIENTS)) {
+                    rat left = W->r[m], *cm = P->cm;
+                    bool any = false;
+                    for (int u = 0; u < P->nu; u++) {
+                        /* the X^m coefficient of lc × U X^e × cofactor */
+                        pf_div(W->d, pf_f(&W->fac[P->fi[u]], P->u), P->cof, P->t);    /* d ÷ f */
+                        for (int jj = 1; jj < P->fj[u]; jj++) pf_copy(P->t, P->cof), pf_div(P->t, pf_f(&W->fac[P->fi[u]], P->u), P->cof, P->t);
+                        rat_int(&cm[u], 0);
+                        if (m - P->fe[u] >= 0) cm[u] = P->cof[m - P->fe[u]];
+                        if (P->known[u]) pf_fma(&left, &cm[u], &P->val[u], true);
+                    }
+                    if (m == 0) pf_puts(w, v), pf_puts(w, "^0: ");
+                    else if (m == 1) pf_puts(w, v), pf_puts(w, ": ");
+                    else pf_puts(w, v), pf_puts(w, "^"), pf_int(w, m), pf_puts(w, ": ");
+                    ps_rat(w, &left), pf_puts(w, "=");
+                    for (int u = 0; u < P->nu; u++) {
+                        rat a = cm[u];
+                        if (P->known[u] || a.p == 0) continue;
+                        if (a.p < 0) pf_puts(w, "-"), a.p = -a.p;
+                        else if (any) pf_puts(w, "+");
+                        if (!(a.p == 1 && a.q == 1)) ps_rat(w, &a), pf_puts(w, TIMES);
+                        ps_letter(w, P->letter[u]);
+                        any = true;
+                    }
+                    if (!any) pf_puts(w, "0");
+                }
+            }
+            if (ps_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_COEFFICIENTS)) {
+                bool first = true;
+                for (int u = 0; u < P->nu; u++) {
+                    if (P->known[u]) continue;
+                    if (!first) pf_puts(w, "; ");
+                    ps_letter(w, P->letter[u]), pf_puts(w, "="), ps_rat(w, &P->val[u]);
+                    first = false;
+                }
+            }
+        }
+    }
+    ps_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+}
+
+static SS_KEEP_ARGS casim_status do_psteps(const casim_req *rq, walk_t *Pw, out_t *o, void *arena, size_t arena_cap)
+{
+    int k = Pw->k, flags = Pw->flags;
+    casim_step_info *info = Pw->info;
+    char *out = o->o;
+    size_t cap = o->cap, room = arena_cap > SLOT ? arena_cap - SLOT : 0, skip, room2;
+    char *ans = (char *)arena + room;
+    casim_status st;
+    ctx c;
+    ref wr, pr;
+    unsigned char *base;
+    pstep_t S;
+    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
+        return CASIM_BAD_ARG;
+    if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
+    st = arena_cap < SLOT ? CASIM_NO_ROOM
+                          : do_partfrac(rq->eqn, rq->var, rq->angle, ans, SLOT, arena, room, rq->model == CASIM_MODEL_STU);
+    if (st == CASIM_NO_ROOM) {
+        st = do_partfrac(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
+        if (cap) out[0] = st == CASIM_OK || st == CASIM_PARTIAL ? '\0' : out[0];
+        return st == CASIM_OK || st == CASIM_PARTIAL ? CASIM_NO_ROOM : st;
+    }
+    if (st != CASIM_OK && st != CASIM_PARTIAL) {
+        if (cap > strlen(ans)) memcpy(out, ans, strlen(ans) + 1);
+        return st;
+    }
+    /* what do_partfrac left: its kept block at its arena's top, its work area first below (held: not zeroed) */
+    skip = (size_t)(-(uintptr_t)arena & 7u);
+    base = (unsigned char *)arena + skip;
+    room2 = (room - skip - sizeof(pfkeep)) & ~(size_t)7;
+    start(&c, "1", rq->angle, base, room2);
+    wr = held(&c, sizeof(pfwork));
+    pr = grab(&c, sizeof(pswork));
+    if (c.st != CASIM_OK) return CASIM_NO_ROOM;
+    S.k = k, S.at = 0, S.one = (flags & CASIM_STEPS_ONE_LINE) != 0, S.cap = cap, S.info = info;
+    {
+        out_t w = {out, cap, 0, false};
+        ps_walk(&S, &w, (pfwork *)(void *)nd(&c, wr), (pswork *)(void *)nd(&c, pr), ans, rq->var);
+        info->count = S.at;
+        if (k < 0) return st;
+        if (k >= S.at) return CASIM_BAD_ARG;
+        if (info->rule == CASIM_RULE_ANSWER) {
+            w.n = 0, w.full = false;
+            pf_puts(&w, ans);
+        }
+        if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    }
+    return st;                                           /* PARTIAL on every page when partfrac's answer is */
 }

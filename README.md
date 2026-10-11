@@ -27,7 +27,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
-| steps | the working of derive, integrate and solve, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
+| steps | the working of derive, integrate, solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
 

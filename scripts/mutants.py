@@ -524,14 +524,15 @@ MUTANTS = {
          "            ss_ipoly(w, &W->cur, var, false), puts_(w, \"=0: DEGREE \"), put_int(w, W->cur.n), puts_(w, \" LEFT\");"),
     ],
     "ssteps-line-in-slot": [
-        ("src/casim.c", "        w->cap = S->cap, w->n = 0, w->full = false;", "        w->cap = S->cap < SLOT ? S->cap : SLOT, w->n = 0, w->full = false;"),
+        ("src/casim.c", "static bool ss_hit(sstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {\n        w->cap = S->cap, w->n = 0, w->full = false;",
+         "static bool ss_hit(sstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {\n        w->cap = S->cap < SLOT ? S->cap : SLOT, w->n = 0, w->full = false;"),
     ],
     "ssteps-answer-page": [
         ("src/casim.c", "            puts_(&w, ans);", "            puts_(&w, ans + 1);"),
     ],
     "ssteps-one-line-template": [
-        ("src/casim.c", "    if (line == CASIM_STEP_TEMPLATE && S->one) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {",
-         "    if (line == CASIM_STEP_TEMPLATE && S->one && rule != CASIM_RULE_INTEGER_COEFFICIENTS) return false;\n    if (S->at++ != S->k) return false;\n    S->info->depth = depth, S->info->line = line, S->info->rule = rule;\n    if (rule != CASIM_RULE_ANSWER) {"),
+        ("src/casim.c", "static bool ss_hit(sstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one) return false;\n    if (S->at++ != S->k) return false;",
+         "static bool ss_hit(sstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one && rule != CASIM_RULE_INTEGER_COEFFICIENTS) return false;\n    if (S->at++ != S->k) return false;"),
     ],
     "log10-exact-sign": [
         ("src/casim.c", "        rat_int(&m, (int)(q->q == 1 ? j : -j));", "        rat_int(&m, (int)j);"),
@@ -574,6 +575,39 @@ MUTANTS = {
     # 012's sibling (abacus #6437): CANCEL's 0÷den back to NO_ROOM
     "cancel-zero-numerator": [
         ("src/casim.c", "            if (fi->n < 0) {\n                /* 0÷den", "            if (0) {\n                /* 0÷den"),
+    ],
+    # partfrac steps: CLEARED's cofactor with F to its full power
+    "psteps-cofactor-power": [
+        ("src/casim.c", "        int p = x == i ? W->fac[x].k - j : W->fac[x].k;", "        int p = x == i ? W->fac[x].k - 0 * j : W->fac[x].k;"),
+    ],
+    # partfrac steps: the cover-up values not moved across in an equation
+    "psteps-known-not-moved": [
+        ("src/casim.c", "                        if (P->known[u]) pf_fma(&left, &cm[u], &P->val[u], true);",
+         "                        if (0) pf_fma(&left, &cm[u], &P->val[u], true);"),
+    ],
+    # partfrac steps: a cover-up result with the first unknown's value
+    "psteps-cover-up-value": [
+        ("src/casim.c", "CASIM_RULE_COVER_UP)) ps_letter(w, P->letter[u]), pf_puts(w, \"=\"), ps_rat(w, &P->val[u]);",
+         "CASIM_RULE_COVER_UP)) ps_letter(w, P->letter[u]), pf_puts(w, \"=\"), ps_rat(w, &P->val[0]);"),
+    ],
+    # partfrac steps: the highest power's equation left out
+    "psteps-top-equation": [
+        ("src/casim.c", "            for (int m = rdeg(W->d) - 1; m >= 0; m--) {\n                if (ps_hit(",
+         "            for (int m = rdeg(W->d) - 2; m >= 0; m--) {\n                if (ps_hit("),
+    ],
+    # partfrac steps: PARTIAL lost on the pages
+    "psteps-partial-ok": [
+        ("src/casim.c", "    return st;                                           /* PARTIAL on every page",
+         "    return CASIM_OK;                                     /* PARTIAL on every page"),
+    ],
+    # partfrac steps: the answer page not partfrac's text
+    "psteps-answer-page": [
+        ("src/casim.c", "            pf_puts(&w, ans);", "            pf_puts(&w, ans + 1);"),
+    ],
+    # partfrac steps: one-line pages with the templates
+    "psteps-one-line": [
+        ("src/casim.c", "static __attribute__((noinline)) bool ps_hit(pstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (line == CASIM_STEP_TEMPLATE && S->one) return false;",
+         "static __attribute__((noinline)) bool ps_hit(pstep_t *S, out_t *w, int depth, int line, int rule)\n{\n    if (0) return false;"),
     ],
 }
 

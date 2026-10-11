@@ -169,7 +169,7 @@ static void run_cases(void)
     }
 }
 
-/* show steps on each derive, integrate and solve the host answered OK */
+/* show steps on each derive, integrate, solve and partfrac the host answered OK */
 static void run_pages(void)
 {
     for (int i = 0; i < case_count; i++) {
@@ -178,7 +178,8 @@ static void run_pages(void)
         int64_t t[REPS];
         size_t lw = strlen(k->want), lo;
         pg[i].count = 0;
-        if ((k->op != CASIM_DERIVE && k->op != CASIM_INTEGRATE && k->op != CASIM_SOLVE) || k->status != CASIM_OK ||
+        if ((k->op != CASIM_DERIVE && k->op != CASIM_INTEGRATE && k->op != CASIM_SOLVE && k->op != CASIM_PARTFRAC) ||
+            k->status != CASIM_OK ||
             page(k, -1, &info) != CASIM_OK)
             continue;
         pg[i].count = info.count;
@@ -276,7 +277,7 @@ static void bench_task(void *arg)
                        (long long)pg[i].us_med, pg[i].stack, pg[i].ok ? "same" : "DIFFERENT");
             }
             if (worst >= 0)
-                printf("steps: %d derivatives, integrals and solves paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
+                printf("steps: %d derivatives, integrals, solves and partial fractions paged; the slowest page %lld us (%s), the deepest page stack %u\n", n,
                        (long long)pg[worst].us_max, cases[worst].name, smax);
         }
         {

@@ -278,6 +278,29 @@ them, in descending powers. The steps are:
 | `casim steps solve "(X-1)×(X^3+X+1)^2" X RAD` | `POLYNOMIAL: X^7-X^6+2×X^5-X^3+X^2-X-1=0 / LINEAR FACTOR: (X^7-X^6+2×X^5-X^3+X^2-X-1)÷(X-1)=(X^3+X+1)^2 / LINEAR FACTOR: (X-1)×(X^3+X+1)^2=0 /   LINEAR: X-1=0: X=1 /   LEFT: (X^3+X+1)^2=0: DEGREE 6 LEFT / ANSWER: PARTIAL, DEGREE 6 LEFT: X=1` |
 | `casim --one-line steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
 
+`steps partfrac "<n÷d>" X` pages partfrac's working (work/steps-partfrac.md), as a student writes it, with the
+polynomials multiplied out in descending powers. The steps are:
+- COMMON FACTOR: the gcd of n and d out, with cancel's rows (left out when it is 1);
+- POLYNOMIAL PART: the division n÷d = q + r÷d (left out when n÷d is proper);
+- FACTOR: d as its factors over Q, in partfrac's order (left out when d is one factor);
+- FORM: r÷d as an unknown numerator over each factor's powers, the letters A, B, … skipping the variable;
+- CLEARED: the form multiplied by d;
+- COVER-UP, indented: each linear factor's root put in the cleared form, which leaves only its highest power's
+  unknown, then its value;
+- COEFFICIENTS, indented: what cover-up left, by equating the coefficients of each power of X (every power, so the
+  last ones check the values), then their values;
+- ANSWER is partfrac's own answer. A fraction that is already one factor to the first power goes straight to it.
+
+Every page returns PARTIAL when partfrac does.
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps partfrac "(X^4+1)÷(X^3+1)" X RAD` | `POLYNOMIAL PART: (X^4+1)÷(X^3+1)=X+(-X+1)÷(X^3+1) / FACTOR: X^3+1=(X+1)×(X^2-X+1) / FORM: (-X+1)÷(X^3+1)=A÷(X+1)+(B×X+C)÷(X^2-X+1) / CLEARED: -X+1=A×(X^2-X+1)+(B×X+C)×(X+1) /   COVER-UP: X=-1: 2=3×A /   COVER-UP: A=2÷3 /   COEFFICIENTS: X^2: -2÷3=B /   COEFFICIENTS: X: -1÷3=B+C /   COEFFICIENTS: X^0: 1÷3=C /   COEFFICIENTS: B=-2÷3; C=1÷3 / ANSWER: X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))` |
+| `casim steps partfrac "(3×X+5)÷((X-3)×(X+4))" X RAD` | `FACTOR: X^2+X-12=(X+4)×(X-3) / FORM: (3×X+5)÷(X^2+X-12)=A÷(X+4)+B÷(X-3) / CLEARED: 3×X+5=A×(X-3)+B×(X+4) /   COVER-UP: X=-4: -7=-7×A /   COVER-UP: A=1 /   COVER-UP: X=3: 14=7×B /   COVER-UP: B=2 / ANSWER: 1÷(X+4)+2÷(X-3)` |
+| `casim steps partfrac "(X^2-1)÷((X-1)×(X+2))" X RAD` | `COMMON FACTOR: (X^2-1)÷(X^2+X-2)=(X+1)÷(X+2); X=1 / POLYNOMIAL PART: (X+1)÷(X+2)=1-1÷(X+2) / ANSWER: 1-1÷(X+2); X=1` |
+| `casim steps partfrac "(X+1)÷(X^2+1)" X RAD` | `ANSWER: (X+1)÷(X^2+1)` |
+| `casim --one-line steps partfrac "(3×X+5)÷((X-3)×(X+4))" X RAD` | `FACTOR: X^2+X-12=(X+4)×(X-3) / FORM: (3×X+5)÷(X^2+X-12)=A÷(X+4)+B÷(X-3) / CLEARED: 3×X+5=A×(X-3)+B×(X+4) /   COVER-UP: A=1 /   COVER-UP: B=2 / ANSWER: 1÷(X+4)+2÷(X-3)` |
+
 ### pdiv, pgcd, cancel: polynomial division
 
 The polynomials are read as solve reads them, with degree ≤ 12 and coefficients ≤ 10^7.
