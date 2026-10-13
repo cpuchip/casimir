@@ -130,9 +130,10 @@ gen_cas014 seed 14014, judge_cas014 as tightened for rule 7's amendment):
 
 **Rulings on casim's questions (#7863):**
 - **(a) X×ABS(X) at 0, order 1: UNDEFINED.** Accepted as a documented limitation. The series does exist to order 1
-  (f'(0) = 0), so UNDEFINED overstates it. When CAS 015 brings CASIM_UNDECIDED, ABS's corner under a smoothing factor
-  answers UNDECIDED rather than UNDEFINED; that change rides with 015. Until then, docs/language.md's Taylor section
-  gains one sentence saying so (casim; today it names ABS's corner but not a factor that smooths it).
+  (f'(0) = 0), so UNDEFINED overstates it. CAS 015 brings CASIM_UNDECIDED. The switch to UNDECIDED for ABS's corner
+  under a smoothing factor goes in the small follow-up unit with (b) and (e), not in 015 (casim #7883): Taylor's
+  SGN-of-0 check can't yet tell ABS(X), a real corner and rightly UNDEFINED, from X×ABS(X), so a blanket switch
+  would be wrong. docs/language.md's Taylor section gains casim's sentence on it in the 015 commit.
 - **(b) The 384-byte text per derivative.** Accepted. Follow-up for casim, not blocking: measure the hidden set's
   answers with the two buffers at 384, 768 and 1,024 B against the arena's room for trees, and propose the size. The
   number goes in the docs with the swell sentence.
