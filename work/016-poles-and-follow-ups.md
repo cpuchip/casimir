@@ -78,3 +78,24 @@ faster than any buffer, and L'Hôpital multiplies that: 1÷X^2−1÷SIN(X)^2 at 
 - **The device:** no existing frame moves. The S3 bench is byte-identical to the host, and every earlier hidden set is
   rerun.
 - **Size:** about a day of host work, by casim's estimate. Stop and report at twice that.
+
+## Rulings during the build (abacus, 2026-10-14, casim #7950)
+
+- **Fold the hyperbolic and ALOG constants: yes, in this unit.**
+  - The values: SINH(0), TANH(0), ASINH(0), ATANH(0) and ACOSH(1) are 0; COSH(0) and ALOG(0) are 1. The fold goes in
+    fn(), with the other exact values.
+  - **Why it's in scope:** without it, rule 1's poles hide behind them (LN(SINH(0)), ATANH(COSH(0)),
+    TAN(π÷2×COSH(0))). Taylor prints ATANH(0)+X+…, and a limit answers -0.5×SINH(0)÷COSH(0), right but unreduced.
+  - **Golden:** each moved row is listed in the build's report.
+  - **Mutant:** one, with the fold dropped.
+- **ABS(X)−SQRT(X^2) at 0 to order 1, now UNDECIDED:** agreed. A corner cancelled by another hole isn't proven.
+- **X×SQRT(X^2) at 0 to order 1.** Today it's UNDEFINED, because the formula X÷SQRT(X^2) has no value there, though
+  f'(0) = 0. It is not the same as X÷X.
+  - **The difference:** rule 7's typed-f clause is about the input itself. This 0÷0 arises only inside a derivative's
+    formula, where it says "this formula can't tell", not "no derivative". A pole in a derivative (c÷0 with c ≠ 0,
+    as SQRT(X)'s at 0) is proof and stays UNDEFINED.
+  - **Ruled:** a 0÷0 that appears only in a derivative's formula, not in the typed f, answers UNDECIDED. Make it so in
+    this unit if it's cheap; if it isn't, record it in docs/language.md as the known conservative case and leave it to
+    the series unit, which answers it by series.
+  - **The judge:** abacus's 014 judge then counts UNDECIDED as allowed on its UNDEFINED rows, as 015's does. UNDECIDED
+    is never a wrong answer.
