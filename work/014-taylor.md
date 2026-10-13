@@ -104,3 +104,52 @@ names series. It also gives CAS 015 its engine: a limit of 0÷0 is a question ab
   - the point rounded to a decimal before evaluating.
 - **The device:** the S3 bench byte-identical to the host. Golden byte-identical for every other op, and every earlier
   hidden set rerun.
+
+## Accepted (abacus, 2026-10-13), at ad3c4ee
+
+**The hidden 2,000 on the commit itself,** built on fermion in a capped container from a clean clone (abacus's
+gen_cas014 seed 14014, judge_cas014 as tightened for rule 7's amendment):
+- **0 failures.**
+- ANSWER: 527 right, 255 NO_ROOM, 1 TOO_LONG.
+- NUMERIC: 524 right, 107 NO_ROOM, 184 TOO_LONG.
+- UNDEFINED 184/184; removable (EITHER) 218 UNDEFINED, all right.
+
+`make check` is green there (276 checks). casim's own report: golden 9,391 with none moved, 165 mutants caught
+(the six above among them), and on the S3:
+- no existing frame moved (chain 64 B before and after, so the host's 96 → 112 is re-recorded under rule 8);
+- text +3,730 B, inside the estimate;
+- the bench byte-identical, with the gate unchanged at 11,712 of 12,288.
+- The new do_taylor frame is 304 B on the S3, against the prototype's 256. It's a new frame, not on the worst path,
+  and is named here.
+
+**Against the 08:00 pre-check build, on the same 2,000 cases,** the commit answers 59 fewer:
+- ANSWER: 48 more NO_ROOM;
+- NUMERIC: 73 more TOO_LONG, but 62 fewer NO_ROOM.
+- The cause is (b) below: each derivative now goes through 384 B of text. These are honest refusals, which rule 7
+  allows, but the coverage given up is measured here and is the first follow-up.
+
+**Rulings on casim's questions (#7863):**
+- **(a) X×ABS(X) at 0, order 1: UNDEFINED.** Accepted as a documented limitation. The series does exist to order 1
+  (f'(0) = 0), so UNDEFINED overstates it. When CAS 015 brings CASIM_UNDECIDED, ABS's corner under a smoothing factor
+  answers UNDECIDED rather than UNDEFINED; that change rides with 015. docs/language.md says so now.
+- **(b) The 384-byte text per derivative.** Accepted. Follow-up for casim, not blocking: measure the hidden set's
+  answers with the two buffers at 384, 768 and 1,024 B against the arena's room for trees, and propose the size. The
+  number goes in the docs with the swell sentence.
+- **(c) A fractional power of a negative number is UNDEFINED,** as CAS 009's convention. Accepted: one domain rule
+  for every op.
+- **(d) 0^K stays symbolic with letters** (X^K at 0 prints 0^K), as subst and simplify. Accepted.
+- **(e) TAN(π÷2) left unevaluated by subst and simplify.** Ruled: an exact value at TAN's poles, (2k+1)×π÷2, is
+  UNDEFINED in every op, as Taylor already does. It's a small fix unit after CAS 015; casim sizes it.
+- **(f) NOT_DIFFERENTIABLE for the names derive refuses, and leading zeros in the order ("012").** Accepted.
+- **(g) mutants.py re-records the frame table in each copy.** Accepted with thanks. 35 of 108 mutants had been
+  "caught" by the frame gate alone since CAS 013. A test that can't fail for the right reason isn't evidence.
+
+**Rule 6, clarified, not waived.** Each term prints as the canonical form of c_k×(X−a)^k, so a symbolic factor of c_k
+can follow the power: COS at π÷3 prints -0.5×(X-π÷3)×SQRT(3), and DEG prints X×π÷180. The rule's purpose holds:
+- terms ascending;
+- no zero term;
+- no 1×;
+- the linear term whole (casim #7661 (4) was about the whole sum's canonical form).
+It matches how every other op prints a product. abacus missed this at the pre-check: the judge's form check doesn't
+test factor order within a term, and the pre-check's README showed the line without a remark. If Michael prefers the
+textbook spelling (-SQRT(3)÷2×(X-π÷3)), it's a printer change in its own small unit.
