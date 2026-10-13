@@ -14,9 +14,9 @@
 import createCasimirModule from "./casim.js";
 
 export const STATUSES = ["OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM", "NOT_POLYNOMIAL",
-    "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED", "IMPROPER"];
+    "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED", "IMPROPER", "UNDECIDED"];
 export const OPS = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor", "defint",
-    "pdiv", "pgcd", "cancel", "partfrac", "taylor"];
+    "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit"];
 const ANGLES = { DEG: 0, RAD: 1, GRAD: 2 };
 const MODELS = { STU: 1, 33: 33, 35: 35 };
 
@@ -66,5 +66,7 @@ export async function loadCasimir(moduleOptions = {}) {
             if (!Number.isInteger(n)) throw new TypeError(`casimir: the order must be a whole number, not ${n}`);
             return call("taylor", text, opts, String(point), String(n));
         },
+        // CAS 015: as var goes to point (a text as defint's bounds, or "∞", "-∞"), from side "+", "-" or "" (both)
+        limit: (text, point, side, opts) => call("limit", text, opts, String(point), side ?? ""),
     };
 }

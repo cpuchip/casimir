@@ -403,6 +403,8 @@ derive refuses (X!, IP), NO_ROOM (a derivative outgrows the arena, or its text 3
 high order), TOO_LONG, and
 BAD_ARG (an equation, a letter in A, or N outside 0 to 12). The typed text decides UNDEFINED: X÷X at 0 is UNDEFINED,
 though its canonical form is 1.
+SGN of 0 is always refused, which is conservative: X×ABS(X) has a series at 0 to order 1, but its derivative
+ABS(X)+X×SGN(X) holds SGN(0), so order 1 and up are UNDEFINED.
 
 Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,192-byte arena, TAN,
 ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X)) after 6, and
@@ -422,6 +424,45 @@ about π÷3 carries SQRT(3) in every other term.
 | `casim taylor 'X÷X' X 0 2 RAD` | `UNDEFINED` |
 | `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `NO_ROOM` |
 
+### limit: a limit at a point or at ±∞
+
+`limit "<text>" X A S` is the limit of the text as X goes to A (work/015-limits.md). A is a real constant read as
+defint's bounds (0, 1÷2, π÷3, -2), or `∞` or `-∞`. S is the side: `+` from above, `-` from below, or `''` (empty) for
+both, which must agree; at ∞ and -∞ the side is implied and S is `''`. The answer is exact, in canonical form (EXP(1),
+π÷2, -1÷6, 0.5), or `∞` or `-∞`; other letters in the text are constants. DEG and GRAD carry their factor, as derive
+does: ATAN(X) at ∞ is 90 in DEG.
+
+Where every part of the text has a value at A, that's the limit, even where the typed text as a whole has none: X÷X
+at 0 is 1 (taylor answers UNDEFINED there; it answers about f where f is defined, and limit answers the removable
+question). A part with no value isn't continuity even when the whole folds it away: (X-π÷2)×TAN(X) at π÷2 is -1, not
+0. Otherwise the walk
+takes the text by its parts: sums, products and powers by their parts' limits; functions by continuity and by their
+ends (LN(0+) is -∞, EXP(-∞) is 0); 0÷0 and ∞÷∞ by L'Hôpital, at most 12 steps; 0×∞ as a quotient; B^E with X in E as
+EXP(E×LN(B)); at ∞ a polynomial by its leading term; an ∞-∞ with a square root by its conjugate. The side near A comes
+from the first derivative that isn't 0 there, so 1÷X at 0 is ∞ from above, -∞ from below, and has no two-sided limit.
+
+Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
+SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). UNDECIDED means the walk
+couldn't decide: more than 12 L'Hôpital steps, an ∞-∞ the rewrites don't resolve, a damped oscillation (SIN(X)÷X at ∞
+is 0, but by the squeeze theorem, which the walk doesn't have), or a form it doesn't cover. NOT_DIFFERENTIABLE: a name
+derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a letter in A, a side other than `+`, `-` and
+`''`, or a side at ∞.
+
+| Command | Prints |
+|---|---|
+| `casim limit 'SIN(X)÷X' X 0 '' RAD` | `1` |
+| `casim limit '(SIN(X)-X)÷X^3' X 0 '' RAD` | `-1÷6` |
+| `casim limit '1÷X' X 0 + RAD` | `∞` |
+| `casim limit '1÷X' X 0 '' RAD` | `UNDEFINED` |
+| `casim limit 'X×LN(X)' X 0 + RAD` | `0` |
+| `casim limit '(2×X^2+1)÷(3×X^2-X)' X ∞ '' RAD` | `2÷3` |
+| `casim limit 'SQRT(X^2+X)-X' X ∞ '' RAD` | `0.5` |
+| `casim limit '(1+3÷X)^X' X ∞ '' RAD` | `EXP(3)` |
+| `casim limit 'ATAN(X)' X -∞ '' DEG` | `-90` |
+| `casim limit 'TAN(X)' X 'π÷2' - RAD` | `∞` |
+| `casim limit 'SIN(X)' X ∞ '' RAD` | `UNDEFINED` |
+| `casim limit 'SIN(X)÷X' X ∞ '' RAD` | `UNDECIDED` |
+
 ## The statuses
 
 | Value | Status | Means | out holds |
@@ -438,6 +479,7 @@ about π÷3 carries SQRT(3) in every other term.
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
 | 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a bound with no value | "" |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
+| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit" | "" |
 
 ## The bounds
 

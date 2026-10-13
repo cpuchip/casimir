@@ -676,7 +676,7 @@ MUTANTS = {
     # the sign of a in (X-a) flipped: the values are a's, the powers (X+a)'s
     "taylor-point-sign": [("src/casim.c", '    xa = at0 ? leaf(&c, K_VAR, var) : canon(&c, add2(&c, leaf(&c, K_VAR, var), neg(&c, a)));', '    xa = at0 ? leaf(&c, K_VAR, var) : canon(&c, add2(&c, leaf(&c, K_VAR, var), a));')],
     # the angle factor dropped in DEG and GRAD: the derivatives taken in RAD
-    "taylor-angle-dropped": [("src/casim.c", '    start(&c, eqn, angle, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses', '    start(&c, eqn, CASIM_RAD, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses')],
+    "taylor-angle-dropped": [("src/casim.c", '    start(&c, eqn, angle, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses are refused here too', '    start(&c, eqn, CASIM_RAD, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses are refused here too')],
     # a zero term printed
     "taylor-zero-printed": [("src/casim.c", '    if (is_k(c, ck, 0, 1)) return;\n    if (k == 0) t = ck;', '    if (k == 0) t = ck;')],
     # one order short (the loop stops at n-1)
@@ -695,6 +695,26 @@ MUTANTS = {
     "taylor-strip-first-bracket": [("src/casim.c", "            if (p[0] == '(' && p[1] == 'A' + c->var && (p[2] == '-' || p[2] == '+')) {", "            if (p[0] == '(') {")],
     # the names derive refuses taken as opaque (X! printed as its own Taylor polynomial)
     "taylor-names-opaque": [("src/casim.c", "    c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */", "    c.var = var, c.opaque = true;")],
+    # CAS 015, the unit's six. L'Hôpital applied to a quotient that isn't indeterminate (finite ÷ finite nonzero)
+    "limit-lhopital-not-indeterminate": [("src/casim.c", "                if (ln.k == L_FIN) return lm(L_FIN, canon(c, mul2(c, ln.v, power(c, ld.v, small(c, C_M1)))));\n", "")],
+    # the one-sided sign rule flipped: an odd derivative's sign taken as it is from below
+    "limit-side-sign-flipped": [("src/casim.c", "        return L->side > 0 || m % 2 == 0 ? s : -s;", "        return L->side > 0 || m % 2 == 0 ? -s : s;")],
+    # ATAN's ends without the angle factor: π÷2 in DEG
+    "limit-atan-angle-dropped": [("src/casim.c", "lu.k == L_PINF ? C_HALF : C_MHALF), leaf(c, K_PI, 0)),\n                                         angle_factor(c, true))));", "lu.k == L_PINF ? C_HALF : C_MHALF), leaf(c, K_PI, 0)),\n                                         small(c, C_1))));")],
+    # b^e with var in e not rewritten as EXP(e×LN(b)): 1^∞ undecided
+    "limit-exp-ln-dropped": [("src/casim.c", "        r = lm_walk(c, canon(c, fn(c, F_EXP, mul2(c, nd(c, f)->b, fn(c, F_LN, nd(c, f)->a)))), L);", "        r = lm(L_UND, 0);")],
+    # the step cap one short
+    "limit-step-cap-short": [("src/casim.c", "        if (++L->steps > LIM_STEPS || c->st != CASIM_OK) return lm(L_UND, 0);", "        if (++L->steps >= LIM_STEPS || c->st != CASIM_OK) return lm(L_UND, 0);")],
+    # UNDECIDED reported as UNDEFINED ("no limit")
+    "limit-undecided-as-undefined": [("src/casim.c", "    return r.k == L_UND ? CASIM_UNDECIDED : CASIM_UNDEFINED;", "    return CASIM_UNDEFINED;")],
+    # a review's four: the conjugate's result without the sum's finite terms
+    "limit-conjugate-drops-finite": [("src/casim.c", "            if (r.k == L_FIN) r.v = canon(c, add2(c, r.v, fin));      /* the sum's finite terms beside p + m */\n", "            (void)fin;\n")],
+    # SGN valued at its argument's limit (SGN(0) is 0) instead of its argument's sign near the point
+    "limit-sgn-by-value": [("src/casim.c", "        if (sg == 0) sg = lm_sign_near(c, u, L);\n", "")],
+    # an exponent whose sign isn't known taken as positive (X^K at ∞ is ∞)
+    "limit-unknown-exponent-positive": [("src/casim.c", "r = se == 1 ? lm(L_PINF, 0) : se == -1 ? lm(L_FIN, small(c, C_0)) : lm(L_UND, 0);", "r = se != -1 ? lm(L_PINF, 0) : lm(L_FIN, small(c, C_0));")],
+    # two oscillations taken as proven to have no limit (SIN(X)+SIN(X+π) is 0)
+    "limit-oscillations-summed": [("src/casim.c", "    if (none || osc) return osc + none == 1 && !pinf && !ninf ? lm(L_NONE, 0) : lm(L_UND, 0);", "    if (none || osc) return !pinf && !ninf ? lm(L_NONE, 0) : lm(L_UND, 0);")],
 }
 
 

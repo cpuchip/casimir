@@ -3721,6 +3721,9 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
         }
         return casim_taylor(rq->eqn, rq->var, rq->repl, n, rq->model, rq->angle, out, cap, arena, arena_cap);
     }
+    case CASIM_LIMIT:
+        return casim_limit(rq->eqn, rq->var, rq->repl, rq->repl2 ? rq->repl2 : "", rq->model, rq->angle, out, cap,
+                           arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -8457,4 +8460,486 @@ casim_status casim_taylor(const char *eqn, int var, const char *point, int n, in
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_taylor(eqn, var, point, n, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- limits (unit CAS 015) ----
+   lim f as var -> a, from a side, or as var -> ±∞ (work/015-limits.md). An extended-real walk over the canonical tree:
+   a constant; f's exact value where it has one at a (continuity); sums, products and powers by their parts; functions
+   by continuity and by their ends; 0÷0 and ∞÷∞ by L'Hôpital on derive, at most 12 steps a call; 0×∞ as a quotient;
+   b^e with var in e as EXP(e×LN(b)); ∞-∞ by the leading terms or a conjugate; the sign near a from the first derivative
+   that isn't 0 there, or at ∞ from the leading term. At ∞ the values are native (X, EXP, LN, powers, a polynomial's
+   leading term); -∞ is +∞ of f(-X). A two-sided limit at a is both one-sided ones. */
+
+enum { L_FIN, L_PINF, L_NINF, L_OSC, L_NONE, L_UND };    /* L_OSC: SIN/COS/TAN of an argument going to ∞ */
+
+typedef struct {
+    int k;
+    ref v;
+} lv;
+
+typedef struct {
+    int var, side;              /* side: 1 from above, -1 from below (one-sided at a finite point) */
+    ref a;                      /* the finite point, or 0 at +∞ */
+    int steps;                  /* L'Hôpital steps taken this call */
+} lwalk;
+
+#define LIM_STEPS 12
+
+static lv lm(int k, ref v) { lv r = {k, v}; return r; }
+
+/* a power of an exact 0 left in a value (0^K: canon folds those whose exponent's sign it knows), which no limit is */
+static bool lm_zpow(ctx *c, ref v)
+{
+    bool z = false;
+    if (!enter(c)) return false;
+    if (nd(c, v)->kind == K_POW) z = is_k(c, nd(c, v)->a, 0, 1) || lm_zpow(c, nd(c, v)->a) || lm_zpow(c, nd(c, v)->b);
+    else if (nd(c, v)->kind == K_FN) z = lm_zpow(c, nd(c, v)->a);
+    else if (nd(c, v)->kind == K_ADD || nd(c, v)->kind == K_MUL)
+        for (int i = 0; i < nd(c, v)->n && !z; i++) z = lm_zpow(c, list(c, nd(c, v)->a)[i]);
+    c->depth--;
+    return z;
+}
+
+/* f's exact value at the finite point, or false where it has none (the arena's status kept): every part valued, as
+   taylor's rule 7 does it, so a hole the whole folds away ((X-π÷2)×TAN(X) at π÷2 is 0×TAN(π÷2)) is not continuity */
+static __attribute__((noinline)) bool lm_at(ctx *c, ref f, const lwalk *L, ref *v)
+{
+    abn x;
+    taylor_check(c, f, L->var, L->a);                   /* a hole: UNDEFINED, which here is only "not continuous" */
+    if (c->st == CASIM_UNDEFINED) return c->st = CASIM_OK, false;
+    if (c->st != CASIM_OK) return false;
+    c->sub_var = L->var, c->sub_val = L->a;
+    *v = check_rewrite(c, f);
+    c->sub_val = 0, c->sub_var = -1;
+    if (c->st == CASIM_UNDEFINED) return c->st = CASIM_OK, false;
+    if (c->st != CASIM_OK) return false;
+    for (int l = 0; l < 26; l++)
+        if (contains(c, *v, l)) return !lm_zpow(c, *v);  /* other letters: a value, kept as it is, but not 0^K */
+    return const_val(c, *v, &x) == CV_OK;
+}
+
+/* a constant's sign: 1, -1, 0, or 2 when it has none here */
+static __attribute__((noinline)) int lm_sgn(ctx *c, ref v)
+{
+    abn x;
+    for (int l = 0; l < 26; l++)
+        if (contains(c, v, l)) return 2;
+    if (const_val(c, v, &x) != CV_OK) return 2;
+    return abn_is_zero(&x) ? 0 : abn_is_negative(&x) ? -1 : 1;
+}
+
+/* the leading term of f at +∞ for an algebraic f: f ~ coef × var^deg (coef a constant, not 0); false when it isn't
+   algebraic there, or the leading terms of a sum cancel */
+static bool lm_lead(ctx *c, ref f, int var, ref *coef, rat *deg);
+
+static __attribute__((noinline)) bool lm_lead_in(ctx *c, ref f, int var, ref *coef, rat *deg)
+{
+    const node *x = nd(c, f);
+    if (!contains(c, f, var)) return *coef = f, rat_int(deg, 0), true;
+    if (x->kind == K_VAR && x->id == var) return *coef = small(c, C_1), rat_int(deg, 1), true;
+    if (x->kind == K_POW && is_num(c, x->b)) {
+        rat e = *val(c, x->b), d;
+        ref k;
+        if (!lm_lead(c, nd(c, f)->a, var, &k, &d) || !rat_mul(deg, &d, &e)) return false;
+        if (e.q != 1 && lm_sgn(c, k) != 1) return false;          /* a root of a negative leading term */
+        *coef = canon(c, power(c, k, nd(c, f)->b));
+        return c->st == CASIM_OK;
+    }
+    if (x->kind == K_FN && x->id == F_SQRT) {
+        rat d, h = {1, 2};
+        ref k;
+        if (!lm_lead(c, nd(c, f)->a, var, &k, &d) || lm_sgn(c, k) != 1 || !rat_mul(deg, &d, &h)) return false;
+        *coef = canon(c, fn(c, F_SQRT, k));
+        return c->st == CASIM_OK;
+    }
+    if (x->kind == K_MUL) {
+        ref k = small(c, C_1);
+        rat d = {0, 1};
+        for (int i = 0; i < nd(c, f)->n; i++) {
+            ref ki;
+            rat di;
+            if (!lm_lead(c, list(c, nd(c, f)->a)[i], var, &ki, &di) || !rat_add(&d, &d, &di)) return false;
+            k = mul2(c, k, ki);
+        }
+        *coef = canon(c, k), *deg = d;
+        return c->st == CASIM_OK;
+    }
+    if (x->kind == K_ADD) {
+        ref k = 0;
+        rat d = {0, 1};
+        bool any = false;
+        for (int i = 0; i < nd(c, f)->n; i++) {
+            ref ki;
+            rat di;
+            if (!lm_lead(c, list(c, nd(c, f)->a)[i], var, &ki, &di)) return false;
+            if (!any || rat_cmp(&di, &d) > 0) k = ki, d = di, any = true;
+            else if (rat_cmp(&di, &d) == 0) k = add2(c, k, ki);
+        }
+        if (!any) return false;
+        k = canon(c, k);
+        if (c->st != CASIM_OK || lm_sgn(c, k) == 0) return false;   /* the leading terms cancel */
+        *coef = k, *deg = d;
+        return true;
+    }
+    return false;
+}
+
+static __attribute__((noinline)) bool lm_lead(ctx *c, ref f, int var, ref *coef, rat *deg)
+{
+    bool r;
+    if (!enter(c)) return false;
+    r = lm_lead_in(c, f, var, coef, deg);
+    c->depth--;
+    return r;
+}
+
+/* the sign of d near the point on L's side, where d's limit there is 0 (2: not decided): at a finite point, the first
+   derivative that isn't 0 there; at ∞, the leading term */
+static __attribute__((noinline)) int lm_sign_near(ctx *c, ref d, const lwalk *L)
+{
+    ref v;
+    if (!L->a) {
+        rat deg;
+        return lm_lead(c, d, L->var, &v, &deg) ? lm_sgn(c, v) : 2;
+    }
+    for (int m = 1; m <= LIM_STEPS && c->st == CASIM_OK; m++) {
+        int s;
+        d = canon(c, deriv(c, d));
+        if (!lm_at(c, d, L, &v)) return 2;
+        s = lm_sgn(c, v);
+        if (s == 2) return 2;
+        if (s == 0) continue;
+        return L->side > 0 || m % 2 == 0 ? s : -s;
+    }
+    return 2;
+}
+
+static lv lm_walk(ctx *c, ref f, lwalk *L);
+
+/* f's factors over and under the line (under: a power with a negative number for its exponent), as n and d */
+static __attribute__((noinline)) bool lm_split(ctx *c, ref f, ref *n, ref *d)
+{
+    const node *x = nd(c, f);
+    int cnt = x->kind == K_MUL ? x->n : 1;
+    ref nn = small(c, C_1), dd = small(c, C_1);
+    bool under = false;
+    for (int i = 0; i < cnt; i++) {
+        ref g = nd(c, f)->kind == K_MUL ? list(c, nd(c, f)->a)[i] : f;
+        const node *y = nd(c, g);
+        if (y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->p < 0) {
+            rat e = *val(c, y->b);
+            e.p = -e.p;
+            dd = mul2(c, dd, power(c, y->a, num(c, &e)));
+            under = true;
+        } else nn = mul2(c, nn, g);
+    }
+    *n = canon(c, nn), *d = canon(c, dd);
+    return under;
+}
+
+/* n ÷ d by the limits of each; 0÷0 and ∞÷∞ by L'Hôpital (the quotient of the derivatives put in canonical form and
+   split again, so it simplifies between steps), or at ∞ by the leading terms */
+static __attribute__((noinline)) lv lm_quot(ctx *c, ref n, ref d, lwalk *L)
+{
+    for (;;) {
+        lv ln = lm_walk(c, n, L), ld = lm_walk(c, d, L);
+        ref q;
+        if (c->st != CASIM_OK) return lm(L_UND, 0);
+        if (ln.k >= L_OSC || ld.k >= L_OSC) return lm(L_UND, 0);
+        if (ld.k == L_FIN) {
+            int sd = lm_sgn(c, ld.v);
+            if (sd != 0) {
+                if (ln.k == L_FIN) return lm(L_FIN, canon(c, mul2(c, ln.v, power(c, ld.v, small(c, C_M1)))));
+                if (sd == 2) return lm(L_UND, 0);
+                return lm(ln.k == L_PINF ? (sd > 0 ? L_PINF : L_NINF) : (sd > 0 ? L_NINF : L_PINF), 0);
+            }
+            if (ln.k != L_FIN || lm_sgn(c, ln.v) != 0) {        /* nonzero ÷ 0 */
+                int sn = ln.k == L_FIN ? lm_sgn(c, ln.v) : ln.k == L_PINF ? 1 : -1, s = lm_sign_near(c, d, L);
+                if (sn == 2 || s == 2) return lm(L_UND, 0);
+                return lm(sn * s > 0 ? L_PINF : L_NINF, 0);
+            }
+        } else if (ln.k == L_FIN) {
+            return lm(L_FIN, small(c, C_0));                    /* finite ÷ ∞ */
+        }
+        if (!L->a) {
+            /* 0÷0 or ∞÷∞ at ∞: the leading terms, when both are algebraic (negative degrees too) */
+            ref kn, kd;
+            rat dn, dg;
+            if (lm_lead(c, n, L->var, &kn, &dn) && lm_lead(c, d, L->var, &kd, &dg)) {
+                int cmp = rat_cmp(&dn, &dg), s = lm_sgn(c, kn) * lm_sgn(c, kd);
+                if (cmp < 0) return lm(L_FIN, small(c, C_0));
+                if (cmp == 0) return lm(L_FIN, canon(c, mul2(c, kn, power(c, kd, small(c, C_M1)))));
+                if (s != 1 && s != -1) return lm(L_UND, 0);
+                return lm(s > 0 ? L_PINF : L_NINF, 0);
+            }
+            if (c->st != CASIM_OK) return lm(L_UND, 0);
+        }
+        /* 0÷0 or ∞÷∞: L'Hôpital */
+        if (++L->steps > LIM_STEPS || c->st != CASIM_OK) return lm(L_UND, 0);
+        q = canon(c, mul2(c, canon(c, deriv(c, n)), power(c, canon(c, deriv(c, d)), small(c, C_M1))));
+        if (c->st != CASIM_OK) return lm(L_UND, 0);
+        if (!lm_split(c, q, &n, &d)) return lm_walk(c, q, L);
+    }
+}
+
+/* a square root, alone or as a factor (-SQRT(u) is -1 × SQRT(u)) */
+static bool lm_root(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    if ((x->kind == K_FN && x->id == F_SQRT) || (x->kind == K_POW && is_k(c, x->b, 1, 2))) return true;
+    if (x->kind == K_MUL)
+        for (int i = 0; i < x->n; i++) {
+            const node *y = nd(c, list(c, x->a)[i]);
+            if ((y->kind == K_FN && y->id == F_SQRT) || (y->kind == K_POW && is_k(c, y->b, 1, 2))) return true;
+        }
+    return false;
+}
+
+/* the ∞-∞ of a sum: the leading terms at ∞, then a conjugate (a square root in a two-term sum), then which term
+   dominates */
+static __attribute__((noinline)) lv lm_inf_minus_inf(ctx *c, ref f, ref p, ref m, ref fin, lwalk *L)
+{
+    ref k;
+    rat deg;
+    if (!L->a && lm_lead(c, f, L->var, &k, &deg)) {
+        int s = lm_sgn(c, k);
+        if (s == 2) return lm(L_UND, 0);
+        if (rat_cmp(&deg, &(rat){0, 1}) > 0) return lm(s > 0 ? L_PINF : L_NINF, 0);
+        if (deg.p == 0) return lm(L_FIN, k);
+        return lm(L_FIN, small(c, C_0));
+    }
+    {
+        /* p + m with a root: (p^2 - m^2) ÷ (p - m) */
+        if (lm_root(c, p) || lm_root(c, m)) {
+            ref num_ = canon(c, add2(c, power(c, p, small(c, C_2)), neg(c, power(c, m, small(c, C_2)))));
+            ref den = canon(c, add2(c, p, neg(c, m)));
+            lv r = lm_quot(c, num_, den, L);
+            if (r.k == L_FIN) r.v = canon(c, add2(c, r.v, fin));      /* the sum's finite terms beside p + m */
+            return r;
+        }
+    }
+    {
+        /* p (1 + m÷p): which dominates */
+        lv r = lm_quot(c, m, p, L);
+        if (r.k == L_PINF || r.k == L_NINF) return lm_walk(c, m, L);
+        if (r.k == L_FIN) {
+            int s = lm_sgn(c, canon(c, add2(c, small(c, C_1), r.v)));
+            if (s == 1) return lm_walk(c, p, L);
+            if (s == -1) return lm_walk(c, m, L);
+        }
+        return lm(L_UND, 0);
+    }
+}
+
+static __attribute__((noinline)) lv lm_sum(ctx *c, ref f, lwalk *L)
+{
+    ref s = small(c, C_0), pos = small(c, C_0), negs = small(c, C_0);
+    int pinf = 0, ninf = 0, osc = 0, none = 0;
+    for (int i = 0; i < nd(c, f)->n; i++) {
+        ref g = list(c, nd(c, f)->a)[i];
+        lv e = lm_walk(c, g, L);
+        if (e.k == L_UND) return e;
+        if (e.k == L_FIN) s = add2(c, s, e.v);
+        else if (e.k == L_PINF) pinf++, pos = add2(c, pos, g);
+        else if (e.k == L_NINF) ninf++, negs = add2(c, negs, g);
+        else if (e.k == L_OSC) osc++;
+        else none++;
+    }
+    /* rule 5: one oscillating term beside terms with finite limits has none (SIN(X)+1); two may cancel
+       (SIN(X)+SIN(X+π) is 0), and one beside an ∞ is undecided (SIN(X)+X) */
+    if (none || osc) return osc + none == 1 && !pinf && !ninf ? lm(L_NONE, 0) : lm(L_UND, 0);
+    if (pinf && ninf) return lm_inf_minus_inf(c, f, canon(c, pos), canon(c, negs), canon(c, s), L);
+    if (pinf) return lm(L_PINF, 0);
+    if (ninf) return lm(L_NINF, 0);
+    return lm(L_FIN, canon(c, s));
+}
+
+static __attribute__((noinline)) lv lm_prod(ctx *c, ref f, lwalk *L)
+{
+    ref fin = small(c, C_1), inf = small(c, C_1), zero = small(c, C_1), v = small(c, C_1);
+    int sgn = 1, infs = 0, zeros = 0, osc = 0;
+    for (int i = 0; i < nd(c, f)->n; i++) {
+        ref g = list(c, nd(c, f)->a)[i];
+        lv e = lm_walk(c, g, L);
+        if (e.k == L_UND || e.k == L_NONE) return lm(L_UND, 0);
+        if (e.k == L_OSC) { osc++; fin = mul2(c, fin, g); continue; }
+        if (e.k == L_FIN) {
+            int s = lm_sgn(c, e.v);
+            if (s == 0) zeros++, zero = mul2(c, zero, g);
+            else v = mul2(c, v, e.v), fin = mul2(c, fin, g), sgn *= s == 2 ? 1 : s;
+        } else infs++, inf = mul2(c, inf, g), sgn *= e.k == L_PINF ? 1 : -1;
+    }
+    if (osc) return osc == 1 && !infs && !zeros && lm_sgn(c, canon(c, v)) != 2 ? lm(L_NONE, 0) : lm(L_UND, 0);
+    if (zeros && infs) {
+        /* 0 × ∞ as a quotient, inverting the factor whose reciprocal stays simple under L'Hôpital: an EXP going to 0
+           (X×EXP(-X) is X÷EXP(X)), else an algebraic ∞ (X×LN(1+1÷X) is LN(1+1÷X)÷X^-1), else the zeros (X×LN(X) is
+           LN(X)÷X^-1, (X-a)×TAN(X) is TAN(X)÷(X-a)^-1) */
+        ref z = canon(c, zero), i = canon(c, inf), k;
+        rat d;
+        if (c->st != CASIM_OK) return lm(L_UND, 0);
+        if (!(nd(c, z)->kind == K_FN && nd(c, z)->id == F_EXP) && lm_lead(c, i, L->var, &k, &d))
+            return lm_quot(c, canon(c, mul2(c, z, fin)), canon(c, power(c, i, small(c, C_M1))), L);
+        if (c->st != CASIM_OK) return lm(L_UND, 0);
+        k = nd(c, z)->kind == K_FN && nd(c, z)->id == F_EXP ? fn(c, F_EXP, neg(c, nd(c, z)->a))   /* EXP(-u) */
+                                                            : power(c, z, small(c, C_M1));
+        return lm_quot(c, canon(c, mul2(c, i, fin)), canon(c, k), L);
+    }
+    if (zeros) return lm(L_FIN, small(c, C_0));
+    if (infs) return lm_sgn(c, canon(c, v)) == 2 ? lm(L_UND, 0) : lm(sgn > 0 ? L_PINF : L_NINF, 0);
+    return lm(L_FIN, canon(c, v));
+}
+
+static __attribute__((noinline)) lv lm_func(ctx *c, ref f, lwalk *L)
+{
+    int id = nd(c, f)->id;
+    ref u = nd(c, f)->a;
+    lv lu;
+    if (id == F_INV) return lm_quot(c, small(c, C_1), u, L);
+    lu = lm_walk(c, u, L);
+    if (id == F_TAN) {                                  /* rule 5: TAN of an argument going to ±∞ has no limit */
+        if (lu.k == L_PINF || lu.k == L_NINF) return lm(L_OSC, 0);
+        if (lu.k != L_FIN) return lm(L_UND, 0);
+        return lm_quot(c, canon(c, fn(c, F_SIN, u)), canon(c, fn(c, F_COS, u)), L);   /* its poles are a quotient's */
+    }
+    if (lu.k == L_UND || lu.k == L_NONE || lu.k == L_OSC) return lm(L_UND, 0);
+    if (id == F_SGN) {                                  /* ABS's derivative: u's sign near the point, also where u -> 0 */
+        int sg = lu.k == L_PINF ? 1 : lu.k == L_NINF ? -1 : lm_sgn(c, lu.v);
+        if (sg == 0) sg = lm_sign_near(c, u, L);
+        return sg == 1 || sg == -1 ? lm(L_FIN, small(c, sg == 1 ? C_1 : C_M1)) : lm(L_UND, 0);
+    }
+    if (lu.k == L_FIN) {
+        ref w = canon(c, fn(c, id, lu.v));
+        if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+        else if (c->st == CASIM_OK) {
+            abn x;
+            int cv = const_val(c, w, &x);
+            if (cv == CV_OK) return lm(L_FIN, w);
+            for (int l = 0; l < 26; l++)
+                if (contains(c, w, l)) return lm(L_FIN, w);
+        }
+        if ((id == F_LN || id == F_LOG) && lm_sgn(c, lu.v) == 0)     /* LN(u), u -> 0 from above */
+            return lm_sign_near(c, u, L) == 1 ? lm(L_NINF, 0) : lm(L_UND, 0);
+        return lm(L_UND, 0);
+    }
+    switch (id) {
+    case F_EXP: case F_ALOG: return lu.k == L_PINF ? lm(L_PINF, 0) : lm(L_FIN, small(c, C_0));
+    case F_LN: case F_LOG: case F_SQRT: return lu.k == L_PINF ? lm(L_PINF, 0) : lm(L_UND, 0);
+    case F_ATAN:
+        return lm(L_FIN, canon(c, mul2(c, mul2(c, small(c, lu.k == L_PINF ? C_HALF : C_MHALF), leaf(c, K_PI, 0)),
+                                         angle_factor(c, true))));
+    case F_SINH: return lu;
+    case F_COSH: return lm(L_PINF, 0);
+    case F_TANH: return lm(L_FIN, small(c, lu.k == L_PINF ? C_1 : C_M1));
+    case F_SIN: case F_COS: return lm(L_OSC, 0);
+    default: return lm(L_UND, 0);
+    }
+}
+
+static lv lm_walk(ctx *c, ref f, lwalk *L)
+{
+    const node *x;
+    ref v, n, d;
+    lv r;
+    if (c->st != CASIM_OK) return lm(L_UND, 0);
+    if (!contains(c, f, L->var)) return lm(L_FIN, f);
+    if (L->a && lm_at(c, f, L, &v)) return lm(L_FIN, v);          /* continuity */
+    if (c->st != CASIM_OK || !enter(c)) return lm(L_UND, 0);
+    x = nd(c, f);
+    if (x->kind == K_VAR) r = L->a ? lm(L_FIN, L->a) : lm(L_PINF, 0);
+    else if ((x->kind == K_MUL || x->kind == K_POW) && lm_split(c, f, &n, &d)) r = lm_quot(c, n, d, L);
+    else if (x->kind == K_ADD) r = lm_sum(c, f, L);
+    else if (x->kind == K_MUL) r = lm_prod(c, f, L);
+    else if (x->kind == K_POW && contains(c, x->b, L->var))       /* b^e = EXP(e LN(b)) */
+        r = lm_walk(c, canon(c, fn(c, F_EXP, mul2(c, nd(c, f)->b, fn(c, F_LN, nd(c, f)->a)))), L);
+    else if (x->kind == K_POW) {
+        ref e = x->b;
+        lv lb = lm_walk(c, x->a, L);
+        int se = lm_sgn(c, e);
+        if (lb.k == L_FIN && lm_sgn(c, lb.v) == 0 && se != 1) r = lm(L_UND, 0);   /* 0^K: K's sign decides */
+        else if (lb.k == L_FIN) {
+            ref w = canon(c, power(c, lb.v, e));
+            r = c->st == CASIM_OK ? lm(L_FIN, w) : lm(L_UND, 0);
+            if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+        } else if (lb.k == L_PINF) r = se == 1 ? lm(L_PINF, 0) : se == -1 ? lm(L_FIN, small(c, C_0)) : lm(L_UND, 0);
+        else if (lb.k == L_NINF && is_num(c, e) && val(c, e)->q == 1 && se > 0)
+            r = lm(val(c, e)->p % 2 ? L_NINF : L_PINF, 0);
+        else r = lm(L_UND, 0);
+    } else if (x->kind == K_FN) r = lm_func(c, f, L);
+    else r = lm(L_UND, 0);
+    c->depth--;
+    return r;
+}
+
+static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var, const char *point, int side, int angle,
+                                                       char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref f = SPARE;
+    abn av;
+    lv r;
+    lwalk L = {var, side, 0, 0};
+    size_t ocap = cap < SLOT ? cap : SLOT;
+    int chars = 0, inf = 0;
+    out_t w = {out, ocap, 0, false};
+    if (cap) out[0] = '\0';
+    if (!eqn || !point || side < -1 || side > 1) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (!strcmp(point, "\xe2\x88\x9e")) inf = 1;
+    if (!strcmp(point, "-\xe2\x88\x9e")) inf = -1;
+    if (inf && side) return CASIM_BAD_ARG;              /* rule 2: the side of ∞ is implied */
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.var = var;                        /* the names derive refuses are refused (not opaque): L'Hôpital derives */
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) f = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, f)->kind == K_REQ) return CASIM_BAD_ARG;      /* an equation */
+    if (c.st == CASIM_OK) f = canon(&c, f);
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if (inf < 0) {                                      /* -∞: +∞ of f(-X) */
+        c.sub_var = var, c.sub_val = neg(&c, leaf(&c, K_VAR, var));
+        f = canon(&c, check_rewrite(&c, f));
+        c.sub_val = 0, c.sub_var = -1;
+    }
+    if (!inf) {
+        for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+        L.a = read_bound(&c, point, chars + 1, &av);
+        c.s = eqn;
+        if (c.st == CASIM_UNDEFINED) c.st = CASIM_BAD_ARG;     /* a point with no value (1÷0): UNDEFINED is "no limit" */
+    }
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if (L.a && !side) {
+        /* both sides: f's value where it has one, else each one-sided limit, which must agree */
+        ref v;
+        if (lm_at(&c, f, &L, &v)) r = lm(L_FIN, v);
+        else {
+            lv up, dn;
+            L.side = 1, up = lm_walk(&c, f, &L);
+            L.side = -1, L.steps = 0, dn = lm_walk(&c, f, &L);
+            if (up.k == L_UND || dn.k == L_UND) r = lm(L_UND, 0);
+            else if (up.k == L_NONE || dn.k == L_NONE || up.k == L_OSC || dn.k == L_OSC) r = lm(L_NONE, 0);
+            else if (up.k != dn.k || (up.k == L_FIN && cmp(&c, canon(&c, up.v), canon(&c, dn.v)) != 0))
+                r = lm(L_NONE, 0);
+            else r = up;
+        }
+    } else r = lm_walk(&c, f, &L);
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if (r.k == L_FIN) return finish(&c, canon(&c, r.v), out, ocap);
+    if (r.k == L_PINF || r.k == L_NINF) {
+        puts_(&w, r.k == L_PINF ? "\xe2\x88\x9e" : "-\xe2\x88\x9e");
+        if (!w.full) return CASIM_OK;
+        if (ocap) out[0] = '\0';
+        return CASIM_TOO_LONG;
+    }
+    return r.k == L_UND ? CASIM_UNDECIDED : CASIM_UNDEFINED;
+}
+
+casim_status casim_limit(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
+                         size_t cap, void *arena, size_t arena_cap)
+{
+    int s;
+    if (cap) out[0] = '\0';
+    if (!model_ok(model) || !side) return CASIM_BAD_ARG;
+    s = !strcmp(side, "+") ? 1 : !strcmp(side, "-") ? -1 : !*side ? 0 : 2;
+    if (s == 2) return CASIM_BAD_ARG;
+    return do_limit(eqn, var, point, s, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }

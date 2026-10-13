@@ -10,7 +10,7 @@ import measure  # noqa: E402
 
 ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
 STATUS = {"TOO_LONG": 3, "BAD_ARG": 4, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7, "NOT_INTEGRABLE": 8,
-          "PARTIAL": 9, "UNDEFINED": 10, "IMPROPER": 11}
+          "PARTIAL": 9, "UNDEFINED": 10, "IMPROPER": 11, "UNDECIDED": 12}
 
 
 def c_str(s):
@@ -33,8 +33,8 @@ def main(path):
             print(f"skipped {name}: its {len(want.encode())}-byte text exceeds the bench's buffer")
             continue
         ops = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor", "defint", "pdiv", "pgcd",
-               "cancel", "partfrac", "taylor"]
-        lo, hi = (repl.split("|", 1) if op in ("defint", "taylor") else (repl or "", ""))    # taylor: point, n
+               "cancel", "partfrac", "taylor", "limit"]
+        lo, hi = (repl.split("|", 1) if op in ("defint", "taylor", "limit") else (repl or "", ""))   # point, n or side
         rows.append(f"    {{{c_str(name)}, {c_str(expr)}, {ord(var) - ord('A')}, {ANGLES[angle]}, "
                     f"{ops.index(op)}, {c_str(lo)}, {models[model]}, {len(expr)}, {status}, {c_str(want)}, {c_str(hi)}}},")
     os.makedirs(os.path.dirname(path), exist_ok=True)

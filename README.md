@@ -28,13 +28,14 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
 | taylor | a Taylor polynomial to order 12 about a point, exact (`LN(X)` about 1 to 3 is `(X-1)-0.5×(X-1)^2+(X-1)^3÷3`) |
+| limit | a limit at a point from either side or both, or at ∞ and -∞, exact (`(1+3÷X)^X` at ∞ is `EXP(3)`) |
 | steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
-**What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, limits,
-infinite series and sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
+**What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, infinite
+series and sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee
@@ -123,7 +124,7 @@ gzipped), most of it the decimal library's tables.
   syntax
   (tests/*_test.c).
 - **The standalone checks** (`make check`, and CI) need nothing private:
-  - the golden test, 9,391 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the golden test, 9,983 calls whose exact answers were recorded from earlier sources, so a change shows up;
   - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
     where one is;
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
@@ -132,11 +133,13 @@ gzipped), most of it the decimal library's tables.
   - the examples in docs/language.md, and CAS 013's walks in work/013-steps-examples.txt.
   - Taylor polynomials judged exactly against power series over fractions, the opposite method
     (scripts/taylor-values.py).
+  - limits judged against truths built from those power series (a quotient's limit from its first nonzero terms, at
+    a point, at ∞ and at -∞), not from derivatives, read back to 45 digits (scripts/limit-values.py).
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 165 deliberate faults, each of which the tests
-  must catch; `make test` catches all 165 (at CAS 014). Each mutant's copy re-records its frame table first, so a
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 175 deliberate faults, each of which the tests
+  must catch; `make test` catches all 175 (at CAS 015). Each mutant's copy re-records its frame table first, so a
   fault that only moves a frame isn't counted as caught; the one fault whose catch is the frame table itself (the
   rational-integral hook moved into do_integrate) is named in the script. When there were 80, the standalone checks
   first caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose

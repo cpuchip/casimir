@@ -7,13 +7,14 @@ typedef struct {
     const char *expr;
     int var, angle;
     int op;                 /* 0 derive, 1 simplify, 2 expand, 3 collect, 4 subst, 5 solve, 6 integrate, 7 factor,
-                               8 defint, 9 pdiv, 10 pgcd, 11 cancel, 12 partfrac, 13 taylor */
-    const char *repl;       /* subst's replacement; defint's lower bound; taylor's point */
+                               8 defint, 9 pdiv, 10 pgcd, 11 cancel, 12 partfrac, 13 taylor, 14 limit */
+    const char *repl;       /* subst's replacement; defint's lower bound; taylor's and limit's point */
     int model;              /* the text's stamp, the replacement's too (CAS 004: 1 STU, 33, 35) */
     int chars;              /* the equation's length in characters */
     int status;             /* the host's status (0 OK, 3 TOO_LONG, ...) */
     const char *want;       /* the host's text ("" unless OK) */
-    const char *repl2;      /* defint's upper bound (CAS 009); taylor's order n, as text (CAS 014) */
+    const char *repl2;      /* defint's upper bound (CAS 009); taylor's order n, as text (CAS 014); limit's
+                               side, "+", "-" or "" (CAS 015) */
 } bench_case;
 
 extern const bench_case cases[];

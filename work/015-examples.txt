@@ -1,0 +1,73 @@
+# CAS unit 015 visible examples (work/015-limits.md), written by casim from the rules. Columns: ID | op | text | var |
+# point | side (+, -, or both) | angle | model | answer (or status).
+# - The answers are the textbook ones, by hand: SIN(X)÷X → 1, (SIN(X)-X)÷X^3 → -1÷6 (SIN's X^3 term), (1-COS(X))÷X^2
+#   → 1÷2, (EXP(X)-1)÷X → 1; (X^2-4)÷(X-2) is X+2 away from 2, so 4; 1÷X → ∞ from above, -∞ from below, so no
+#   two-sided limit; X×LN(X) → 0 from above; rationals at ∞ by their leading terms; SQRT(X^2+X)-X is X÷(SQRT(X^2+X)+X)
+#   → 1÷2; (1+p÷X)^X → EXP(p); ATAN → π÷2, 90 in DEG; SIN(X) at ∞ oscillates (rule 5: no limit).
+# - L0021: SIN(X)÷X at ∞ is 0 by the squeeze theorem, which the walk doesn't have: UNDECIDED (rule 5).
+# - L0022: X^13÷EXP(X) at ∞ is 0, but each L'Hôpital step takes one power off, 13 steps past the cap of 12: UNDECIDED.
+#   L0023 is the same at 12 powers, inside the cap.
+# - L0027-L0030: CAS 014's contrast. X÷X at 0 is UNDEFINED as a Taylor value but 1 as a limit (rule 3); TAN at π÷2 is
+#   ∞ from below, -∞ from above, and no two-sided limit.
+# - L0038: the conjugate with the root under a minus: X-SQRT(X^2-3×X) is 3×X÷(X+SQRT(X^2-3×X)) → 3÷2. L0039-L0040: a
+#   quotient at -∞ by its leading terms, 0÷0 there ((X^3+X^2)÷(2×X^3) → 1÷2) and growing ((X^3+X^2)÷2 → -∞).
+# - L0041-L0044: 0×∞, each written as the quotient whose L'Hôpital steps simplify: (X-π÷2)×TAN(X) at π÷2 is
+#   TAN(X)÷(X-π÷2)^-1 → -1 (its value 0×TAN(π÷2) doesn't exist, so it isn't continuity); X×EXP(-X) is X÷EXP(X) → 0;
+#   X^2×LN(X) at 0+ is LN(X)÷X^-2 → 0. L0045: X! is refused as derive refuses it.
+# - L0046-L0052 (a review's findings): an ∞-∞ resolved by the conjugate keeps the sum's finite terms (1÷2 + 1);
+#   ABS(X)÷X is SGN's limit, 1 from above and -1 from below, so no two-sided limit; ABS(SIN(X))÷X → 1 from above;
+#   X^K at ∞ depends on K's sign and two oscillations may cancel (SIN(X)+SIN(X+π) is 0), so neither is proven;
+#   a point with no value (1÷0) is BAD_ARG, since UNDEFINED is "no limit".
+
+L0001 | limit | SIN(X)÷X | X | 0 | both | RAD | 35 | 1
+L0002 | limit | (SIN(X)-X)÷X^3 | X | 0 | both | RAD | 35 | -1÷6
+L0003 | limit | (1-COS(X))÷X^2 | X | 0 | both | RAD | 35 | 0.5
+L0004 | limit | (EXP(X)-1)÷X | X | 0 | both | RAD | 35 | 1
+L0005 | limit | (X^2-4)÷(X-2) | X | 2 | both | RAD | 35 | 4
+L0006 | limit | 1÷X | X | 0 | + | RAD | 35 | ∞
+L0007 | limit | 1÷X | X | 0 | - | RAD | 35 | -∞
+L0008 | limit | 1÷X | X | 0 | both | RAD | 35 | UNDEFINED
+L0009 | limit | 1÷X^2 | X | 0 | both | RAD | 35 | ∞
+L0010 | limit | X×LN(X) | X | 0 | + | RAD | 35 | 0
+L0011 | limit | LN(X) | X | 0 | + | RAD | 35 | -∞
+L0012 | limit | (X+1)÷(X^2+3) | X | ∞ | both | RAD | 35 | 0
+L0013 | limit | (2×X^2+1)÷(3×X^2-X) | X | ∞ | both | RAD | 35 | 2÷3
+L0014 | limit | (X^3+1)÷(X^2+3) | X | ∞ | both | RAD | 35 | ∞
+L0015 | limit | SQRT(X^2+X)-X | X | ∞ | both | RAD | 35 | 0.5
+L0016 | limit | X÷EXP(X) | X | ∞ | both | RAD | 35 | 0
+L0017 | limit | (1+1÷X)^X | X | ∞ | both | RAD | 35 | EXP(1)
+L0018 | limit | (1+3÷X)^X | X | ∞ | both | RAD | 35 | EXP(3)
+L0019 | limit | ATAN(X) | X | ∞ | both | RAD | 35 | π÷2
+L0020 | limit | ATAN(X) | X | ∞ | both | DEG | 35 | 90
+L0021 | limit | SIN(X)÷X | X | ∞ | both | RAD | 35 | UNDECIDED
+L0022 | limit | X^13÷EXP(X) | X | ∞ | both | RAD | 35 | UNDECIDED
+L0023 | limit | X^12÷EXP(X) | X | ∞ | both | RAD | 35 | 0
+L0024 | limit | SIN(X) | X | ∞ | both | RAD | 35 | UNDEFINED
+L0025 | limit | SIN(X) | X | ∞ | + | RAD | 35 | BAD_ARG
+L0026 | limit | SIN(X)÷X | X | K | both | RAD | 35 | BAD_ARG
+L0027 | limit | X÷X | X | 0 | both | RAD | 35 | 1
+L0028 | limit | TAN(X) | X | π÷2 | - | RAD | 35 | ∞
+L0029 | limit | TAN(X) | X | π÷2 | + | RAD | 35 | -∞
+L0030 | limit | TAN(X) | X | π÷2 | both | RAD | 35 | UNDEFINED
+L0031 | limit | ATAN(X) | X | -∞ | both | RAD | 35 | -π÷2
+L0032 | limit | X^3-X | X | -∞ | both | RAD | 35 | -∞
+L0033 | limit | (1-2÷X)^(3×X) | X | ∞ | both | RAD | 35 | EXP(-6)
+L0034 | limit | X^2=1 | X | 0 | both | RAD | 35 | BAD_ARG
+L0035 | limit | SIN(X)÷X | X | 0 | ± | RAD | 35 | BAD_ARG
+L0036 | limit | COS(X)÷(1+X) | X | 0 | both | RAD | 35 | 1
+L0037 | limit | (EXP(X)-1-X)÷X^2 | X | 0 | both | DEG | 35 | 0.5
+L0038 | limit | X-SQRT(X^2-3×X) | X | ∞ | both | RAD | 35 | 1.5
+L0039 | limit | (1÷X^2+1÷X^3)÷(2÷X^2) | X | -∞ | both | RAD | 35 | 0.5
+L0040 | limit | (1÷X^2+1÷X^3)÷(2÷X^5) | X | -∞ | both | RAD | 35 | -∞
+L0041 | limit | (X-π÷2)×TAN(X) | X | π÷2 | both | RAD | 35 | -1
+L0042 | limit | X×EXP(-X) | X | ∞ | both | RAD | 35 | 0
+L0043 | limit | X^2×LN(X) | X | 0 | + | RAD | 35 | 0
+L0044 | limit | X^3×EXP(-2×X) | X | ∞ | both | RAD | 35 | 0
+L0045 | limit | X! | X | 1 | both | RAD | 35 | NOT_DIFFERENTIABLE !
+L0046 | limit | SQRT(X^2+X)-X+1 | X | ∞ | both | RAD | 35 | 1.5
+L0047 | limit | ABS(X)÷X | X | 0 | + | RAD | 35 | 1
+L0048 | limit | ABS(X)÷X | X | 0 | both | RAD | 35 | UNDEFINED
+L0049 | limit | ABS(SIN(X))÷X | X | 0 | + | RAD | 35 | 1
+L0050 | limit | X^K | X | ∞ | both | RAD | 35 | UNDECIDED
+L0051 | limit | SIN(X)+SIN(X+π) | X | ∞ | both | RAD | 35 | UNDECIDED
+L0052 | limit | 1÷X | X | 1÷0 | both | RAD | 35 | BAD_ARG

@@ -14,6 +14,7 @@
  *   casim cancel "<n÷d>" X RAD        n÷d reduced by their gcd, then the removed values (CAS 010)
  *   casim partfrac "<n÷d>" X RAD      n÷d in partial fractions over Q, then the removed values (CAS 012)
  *   casim taylor "<text>" X A N RAD   the Taylor polynomial about A to order N, ascending powers of (X-A) (CAS 014)
+ *   casim limit "<text>" X A S RAD    the limit as X goes to A (or ∞, -∞) from side S: +, -, or '' for both (CAS 015)
  *   casim steps [integrate|solve|partfrac] "<text>" X RAD  derive's (or integrate's, solve's, partfrac's) steps, one
  *                                    a line, each
  *                                    indented by its depth: RULE: d/dX(u) = ... (work/steps-derive.md,
@@ -42,7 +43,7 @@ static unsigned char arena[1 << 20];
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
        OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR,
        OP_DEFINT = CASIM_DEFINT, OP_PDIV = CASIM_PDIV, OP_PGCD = CASIM_PGCD, OP_CANCEL = CASIM_CANCEL,
-       OP_PARTFRAC = CASIM_PARTFRAC, OP_TAYLOR = CASIM_TAYLOR };
+       OP_PARTFRAC = CASIM_PARTFRAC, OP_TAYLOR = CASIM_TAYLOR, OP_LIMIT = CASIM_LIMIT };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
@@ -75,7 +76,7 @@ static casim_status steps(int op, const char *text, int var, int angle, size_t a
                               : st == CASIM_SYNTAX ? "SYNTAX" : st == CASIM_NOT_DIFFERENTIABLE ? "NOT_DIFFERENTIABLE"
                               : st == CASIM_NOT_INTEGRABLE ? "NOT_INTEGRABLE" : st == CASIM_NOT_POLYNOMIAL ? "NOT_POLYNOMIAL"
                               : st == CASIM_NOT_NUMERIC ? "NOT_NUMERIC" : st == CASIM_PARTIAL ? "PARTIAL"
-                              : st == CASIM_UNDEFINED ? "UNDEFINED" : "BAD_ARG");
+                              : st == CASIM_UNDEFINED ? "UNDEFINED" : st == CASIM_UNDECIDED ? "UNDECIDED" : "BAD_ARG");
     return st;
 }
 
@@ -126,19 +127,22 @@ int main(int argc, char **argv)
        : strcmp(argv[i], "integrate") == 0 ? OP_INTEGRATE : strcmp(argv[i], "factor") == 0 ? OP_FACTOR
        : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : strcmp(argv[i], "pdiv") == 0 ? OP_PDIV
        : strcmp(argv[i], "pgcd") == 0 ? OP_PGCD : strcmp(argv[i], "cancel") == 0 ? OP_CANCEL
-       : strcmp(argv[i], "partfrac") == 0 ? OP_PARTFRAC : strcmp(argv[i], "taylor") == 0 ? OP_TAYLOR : -1;
+       : strcmp(argv[i], "partfrac") == 0 ? OP_PARTFRAC : strcmp(argv[i], "taylor") == 0 ? OP_TAYLOR
+       : strcmp(argv[i], "limit") == 0 ? OP_LIMIT : -1;
     args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR || op == OP_CANCEL ||
            op == OP_PARTFRAC ? 4
-         : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT || op == OP_TAYLOR ? 6 : 3;
+         : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT || op == OP_TAYLOR || op == OP_LIMIT ? 6 : 3;
     if (op < 0 || argc - i != args) goto usage;
     if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ||
-        op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL || op == OP_PARTFRAC || op == OP_TAYLOR) {
+        op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL || op == OP_PARTFRAC || op == OP_TAYLOR ||
+        op == OP_LIMIT) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
     if (op == OP_SUBST || op == OP_PDIV || op == OP_PGCD) repl = argv[i + 3];
     if (op == OP_DEFINT) repl = argv[i + 3], repl2 = argv[i + 4];
     if (op == OP_TAYLOR) repl = argv[i + 3], repl2 = argv[i + 4];      /* taylor "<text>" X <point> <n>: n as text */
+    if (op == OP_LIMIT) repl = argv[i + 3], repl2 = argv[i + 4];       /* limit "<text>" X <point> <side>, verbatim */
     {
         const char *a = argv[argc - 1];
         angle = strcmp(a, "DEG") == 0 ? CASIM_DEG : strcmp(a, "RAD") == 0 ? CASIM_RAD
@@ -158,6 +162,7 @@ int main(int argc, char **argv)
     case CASIM_PARTIAL: printf("PARTIAL %s\n", out); break;
     case CASIM_UNDEFINED: printf("UNDEFINED\n"); break;
     case CASIM_IMPROPER: printf("IMPROPER\n"); break;
+    case CASIM_UNDECIDED: printf("UNDECIDED\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */
@@ -192,6 +197,7 @@ usage:
                     "       casim [--arena N] [--min-arena] cancel \"<n÷d>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] partfrac \"<n÷d>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] taylor \"<text>\" X POINT N RAD|DEG|GRAD\n"
+                    "       casim [--arena N] [--min-arena] limit \"<text>\" X POINT +|-|'' RAD|DEG|GRAD (POINT may be ∞, -∞)\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

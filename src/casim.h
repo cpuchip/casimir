@@ -51,8 +51,11 @@ typedef enum {
                                    the firmware shows MAY FACTOR FURTHER beside it */
     CASIM_UNDEFINED,            /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0): the expression
                                    has no value; out is "" */
-    CASIM_IMPROPER              /* CAS 009, defint: a pole or domain edge of the integrand on the closed interval
+    CASIM_IMPROPER,             /* CAS 009, defint: a pole or domain edge of the integrand on the closed interval
                                    (or within 1E-20 of it), so the integral is improper there; out is "" */
+    CASIM_UNDECIDED             /* CAS 015, limit: the walk couldn't decide (past 12 L'Hôpital steps, an ∞-∞ the
+                                   rewrites don't resolve, a damped oscillation, a form not covered). Never "no limit"
+                                   (that is UNDEFINED); out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -98,18 +101,19 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
                CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL, CASIM_PARTFRAC,
-               CASIM_TAYLOR } casim_op;
+               CASIM_TAYLOR, CASIM_LIMIT } casim_op;
 
 typedef struct {
     casim_op op;
     const char *eqn;
     int model;                  /* eqn's: 33, 35, CASIM_MODEL_STU, or 0 (35) */
     int var;                    /* derive, collect, subst: 0-25 for A-Z */
-    const char *repl;           /* subst: the replacement; defint: the lower bound */
+    const char *repl;           /* subst: the replacement; defint: the lower bound; taylor, limit: the point */
     int repl_model;             /* subst: repl's model, as model (defint reads both bounds as model) */
     int angle;
     const char *repl2;          /* CAS 009, defint: the upper bound (last, so older initializers leave it NULL);
-                                   CAS 014, taylor: the order n as text, "0" to "12" (point in repl) */
+                                   CAS 014, taylor: the order n as text, "0" to "12" (point in repl); CAS 015, limit:
+                                   the side, "+", "-" or "" for both */
 } casim_req;
 
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
@@ -253,5 +257,16 @@ casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char
    TOO_LONG past 191 bytes; BAD_ARG for an equation or an order outside 0-12. */
 casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
                           size_t cap, void *arena, size_t arena_cap);
+
+/* Unit CAS 015, LIMIT: the limit of eqn as var goes to point, from side: "+" above, "-" below, "" both (they must
+   agree). point is a real constant read as defint's bounds, or "∞" or "-∞" (U+221E; there the side is implied, and "+"
+   or "-" is BAD_ARG). The answer is exact in canonical form, or "∞" or "-∞". Continuity first (a typed f undefined at
+   point doesn't block a limit: X÷X at 0 is 1); then sums, products and powers by their parts, functions by continuity
+   and their ends, 0÷0 and ∞÷∞ by L'Hôpital (at most 12 steps), 0×∞ as a quotient, b^e with var in e as EXP(e×LN(b)).
+   UNDEFINED only where no limit is proven: one-sided limits that differ, or SIN, COS or TAN of an argument going to ±∞
+   (alone, scaled, or plus something with a limit); UNDECIDED where the walk can't decide; BAD_ARG for an equation, a
+   letter in point, or another side. */
+casim_status casim_limit(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
+                         size_t cap, void *arena, size_t arena_cap);
 
 #endif

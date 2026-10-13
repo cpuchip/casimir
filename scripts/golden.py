@@ -8,6 +8,7 @@ a seeded random corpus from the generator below. None of abacus's hidden seeds a
 """
 import os
 import random
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -37,7 +38,7 @@ def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, 
 
 def bench():
     for _name, expr, var, angle, op, repl, model in measure.all_cases():
-        lo, hi = repl.split("|", 1) if op in ("defint", "taylor") else (repl, None)
+        lo, hi = repl.split("|", 1) if op in ("defint", "taylor", "limit") else (repl, None)
         for arena, cap in ((65536, 65536), (8192, 192)):    # as measured, and the calculator's budget and slot
             yield line(op, expr, var, angle, model, lo, None, hi, arena, cap)
 
@@ -74,6 +75,8 @@ def examples():
                 yield line(f[1], f[2], "X", model=f[4], repl=None if f[3] == "-" else f[3])
             elif unit == "014":             # id | taylor | text | var | point | n | angle | model | answer
                 yield line("taylor", f[2], f[3], f[6], f[7], repl=f[4], repl2=f[5])
+            elif unit == "015":             # id | limit | text | var | point | side | angle | model | answer
+                yield line("limit", f[2], f[3], f[6], f[7], repl=f[4], repl2="" if f[5] == "both" else f[5])
             else:
                 raise SystemExit(f"golden.py: {name}: no reader for this unit's columns")
 
@@ -169,10 +172,48 @@ def generated_taylor():
                    repl=point, repl2=str(rng.randint(0, 12)), arena=rng.choice([8192, 8192, 65536]))
 
 
+LIMIT_CASES = 400
+
+
+def generated_limit():
+    """CAS 015's own seeded inputs: quotients that are 0÷0 or ∞÷∞ at a point, sums and products of functions at
+    points where they're continuous, one-sided poles, rationals and growth at ±∞, and the rewriting forms (0×∞, ∞-∞,
+    1^∞), every side, angle and model, at both budgets"""
+    rng = random.Random(SEED + 15)
+    zero = ["SIN(X)", "X", "EXP(X)-1", "LN(1+X)", "1-COS(X)", "TAN(X)", "ATAN(X)", "X^2", "SQRT(1+X)-1", "X-SIN(X)",
+            "SIN(K×X)", "X^3+X"]
+    fin = ["COS(X)", "EXP(X)", "1+X^2", "2-X", "SQRT(4+X)", "ATAN(X)+1", "3"]
+    grow = ["X", "X^2", "EXP(X)", "LN(X)", "SQRT(X)", "X^3-X", "2×X+1", "X×LN(X)"]
+    for _ in range(LIMIT_CASES):
+        r = rng.random()
+        side = rng.choice(["", "", "+", "-"])
+        if r < 0.35:
+            text, point = f"({rng.choice(zero)})÷({rng.choice(zero)})", "0"
+        elif r < 0.5:
+            text = rng.choice([f"({rng.choice(fin)})×({rng.choice(zero)})", f"{rng.choice(fin)}+{rng.choice(zero)}",
+                               f"({rng.choice(fin)})÷({rng.choice(fin)})"])
+            point = rng.choice(["0", "1", "-2", "π÷3", "1÷2"])
+        elif r < 0.65:
+            text, point = f"({rng.choice(fin)})÷({rng.choice(zero)})", "0"
+        elif r < 0.85:
+            text = rng.choice([f"({rng.choice(grow)})÷({rng.choice(grow)})", f"{rng.choice(grow)}-{rng.choice(grow)}",
+                               f"({re.sub(r'(?<![A-Z])X(?![A-Z])', '(1÷X)', rng.choice(zero))})×({rng.choice(grow)})",
+                               f"(1+{rng.randint(1, 5)}÷X)^({rng.randint(1, 3)}×X)",
+                               f"SQRT(X^2+{rng.randint(1, 5)}×X)-X"])
+            point, side = rng.choice(["∞", "∞", "-∞"]), ""
+        else:
+            text, point, side = rng.choice(["SIN(X)", "COS(X)+1", "SIN(X)÷X", "ATAN(X)", "TANH(X)", "EXP(-X)"]), \
+                rng.choice(["∞", "-∞"]), ""
+        if "LN" in text or "SQRT(X)" in text:
+            side = "+" if point == "0" else side
+        yield line("limit", text, "X", rng.choice(["RAD", "RAD", "DEG", "GRAD"]), rng.choice(["35", "35", "33", "STU"]),
+                   repl=point, repl2=side, arena=rng.choice([8192, 8192, 65536]))
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"# Casimir's golden corpus (CAS 011): scripts/golden.py's inputs (S3 bench cases, work/ examples, seed {SEED})")
-    for src in (bench, examples, generated, generated_partfrac, generated_taylor):
+    for src in (bench, examples, generated, generated_partfrac, generated_taylor, generated_limit):
         for row in src():
             print(row)
 

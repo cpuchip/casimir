@@ -22,6 +22,7 @@ casim_derive	32
 casim_expand	32
 casim_factor	8
 casim_integrate	96
+casim_limit	32
 casim_partfrac	8
 casim_pdiv	64
 casim_pgcd	64
@@ -64,6 +65,7 @@ do_factor	816
 do_integrate	224
 do_irational	400
 do_irsteps.isra	544
+do_limit	304
 do_partfrac	272
 do_poly	352
 do_psteps	336
@@ -138,6 +140,20 @@ lin_range	176
 lin_term.isra	48
 linear	16
 literal	336
+lm_at	80
+lm_func	112
+lm_inf_minus_inf	144
+lm_lead	16
+lm_lead_in	192
+lm_prod	160
+lm_quot	160
+lm_root	8
+lm_sgn	64
+lm_sign_near	112
+lm_split	128
+lm_sum	112
+lm_walk.part.0	128
+lm_zpow	32
 log_of	96
 log_term.isra	8
 mk	8

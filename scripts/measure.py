@@ -109,7 +109,7 @@ def cli_args(expr, var, angle, op, repl=None, model="35"):
         return m + [op, expr, var, angle]
     if op in ("subst", "pdiv", "pgcd"):
         return m + [op, expr, var, repl, angle]
-    if op in ("defint", "taylor"):      # CAS 009: repl holds "lo|hi"; CAS 014: "point|n"
+    if op in ("defint", "taylor", "limit"):     # CAS 009: repl holds "lo|hi"; CAS 014: "point|n"; CAS 015: "point|side"
         return m + [op, expr, var] + repl.split("|", 1) + [angle]
     return m + [op, expr, angle]
 
@@ -316,6 +316,28 @@ def all_cases():
     for name, pre, mid, post, deep in [("t SIN nest", "SIN(", "X", ")", 43), ("t 1÷(2+ nest", "1÷(2+", "X", ")", 21),
                                        ("t LN(2+ nest", "LN(2+", "X", ")", 21), ("t SQRT(1+ nest", "SQRT(1+", "X", ")", 21)]:
         rows.append((f"{name} {deep}", pre * deep + mid + post * deep, "X", "RAD", "taylor", "0|0", "35"))
+    # CAS 015: limits, the visible examples and the heaviest walks (L'Hôpital to the step cap, a quotient whose
+    # derivatives swell, the rewrites at ∞, a two-sided pole that walks both sides)
+    with open(os.path.join(ROOT, "work", "015-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], p[6], "limit", p[4] + "|" + ("" if p[5] == "both" else p[5]), p[7]))
+    for name, expr, point, side in [
+            ("l X^12÷EXP(X) at ∞", "X^12÷EXP(X)", "∞", ""), ("l X^13÷EXP(X) at ∞", "X^13÷EXP(X)", "∞", ""),
+            ("l (TAN(X)-SIN(X))÷X^3", "(TAN(X)-SIN(X))÷X^3", "0", ""),
+            ("l SIN(X)-X+X^3÷6 ÷X^5", "(SIN(X)-X+X^3÷6)÷X^5", "0", ""),
+            ("l (1-COS(X))^2÷X^4", "(1-COS(X))^2÷X^4", "0", ""),
+            ("l EXP(SIN(X))-1-X ÷X^2", "(EXP(SIN(X))-1-X)÷X^2", "0", ""),
+            ("l (1+2÷X)^(3×X)", "(1+2÷X)^(3×X)", "∞", ""), ("l SQRT(X^2+5×X)-X", "SQRT(X^2+5×X)-X", "∞", ""),
+            ("l 1÷SIN(X)^3 both", "1÷SIN(X)^3", "0", ""), ("l X^X at 0+", "X^X", "0", "+")]:
+        rows.append((name, expr, "X", "RAD", "limit", point + "|" + side, "35"))
+    for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
+        rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
+        rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
+        rows.append((f"l SIN nest {n} 1÷X at 0", "SIN(" * n + "1÷X" + ")" * n, "X", "RAD", "limit", "0|", "35"))
+        rows.append((f"l 1÷( nest {n} at 0+", "1÷(" * n + "X" + ")" * n, "X", "RAD", "limit", "0|+", "35"))
     for n in range(20, 58, 4):
         rows.append((f"r nest num {n}", "(" * n + "X" + "+1)" * n + f"÷(X^2-{n * n})", "X", "RAD", "partfrac", None, "35"))
         rows.append((f"r nest den {n}", "1÷(" + "(" * n + "X" + "+1)" * n + f"-{n})", "X", "RAD", "partfrac", None, "35"))
@@ -355,7 +377,7 @@ def main():
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                          "defint", "pdiv", "pgcd", "cancel", "taylor")}
+                                          "defint", "pdiv", "pgcd", "cancel", "taylor", "limit")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:
