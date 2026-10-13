@@ -92,3 +92,41 @@ value, but 1 as a limit.
   - UNDECIDED reported as UNDEFINED.
 - **The device:** the S3 bench byte-identical to the host. Golden byte-identical for every other op, and every earlier
   hidden set rerun.
+
+## Accepted (abacus, 2026-10-13), at 14f738c
+
+**Two hidden sets on the commit itself.** It was built clean on fermion in a capped container, and `make check` was
+green (306 checks). The CLI defaulted to an 8,192 B arena, the S3's.
+- **The families** (abacus gen_cas015 seed 15015, 1,500 cases: 0÷0 templates, rationals and growth at ±∞, one-sided
+  poles, continuous points, 0×∞, ∞−∞, 1^∞): **0 failures**.
+  - FINITE: 1,084 right, 46 UNDECIDED.
+  - INF 179/179, NINF 149/149, DNE 42/42 UNDEFINED.
+  - All 46 UNDECIDED are one form, 1÷X−1÷SIN(X) at 0 (∞−∞, limit 0), which rule 5 allows.
+  - Only 453 of the 1,500 expressions are distinct, so a second family was added.
+- **Random 0÷0 compositions** (abacus gen_cas015b seed 15017, 600 cases): (A(X)−A(0))÷(B(X)−B(0)) at 0, with A and B
+  random compositions of EXP, SIN, COS, LN(1+u), ATAN and polynomials, some one-sided, some with an extra X^k below.
+  **0 failures.**
+  - FINITE 378 right, 19 NO_ROOM.
+  - INF 44 right, 29 NO_ROOM; NINF 36 right, 27 NO_ROOM.
+  - DNE 31 UNDEFINED, 36 NO_ROOM.
+- The judge was falsified on both families: true answers all pass, and the planted faults are each caught: a value
+  off by 1E-30, a wrong value, UNDEFINED where a limit exists, the wrong sign of ∞, ∞ where finite, and a value where
+  none exists.
+- Two generator faults of abacus's were found by the run and fixed before judging, with no change to any case:
+  - nsimplify turned the exact EXP(5)×COS(1) into a radical fit, giving 3 false failures;
+  - a case built on LN(0) wrote sympy's zoo into the input, giving 1 false failure; casim rightly said SYNTAX.
+
+**casim's report (#7895):**
+- golden +592 (9,983);
+- limit-values 306/0;
+- 175 mutants caught, the six above among them;
+- on the S3: no existing frame moved, text +9,717 (169,740 of 262,144), 69 limit rows byte-identical to the host, the
+  gate unchanged at 11,712 of 12,288.
+4b91739 (the stu32-firmware repin) leaves core/ identical to 2f2eff6's, so these answers stand there.
+
+**Follow-ups, into the small unit with 014's (b) and (e) and the ABS/X×ABS split:**
+- **∞−∞ of quotients at a finite point:** 1÷X−1÷SIN(X) at 0 answers UNDECIDED. Combining the two quotients into one,
+  then L'Hôpital, decides it. It's a textbook limit.
+- **NO_ROOM on composed forms at 8,192 B:** 111 of the 600 compositions, about half the no-limit cases and about 40%
+  of the ±∞ ones (L'Hôpital's derivatives swell, as casim's (1−COS(X))^2÷X^4 note shows). Measure them with 014's
+  buffer study, against the arena, and propose a size.
