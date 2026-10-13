@@ -27,14 +27,15 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
+| taylor | a Taylor polynomial to order 12 about a point, exact (`LN(X)` about 1 to 3 is `(X-1)-0.5×(X-1)^2+(X-1)^3÷3`) |
 | steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
 **What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, limits,
-series, sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`, upper-case
-names) and doesn't read implied products (`2X`).
+infinite series and sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
+upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee
 
@@ -122,22 +123,26 @@ gzipped), most of it the decimal library's tables.
   syntax
   (tests/*_test.c).
 - **The standalone checks** (`make check`, and CI) need nothing private:
-  - the golden test, 8,861 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the golden test, 9,391 calls whose exact answers were recorded from earlier sources, so a change shows up;
   - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
     where one is;
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
     check reached by spoiling a term;
   - check-abn;
   - the examples in docs/language.md, and CAS 013's walks in work/013-steps-examples.txt.
+  - Taylor polynomials judged exactly against power series over fractions, the opposite method
+    (scripts/taylor-values.py).
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 153 deliberate faults, each of which the tests
-  must catch; `make test` catches all 153 (at CAS 013's steps). When there were 80, the standalone checks first
-  caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose each fault
-  were added to the golden corpus, 34 lines found by scripts/golden-harvest.py, and the standalone checks then caught
-  80 of 80. Those lines were chosen because they catch those 16 faults, so a fault unlike them can still need the
-  developer tests.
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 165 deliberate faults, each of which the tests
+  must catch; `make test` catches all 165 (at CAS 014). Each mutant's copy re-records its frame table first, so a
+  fault that only moves a frame isn't counted as caught; the one fault whose catch is the frame table itself (the
+  rational-integral hook moved into do_integrate) is named in the script. When there were 80, the standalone checks
+  first caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose
+  each fault were added to the golden corpus, 34 lines found by scripts/golden-harvest.py, and the standalone checks
+  then caught 80 of 80. Those lines were chosen because they catch those 16 faults, so a fault unlike them can still
+  need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
 - **The S3 bench** (scripts/device.sh) runs 861 cases on the chip, through the ESP-IDF component, and requires every

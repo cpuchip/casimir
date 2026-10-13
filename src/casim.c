@@ -116,6 +116,8 @@ typedef struct {
     int var, angle;
     int depth;                  /* the recursive walks' nesting, bounded by CASIM_DEPTH_MAX */
     bool opaque;                /* the names derive refuses are opaque (every operation but derive) */
+    bool own_text;              /* the text is casim's own print (taylor's round trip, read with opaque names): an
+                                   opaque SGN is the SGN derive writes */
     bool no_eq;                 /* an = is SYNTAX (subst's replacement is an expression) */
     bool rtl;                   /* the text is read as STU's (CAS 004, unit 031): ^ right to left, and a
                                    minus starting an exponent covers the chain after it */
@@ -1985,7 +1987,10 @@ static ref chain(ctx *c, ref r, bool sum)
 /* The rarer cases, out of line: their locals stay out of every recursive frame (S3 stack, CAS 003). */
 static __attribute__((noinline)) ref canon_ofn(ctx *c, ref r)
 {
-    ref a = canon(c, nd(c, r)->a), b = nd(c, r)->b ? canon(c, nd(c, r)->b) : 0, o = mk(c, K_OFN, a, b);
+    ref a = canon(c, nd(c, r)->a), b = nd(c, r)->b ? canon(c, nd(c, r)->b) : 0, o;
+    if (c->own_text && !b && strcmp(NAMES[nd(c, r)->id].name, "SGN") == 0)
+        return fn(c, F_SGN, a);                 /* ABS's derivative, in casim's own text */
+    o = mk(c, K_OFN, a, b);
     if (o != SPARE) nd(c, o)->id = nd(c, r)->id;
     return o;
 }
@@ -3704,6 +3709,18 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
         return casim_pgcd(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_CANCEL: return casim_cancel(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_PARTFRAC: return casim_partfrac(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_TAYLOR: {
+        /* the order as text in repl2 (work/014 rule 1 (b): casim_req unchanged): a whole number, else BAD_ARG */
+        int n = 0;
+        const char *p = rq->repl2;
+        if (cap) out[0] = '\0';
+        if (!p || !*p) return CASIM_BAD_ARG;
+        for (; *p; p++) {
+            if (*p < '0' || *p > '9' || n > 99) return CASIM_BAD_ARG;
+            n = n * 10 + (*p - '0');
+        }
+        return casim_taylor(rq->eqn, rq->var, rq->repl, n, rq->model, rq->angle, out, cap, arena, arena_cap);
+    }
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
         return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
@@ -8246,4 +8263,198 @@ static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, i
                                                           const out_t *o, ctx *tc)
 {
     return do_irsteps(rq, k, info->line, info, o, tc);
+}
+
+/* ---- Taylor polynomials (unit CAS 014) ----
+   For k = 0..n: f^(k) valued exactly at a as a definite integral's bound is (check_rewrite, CAS 008's exact values),
+   divided by k!; then the next derivative, derive's own (so DEG and GRAD carry their factor by the chain rule). Each
+   step compacts the arena down to the derivative and the coefficients so far, so it holds one step at a time. The
+   answer is printed in the Taylor spelling (rule 6), not as one canonical sum. */
+
+#define TAYLOR_MAX 12
+#define TAYLOR_TEXT 384      /* a derivative's text, twice at the arena's top: past it, NO_ROOM */
+
+/* the arena back to mark, the constants cached since dropped (they would point into reused room: ir_reset's rule) */
+static __attribute__((noinline)) void taylor_drop(ctx *c, size_t mark)
+{
+    c->used = mark;
+    for (int j = 0; j < SMALL; j++)
+        if (c->small[j] >= mark / 8u) c->small[j] = 0;
+    if (c->pi >= mark / 8u) c->pi = 0;
+}
+
+/* one term c×(X-a)^k, canonical, printed after the terms before it ("+" unless it starts with a minus): a 0 term is
+   left out. For k = 1 with a != 0, canon would multiply c into (X-a) (2×(X-1) is 2×X-2), so it is printed as
+   c×(X-a)^2 with that ^2 taken out of the text */
+static __attribute__((noinline)) void taylor_term(ctx *c, out_t *w, ref ck, ref xa, int k, bool at0)
+{
+    size_t at = w->n;
+    ref t;
+    if (is_k(c, ck, 0, 1)) return;
+    if (k == 0) t = ck;
+    else if (k == 1)                    /* num, not small: a new caller of small inlined it into chain (frame) */
+        t = canon(c, mul2(c, ck, at0 ? xa : power(c, xa, num(c, &(rat){2, 1}))));
+    else t = canon(c, mul2(c, ck, power(c, xa, num(c, &(rat){k, 1}))));
+    if (at) puts_(w, "+");
+    print(c, w, t);
+    if (w->full) return;
+    if (k == 1 && !at0) {
+        /* the "^2" of the bracketed (X-a): the bracket that opens on the variable, "(X-" or "(X+" (c holds no X, and
+           a name's X, as EXP's, follows a letter), to its matching ")" */
+        char *s = w->o + at, *e = w->o + w->n;
+        for (char *p = s; p + 3 <= e; p++)
+            if (p[0] == '(' && p[1] == 'A' + c->var && (p[2] == '-' || p[2] == '+')) {
+                int d = 0;
+                char *q = p;
+                for (; q < e; q++)
+                    if (*q == '(') d++;
+                    else if (*q == ')' && --d == 0) break;
+                if (q + 3 <= e && q[1] == '^' && q[2] == '2' &&
+                    (q + 3 == e || ((q[3] < '0' || q[3] > '9') && q[3] != '.'))) {
+                    memmove(q + 1, q + 3, (size_t)(e - (q + 3)) + 1);
+                    w->n -= 2;
+                }
+                break;
+            }
+    }
+    if (at && w->o[at + 1] == '-') {                /* "+-c": the term's own minus */
+        memmove(w->o + at, w->o + at + 1, w->n - at);
+        w->n--;
+    }
+}
+
+/* a hole in r at a: a function, power or quotient with a put in whose value doesn't exist, though the whole may fold
+   it away (0×LN(0) and LN(0)-LN(0) are 0 to canon): a 0 divided, LN, SQRT and the inverse functions outside their
+   domains, a fractional power of a negative number, TAN where COS is 0, and SGN of 0, where ABS has its corner
+   (derive's ABS' = SGN(u)×u' is right except at u = 0). r is the typed tree as parsed or a canonical f^(k); each node's
+   work is dropped after its check, so the arena stays flat */
+static bool taylor_hole(ctx *c, ref r, int var, ref a)
+{
+    bool h = false, raw;
+    int kind, id;
+    if (c->st != CASIM_OK || !enter(c)) return false;
+    kind = nd(c, r)->kind, id = nd(c, r)->id, raw = kind >= K_NEG;
+    if (((kind == K_FN || kind == K_RFN) && id != F_EXP && id != F_ALOG && id != F_SIN && id != F_COS && id != F_ATAN &&
+         id != F_SINH && id != F_COSH && id != F_TANH && id != F_ASINH && id != F_ABS && id != F_SQ) ||
+        kind == K_POW || kind == K_BPOW || kind == K_BDIV) {
+        size_t mark = c->used;
+        bool tan = (kind == K_FN || kind == K_RFN) && id == F_TAN, sgn = (kind == K_FN || kind == K_RFN) && id == F_SGN;
+        ref u = tan || sgn ? nd(c, r)->a : r;
+        abn x;
+        int l = 0, cv;
+        c->sub_var = var, c->sub_val = a;           /* a put in: the canonical walk substitutes, canon reads the raw */
+        u = canon(c, raw ? u : check_rewrite(c, u));
+        if (tan) u = canon(c, fn(c, F_COS, u));                     /* a pole: COS is 0 there */
+        c->sub_val = 0, c->sub_var = -1;
+        if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK, h = true;
+        else if (c->st == CASIM_OK && (tan || sgn)) h = is_k(c, u, 0, 1);
+        else if (c->st == CASIM_OK) {
+            while (l < 26 && !contains(c, u, l)) l++;
+            if (l == 26) {                              /* no letters left: its value, by the core's arithmetic */
+                cv = const_val(c, u, &x);
+                h = cv == CV_UNDEF || cv == CV_NOTREAL;
+            }
+        }
+        taylor_drop(c, mark);
+    }
+    if (!h && (kind == K_FN || kind == K_RFN || kind == K_NEG || kind == K_GROUP)) h = taylor_hole(c, nd(c, r)->a, var, a);
+    else if (!h && (kind == K_POW || kind == K_BPOW || kind == K_BDIV || kind == K_BMUL || kind == K_BADD || kind == K_BSUB))
+        h = taylor_hole(c, nd(c, r)->a, var, a) || taylor_hole(c, nd(c, r)->b, var, a);
+    else if (!h && (kind == K_ADD || kind == K_MUL))
+        for (int i = 0; i < nd(c, r)->n && !h; i++) h = taylor_hole(c, list(c, nd(c, r)->a)[i], var, a);
+    c->depth--;
+    return h;
+}
+
+/* rule 7: f (the typed tree as parsed, or a canonical f^(k)) has a value at a, else UNDEFINED */
+static __attribute__((noinline)) void taylor_check(ctx *c, ref f, int var, ref a)
+{
+    size_t mark = c->used;
+    if (c->st == CASIM_OK && taylor_hole(c, f, var, a)) c->st = CASIM_UNDEFINED;
+    if (c->st == CASIM_OK) taylor_drop(c, mark);
+}
+
+static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var, const char *point, int n, int angle,
+                                                        char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref f = SPARE, a, xa;
+    char *tb;
+    abn av;
+    rat kf = {1, 1};
+    size_t ocap = cap < SLOT ? cap : SLOT, base;
+    int chars = 0;
+    bool at0;
+    out_t w = {out, ocap, 0, false};
+    if (cap) out[0] = '\0';
+    if (!eqn || !point || n < 0 || n > TAYLOR_MAX) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) f = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, f)->kind == K_REQ) return CASIM_BAD_ARG;        /* an equation */
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    {
+        ref raw = f;
+        a = c.st == CASIM_OK ? read_bound(&c, point, chars + 1, &av) : SPARE;    /* rule 3 */
+        c.s = eqn;
+        if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+        /* rule 7: the typed f decides. Each part of the tree as typed is valued at a before canon could cancel or fold
+           it (X÷X at 0 is 0÷0, 0×LN(X) has LN(0)); the derivatives come from the canonical f */
+        taylor_check(&c, raw, var, a);
+        if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+        f = canon(&c, raw);
+        if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    }
+    at0 = is_k(&c, a, 0, 1);
+    xa = at0 ? leaf(&c, K_VAR, var) : canon(&c, add2(&c, leaf(&c, K_VAR, var), neg(&c, a)));
+    /* two text buffers at the arena's top, out of the nodes' reach: each derivative is printed into one, the arena goes
+       back to base, and it is read again (a canonical form prints exactly), so a step holds one derivative and its
+       work; c.s is the buffer the current tree was read from (a K_LIT keeps its text there), so they alternate */
+    if (c.top < c.used + 2 * TAYLOR_TEXT + 64) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    c.top -= 2 * TAYLOR_TEXT;
+    tb = (char *)c.mem + c.top;
+    base = c.used;
+    c.opaque = c.own_text = true;               /* from here the parser reads only the derivatives casim printed */
+    for (int k = 0; k <= n && c.st == CASIM_OK; k++) {
+        ref v;
+        rat inv;
+        if (k > 0 && !rat_mul(&kf, &kf, &(rat){k, 1})) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+        c.sub_var = var, c.sub_val = a;
+        v = check_rewrite(&c, f);                           /* f^(k)(a), exact */
+        c.sub_val = 0, c.sub_var = -1;
+        taylor_check(&c, f, var, a);                        /* rule 7: it has a value there */
+        if (c.st != CASIM_OK) break;
+        rat_make(&inv, kf.q, kf.p);
+        taylor_term(&c, &w, canon(&c, mul2(&c, v, num(&c, &inv))), xa, k, at0);    /* c_k's term, into out */
+        if (w.full || k == n || c.st != CASIM_OK) break;
+        {
+            char *buf = tb + (k % 2) * TAYLOR_TEXT;
+            out_t tw = {buf, TAYLOR_TEXT, 0, false};
+            print(&c, &tw, canon(&c, deriv(&c, f)));
+            if (c.st != CASIM_OK) break;
+            if (tw.full) {
+                if (ocap) out[0] = '\0';
+                return c.st = CASIM_NO_ROOM;
+            }
+            taylor_drop(&c, base);
+            c.s = buf;
+            f = canon(&c, parse(&c));
+        }
+    }
+    c.s = eqn;
+    if (c.st == CASIM_OK && !w.full && w.n == 0) puts_(&w, "0");
+    if ((c.st != CASIM_OK || w.full) && ocap) out[0] = '\0';
+    if (c.st != CASIM_OK) return c.st;
+    return w.full ? CASIM_TOO_LONG : CASIM_OK;
+}
+
+casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_taylor(eqn, var, point, n, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }

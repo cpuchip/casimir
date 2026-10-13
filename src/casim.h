@@ -97,7 +97,8 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 #define CASIM_MODEL_35 35
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
-               CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL, CASIM_PARTFRAC } casim_op;
+               CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL, CASIM_PARTFRAC,
+               CASIM_TAYLOR } casim_op;
 
 typedef struct {
     casim_op op;
@@ -107,7 +108,8 @@ typedef struct {
     const char *repl;           /* subst: the replacement; defint: the lower bound */
     int repl_model;             /* subst: repl's model, as model (defint reads both bounds as model) */
     int angle;
-    const char *repl2;          /* CAS 009, defint: the upper bound (last, so older initializers leave it NULL) */
+    const char *repl2;          /* CAS 009, defint: the upper bound (last, so older initializers leave it NULL);
+                                   CAS 014, taylor: the order n as text, "0" to "12" (point in repl) */
 } casim_req;
 
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
@@ -240,5 +242,16 @@ casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *
    is still exact over the factors found). Statuses as CANCEL's, and TOO_LONG past 191 bytes. */
 casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                             size_t arena_cap);
+
+/* Unit CAS 014, TAYLOR: the Taylor polynomial of eqn in var about point, to order n (0-12; order 0 is eqn at point):
+   c_0 + c_1×(X-a) + ... + c_n×(X-a)^n, c_k = f^(k)(a)÷k! exactly (derive's derivatives, valued at a as a definite
+   integral's bound is, CAS 008's exact values), in ascending powers of (X-a) (of X when a is 0), each term in canonical
+   form, a zero term left out, 0 when every term is. point is a real constant read as defint's bounds (a letter in it
+   is BAD_ARG); other letters in eqn are constants. UNDEFINED when eqn or a derivative up to n has no value at point (a
+   removable singularity too, as SIN(X)÷X at 0; a function outside its domain, as LN(X) at 0; ABS's corner);
+   NOT_DIFFERENTIABLE for a name derive refuses; NO_ROOM when a derivative outgrows the arena or its text 384 bytes;
+   TOO_LONG past 191 bytes; BAD_ARG for an equation or an order outside 0-12. */
+casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap);
 
 #endif

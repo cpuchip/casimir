@@ -48,6 +48,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/ssteps-values.py
 	scripts/partfrac-values.py
 	scripts/psteps-values.py
+	scripts/taylor-values.py
 
 test: check build/clang.ok $(TESTS)
 	scripts/run-tests.sh $(TESTS)

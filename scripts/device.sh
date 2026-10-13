@@ -32,5 +32,6 @@ idf.py -B "$B" -DSDKCONFIG="$B/sdkconfig" -DIDF_TARGET=esp32s3 $T build
 idf.py -B "$B" -DSDKCONFIG="$B/sdkconfig" -DIDF_TARGET=esp32s3 size-components | grep -E "libmain|libcasim|Total" || true
 [ "$BUILD_ONLY" = 1 ] && exit 0
 idf.py -B "$B" -DSDKCONFIG="$B/sdkconfig" -DIDF_TARGET=esp32s3 -p "$PORT" flash
-python /project/scripts/device_capture.py "$PORT" /project/build/device-s3.log 600
+# the first whole report comes after every case has run: 608 s at 897 cases (CAS 014)
+python /project/scripts/device_capture.py "$PORT" /project/build/device-s3.log 1500
 '

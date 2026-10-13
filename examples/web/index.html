@@ -41,7 +41,7 @@
         <option>derive</option><option>simplify</option><option>expand</option><option>collect</option>
         <option>subst</option><option>solve</option><option selected>integrate</option><option>factor</option>
         <option>defint</option><option>pdiv</option><option>pgcd</option><option>cancel</option>
-        <option>partfrac</option>
+        <option>partfrac</option><option>taylor</option>
       </select>
     </label>
     <label>Variable <select id="var"></select></label>
@@ -59,7 +59,7 @@
   <label id="second-label" hidden><span id="second-name">Second</span>
     <input id="second" class="text" autocomplete="off" spellcheck="false">
   </label>
-  <label id="hi-label" hidden>Upper bound <input id="hi" class="text" value="π" autocomplete="off" spellcheck="false"></label>
+  <label id="hi-label" hidden><span id="hi-name">Upper bound</span> <input id="hi" class="text" value="π" autocomplete="off" spellcheck="false"></label>
   <button>Compute</button>
 </form>
 <output id="out"></output>
@@ -71,11 +71,14 @@ import { loadCasimir } from "../../build/wasm/casim.mjs";
 const $ = (id) => document.getElementById(id);
 for (let c = 65; c <= 90; c++) $("var").add(new Option(String.fromCharCode(c), String.fromCharCode(c), false, c === 88));
 const second = { subst: ["Replacement for the variable", "X+1"], defint: ["Lower bound", "0"],
-                 pdiv: ["Divisor", "X-1"], pgcd: ["Second polynomial", "X^2-1"] };
+                 pdiv: ["Divisor", "X-1"], pgcd: ["Second polynomial", "X^2-1"], taylor: ["Point", "0"] };
 function shape() {
   const op = $("op").value, s = second[op];
   $("second-label").hidden = !s;
-  $("hi-label").hidden = op !== "defint";
+  $("hi-label").hidden = op !== "defint" && op !== "taylor";
+  $("hi-name").textContent = op === "taylor" ? "Order (0-12)" : "Upper bound";
+  if (op === "taylor" && !/^\d+$/.test($("hi").value)) $("hi").value = "6";
+  if (op === "defint" && /^\d+$/.test($("hi").value)) $("hi").value = "π";
   if (s) { $("second-name").textContent = s[0]; if (!$("second").value) $("second").value = s[1]; }
 }
 $("op").addEventListener("change", () => { $("second").value = ""; shape(); });
@@ -91,7 +94,8 @@ $("version").textContent = `Version ${cas.version}.`;
 $("f").addEventListener("submit", (e) => {
   e.preventDefault();
   const op = $("op").value, opts = { var: $("var").value, angle: $("angle").value };
-  const r = cas.run(op, $("text").value, opts, second[op] ? $("second").value : null,
+  const r = op === "taylor" ? cas.taylor($("text").value, $("second").value, parseInt($("hi").value, 10) || 0, opts)
+          : cas.run(op, $("text").value, opts, second[op] ? $("second").value : null,
                     op === "defint" ? $("hi").value : null);
   const ok = r.status === "OK" || r.status === "PARTIAL";
   $("out").textContent = ok ? r.out : "";

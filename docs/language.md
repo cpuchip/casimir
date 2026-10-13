@@ -388,6 +388,40 @@ exact arithmetic passes 2^62), BAD_ARG, TOO_LONG.
 | `casim partfrac "(X^2-1)÷((X-1)×(X+2))" X RAD` | `1-1÷(X+2); X=1` |
 | `casim partfrac "1÷(1-X^4)" X RAD` | `1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1))` |
 
+### taylor: a Taylor polynomial
+
+`taylor "<text>" X A N` is the Taylor polynomial of the text in X about the point A, to order N (0 to 12;
+work/014-taylor.md): c_0 + c_1×(X-A) + … + c_N×(X-A)^N, each c_k = f^(k)(A)÷k! exact (derive's derivatives, valued at A
+as a definite integral's bound is). It prints in ascending powers of (X-A), or of X when A is 0, each term in canonical
+form, a zero term left out and a coefficient of 1 not written; 0 when every term is 0. A is a real constant read as
+defint's bounds (π÷3, -2, SQRT(2)); other letters in the text are constants. DEG and GRAD carry their factor, as derive
+does.
+Statuses: UNDEFINED (the text or one of its derivatives up to N has no value at A: a removable singularity such as
+SIN(X)÷X at 0, a function outside its domain such as LN(X) at 0 or X×LN(X) at 0, a fractional power of a negative
+number, TAN at its poles, or ABS's corner, so ABS(X) at 0 has no first derivative), NOT_DIFFERENTIABLE for a name
+derive refuses (X!, IP), NO_ROOM (a derivative outgrows the arena, or its text 384 bytes: a nested composition at a
+high order), TOO_LONG, and
+BAD_ARG (an equation, a letter in A, or N outside 0 to 12). The typed text decides UNDEFINED: X÷X at 0 is UNDEFINED,
+though its canonical form is 1.
+
+Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,192-byte arena, TAN,
+ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X)) after 6, and
+past that the answer is NO_ROOM. A larger arena doesn't move the first of those: EXP(SIN(X))'s eighth derivative is
+416 bytes as text, past the 384 its text has between steps, in 65,536 bytes too. A long answer is TOO_LONG first: COS(X)
+about π÷3 carries SQRT(3) in every other term.
+
+| Command | Prints |
+|---|---|
+| `casim taylor 'SIN(X)' X 0 7 RAD` | `X-X^3÷6+X^5÷120-X^7÷5040` |
+| `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-0.5×(X-1)^2+(X-1)^3÷3-0.25×(X-1)^4` |
+| `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `0.5-0.5×(X-π÷3)×SQRT(3)-0.25×(X-π÷3)^2+(X-π÷3)^3×SQRT(3)÷12` |
+| `casim taylor '1÷(1-X)' X -2 3 RAD` | `1÷3+(X+2)÷9+(X+2)^2÷27+(X+2)^3÷81` |
+| `casim taylor 'SIN(X)' X 0 3 DEG` | `X×π÷180-X^3×π^3÷34992000` |
+| `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+0.5×K^2×X^2+K^3×X^3÷6` |
+| `casim taylor 'SIN(X)÷X' X 0 4 RAD` | `UNDEFINED` |
+| `casim taylor 'X÷X' X 0 2 RAD` | `UNDEFINED` |
+| `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `NO_ROOM` |
+
 ## The statuses
 
 | Value | Status | Means | out holds |

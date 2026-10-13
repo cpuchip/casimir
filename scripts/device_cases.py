@@ -33,8 +33,8 @@ def main(path):
             print(f"skipped {name}: its {len(want.encode())}-byte text exceeds the bench's buffer")
             continue
         ops = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor", "defint", "pdiv", "pgcd",
-               "cancel", "partfrac"]
-        lo, hi = (repl.split("|", 1) if op == "defint" else (repl or "", ""))
+               "cancel", "partfrac", "taylor"]
+        lo, hi = (repl.split("|", 1) if op in ("defint", "taylor") else (repl or "", ""))    # taylor: point, n
         rows.append(f"    {{{c_str(name)}, {c_str(expr)}, {ord(var) - ord('A')}, {ANGLES[angle]}, "
                     f"{ops.index(op)}, {c_str(lo)}, {models[model]}, {len(expr)}, {status}, {c_str(want)}, {c_str(hi)}}},")
     os.makedirs(os.path.dirname(path), exist_ok=True)

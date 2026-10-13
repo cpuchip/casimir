@@ -6,6 +6,10 @@ build/mutants/<name> (the build/ tree copied too, so the core is not rebuilt). A
 when its text was found, it builds, and `make test` then fails; the tests that caught it are named.
 Exit 0 only when every mutant is caught.
 
+The frame table is re-recorded in each copy before its test (CAS 014): a fault often moves a frame, and the frame
+gate runs first in make check, so it would stop the run before any test of values and "catch" a mutant only because
+its code changed shape. The faults whose catch is the frame table itself are listed in FRAME_CAUGHT.
+
     scripts/mutants.py            every mutant
     scripts/mutants.py NAME ...   the named ones
 """
@@ -666,7 +670,35 @@ MUTANTS = {
         ("src/casim.c", '            pf_puts(S->w, "^2+"), ps_rat(S->w, &kk);', '            pf_puts(S->w, "^1^2+"), ps_rat(S->w, &kk);'),
         ("scripts/istep-values.py", 'CHAIN = re.compile(r"\\^(\\d+(\\.\\d+)?|\\([^()]*\\))\\^")', 'CHAIN = re.compile(r"(?!x)x")'),
     ],
+    # 014 (work/014-taylor.md's mutants): k! as (k-1)!
+    "taylor-factorial-short": [("src/casim.c", '        if (k > 0 && !rat_mul(&kf, &kf, &(rat){k, 1})) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);',
+                                '        if (k > 0 && !rat_mul(&kf, &kf, &(rat){k > 1 ? k - 1 : 1, 1})) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);')],
+    # the sign of a in (X-a) flipped: the values are a's, the powers (X+a)'s
+    "taylor-point-sign": [("src/casim.c", '    xa = at0 ? leaf(&c, K_VAR, var) : canon(&c, add2(&c, leaf(&c, K_VAR, var), neg(&c, a)));', '    xa = at0 ? leaf(&c, K_VAR, var) : canon(&c, add2(&c, leaf(&c, K_VAR, var), a));')],
+    # the angle factor dropped in DEG and GRAD: the derivatives taken in RAD
+    "taylor-angle-dropped": [("src/casim.c", '    start(&c, eqn, angle, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses', '    start(&c, eqn, CASIM_RAD, arena, arena_cap);\n    c.rtl = rtl;\n    c.var = var;                        /* the names derive refuses')],
+    # a zero term printed
+    "taylor-zero-printed": [("src/casim.c", '    if (is_k(c, ck, 0, 1)) return;\n    if (k == 0) t = ck;', '    if (k == 0) t = ck;')],
+    # one order short (the loop stops at n-1)
+    "taylor-one-short": [("src/casim.c", '    for (int k = 0; k <= n && c.st == CASIM_OK; k++) {\n        ref v;\n        rat inv;', '    for (int k = 0; k < n && c.st == CASIM_OK; k++) {\n        ref v;\n        rat inv;')],
+    # the point rounded to a 16-digit decimal before the values are taken
+    "taylor-point-rounded": [("src/casim.c", '        a = c.st == CASIM_OK ? read_bound(&c, point, chars + 1, &av) : SPARE;    /* rule 3 */', "        a = c.st == CASIM_OK ? read_bound(&c, point, chars + 1, &av) : SPARE;    /* rule 3 */\n        if (c.st == CASIM_OK) {\n            char b[40];\n            rat q;\n            abn r;\n            abn_to_text(&av, b, sizeof b);\n            b[18] = '\\0';\n            if (abn_from_text(&r, b) == ABN_OK && rat_from_abn(&q, &r)) a = num(&c, &q);\n        }")],
+    # rule 5 at TAN's poles: COS not taken of TAN's argument, so TAN(π÷2) is printed as a value
+    "taylor-tan-pole-skipped": [("src/casim.c", "        if (tan) u = canon(c, fn(c, F_COS, u));                     /* a pole: COS is 0 there */\n", "")],
+    # rule 7: no value check at a (LN(0), ABS's corner and a 0 divided printed as values)
+    "taylor-hole-skipped": [("src/casim.c", "    if (c->st == CASIM_OK && taylor_hole(c, f, var, a)) c->st = CASIM_UNDEFINED;", "    if (c->st == CASIM_OK && taylor_hole(c, f, var, a) && c->var < 0) c->st = CASIM_UNDEFINED;")],
+    # rule 7, the typed f: its parts not valued before canon cancels them (X÷X at 0 printed as 1)
+    "taylor-typed-check-skipped": [("src/casim.c", "        taylor_check(&c, raw, var, a);\n", "")],
+    # the round trip: an opaque SGN not read back as derive's, so ABS's derivatives keep an opaque SGN(X)
+    "taylor-sgn-opaque": [("src/casim.c", "    if (c->own_text && !b && strcmp(NAMES[nd(c, r)->id].name, \"SGN\") == 0)\n        return fn(c, F_SGN, a);", "    if (c->own_text && !b && strcmp(NAMES[nd(c, r)->id].name, \"SGX\") == 0)\n        return fn(c, F_SGN, a);")],
+    # the ^2 taken from the term's first bracket, not (X-a)'s: SIN(1)^3's coefficient loses its own power
+    "taylor-strip-first-bracket": [("src/casim.c", "            if (p[0] == '(' && p[1] == 'A' + c->var && (p[2] == '-' || p[2] == '+')) {", "            if (p[0] == '(') {")],
+    # the names derive refuses taken as opaque (X! printed as its own Taylor polynomial)
+    "taylor-names-opaque": [("src/casim.c", "    c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */", "    c.var = var, c.opaque = true;")],
 }
+
+
+FRAME_CAUGHT = {"irat-hook-in-do-integrate"}       # its fault is a frame (the hook's locals in do_integrate's)
 
 
 def run(cmd, cwd):
@@ -698,6 +730,8 @@ def main():
             print(f"BUILD FAILED {name} (not counted):\n{build.stdout[-800:]}")
             survived += 1
             continue
+        if name not in FRAME_CAUGHT:
+            run([sys.executable, "scripts/frame-table.py", "--record"], tree)
         test = run(["make", "-s", "test"], tree)
         caught = [ln.split()[1] for ln in test.stdout.splitlines() if ln.startswith(("FAIL ", "REFUSED "))]
         if test.returncode != 0 and caught:

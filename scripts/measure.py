@@ -109,7 +109,7 @@ def cli_args(expr, var, angle, op, repl=None, model="35"):
         return m + [op, expr, var, angle]
     if op in ("subst", "pdiv", "pgcd"):
         return m + [op, expr, var, repl, angle]
-    if op == "defint":                  # CAS 009: repl holds "lo|hi"
+    if op in ("defint", "taylor"):      # CAS 009: repl holds "lo|hi"; CAS 014: "point|n"
         return m + [op, expr, var] + repl.split("|", 1) + [angle]
     return m + [op, expr, angle]
 
@@ -298,6 +298,24 @@ def all_cases():
             ("r cancel deg 12", "(X^6-1)×(X+5)÷((X^6-1)×(X-2)^3×(X^2+2)×(X+1))"),
             ("r non-monic powers", "(X^4+1)÷((3×X+7)^3×(5×X-11)^3)")]:
         rows.append((name, expr, "X", "RAD", "partfrac", None, "35"))
+    # CAS 014: Taylor polynomials, the visible examples and the heaviest forms (the derivatives' swell grows with the
+    # order: TAN, ASIN and LN(COS(X)) to 12, a nested composition to the arena's edge, a point with SQRT in it)
+    with open(os.path.join(ROOT, "work", "014-examples.txt"), encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("#") or not line.strip():
+                continue
+            p = [x.strip() for x in line.split(" | ")]
+            rows.append((p[0], p[2], p[3], p[6], "taylor", p[4] + "|" + p[5], p[7]))
+    for name, expr, point, n in [
+            ("t TAN to 12", "TAN(X)", "0", "12"), ("t ASIN to 12", "ASIN(X)", "0", "12"),
+            ("t LN(COS(X)) to 12", "LN(COS(X))", "0", "12"), ("t EXP(SIN(X)) to 7", "EXP(SIN(X))", "0", "7"),
+            ("t 1÷(1+X^2) to 12", "1÷(1+X^2)", "0", "12"), ("t COS at π÷3 to 8", "COS(X)", "π÷3", "8"),
+            ("t SQRT(X) at SQRT(2)", "SQRT(X)", "SQRT(2)", "3")]:
+        rows.append((name, expr, "X", "RAD", "taylor", point + "|" + n, "35"))
+    # the value check's walk down the typed tree, with canon below it, at the depth guard's edge (CAS 014's review)
+    for name, pre, mid, post, deep in [("t SIN nest", "SIN(", "X", ")", 43), ("t 1÷(2+ nest", "1÷(2+", "X", ")", 21),
+                                       ("t LN(2+ nest", "LN(2+", "X", ")", 21), ("t SQRT(1+ nest", "SQRT(1+", "X", ")", 21)]:
+        rows.append((f"{name} {deep}", pre * deep + mid + post * deep, "X", "RAD", "taylor", "0|0", "35"))
     for n in range(20, 58, 4):
         rows.append((f"r nest num {n}", "(" * n + "X" + "+1)" * n + f"÷(X^2-{n * n})", "X", "RAD", "partfrac", None, "35"))
         rows.append((f"r nest den {n}", "1÷(" + "(" * n + "X" + "+1)" * n + f"-{n})", "X", "RAD", "partfrac", None, "35"))
@@ -337,7 +355,7 @@ def main():
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                          "defint", "pdiv", "pgcd", "cancel")}
+                                          "defint", "pdiv", "pgcd", "cancel", "taylor")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:

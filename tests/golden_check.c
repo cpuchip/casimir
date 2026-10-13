@@ -8,7 +8,8 @@
  *   golden_check --record INPUTS   reads lines of the first ten fields and writes each with its status and text
  *
  * A line is tab-separated: op model var angle repl_model arena cap eqn repl repl2 [status out]. op and status are
- * names (derive, OK); in the three texts and out, \\ \t and \n are escapes, and a lone \N is NULL. */
+ * names (derive, OK); in the three texts and out, \\ \t and \n are escapes, and a lone \N is NULL. taylor's repl2 is
+ * its order n, as text, as casim_req carries it. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,7 +21,7 @@
 #define ARENA (1 << 19)
 
 static const char *const OPS[] = {"derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                  "defint", "pdiv", "pgcd", "cancel", "partfrac"};
+                                  "defint", "pdiv", "pgcd", "cancel", "partfrac", "taylor"};
 static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
                                        "NOT_POLYNOMIAL", "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED",
                                        "IMPROPER"};

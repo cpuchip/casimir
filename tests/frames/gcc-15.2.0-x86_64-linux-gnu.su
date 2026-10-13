@@ -31,9 +31,10 @@ casim_simplify	32
 casim_solve	8
 casim_step	368
 casim_subst	48
+casim_taylor	24
 casim_version	8
 centroid	144
-chain	96
+chain	112
 check_rewrite.part.0	112
 clear	40
 closes	64
@@ -70,6 +71,7 @@ do_simplify	208
 do_solve	400
 do_ssteps	496
 do_subst	240
+do_taylor	448
 edge_tol	112
 emit	8
 esym	32
@@ -251,6 +253,9 @@ steps_const	96
 sum_div.isra	208
 table_val	8
 tan_hits	240
+taylor_check	32
+taylor_hole	128
+taylor_term	96
 term_coef	16
 term_of	80
 to_modp	16

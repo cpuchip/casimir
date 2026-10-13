@@ -37,15 +37,15 @@ def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, 
 
 def bench():
     for _name, expr, var, angle, op, repl, model in measure.all_cases():
-        lo, hi = repl.split("|", 1) if op == "defint" else (repl, None)
+        lo, hi = repl.split("|", 1) if op in ("defint", "taylor") else (repl, None)
         for arena, cap in ((65536, 65536), (8192, 192)):    # as measured, and the calculator's budget and slot
             yield line(op, expr, var, angle, model, lo, None, hi, arena, cap)
 
 
 def examples():
     for name in sorted(os.listdir(os.path.join(ROOT, "work"))):
-        if not name.endswith("-examples.txt"):
-            continue
+        if len(name) != len("000-examples.txt") or not name[:3].isdigit() or not name.endswith("-examples.txt"):
+            continue                    # a unit's examples only (013-steps-examples.txt is walks: doc-examples.py)
         unit = name[:3]
         for raw in open(os.path.join(ROOT, "work", name), encoding="utf-8"):
             if raw.startswith("#") or not raw.strip():
@@ -72,6 +72,8 @@ def examples():
                 yield line("defint", f[2], "X", f[5], f[6], repl=f[3], repl2=f[4])
             elif unit in ("010", "012"):
                 yield line(f[1], f[2], "X", model=f[4], repl=None if f[3] == "-" else f[3])
+            elif unit == "014":             # id | taylor | text | var | point | n | angle | model | answer
+                yield line("taylor", f[2], f[3], f[6], f[7], repl=f[4], repl2=f[5])
             else:
                 raise SystemExit(f"golden.py: {name}: no reader for this unit's columns")
 
@@ -143,10 +145,34 @@ def generated_partfrac():
                    arena=rng.choice([8192, 8192, 65536]))
 
 
+TAYLOR_CASES = 400
+
+
+def generated_taylor():
+    """CAS 014's own seeded inputs, a source of its own: elementary functions and their sums, products, quotients and
+    compositions, at 0 and at points with exact values (1, -2, 1÷2, π÷3, π÷6, SQRT(2)), orders 0 to 12, every angle
+    and model, at both budgets"""
+    rng = random.Random(SEED + 14)
+    atoms = ["SIN(X)", "COS(X)", "EXP(X)", "LN(1+X)", "ATAN(X)", "SQRT(1+X)", "1÷(1-X)", "X^3-2×X+1", "TAN(X)",
+             "EXP(2×X)", "SIN(3×X)", "X×EXP(X)", "1÷(2+X)", "(1+X)^(1÷3)", "EXP(K×X)", "COS(X)^2"]
+    for _ in range(TAYLOR_CASES):
+        a = rng.choice(atoms)
+        r = rng.random()
+        if r < 0.3:
+            a = f"{a}+{rng.choice(atoms)}"
+        elif r < 0.5:
+            a = f"({a})×({rng.choice(atoms)})"
+        elif r < 0.6:
+            a = f"({a})÷(2+X^2)"
+        point = rng.choice(["0", "0", "0", "1", "-2", "1÷2", "π÷3", "π÷6", "SQRT(2)"])
+        yield line("taylor", a, "X", rng.choice(["RAD", "RAD", "DEG", "GRAD"]), rng.choice(["35", "35", "33", "STU"]),
+                   repl=point, repl2=str(rng.randint(0, 12)), arena=rng.choice([8192, 8192, 65536]))
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     print(f"# Casimir's golden corpus (CAS 011): scripts/golden.py's inputs (S3 bench cases, work/ examples, seed {SEED})")
-    for src in (bench, examples, generated, generated_partfrac):
+    for src in (bench, examples, generated, generated_partfrac, generated_taylor):
         for row in src():
             print(row)
 
