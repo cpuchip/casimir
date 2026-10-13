@@ -39,7 +39,9 @@ run c "$UBUNTU" '
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
         build-essential curl ca-certificates cmake python3 >/dev/null
     mkdir /src && cd /src && tar -xf - && exec < /dev/null
-    ls /src/../abacus-firmware 2>/dev/null && { echo "a firmware checkout is visible: not a standalone proof"; exit 1; }
+    for d in abacus-firmware stu32-firmware; do
+        if [ -e /src/../$d ]; then echo "a firmware checkout is visible: not a standalone proof"; exit 1; fi
+    done
     make -s check
     build/hello
     cmake -S . -B /cm -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build /cm -j"$(nproc)" >/dev/null

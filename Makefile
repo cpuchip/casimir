@@ -5,7 +5,7 @@
 #   make check         the standalone checks, as CI runs them: the golden corpus, the frame and symbol gates,
 #                      the small-primes gcd check, check-abn, and docs/language.md's examples
 #   make test          check, plus the developer tests: they read every answer back through the calculator
-#                      firmware's own evaluator, so they need its clone (CORE_REPO, private) at CORE_PIN
+#                      firmware's own evaluator, so they need its clone (CORE_REPO) at CORE_PIN
 #   make check-abn     the vendored number layer is the firmware's, unedited (third_party/abn/PIN)
 #   make wasm          the WebAssembly module and its JavaScript wrapper (emscripten; README.md)
 #
@@ -25,7 +25,7 @@ FRAME := $(if $(shell $(CC) --version 2>/dev/null | grep -i clang),-Wframe-large
 
 # The developer tests' oracle: the firmware's core at CORE_PIN, exported read-only from a local clone with
 # `git archive`, so a build never writes into that clone and never sees its uncommitted work.
-CORE_REPO ?= ../abacus-firmware
+CORE_REPO ?= ../stu32-firmware
 CORE_PIN := $(shell cat CORE_PIN)
 CB := build/core
 CORE_INTEL_TGZ := third_party/intel-dfp/IntelRDFPMathLib20U5.tar.gz

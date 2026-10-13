@@ -1,5 +1,5 @@
-# Casimir's public CI (CAS 011 rule 6): everything that needs nothing private. The developer tests read answers back
-# through the calculator firmware's core, which is private, so they run where its clone is (make test; README.md).
+# Casimir's public CI (CAS 011 rule 6): everything that needs only this repository. The developer tests read answers
+# back through the calculator firmware's core, so they need its clone and run where one is (make test; README.md).
 # On pushes to main and on pull requests only. No secrets.
 name: ci
 on:
