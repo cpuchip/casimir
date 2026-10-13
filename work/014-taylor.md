@@ -15,14 +15,16 @@ names series. It also gives CAS 015 its engine: a limit of 0÷0 is a question ab
 ## Rules
 
 1. **The op:** casim_taylor(eqn, var, point, n, model, angle, out, cap, arena, arena_cap), and CASIM_TAYLOR in
-   casim_run, with the point in repl. The order goes in a new `int order` appended to casim_req after repl2; no older op
-   reads it.
-   - ~~so older initializers keep compiling~~: wrong (casim #7676, measured). gcc's -Wmissing-field-initializers, in
-     -Wextra, rejects a positional initializer that leaves the new field out, and the firmware builds with
-     `-Wall -Wextra -Wpedantic -Werror`.
-   - So every positional casim_req initializer gains `, 0`: casim's 12 files in this unit, and the firmware's
-     core/calc.c (the `casim_req rq = {…, c->angle, repl2}` line) at the repin to 014, by soroban. Option (a) of #7676,
-     chosen over carrying the order as text in repl2, for the cleaner API.
+   casim_run, with the point in repl. **The order goes as text in repl2**, as definite integrals carry their upper
+   bound; casim_req doesn't change.
+   - ~~The order goes in a new `int order` appended to casim_req after repl2, so older initializers keep compiling~~:
+     wrong twice over. First, gcc's -Wmissing-field-initializers (in -Wextra, and the firmware builds with -Werror)
+     rejects a positional initializer that leaves the field out (casim #7676). That led to option (a), `, 0` on every
+     initializer.
+   - ~~Option (a)~~, reversed on casim's measurement #7705: do_irsteps copies the struct (`sub = *rq`), so the field
+     grows an existing frame, 544 → 560 B. Its control was the accepted casim.c compiled against the new casim.h alone.
+     Rule 8 says no existing frame moves, so (b): the order as text, no struct change, and the firmware's initializer
+     is untouched.
 2. **The order** n is 0 to 12, as solve's bound. Anything else is BAD_ARG. Order 0 is f(a) alone.
 3. **The point** a is a real constant, read exactly as a definite integral's bound (read_bound): π÷3, 1÷2, −2, SQRT(2).
    - A letter in the point is BAD_ARG.
@@ -55,6 +57,10 @@ names series. It also gives CAS 015 its engine: a limit of 0÷0 is a question ab
    - TOO_LONG past 191 characters.
    - BAD_ARG for an equation, a letter in the point, or an order outside 0..12.
 8. **Bounds, decision 68 with decision 80's budget:**
+   - **A host-only inlining shift** (casim #7705): host gcc 15 inlines small() into chain once Taylor's calls exist
+     (chain 96 → 112). Bisection found no single call that does it, and a same-size control doesn't. The S3, the real
+     target, decides. If the S3's table shows chain unmoved, the host table is re-recorded for chain with this reason.
+     If it moves on the S3, the bench's worst stack decides, and a worse worst means more digging, not a raised number.
    - **Frames:** no existing frame moves (the host frame-table gate from CAS 013). New frames: do_taylor 256 B and
      casim_taylor 48 B as prototyped.
    - **Arena:** 8,192 B. Past it the answer is NO_ROOM.
