@@ -46,6 +46,11 @@ names series. It also gives CAS 015 its engine: a limit of 0÷0 is a question ab
      order 1 and up.
    - A removable singularity is UNDEFINED too in this unit (SIN(X)÷X at 0). Its series is CAS 015's question
      (limits), and this rule may be revised then.
+   - **The typed f decides, not its canonical form** (abacus's pre-check, #7700, and casim #7701): X÷X×X at 0 is
+     UNDEFINED, although canon cancels it to X. Before canonicalizing f, a is substituted into the typed tree inside one
+     canonicalization (sub_var/sub_val, as subst does); a typed f with no value at a is UNDEFINED. This is integrate's
+     guarantee too (CAS 013 rule 8, CAS 006): no op answers where the typed input is undefined. The derivatives still
+     come from the canonical f, as derive's do. An example row shows it.
    - NO_ROOM when the derivatives swell past the arena (EXP(SIN(X)) to 8 in 8,192 B): never an overrun.
    - TOO_LONG past 191 characters.
    - BAD_ARG for an equation, a letter in the point, or an order outside 0..12.
