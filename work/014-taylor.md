@@ -15,8 +15,14 @@ names series. It also gives CAS 015 its engine: a limit of 0÷0 is a question ab
 ## Rules
 
 1. **The op:** casim_taylor(eqn, var, point, n, model, angle, out, cap, arena, arena_cap), and CASIM_TAYLOR in
-   casim_run, with the point in repl. The order goes in a new `int order` appended to casim_req after repl2, so older
-   initializers keep compiling (they leave it 0, and no older op reads it).
+   casim_run, with the point in repl. The order goes in a new `int order` appended to casim_req after repl2; no older op
+   reads it.
+   - ~~so older initializers keep compiling~~: wrong (casim #7676, measured). gcc's -Wmissing-field-initializers, in
+     -Wextra, rejects a positional initializer that leaves the new field out, and the firmware builds with
+     `-Wall -Wextra -Wpedantic -Werror`.
+   - So every positional casim_req initializer gains `, 0`: casim's 12 files in this unit, and the firmware's
+     core/calc.c (the `casim_req rq = {…, c->angle, repl2}` line) at the repin to 014, by soroban. Option (a) of #7676,
+     chosen over carrying the order as text in repl2, for the cleaner API.
 2. **The order** n is 0 to 12, as solve's bound. Anything else is BAD_ARG. Order 0 is f(a) alone.
 3. **The point** a is a real constant, read exactly as a definite integral's bound (read_bound): π÷3, 1÷2, −2, SQRT(2).
    - A letter in the point is BAD_ARG.
