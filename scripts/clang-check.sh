@@ -15,7 +15,7 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     printf 'FROM %s\nRUN apt-get update -qq && apt-get install -y -qq --no-install-recommends %s && ln -sf /usr/bin/clang-18 /usr/local/bin/clang && rm -rf /var/lib/apt/lists/*\n' "$BASE" "$PKG" |
         docker build -q -t "$IMAGE" - >/dev/null
 fi
-docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" -e WANT="$WANT" "$IMAGE" bash -c '
+docker run --rm --init --name "casim-clang-$$" --memory 2g -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" -e WANT="$WANT" "$IMAGE" bash -c '
     set -e
     if [ "$(clang --version | head -1)" != "$WANT" ]; then
         echo "clang check: the image has $(clang --version | head -1), not $WANT: refusing" >&2; exit 1

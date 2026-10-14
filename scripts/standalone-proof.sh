@@ -25,7 +25,7 @@ trap stop EXIT
 trap 'exit 130' INT TERM HUP
 run() {                         # run NAME IMAGE SCRIPT: a bounded container, the archive on its stdin (no host path is
     local name=$1 image=$2 script=$3 rc=0   # mounted, so Docker Desktop's file sharing doesn't matter)
-    timeout --kill-after=30 "$((LIMIT + 60))" docker run --rm -i --cidfile "$T/$name.cid" --memory "$MEM" \
+    timeout --kill-after=30 "$((LIMIT + 60))" docker run --rm -i --name "casim-proof-$name-$$" --cidfile "$T/$name.cid" --memory "$MEM" \
         --memory-swap "$MEM" --cpuset-cpus "$CPUS" "$image" \
         timeout --kill-after=10 "$LIMIT" bash -c "$script" < "$T/casimir.tar" &
     wait $! || rc=$?            # in the background: a signal to this script runs its trap now, not when docker returns

@@ -18,7 +18,7 @@ make -s build/casim build/intel/libbid.a
 python3 scripts/device_cases.py device/main/generated/cases.c
 DEV=()
 [ "$BUILD_ONLY" = 1 ] || DEV=(--group-add "$(stat -c %g "$PORT")" --device "$PORT")
-docker run --rm -v "$ROOT:/project" -w /project \
+docker run --rm --init --name "casim-device-$$" --memory 8g -v "$ROOT:/project" -w /project \
     --user "$(id -u):$(id -g)" "${DEV[@]}" \
     -e HOME=/tmp -e PORT="$PORT" -e BUILD_ONLY="$BUILD_ONLY" "$IMAGE" bash -c '
 set -euo pipefail

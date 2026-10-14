@@ -12,7 +12,7 @@ if [ ${#srcs[@]} -eq 0 ]; then
     echo "size-s3: no sources in src/ yet"
     exit 0
 fi
-docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" espressif/idf:v5.4.2 bash -c '
+docker run --rm --init --name "casim-size-s3-$$" --memory 4g -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" espressif/idf:v5.4.2 bash -c '
     set -e
     mkdir -p build/s3
     F="-std=c11 -O2 -mlongcalls -ffunction-sections -fdata-sections -Wall -Wextra -Werror -Wframe-larger-than=1024"

@@ -20,7 +20,7 @@ TARBALL=""
 if command -v emcc >/dev/null; then
     TARBALL=$TARBALL bash -c "$STEPS"
 else
-    docker run --rm -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" -e TARBALL="$TARBALL" -e HOME=/tmp "$IMAGE" bash -c "$STEPS"
+    docker run --rm --init --name "casim-wasm-$$" --memory 8g -v "$PWD":/w -w /w --user "$(id -u):$(id -g)" -e TARBALL="$TARBALL" -e HOME=/tmp "$IMAGE" bash -c "$STEPS"
 fi
 ls -l build/wasm/casim.wasm build/wasm/casim.js build/wasm/casim.mjs | awk '{print $5, $NF}'
 printf 'gzip -9: %s bytes casim.wasm\n' "$(gzip -9 -c build/wasm/casim.wasm | wc -c | tr -d ' ')"
