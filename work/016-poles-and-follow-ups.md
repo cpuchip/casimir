@@ -99,3 +99,57 @@ faster than any buffer, and L'Hôpital multiplies that: 1÷X^2−1÷SIN(X)^2 at 
     the series unit, which answers it by series.
   - **The judge:** abacus's 014 judge then counts UNDECIDED as allowed on its UNDEFINED rows, as 015's does. UNDECIDED
     is never a wrong answer.
+
+## Accepted (abacus, 2026-10-14), at 2833f14
+
+**The host half, on f7a0664.** f7a0664 and 14f738c were built clean on fermion in a capped
+container, and `make check` was green (310 checks). 14f738c reproduces CAS 015's acceptance answers byte for byte.
+Every case ran through the CLI at the S3's 8,192 B arena, and the Taylor set again at 65,536.
+- **The earlier hidden sets give 0 failures,** and every change against 14f738c is a refusal becoming a right answer:
+  - Taylor (2,000 cases, seed 14014): at 8 KB, no row changes. At 64 KB, 122 change: 105 NO_ROOM become right answers
+    and 17 NO_ROOM become TOO_LONG (rule 4's 1,024 B buffer). ANSWER rises 615 → 705 and NUMERIC 542 → 557.
+  - Limits (1,500, seed 15015): all 46 UNDECIDED, every one 1÷X−1÷SIN(X) at 0, now answer 0 (rule 3).
+  - Random 0÷0 compositions (600, seed 15017): NO_ROOM falls 111 → 67. 26 become UNDEFINED on no-limit rows and 18
+    become right values, because the two-sided walk now compacts between its sides.
+- **Rule 2 gets a set of its own** (abacus gen_abs seed 16016), since none of the hidden sets holds an ABS: 150
+  functions with an ABS whose argument is 0 at the point, at orders 0 to 4, 750 rows.
+  - **How it's judged:** an answer P of order n must leave (f(a±h) − P(a±h)) ÷ h^n going to 0 on both sides, at 150
+    digits. An UNDEFINED must leave the two one-sided n-th coefficients different, against casim's own order n−1
+    answer (itself checked).
+  - **0 failures at both arenas:** 354 values right, 24 UNDEFINED right, 61 UNDEFINED above an UNDEFINED order.
+  - **310 UNDECIDED, all sound:** 72 of them have a value (ABS(X)^3 and ABS(ATAN(X))^2 to order 2, for two), 50 are
+    truly UNDEFINED, and 188 sit above an UNDECIDED order.
+  - **Falsified:** casim's answered and UNDEFINED examples pass, and 6 planted wrong answers fail.
+  - **abacus's own faults, fixed before the verdict:** the generator first wrote E(X−1)P at point 1, and the check
+    first ran at 50 digits, which lost a 1e-72 remainder and gave 3 false failures on true UNDEFINEDs.
+- **Poles, reproduced by hand:** TAN(π÷2), LN(0) and ATANH(1) in simplify and expand, TAN(90) in DEG and TAN(100) in
+  GRAD in simplify, and a pole in derive, integrate, factor and solve all answer UNDEFINED. TAN(90) in RAD is kept, and
+  LN(−1) stays symbolic.
+- **The moved golden lines** (tests/golden/moved/cas-016.txt) were read one by one. The two new Taylor answers and
+  (1−COS(X))^2÷X^4 → 0.25 agree with sympy.
+
+**The device half.**
+- 2833f14 returns do_solve's S3 frame to 288. The change only calls pw_refused when the status is already refused,
+  where it returns at once otherwise. abacus read it as behavior-identical.
+- casim's report (#8048):
+  - **Frames:** none moved except lm_inf_minus_inf 128 → 96, whose test moved into lm_dominant. The threadchip
+    seat's measurement was reproduced by size-s3.sh on lepton.
+  - **Size:** text 173,367 (+3,627) of 262,144.
+  - **Bench:** DEVICE PASS on the XIAO, with all 1,065 cases byte-identical to the host, CAS 016's 89 examples among
+    them.
+  - **Stack gate:** unchanged at 11,712 of 12,288.
+- casim caught that the bench had no CAS 016 block before the run, and added one (071b056).
+- abacus did not watch the device run.
+
+**CI:** 7/7 on f7a0664 (run 38502774799) and on 2833f14 (run 38503999468). The firmware job fetches cpuchip/stu32-firmware
+by sha at CORE_PIN 38d1931, which is public.
+
+**Mutants:** 193 of 193 caught (casim). The list holds every mutant the brief names.
+
+**Named, not fixed** (docs/language.md, 109b607):
+- **For the series unit:**
+  - SQRT(X^2) to order 1 is UNDECIDED, where the truth is UNDEFINED;
+  - the 72 ABS rows above, which have values;
+  - 1÷X^2−1÷SIN(X)^2 at 0, still NO_ROOM;
+  - TAN(X)−1÷COS(X) at π÷2 from below, still UNDECIDED.
+- **For the next unit that touches solve:** solve and factor's X÷0 is NOT_NUMERIC, the one ÷0 that isn't UNDEFINED.
