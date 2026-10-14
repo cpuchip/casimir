@@ -180,3 +180,55 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
 - **The device:** no existing frame moves, the S3 bench is byte-identical, and every earlier hidden set is rerun.
 - **Size:** about a day of host work for the answers, and half a day for the steps build. Stop and report at twice
   that.
+
+## Accepted (abacus, 2026-10-14), at 279436b
+
+**The hidden set** (abacus's gen_cas017.py, seed 17017, 2,000 integrands, written while the unit was built): SUB 766,
+PARTS 388, LIMIT8 124 (X^n×ATAN(aX), which rule 7 lets refuse at 8 KB), NONEL 256, LIMIT 96, HOLE 370; DEG or GRAD
+on about half the trig cases. The judge differentiates each answer numerically (mpmath at 90 digits, a central
+difference with h = 1e-30, within 1e-35 at up to 8 seeded points), and requires a real value at each point with every
+function and power on the way real (CAS 006's guarantee). Before any answer existed it was falsified: sympy's 233
+true antiderivatives pass; −F, 2F and a dropped term fail on every case, and a stripped ABS on every case where the
+LN's argument can be negative.
+
+**Held at 2222628, on refusals only.** 0 wrong answers, but two refusals the unit didn't name: a constant in a
+divisor blocked substitution (33 cases, EXP(ATAN(X))÷(3×(X^2+1))), and ATAN by parts refused in DEG and GRAD at every
+arena (29 cases, ATAN(X+1), X×ATAN(X)). 279436b fixed both (rules 1 and 2 above).
+
+**At 279436b,** built from a clean clone, `make check` green (310 checks, and 478 in integrate-values), every case
+run through the CLI at 8,192 B and at 65,536 B:
+- **0 wrong answers at both arenas.** HOLE 370 and NONEL 256 all refused.
+- **Answers right:** 1,079 at 8 KB and 1,261 at 64 KB (2222628: 1,046 and 1,199). Against 2222628 only the held rows
+  moved: the 33 answer at both arenas, the 29 answer at 64 KB, and 25 other DEG and GRAD answers changed form only,
+  each judged right.
+- **Refusals left:** 182 at 8 KB only, X^n×LN(aX+b), LN(aX+b), ATAN(aX+b) and X^n×ATAN(kX) in every angle mode: rule
+  7's third limit, as named. At both arenas only 17, all (X^2+1)^(−3÷2) from substitution with u = ATAN(X), where
+  sympy folded COS(ATAN(X)) into a form outside this unit. That is the generator's fault, and those rows count as
+  LIMIT.
+- **By hand:** EXP(ATAN(X))÷(3×(X^2+1)) is EXP(ATAN(X))÷3, 15×X^2÷(5×X^3+2) is LN(ABS(X^3+0.4)), ATAN(X+1) in DEG at
+  64 KB is ATAN(X+1)+X×ATAN(X+1)−90×LN(2×X+X^2+2)÷π, and X^2÷(3×X)×EXP(X), X^2÷X×EXP(X) and (X−1)÷((X−1)×(X+2))
+  still refuse.
+- **The earlier hidden sets:** partial fractions (5,000), Taylor (2,000, at both arenas), limits (1,500 and 600) and
+  CAS 016's ABS set (750, both arenas) are byte-identical to CAS 016's 2833f14. The rational-integral set (3,000)
+  changes 32 rows against 2833f14:
+  - 24 EITHER rows, a SIN(X) beside a rational function, go NOT_INTEGRABLE → NO_ROOM, rule 6's status at 8 KB;
+  - 5 rows CAS 013's rule 8 refused now answer, (7×X−7)÷(X^2−2×X+1), (−4×X+8)÷(3×(X−2)^3) and three like them,
+    and so do 3 EITHER rows: each right by F′ = f and the domain. In the 5 the cancelled factor is still a denominator,
+    so there's no hole. Rule 2's divisor rule is the general form of rule 8's intent ("never an antiderivative
+    defined where the integrand isn't"), and it answers these where the rational path alone refuses them.
+- **The moved golden lines** (tests/golden/moved/cas-017.txt), 29, were read one by one. (3^7)^ASIN(π) now answers,
+  which is the long-standing rule for a symbolic constant, and one answer prints 0^SIN(0.5) for 0; both are left as
+  they are.
+
+**The device half** (casim's report; abacus did not watch the device run): no existing frame moved, 2 new
+(ib_const, ib_inv); S3 text 184,030 of 262,144 (+10,663 over 2833f14); DEVICE PASS on the XIAO, 1,170 of the bench's
+1,173 cases on the chip (3 older rows carry a status the bench has no code for), the deep-nest peak 5,440 B and the
+stack gate's worst 11,712 of 12,288, both unchanged. **CI** 7/7 on 279436b (run 38574304157). **Mutants** 214 of 214
+caught (casim).
+
+**Named, not fixed (form, not value):**
+- substitution prints the LN of u with u's X coefficient made 1, so (7×X−7)÷(X^2−2×X+1) is
+  3.5×LN(ABS(X−0.5×X^2−0.5)), where a student writes 7×LN(ABS(X−1)); and SIN(X)+(9×X−9)÷(X^2−2×X+4) prints
+  LN(ABS(X−0.5×X^2−2)), an ABS that argument needs (it is negative everywhere) but that CAS 013's form,
+  LN(−2×X+X^2+4), doesn't;
+- ATAN(X) keeps LN(ABS(X^2+1)) at 8 KB where 64 KB drops the ABS.
