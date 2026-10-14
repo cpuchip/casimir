@@ -2817,7 +2817,7 @@ static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT
                                         "ANSWER"};
 static const char *const RULE_EXT_NAME[] = {"POLYNOMIAL PART", "FACTOR", "FORM", "CLEARED", "COVER-UP", "COEFFICIENTS",
                                                "PARTIAL FRACTIONS", "SPLIT", "LOG DERIVATIVE", "COMPLETE THE SQUARE",
-                                               "ARCTANGENT"};
+                                               "ARCTANGENT", "SUBSTITUTION", "BY PARTS", "CYCLE"};
 
 const char *casim_rule_name(int rule)
 {
@@ -5806,6 +5806,8 @@ static void unparse(ctx *c, size_t parsed)
 static casim_status irs_refused(const casim_req *rq, int k, casim_step_info *info, const out_t *o, ctx *tc);
 static casim_status ib_steps(const casim_req *rq, int k, casim_step_info *info, char *out, size_t cap, void *arena,
                              size_t arena_cap);
+static casim_status ib_walk(const casim_req *rq, int k, casim_step_info *info, char *out, size_t cap, void *arena,
+                            size_t arena_cap);
 
 static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                               void *arena, size_t arena_cap)
@@ -8240,8 +8242,8 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
        the prototype); a small out borrows the slot */
     st = cap >= SLOT ? do_irational(rq->eqn, var, rq->angle, out, cap, arena, arena_cap, rtl)
                      : do_irational(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl);
-    /* CAS 017 rule 8: when the rational path refuses too, substitution and parts' one page */
-    if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? ib_steps(rq, k, info, out, cap, arena, arena_cap) : st;
+    /* CAS 017 rule 8: when the rational path refuses too, substitution and parts' walk */
+    if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? (info->line = flags, ib_walk(rq, k, info, out, cap, arena, arena_cap)) : st;
     if (do_partfrac(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return CASIM_NO_ROOM;
     S.k = k, S.at = 0, S.flags = flags, S.info = info, S.w = &w, S.want = 0;
     /* S2.2: partfrac changed nothing when its answer and the integrand have one canonical form */
@@ -8695,13 +8697,27 @@ casim_status casim_taylor(const char *eqn, int var, const char *point, int n, in
 #define IB_TRIES 160
 #define IB_TEXT 384                     /* a term's printed form, read back by the table or the rational path */
 #define IB_CANDS 12
+#define IB_WHOLE 1000000                /* S2.6: the whole form's largest scale */
+
+/* the integrand's own choice, for its steps (rule 8): the plan (ib_choose) replays ib's order at depth 0, and r holds
+   u, g (substitution); u, v, w, and u2, v2, k (parts, the cycle); k (a constant factor). Only substitution's u and g
+   are noted during the search (ib_inner), as a note in ib_parts moved ib's frame (240 -> 256 on the host, measured) */
+enum { IBH_NONE, IBH_SUB, IBH_PARTS, IBH_CYCLE, IBH_CONST };
 
 typedef struct {
     int tries;
     bool starved;                       /* the rational path ran out on a term of the input's own sum (rule 6) */
+    int how;                            /* the choice at depth 0 */
+    ref r[6];
 } ib_t;
 
 static ref ib(ctx *c, ib_t *B, ref t, int var, int d);
+
+/* the choice at depth 0, for the steps: out of line, so that ib's frame stays as it was */
+static __attribute__((noinline)) void ib_rec(ib_t *B, int how, int at, ref a, ref b, ref c)
+{
+    B->how = how, B->r[at] = a, B->r[at + 1] = b, B->r[at + 2] = c;
+}
 
 /* canon, called once: the section's calls through this one leave gcc's inlining of canon elsewhere as it was (an
    out-of-line canon appeared when they called it directly) */
@@ -9012,6 +9028,103 @@ static ref ib_back(ctx *c, ref g, ref u, int var, int U)
                                   power(c, nd(c, xk)->b, small(c, C_M1))));
 }
 
+/* S2.6: whether a×X^2+b×X+c (whole) has no real root, b^2 < 4ac; false when either side overflows (the cold review:
+   a wrapped product dropped an ABS) */
+static bool ib_noroot(int64_t a, int64_t b, int64_t c)
+{
+    int64_t b2, ac, ac4;
+    return !__builtin_mul_overflow(b, b, &b2) && !__builtin_mul_overflow(a, c, &ac) &&
+           !__builtin_mul_overflow(ac, (int64_t)4, &ac4) && b2 < ac4;
+}
+
+/* S2.6: u (a sum) with whole coefficients, none in common, its highest power's positive (5×X^3+2, not X^3+0.4), or
+   SPARE when u isn't a polynomial in var; *none when it is a quadratic with no real root, *scale the w÷u. u is read as
+   printed, as pw reads typed trees */
+static __attribute__((noinline)) ref ib_whole(ctx *c, ref u, int var, bool *none, rat *scale)
+{
+    size_t top = c->top;
+    const char *s0 = c->s;
+    char *buf;
+    rat *p, r;
+    int64_t l = 1, g = 0;
+    int d;
+    ref w = SPARE, raw;
+    *none = false;
+    if (nd(c, u)->kind != K_ADD || (buf = ib_print(c, u, IB_TEXT)) == NULL) return c->st = CASIM_OK, c->top = top, SPARE;
+    c->s = buf;
+    raw = parse(c);
+    if (c->st == CASIM_OK && poly_of(c, raw, var, &p) && (d = pdeg(p)) >= 1) {
+        for (int k = 0; k <= d && l; k++)                   /* |p|, q and l up to IB_WHOLE: no product overflows */
+            if (p[k].p) l = p[k].p > IB_WHOLE || p[k].p < -IB_WHOLE ? 0 : l / gcd64(l, p[k].q) * p[k].q,
+                        l = l > IB_WHOLE ? 0 : l;
+        for (int k = 0; k <= d && l; k++)
+            if (p[k].p) g = gcd64(g, p[k].p * (l / p[k].q));
+        if (l && g) {                       /* the scale l÷g, made here: rat_make's callers stay as they were (lm_sum's frame) */
+            int64_t h = gcd64(l, g);
+            r.p = (p[d].p < 0 ? -l : l) / h, r.q = g / h;
+            bool ok = true;
+            for (int k = 0; k <= d && ok; k++) ok = rat_mul(&p[k], &p[k], &r) && p[k].q == 1;
+            *scale = r;
+            if (ok && d == 2) *none = ib_noroot(p[2].p, p[1].p, p[0].p);
+            if (ok) w = ib_canon(c, poly_tree(c, p, var));
+        }
+    }
+    if (c->st != CASIM_OK) c->st = CASIM_OK, w = SPARE;
+    c->s = s0, c->top = top;
+    return w;
+}
+
+/* S2.6: a sum with no real root, each term >= 0 (an even power, EXP or COSH, a product of those) and one > 0 */
+static bool ib_rootless(ctx *c, ref u)
+{
+    const node *x = nd(c, u);
+    bool pos = false;
+    if (x->kind != K_ADD) return false;
+    for (int i = 0; i < x->n; i++) {
+        ref y = list(c, nd(c, u)->a)[i];
+        const node *z = nd(c, y);
+        if (z->kind == K_FN && (z->id == F_EXP || z->id == F_COSH)) pos = true;
+        else if (!ib_semi(c, y)) return false;
+        else pos = pos || z->kind == K_NUM || z->kind == K_PI;
+    }
+    return pos;
+}
+
+/* S2.6: each LN(ABS(a)) in F, a a sum, as LN(ABS(w)), w a's whole form (the two differ by a constant), or LN(w) where w
+   has no real root, as CAS 013 writes its answers */
+static __attribute__((noinline)) ref ib_lnform(ctx *c, ref r, int var)
+{
+    const node *x = nd(c, r);
+    ref v = r;
+    if (c->st != CASIM_OK || !enter(c)) return SPARE;
+    if (x->kind == K_FN && x->id == F_LN && nd(c, x->a)->kind == K_FN && nd(c, x->a)->id == F_ABS &&
+        nd(c, nd(c, x->a)->a)->kind == K_ADD) {
+        ref a = nd(c, nd(c, r)->a)->a, w;
+        bool none = false;
+        rat sc;
+        w = ib_whole(c, a, var, &none, &sc);
+        if (w == SPARE) w = a;
+        none = none || ib_rootless(c, a);
+        v = fn(c, F_LN, none ? w : fn(c, F_ABS, w));
+    } else if (x->kind == K_FN) v = fn(c, x->id, ib_lnform(c, x->a, var));
+    else if (x->kind == K_POW) {
+        ref b = ib_lnform(c, x->a, var), e = ib_lnform(c, nd(c, r)->b, var);
+        v = power(c, b, e);
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        int n = x->n, kind = x->kind;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (l) {
+            for (int i = 0; i < n; i++) {
+                ref y = ib_lnform(c, list(c, nd(c, r)->a)[i], var);
+                list(c, l)[i] = y;
+            }
+            v = kind == K_ADD ? add(c, list(c, l), n) : mul(c, list(c, l), n);
+        }
+    }
+    c->depth--;
+    return v;
+}
+
 /* A test build (tests/ibcheck_check.c) defines this to spoil G before it is integrated, so that substitution's check
    (G(u)×u' against the term), which no input reaches as built, is seen to refuse */
 #ifndef CASIM_IB_PLANT
@@ -9019,9 +9132,27 @@ static ref ib_back(ctx *c, ref g, ref u, int var, int U)
 #endif
 
 /* rule 3: ∫ t by substitution, t = G(u)×u' with G integrated in a new letter U */
+static const char ib_pick[] = "UVWTSRQ";              /* substitution's letters, in order */
+
+/* ib_fail after a refused substitution, its note at depth 0 dropped too: the note points into what the arena gives back
+   (out of line, as a store in ib moved its frame 240 -> 256) */
+static __attribute__((noinline)) bool ib_unnote(ctx *c, ib_t *B, size_t mark, int d)
+{
+    if (d == 0) B->how = IBH_NONE;
+    return ib_fail(c, mark);
+}
+
+/* substitution's G integrated a level down, its choice noted first at depth 0 (the last one noted is the one kept):
+   out of line, so that the note leaves ib's frame as it was */
+static __attribute__((noinline)) ref ib_inner(ctx *c, ib_t *B, ref g, int U, int d, ref u)
+{
+    if (d == 1) ib_rec(B, IBH_SUB, 0, u, g, SPARE);
+    return ib(c, B, g, U, d);
+}
+
 static ref ib_sub(ctx *c, ib_t *B, ref t, int var, int d)
 {
-    static const char pick[] = "UVWTSRQ";
+    const char *pick = ib_pick;
     ref cs[IB_CANDS];
     int n = 0, U = -1, v0 = c->var;
     size_t mark;
@@ -9041,12 +9172,14 @@ static ref ib_sub(ctx *c, ib_t *B, ref t, int var, int d)
             if (c->st == CASIM_OK && g != SPARE && !contains(c, g, var) &&
                 ib_letters_kept(c, g, U, t)) {
                 g = CASIM_IB_PLANT(c, g);
-                H = ib(c, B, g, U, d + 1);
+                H = ib_inner(c, B, g, U, d + 1, u);
                 if (c->st == CASIM_OK) {
                     F = ib_at(c, H, U, u);
                     q = ib_at(c, g, U, u);
                     c->var = var;
-                    if (c->st == CASIM_OK && ib_same(c, mul2(c, q, du), t)) return c->var = v0, F;
+                    if (c->st == CASIM_OK && ib_same(c, mul2(c, q, du), t)) {
+                        if (c->st == CASIM_OK) return c->var = v0, F;
+                    }
                 }
             }
         }
@@ -9176,7 +9309,7 @@ static ref ib(ctx *c, ib_t *B, ref t, int var, int d)
     if (!enter(c)) return c->depth--, SPARE;
     if (d < 0) d = 0;
     F = ib_sub(c, B, t, var, d);
-    if (c->st != CASIM_OK && ib_fail(c, mark)) F = ib_parts(c, B, t, var, d);
+    if (c->st != CASIM_OK && ib_unnote(c, B, mark, d)) F = ib_parts(c, B, t, var, d);
     c->depth -= 2;
     if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
     return c->st = CASIM_NOT_INTEGRABLE, SPARE;
@@ -9283,6 +9416,18 @@ static bool ib_typed_ok(ctx *c, ref r, ref t, int var)
     return ok;
 }
 
+/* S2.6's LN form on the answer, once (not inside the search, whose arena it would take: CAS 017's cold review); the
+   answer as it was when the form doesn't fit */
+static __attribute__((noinline)) ref ib_lnfinal(ctx *c, ref F, int var)
+{
+    size_t mark = c->used;
+    ref G = ib_canon(c, ib_lnform(c, F, var));
+    if (c->st == CASIM_OK) return G;
+    c->st = CASIM_OK, c->starved = false;
+    taylor_drop(c, mark);
+    return F;
+}
+
 /* rule 6: the sum's terms free of var dropped (an antiderivative is one up to a constant) */
 static ref ib_drop(ctx *c, ref F, int var)
 {
@@ -9297,7 +9442,7 @@ static __attribute__((noinline)) casim_status do_iparts(const char *eqn, int var
                                                          void *arena, size_t arena_cap, bool rtl)
 {
     ctx c;
-    ib_t B = {0, false};
+    ib_t B = {0, false, IBH_NONE, {0}};
     ref n = SPARE, t, F = SPARE;
     if (cap) out[0] = '\0';
     start(&c, eqn, angle, arena, arena_cap);
@@ -9314,11 +9459,393 @@ static __attribute__((noinline)) casim_status do_iparts(const char *eqn, int var
         F = ib(&c, &B, t, var, -1);
         if (c.st == CASIM_NO_ROOM && !B.starved) c.st = CASIM_NOT_INTEGRABLE;     /* rule 6: room ran out in the search */
         if (c.st == CASIM_NOT_INTEGRABLE && B.starved) c.st = CASIM_NO_ROOM;
-        if (c.st == CASIM_OK) F = ib_drop(&c, F, var);
+        if (c.st == CASIM_OK) F = ib_lnfinal(&c, ib_drop(&c, F, var), var);
         if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;
         c.s = eqn;
     }
     return finish(&c, F, out, cap < SLOT ? cap : SLOT);
+}
+
+/* ---- the working pages (rule 8's second build, work/017 §Steps) ----
+   The search's own choice for the integrand, its pieces walked by integrate's steps on their printed text (CAS 013's
+   composition): a sum by its terms, SUBSTITUTION, BY PARTS, the CYCLE, or a constant factor out. A walk nests at
+   most IB_WALKS deep (each piece's walk is a fresh call, with its own depth guard), and below that a piece is rule 8's
+   one page; a walk that doesn't fit is that one page too, so the steps never refuse what integrate answers. */
+
+#define IB_SLAB 1536                    /* the texts a walk prints, before they are moved to the arena's top */
+#define IB_NS 12
+#define IB_LEVEL 16                     /* flags: a walk's level, in casim_step's bits above CASIM_STEPS_ONE_LINE */
+#define IB_WALKS 3
+
+typedef struct {
+    int how, U, n;                      /* n: the texts in s */
+    bool sum;                           /* s holds a sum's terms */
+    size_t used;                        /* their bytes */
+    const char *s[IB_NS];               /* a sum's terms; else f, F, then the choice's pieces (ib_plan_make) */
+} ib_plan;
+
+/* the search's choice for t at depth 0 (ib's order: the table, the rational path with a constant factor, substitution,
+   parts), into B; IBH_NONE when it is the table on t's canonical form. Substitution from its note (ib_inner), taken
+   when its G integrates again and G(u)×u' is t (a try that failed leaves its note; tests/ibcheck_check.c spoils G);
+   parts' pieces made as ib_parts makes them. Only functions ib's section already has out of line are called here:
+   another call to ib_table, ib_rational or ib_same moved ib's frame (240 -> 224, measured) */
+#ifndef CASIM_IB_REPLAY_PLANT
+#define CASIM_IB_REPLAY_PLANT(c, g) (g)
+#endif
+
+static __attribute__((noinline)) void ib_choose(ctx *c, ib_t *B, ref t, int var)
+{
+    ib_t B2 = {0, false, IBH_NONE, {0}};
+    size_t mark = c->used, top = c->top;
+    const char *s0 = c->s;
+    ref u = B->r[0], g = B->r[1], k, v;
+    int how = B->how, best = 0, other = 0, U = -1;
+    char *buf;
+    const node *x;
+    B->how = IBH_NONE;
+    if ((buf = ib_print(c, t, IB_TEXT)) != NULL) {       /* the table, as ib_table */
+        c->s = buf;
+        integ(c, parse(c), var);
+    }
+    c->s = s0, c->top = top;
+    if (c->st == CASIM_OK || !ib_fail(c, mark)) return;
+    if ((k = ib_const(c, t, var)) != 0 &&                /* the rational path, as ib_rational */
+        (buf = ib_print(c, ib_canon(c, mul2(c, t, ib_inv(c, k))), 2 * IB_TEXT)) != NULL &&
+        do_irational(buf, var, c->angle, buf + IB_TEXT, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl) == CASIM_OK) {
+        c->top = top;
+        B->how = IBH_CONST, B->r[0] = k;
+        return;
+    }
+    c->top = top;
+    ib_fail(c, mark);
+    for (int i = 0; ib_pick[i] && U < 0; i++)
+        if (ib_pick[i] - 'A' != var && !contains(c, t, ib_pick[i] - 'A')) U = ib_pick[i] - 'A';
+    if (how == IBH_SUB && U >= 0) {
+        ref q, z;
+        g = CASIM_IB_REPLAY_PLANT(c, g);
+        ib(c, &B2, g, U, 1);
+        c->var = var;
+        c->sub_var = U, c->sub_val = u;                 /* G(u)×u' = t, as ib_sub checks it (ib_at, ib_same) */
+        q = ib_canon(c, check_rewrite(c, g));
+        c->sub_val = 0, c->sub_var = -1;
+        z = expand_fully(c, check_rewrite(c, add2(c, mul2(c, q, ib_deriv(c, u)), ib_neg(c, t))));
+        if (c->st == CASIM_OK && is_k(c, z, 0, 1)) {
+            B->how = IBH_SUB, B->r[0] = u, B->r[1] = g, B->r[2] = (ref)U;
+            return;
+        }
+        ib_fail(c, mark);                       /* the search's substitution, not replayed here (the arena): one page, */
+        return;                                 /* not parts the search never made (the cold review's round 2) */
+    }
+    u = SPARE;                                          /* parts: u by LIATE, as ib_parts chooses it */
+    x = nd(c, t);
+    if (x->kind == K_MUL) {
+        for (int i = 0; i < x->n; i++) {
+            int cl = ib_class(c, list(c, nd(c, t)->a)[i], var);
+            if (cl > best) best = cl, u = list(c, nd(c, t)->a)[i];
+        }
+        for (int i = 0; i < nd(c, t)->n; i++) {
+            int cl = ib_class(c, list(c, nd(c, t)->a)[i], var);
+            if (list(c, nd(c, t)->a)[i] != u && cl) other = other ? -1 : cl;
+        }
+        if (other == 0 && best < 4) return;            /* as ib_parts: one factor holds var */
+    } else if ((best = ib_class(c, t, var)) >= 4) u = t;
+    if (u == SPARE || best == 0) return;
+    v = ib(c, &B2, ib_canon(c, mul2(c, t, power(c, u, small(c, C_M1)))), var, 1);
+    c->var = var;
+    if (c->st != CASIM_OK) {
+        ib_fail(c, mark);
+        return;
+    }
+    B->how = IBH_PARTS, B->r[0] = u, B->r[1] = v, B->r[2] = ib_canon(c, mul2(c, v, ib_deriv(c, u)));
+    if (best <= 2 && other >= 1 && other <= 2) {       /* the cycle: u2, v2 = ∫ w÷u2, k = v2×u2' ÷ t */
+        const node *y = nd(c, B->r[2]);
+        B->how = IBH_CYCLE, B->r[3] = SPARE;
+        for (int i = 0; y->kind == K_MUL && i < y->n; i++)
+            if (ib_class(c, list(c, nd(c, B->r[2])->a)[i], var) == best) B->r[3] = list(c, nd(c, B->r[2])->a)[i];
+        if (B->r[3] != SPARE) {
+            B->r[4] = ib(c, &B2, ib_canon(c, mul2(c, B->r[2], power(c, B->r[3], small(c, C_M1)))), var, 1);
+            c->var = var;
+            B->r[5] = ib_canon(c, mul2(c, ib_canon(c, mul2(c, B->r[4], ib_deriv(c, B->r[3]))),
+                                       power(c, t, small(c, C_M1))));
+        }
+        if (B->r[3] == SPARE || c->st != CASIM_OK) {
+            ib_fail(c, mark);
+            B->how = IBH_NONE;
+        }
+    }
+}
+
+/* the walk's texts from integrate's own search on rq, NUL-separated in slab: a sum's terms (sum), or
+   f and F and the choice's pieces: substitution u, g; parts u, v, w, f÷u; the cycle u2, v2, -k, w÷u2, 1-k, then
+   parts'; a constant factor k, f÷k */
+static __attribute__((noinline)) casim_status ib_plan_make(const casim_req *rq, ib_plan *P, char *slab, void *arena,
+                                                            size_t arena_cap)
+{
+    ctx c;
+    ib_t B = {0, false, IBH_NONE, {0}};
+    ref n = SPARE, t, F = SPARE, x[IB_NS];
+    int var = rq->var, nx = 0;
+    out_t w = {slab, IB_SLAB, 0, false};
+    memset(P, 0, sizeof *P);
+    start(&c, rq->eqn, rq->angle, arena, arena_cap);
+    c.rtl = rq->model == CASIM_MODEL_STU;
+    c.opaque = true;
+    c.var = var;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    t = c.st == CASIM_OK ? ib_canon(&c, n) : SPARE;
+    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;
+    if (c.st == CASIM_OK) {
+        c.own_text = true;
+        F = ib(&c, &B, t, var, -1);
+        if (c.st == CASIM_OK) F = ib_lnfinal(&c, ib_drop(&c, F, var), var);
+    }
+    if (c.st != CASIM_OK) return c.st;
+    c.var = var;
+    if (nd(&c, t)->kind == K_ADD) {
+        if (nd(&c, t)->n > IB_NS) return CASIM_NO_ROOM;
+        P->sum = true;
+        for (int i = 0; i < nd(&c, t)->n; i++) x[nx++] = list(&c, nd(&c, t)->a)[i];
+    } else {
+        ref k;
+        ib_choose(&c, &B, t, var);
+        if (c.st != CASIM_OK) return c.st;
+        k = B.r[5];
+        P->how = B.how, P->U = B.how == IBH_SUB ? (int)B.r[2] : 0;
+        if (B.how == IBH_SUB) {             /* U as the answer's LN has it (S2.6): w = s×u, G(U÷s)÷s */
+            bool none;
+            rat sc = {1, 1};
+            ref wf = ib_whole(&c, B.r[0], var, &none, &sc), is;
+            if (wf != SPARE && !(sc.p == 1 && sc.q == 1)) {
+                rat inv = {sc.p < 0 ? -sc.q : sc.q, sc.p < 0 ? -sc.p : sc.p};        /* 1÷s, by hand: not rat_make */
+                is = num(&c, &inv);
+                c.sub_var = P->U, c.sub_val = ib_canon(&c, mul2(&c, leaf(&c, K_VAR, P->U), is));
+                B.r[1] = ib_canon(&c, mul2(&c, check_rewrite(&c, B.r[1]), is));
+                c.sub_val = 0, c.sub_var = -1;
+                B.r[0] = wf;
+                if (c.st != CASIM_OK) return c.st;
+            }
+        }
+        x[nx++] = t, x[nx++] = F;
+        if (B.how == IBH_SUB) x[nx++] = B.r[0], x[nx++] = B.r[1];
+        if (B.how == IBH_CYCLE) {
+            x[nx++] = B.r[3], x[nx++] = B.r[4], x[nx++] = ib_neg(&c, k);
+            x[nx++] = ib_canon(&c, mul2(&c, B.r[2], power(&c, B.r[3], small(&c, C_M1))));
+            x[nx++] = ib_canon(&c, add2(&c, small(&c, C_1), ib_neg(&c, k)));
+        }
+        if (B.how == IBH_PARTS || B.how == IBH_CYCLE) {
+            x[nx++] = B.r[0], x[nx++] = B.r[1], x[nx++] = B.r[2];
+            x[nx++] = ib_canon(&c, mul2(&c, t, power(&c, B.r[0], small(&c, C_M1))));
+        }
+        if (B.how == IBH_CONST)
+            x[nx++] = B.r[0], x[nx++] = ib_canon(&c, mul2(&c, t, power(&c, B.r[0], small(&c, C_M1))));
+    }
+    for (int i = 0; i < nx && c.st == CASIM_OK; i++) {
+        P->s[i] = slab + w.n;
+        print(&c, &w, x[i]);
+        if (w.full || w.n + 1 >= w.cap) return CASIM_NO_ROOM;
+        slab[w.n++] = '\0';
+    }
+    P->n = nx, P->used = w.n;
+    return c.st;
+}
+
+/* whether a printed text is a sum at its top (a + or - outside brackets, not a sign) */
+static bool ib_sum_text(const char *s)
+{
+    int depth = 0;
+    for (int i = 0; s[i]; i++) {
+        unsigned char b = (unsigned char)s[i], a = i ? (unsigned char)s[i - 1] : 0;
+        if (s[i] == '(') depth++;
+        else if (s[i] == ')') depth--;
+        else if (depth == 0 && i > 0 && (s[i] == '+' || s[i] == '-') && a != '(' && a != '^' && a != 0x97 && a != 0xb7 &&
+                 !(a == 'E' && i > 1 && s[i - 2] >= '0' && s[i - 2] <= '9'))
+            return true;
+        (void)b;
+    }
+    return false;
+}
+
+/* a factor of a product line: bracketed when it is a sum, or a signed factor after the first */
+static void ib_wfac(out_t *w, const char *s, bool first)
+{
+    bool b = ib_sum_text(s) || (!first && s[0] == '-');
+    if (b) pf_puts(w, "(");
+    pf_puts(w, s);
+    if (b) pf_puts(w, ")");
+}
+
+/* a divisor: bracketed unless it is a number or a name alone (÷(10÷9), ÷(π^2÷32400+1)) */
+static void ib_wdiv(out_t *w, const char *s)
+{
+    bool b = s[0] == '-' || strpbrk(s, "+-^(") != NULL || strstr(s, TIMES) != NULL || strstr(s, "\xc3\xb7") != NULL;
+    if (b) pf_puts(w, "(");
+    pf_puts(w, s);
+    if (b) pf_puts(w, ")");
+}
+
+/* "a×b", each a factor */
+static void ib_wprod(out_t *w, const char *a, const char *b)
+{
+    ib_wfac(w, a, true), pf_puts(w, TIMES), ib_wfac(w, b, false);
+}
+
+/* ", L=text" */
+static void ib_wlet(out_t *w, int letter, const char *text, int var)
+{
+    char d[5] = {',', ' ', (char)('A' + letter), '=', '\0'};
+    pf_puts(w, d);
+    if (var >= 0) irs_int(w, text, var);
+    else pf_puts(w, text);
+}
+
+/* a label's letter for BY PARTS's line: the first of U, V, W, T, S, R, Q that isn't var, isn't skip, and isn't a
+   letter of text (one standing alone: not in a function's name) */
+static int ib_label(const char *text, int var, int skip)
+{
+    static const char pick[] = "UVWTSRQ";
+    for (int i = 0; pick[i]; i++) {
+        int l = pick[i] - 'A';
+        bool used = l == var || l == skip;
+        for (int j = 0; text[j] && !used; j++)
+            used = text[j] == pick[i] && !(j && text[j - 1] >= 'A' && text[j - 1] <= 'Z') &&
+                   !(text[j + 1] >= 'A' && text[j + 1] <= 'Z') && text[j + 1] != '(';
+        if (!used) return l;
+    }
+    for (int l = 25; l >= 0; l--) {                    /* the list taken: any letter free in text */
+        bool used = l == var || l == skip;
+        for (int j = 0; text[j] && !used; j++)
+            used = text[j] == 'A' + l && !(j && text[j - 1] >= 'A' && text[j - 1] <= 'Z') &&
+                   !(text[j + 1] >= 'A' && text[j + 1] <= 'Z') && text[j + 1] != '(';
+        if (!used) return l;
+    }
+    return 'U' - 'A';
+}
+
+/* irs_sub for a piece: a page too long for out is noted (*tl) and the walk counted on, so that TOO_LONG comes back with
+   the whole count, as casim_step's contract has it (the cold review: BAD_ARG for a k below the count) */
+static __attribute__((noinline)) casim_status ib_piece(irs_t *S, const casim_req *rq, int down, void *arena, size_t cap,
+                                                        bool *tl)
+{
+    casim_step_info si;
+    casim_status st = casim_step(rq, -1, S->flags, &si, NULL, 0, arena, cap);
+    if (st != CASIM_OK) return st;
+    if (S->k >= S->at && S->k < S->at + si.count) {
+        st = casim_step(rq, S->k - S->at, S->flags, S->info, S->w->o, S->w->cap, arena, cap);
+        S->info->depth += down;
+        if (st == CASIM_TOO_LONG) *tl = true;
+        else if (st != CASIM_OK) return st;
+    }
+    S->at += si.count;
+    return CASIM_OK;
+}
+
+/* rule 8's one page, also when counted with no out (a piece's walk): integrate's answer into the arena's top */
+static casim_status ib_one(const casim_req *rq, int k, casim_step_info *info, char *out, size_t cap, void *arena,
+                           size_t arena_cap)
+{
+    if (cap < IB_TEXT && k < 0 && arena_cap > 2 * IB_TEXT)
+        return ib_steps(rq, k, info, (char *)arena + arena_cap - IB_TEXT, IB_TEXT, arena, arena_cap - IB_TEXT);
+    return ib_steps(rq, k, info, out, cap, arena, arena_cap);
+}
+
+/* the walk (do_irsteps, when the rational path refuses too), with ib_steps's arguments, the flags riding in info's line
+   (do_irsteps's frame and irs_refused's stay as they were) */
+static __attribute__((noinline)) casim_status ib_walk(const casim_req *rq, int k, casim_step_info *info, char *out,
+                                                       size_t cap0, void *arena, size_t cap)
+{
+    ib_plan P;
+    irs_t S;
+    out_t w = {out, cap0, 0, false};
+    casim_req sub = *rq;
+    casim_status st;
+    size_t room = cap > 2 * IB_SLAB ? (cap - IB_SLAB) & ~(size_t)7 : 0, keep;
+    char *slab = (char *)arena + room, *to;
+    int rule = CASIM_RULE_SUM, var = rq->var, x, lu, lv, flags = info->line;
+    bool tl = false;
+    memset(info, 0, sizeof *info);
+    if (cap0) out[0] = '\0';
+    if (flags / IB_LEVEL >= IB_WALKS || !room) return ib_one(rq, k, info, out, cap0, arena, cap);
+    /* integrate's own answer first: the walk is shown only where it answers (the plan doesn't repeat each of its
+       checks: the letter rule refuses SIN(A×X)×COS(X), whose parts the plan would make) */
+    if ((st = ib_one(rq, -1, info, out, cap0, arena, cap)) != CASIM_OK) return st;
+    memset(info, 0, sizeof *info);
+    st = ib_plan_make(rq, &P, slab, arena, room);
+    if (st != CASIM_OK || (P.how == IBH_NONE && !P.sum)) return ib_one(rq, k, info, out, cap0, arena, cap);
+    keep = (P.used + 7) & ~(size_t)7;                   /* the texts to the arena's top, the rest for the pieces */
+    to = (char *)arena + cap - keep;
+    memmove(to, slab, P.used);
+    for (int i = 0; i < P.n; i++) P.s[i] = to + (P.s[i] - slab);
+    room = (cap - keep) & ~(size_t)7;
+    S.k = k, S.at = 0, S.flags = flags + IB_LEVEL, S.info = info, S.w = &w, S.want = 0, S.skip = false;
+    x = P.how == IBH_CYCLE ? 5 : 0;                     /* parts' u, v, w, f÷u at x + 2 */
+    lu = ib_label(rq->eqn, var, -1), lv = ib_label(rq->eqn, var, lu);
+    if (P.sum) {
+        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule)) {
+            irs_int(&w, rq->eqn, var), pf_puts(&w, " = ");
+            for (int i = 0; i < P.n; i++) {
+                if (i) pf_puts(&w, "+");
+                irs_int(&w, P.s[i], var);
+            }
+        }
+        for (int i = 0; i < P.n && st == CASIM_OK; i++) sub.eqn = P.s[i], st = ib_piece(&S, &sub, 1, arena, room, &tl);
+    } else if (P.how == IBH_SUB) {
+        rule = CASIM_RULE_SUBSTITUTION;
+        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule))
+            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), irs_int(&w, P.s[3], P.U), ib_wlet(&w, P.U, P.s[2], -1);
+        sub.eqn = P.s[3], sub.var = P.U;
+        st = ib_piece(&S, &sub, 1, arena, room, &tl);
+    } else if (P.how == IBH_CONST) {
+        rule = CASIM_RULE_CONSTANT_MULTIPLE;
+        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule))
+            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), ib_wfac(&w, P.s[2], true), pf_puts(&w, TIMES),
+                irs_int(&w, P.s[3], var);
+        sub.eqn = P.s[3];
+        st = ib_piece(&S, &sub, 1, arena, room, &tl);
+    } else {
+        rule = CASIM_RULE_BY_PARTS;
+        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule)) {
+            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), ib_wprod(&w, P.s[x + 2], P.s[x + 3]), pf_puts(&w, "-");
+            irs_int(&w, P.s[x + 4], var), ib_wlet(&w, lu, P.s[x + 2], -1), ib_wlet(&w, lv, P.s[x + 5], var);
+        }
+        sub.eqn = P.s[x + 5];
+        st = ib_piece(&S, &sub, 1, arena, room, &tl);
+        if (P.how == IBH_PARTS && st == CASIM_OK) sub.eqn = P.s[x + 4], st = ib_piece(&S, &sub, 1, arena, room, &tl);
+        if (P.how == IBH_CYCLE) {
+            /* ∫(w)dX = u2×v2 + (-k)×∫(f)dX, its v2's walk, then ∫(f)dX = (u×v - u2×v2)÷(1-k) */
+            if (irs_hit(&S, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_BY_PARTS)) {
+                irs_int(&w, P.s[x + 4], var), pf_puts(&w, " = "), ib_wprod(&w, P.s[2], P.s[3]);
+                if (strcmp(P.s[4], "1") == 0) pf_puts(&w, "+");
+                else if (strcmp(P.s[4], "-1") == 0) pf_puts(&w, "-");
+                else pf_puts(&w, P.s[4][0] == '-' ? "" : "+"), ib_wfac(&w, P.s[4], true), pf_puts(&w, TIMES);
+                irs_int(&w, rq->eqn, var), ib_wlet(&w, lu, P.s[2], -1), ib_wlet(&w, lv, P.s[5], var);
+            }
+            sub.eqn = P.s[5];
+            if (st == CASIM_OK) st = ib_piece(&S, &sub, 2, arena, room, &tl);
+            if (irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_CYCLE)) {
+                irs_int(&w, rq->eqn, var), pf_puts(&w, " = ("), ib_wprod(&w, P.s[x + 2], P.s[x + 3]), pf_puts(&w, "-");
+                ib_wprod(&w, P.s[2], P.s[3]), pf_puts(&w, ")\xc3\xb7");
+                ib_wdiv(&w, P.s[6]);
+            }
+        }
+    }
+    if (st != CASIM_OK) return ib_one(rq, k, info, out, cap0, arena, cap);
+    if (!P.sum && irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_CHECK)) {
+        char d[7] = {'d', '/', 'd', (char)('A' + var), '(', '\0'};
+        pf_puts(&w, d), pf_puts(&w, P.s[1]), pf_puts(&w, ") = "), pf_puts(&w, rq->eqn);
+    }
+    if (irs_hit(&S, 0, CASIM_STEP_RESULT, rule)) S.want = 2;
+    info->count = S.at;
+    if (k < 0) return CASIM_OK;
+    if (k >= S.at) return CASIM_BAD_ARG;
+    if (tl) return out[0] = '\0', CASIM_TOO_LONG;
+    if (S.want) {                                       /* the last page: integrate's answer, byte for byte */
+        st = ib_steps(rq, 0, info, out, cap0, arena, cap);
+        info->count = S.at, info->rule = rule;
+        return st;
+    }
+    if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
+    return CASIM_OK;
 }
 
 /* rule 8: integrate's one page for an integrand only this path answers, ∫(f)dX = F under ANSWER (the working pages are

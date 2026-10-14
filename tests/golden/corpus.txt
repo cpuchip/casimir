@@ -8,7 +8,8 @@
 # three budgets: integrals of rational functions), re-recorded from its commit; CAS 016 moved 12 (6 poles to UNDEFINED,
 # 2 Taylor rows at 64 KB answered with the 1,024 B buffer, 1 limit inside 8 KB, 3 with TANH(0) or ALOG(0) folded),
 # re-recorded from its commit; CAS 017 moved 29 (integrals by substitution and by parts: 25 refusals answered, 3 to
-# NO_ROOM where the rational path ran out at 8 KB, 1 to UNDEFINED for a pole), re-recorded from its commit.
+# NO_ROOM where the rational path ran out at 8 KB, 1 to UNDEFINED for a pole), re-recorded from its commit; its
+# steps build changed 11 of the lines 017 had added (the LN forms: no ABS where the argument has no real root).
 derive	35	24	1	35	65536	65536	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	24	1	35	8192	192	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	23	0	35	65536	65536	(ALOG(X))×(-(X))	\N	\N	OK	-ALOG(X)-X×LN(10)×ALOG(X)
@@ -10279,7 +10280,7 @@ integrate	35	23	1	35	8192	65536	SIN(X)^2×COS(X)	\N	\N	OK	SIN(X)^3÷3
 integrate	35	23	1	35	8192	65536	COS(X)^3×SIN(X)	\N	\N	OK	-0.25×COS(X)^4
 integrate	35	23	1	35	8192	65536	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
 integrate	35	23	1	35	8192	65536	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
-integrate	35	23	1	35	8192	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	8192	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(EXP(X)+1)
 integrate	35	23	1	35	8192	65536	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
 integrate	35	23	1	35	8192	65536	X^2×(X^3+1)^5	\N	\N	OK	(X^3+1)^6÷18
 integrate	35	23	1	35	8192	65536	X^3×SQRT(X^2+1)	\N	\N	OK	-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5
@@ -10298,11 +10299,11 @@ integrate	35	23	1	35	8192	65536	X×SINH(X)	\N	\N	OK	-SINH(X)+X×COSH(X)
 integrate	35	23	1	35	8192	65536	LN(X)	\N	\N	OK	-X+X×LN(X)
 integrate	35	23	1	35	8192	65536	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
 integrate	35	23	1	35	8192	65536	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
-integrate	35	23	1	35	8192	65536	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
-integrate	35	23	0	35	8192	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+integrate	35	23	1	35	8192	65536	ATAN(X)	\N	\N	OK	-0.5×LN(X^2+1)+X×ATAN(X)
+integrate	35	23	0	35	8192	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(X^2+1)÷π
 integrate	35	23	1	35	65536	65536	ATAN(X)	\N	\N	OK	-0.5×LN(X^2+1)+X×ATAN(X)
 integrate	35	23	1	35	8192	65536	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
-integrate	35	23	1	35	8192	65536	X^2×ATAN(X)	\N	\N	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	8192	65536	X^2×ATAN(X)	\N	\N	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
 integrate	35	23	1	35	8192	65536	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
 integrate	35	23	0	35	8192	65536	EXP(X)×SIN(X)	\N	\N	OK	-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)
 integrate	35	23	1	35	8192	65536	EXP(2×X)×COS(3×X)	\N	\N	OK	3×EXP(2×X)×SIN(3×X)÷13+2×EXP(2×X)×COS(3×X)÷13
@@ -10339,8 +10340,8 @@ integrate	35	23	1	35	65536	65536	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
 integrate	35	23	1	35	8192	192	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
 integrate	35	23	1	35	65536	65536	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
 integrate	35	23	1	35	8192	192	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
-integrate	35	23	1	35	65536	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
-integrate	35	23	1	35	8192	192	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	65536	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(EXP(X)+1)
+integrate	35	23	1	35	8192	192	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(EXP(X)+1)
 integrate	35	23	1	35	65536	65536	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
 integrate	35	23	1	35	8192	192	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
 integrate	35	23	1	35	65536	65536	X^2×(X^3+1)^5	\N	\N	OK	(X^3+1)^6÷18
@@ -10377,14 +10378,14 @@ integrate	35	23	1	35	65536	65536	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(
 integrate	35	23	1	35	8192	192	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
 integrate	35	23	1	35	65536	65536	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
 integrate	35	23	1	35	8192	192	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
-integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(X^2+1)+X×ATAN(X)
 integrate	35	23	0	35	65536	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(X^2+1)÷π
-integrate	35	23	0	35	8192	192	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
-integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+integrate	35	23	0	35	8192	192	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(X^2+1)÷π
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(X^2+1)+X×ATAN(X)
 integrate	35	23	1	35	65536	65536	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
 integrate	35	23	1	35	8192	192	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
 integrate	35	23	1	35	65536	65536	X^2×ATAN(X)	\N	\N	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
-integrate	35	23	1	35	8192	192	X^2×ATAN(X)	\N	\N	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	8192	192	X^2×ATAN(X)	\N	\N	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
 integrate	35	23	1	35	65536	65536	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
 integrate	35	23	1	35	8192	192	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
 integrate	35	23	0	35	65536	65536	EXP(X)×SIN(X)	\N	\N	OK	-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)
@@ -10480,7 +10481,7 @@ integrate	35	23	1	35	65536	65536	LN(X)^5	\N	\N	NOT_INTEGRABLE
 integrate	35	23	1	35	8192	192	LN(X)^5	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	65536	LN(X)^4	\N	\N	OK	24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4
 integrate	35	23	1	35	8192	65536	LN(X)^5	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	2000	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	2000	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(EXP(X)+1)
 integrate	35	23	1	35	1500	65536	X^2×EXP(X)	\N	\N	OK	2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)
 integrate	35	23	1	35	65536	65536	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
 integrate	35	23	1	35	8192	192	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	

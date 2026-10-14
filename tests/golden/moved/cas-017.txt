@@ -87,3 +87,38 @@ integrate	35	23	1	35	8192	65536	SIN(X)+1÷(X^2-1)	\N	\N
 integrate	33	24	2	33	8192	65536	((((Y)-(7))÷((1E3)-(2)))÷(((2)÷(3))-(Y)))÷((X)^(-4))	\N	\N
   before	NOT_INTEGRABLE	
   after	NO_ROOM	
+# CAS 017's steps build (work/017 §Steps S2.6, the LN forms) changed these lines 017 had added: before (279436b)
+# and after.
+integrate	35	23	1	35	8192	65536	EXP(X)÷(1+EXP(X))	\N	\N
+  before	OK	LN(ABS(EXP(X)+1))
+  after	OK	LN(EXP(X)+1)
+integrate	35	23	1	35	8192	65536	ATAN(X)	\N	\N
+  before	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+  after	OK	-0.5×LN(X^2+1)+X×ATAN(X)
+integrate	35	23	0	35	8192	65536	ATAN(X)	\N	\N
+  before	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+  after	OK	X×ATAN(X)-90×LN(X^2+1)÷π
+integrate	35	23	1	35	8192	65536	X^2×ATAN(X)	\N	\N
+  before	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+  after	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	65536	65536	EXP(X)÷(1+EXP(X))	\N	\N
+  before	OK	LN(ABS(EXP(X)+1))
+  after	OK	LN(EXP(X)+1)
+integrate	35	23	1	35	8192	192	EXP(X)÷(1+EXP(X))	\N	\N
+  before	OK	LN(ABS(EXP(X)+1))
+  after	OK	LN(EXP(X)+1)
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N
+  before	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+  after	OK	-0.5×LN(X^2+1)+X×ATAN(X)
+integrate	35	23	0	35	8192	192	ATAN(X)	\N	\N
+  before	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+  after	OK	X×ATAN(X)-90×LN(X^2+1)÷π
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N
+  before	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+  after	OK	-0.5×LN(X^2+1)+X×ATAN(X)
+integrate	35	23	1	35	8192	192	X^2×ATAN(X)	\N	\N
+  before	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+  after	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	2000	65536	EXP(X)÷(1+EXP(X))	\N	\N
+  before	OK	LN(ABS(EXP(X)+1))
+  after	OK	LN(EXP(X)+1)

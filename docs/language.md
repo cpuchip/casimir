@@ -240,9 +240,13 @@ Another letter is a constant, but no answer divides by an expression of one that
 by, unless it is never 0: EXP(A×X×Y) in Y and SIN(A×X)×COS(X) (A^2−1) are refused, EXP(X)×SIN(A×X) (A^2+1) answers.
 
 The answer can depend on the arena. At 8,192 bytes the rational path, which needs 7,328 bytes whatever its input, has
-no room inside a substitution or a part. So ATAN(X) answers −0.5×LN(ABS(X^2+1))+X×ATAN(X) by substitution there, and
-−0.5×LN(X^2+1)+X×ATAN(X) through the rational path at 65,536. Both are right: X^2+1 is never negative. X×ATAN(X) needs
-the rational path for its ∫v×u′ and is NOT_INTEGRABLE at 8,192.
+no room inside a substitution or a part. So ATAN(X) answers by substitution there and through the rational path at
+65,536, both −0.5×LN(X^2+1)+X×ATAN(X). X×ATAN(X) needs the rational path for its ∫v×u′ and is NOT_INTEGRABLE at 8,192.
+
+A substitution's LN is written as CAS 013 writes its own: the argument in whole coefficients with none in common and
+its highest power's positive (LN(ABS(5×X^3+2)), not LN(ABS(X^3+0.4))), and with no ABS where it has no real root: a
+quadratic with b^2−4ac < 0, or a sum of terms that are each ≥ 0 (even powers, EXP, COSH) with one > 0, so
+EXP(X)÷(1+EXP(X)) is LN(EXP(X)+1). Any other argument keeps its ABS.
 
 The rational path takes rational coefficients only. Inside this path a constant factor that isn't a number (π, LN(2),
 another letter, or the 180÷π that DEG puts in ATAN's derivative) comes out first and goes back on each term of the
@@ -254,7 +258,15 @@ It refuses (NOT_INTEGRABLE):
 - integrands with no elementary antiderivative (EXP(X^2), SIN(X)÷X).
 
 NO_ROOM is for a term of the integrand's own sum that the rational path ran out of room on. A pole in the integrand is
-UNDEFINED. steps shows one page for these answers, the answer itself (ANSWER); the working pages come later.
+UNDEFINED.
+
+steps shows the working (work/017 §Steps): SUBSTITUTION, ∫(f)dX = ∫(G)dU, U=u, with ∫(G)dU's own walk; BY PARTS,
+∫(f)dX = u×v−∫(w)dX with its two labels (the letters are the first of U, V, W, T, S, R, Q free in the integrand), the
+walk of ∫(dv)dX that gives v, then ∫(w)dX's; for the cycle a second BY PARTS a level down and CYCLE, ∫(f)dX =
+(u×v−u2×v2)÷(1−k); a constant factor that isn't a number by CONSTANT MULTIPLE; a sum by SUM. Each piece's walk is
+integrate's own on its printed text, so a piece may go through the table, CAS 013's walk or this one. Walks nest at most
+three deep, and below that a piece is one line, its answer (ANSWER). A walk that doesn't fit is that one line for the
+whole integrand: the steps never refuse what integrate answers, and refuse what it refuses with its status.
 
 | Command | Prints |
 |---|---|
@@ -264,14 +276,14 @@ UNDEFINED. steps shows one page for these answers, the answer itself (ANSWER); t
 | `casim integrate "X×SIN(X)" X RAD` | `SIN(X)-X×COS(X)` |
 | `casim integrate "LN(X)^2" X RAD` | `2×X-2×X×LN(X)+X×LN(X)^2` |
 | `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
-| `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(ABS(X^2+1))+X×ATAN(X)` |
+| `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
 | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
 | `casim integrate "EXP(ATAN(X))÷(3×X^2+3)" X RAD` | `EXP(ATAN(X))÷3` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `0.5×ATAN(X)-90×X÷π+0.5×X^2×ATAN(X)` |
 | `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
 | `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
-| `casim steps integrate "X×EXP(X)" X RAD` | `ANSWER: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
+| `casim steps integrate "X×EXP(X)" X RAD` | `BY PARTS: ∫(X×EXP(X))dX = X×EXP(X)-∫(EXP(X))dX, U=X, V=∫(EXP(X))dX /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   CHECK: d/dX(-EXP(X)+X×EXP(X)) = X×EXP(X) / BY PARTS: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
 
 ### defint: a definite integral, exactly
 

@@ -170,7 +170,10 @@ enum {
     CASIM_RULE_SPLIT,           /* integrate: (B X + C) ÷ f as k1 × (2aX+b) ÷ f + k2 × 1 ÷ f, f a quadratic */
     CASIM_RULE_LOG_DERIVATIVE,  /* integrate: ∫(f' ÷ f) dX = LN(f), U = f; no ABS, as f has no real root */
     CASIM_RULE_COMPLETE_SQUARE, /* integrate: f = a × ((X + b÷(2a))^2 + k), a result line */
-    CASIM_RULE_ARCTANGENT       /* integrate: ∫(1 ÷ f) dX by U = X + b÷(2a), to an ATAN */
+    CASIM_RULE_ARCTANGENT,      /* integrate: ∫(1 ÷ f) dX by U = X + b÷(2a), to an ATAN */
+    CASIM_RULE_SUBSTITUTION,    /* integrate (CAS 017): ∫(f)dX = ∫(G)dU, U = u, with f = G(u)×u' */
+    CASIM_RULE_BY_PARTS,        /* integrate (CAS 017): ∫(f)dX = u×v - ∫(v×u')dX, v = ∫(f÷u)dX */
+    CASIM_RULE_CYCLE            /* integrate (CAS 017): two parts back to k×∫(f)dX, so ∫(f)dX = (u×v - u2×v2)÷(1 - k) */
 };
 typedef struct {
     int count;                  /* the steps */

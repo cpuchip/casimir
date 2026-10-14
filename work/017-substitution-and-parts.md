@@ -241,14 +241,19 @@ two forms in S2.6; every other op's golden and every earlier hidden set stay byt
 
 ### S1. The walk
 
-The search records its own choice for the integrand (the term at depth 0): substitution, parts, the cycle, or a
-constant factor out. The walk prints that choice and walks each piece by calling integrate's steps on the piece's
-printed text, as the search integrated it. The root is at depth 0, and each piece one level below the line that
+The walk finds the search's own choice for the integrand (the term at depth 0): substitution, parts, the cycle, or a
+constant factor out. It prints that choice and walks each piece by calling integrate's steps on the piece's printed
+text, as the search integrated it. As built, the plan replays ib's order at depth 0 (the table, the rational path with
+a constant factor, substitution, parts), with only substitution's u and G noted during the search: a note inside
+parts moved ib's frame (240 → 256 on the host, measured), and so did a second call site for the table's or the
+rational path's helpers (240 → 224). The root is at depth 0, and each piece one level below the line that
 introduces it.
 
 1. **A sum** (the table and the rational path refused it whole): SUM, template and result; each term's walk a level
    down, whichever path answers it (the table's, CAS 013's, or this one).
-2. **SUBSTITUTION** (267), template: ∫(f)dX = ∫(G)dU, U=u. Then ∫(G)dU's walk, CHECK, and the result.
+2. **SUBSTITUTION** (267), template: ∫(f)dX = ∫(G)dU, U=u. Then ∫(G)dU's walk, CHECK, and the result. U is printed
+   as the answer's LN has it (S2.6): w = s×u in whole coefficients, with G rescaled to G(U÷s)÷s, so 15×X^2÷(5×X^3+2)
+   reads ∫(1÷U)dU, U=5×X^3+2, and its piece's walk ends on LN(ABS(U)).
 3. **BY PARTS** (268), template: ∫(f)dX = u×v-∫(w)dX, U=u, V=∫(dv)dX, with w = v×u'. Then the walk of ∫(dv)dX (how
    v was found), the walk of ∫(w)dX, CHECK, and the result. The polynomial loop is parts again: ∫(w)dX's own walk is
    the next round.
@@ -269,19 +274,29 @@ introduces it.
 3. **Nesting:** at most 3 levels of this walk (IB_WALKS). Below that, a piece is one line, ∫(w)dX = W (ANSWER), as
    rule 8's page is today. Each nested walk is a fresh call with its own depth guard, so without a cap the stack
    grows with the nesting: X^9×EXP(X) took 14,816 B on the host uncapped, and 7,728 B with the cap.
-4. **The walk never refuses what integrate answers** (rule 8). When a piece's walk refuses, or the texts don't fit,
-   the walk falls back to rule 8's one page. That's a soft NO_ROOM, as CAS 013's S3 has it, but with the answer's
-   page kept.
-5. **Letters:** U is substitution's own (the first of U, V, W, T, S, R, Q not in the integrand). BY PARTS's U and V
-   are labels on the line only, the same letters.
+4. **The walk never refuses what integrate answers, and never walks what it refuses** (rule 8). Integrate's own answer
+   is asked first, and its refusal is the steps' (the letter rule refuses SIN(A×X)×COS(X), whose parts the plan
+   would otherwise make). When a piece's walk refuses, or the texts don't fit, the walk falls back to rule 8's one
+   page: a soft NO_ROOM, as CAS 013's S3 has it, but with the answer's page kept. A page past cap is TOO_LONG with the
+   whole count, however deep its piece.
+5. **Letters:** U is substitution's own (the first of U, V, W, T, S, R, Q not in the integrand). BY PARTS's two labels
+   are the first two of that list free in the integrand and not its variable, so inside a piece in U they are V and W
+   (LN(ATAN(X))÷(5×X^2+5)); past the list, any free letter from Z down. A piece's labels may reuse a letter of the
+   walk above it (U=LN(V) under V=ATAN(U)), since each walk is integrate's on its own text.
 6. **Two answer forms change (abacus's Accepted section names them):**
    - substitution's LN(ABS(u)) is written as LN(ABS(w)), w being u with whole coefficients, none in common, and its
-     highest power's positive. They differ by a constant. With no ABS when w is a quadratic with no real root, or u
+     highest power's positive, on the answer once (not inside the search, whose arena it would take: the cold review
+     measured answers lost at 1,900 to 3,100 B), and the answer as it was when the form doesn't fit. The discriminant
+     is exact, and where b^2 or 4ac passes 63 bits the LN keeps its ABS (a wrapped product once dropped it: a wrong
+     answer). They differ by a constant. With no ABS when w is a quadratic with no real root, or u
      is never negative, as CAS 013 writes them: (7×X−7)÷(X^2−2×X+1) is 3.5×LN(ABS(-2×X+X^2+1)),
      15×X^2÷(5×X^3+2) is LN(ABS(5×X^3+2)), SIN(X)+(9×X−9)÷(X^2−2×X+4) in DEG is
      4.5×LN(-2×X+X^2+4)-180×COS(X)÷π, and ATAN(X) at 8 KB is -0.5×LN(X^2+1)+X×ATAN(X), as at 64 KB.
-   - In the prototype, golden moves 7 rows, all LN(ABS(X^2+1)) → LN(X^2+1) in rows 017 added (ATAN(X), X^2×ATAN(X)
-     at 8 KB). Each is judged by value; abacus reruns h013 and h017.
+   - Golden moves 11 rows, all in rows 017 added: 7 LN(ABS(X^2+1)) → LN(X^2+1) (ATAN(X), X^2×ATAN(X) at 8 KB) and 4
+     LN(ABS(EXP(X)+1)) → LN(EXP(X)+1). Each is judged by value; abacus reruns h013 and h017.
+   - The ABS rule, as abacus ruled (#8149, #8151): exactly CAS 013's for linear and quadratic arguments and for sums
+     of terms each ≥ 0 (even powers, EXP, COSH) with one > 0; any other argument keeps its ABS (a spare one on a
+     rootless argument of degree 3 or more is allowed; one is never dropped where there is a root).
 7. **STU:** every text is printed under the request's model; CAS 013's S2.4 check (no `^n^` on any page) covers
    these pages too.
 8. **Ids:** SUBSTITUTION 267, BY PARTS 268, CYCLE 269, added after ARCTANGENT (266), each with its comment, in
@@ -310,5 +325,15 @@ introduces it.
 - **Mutants:** a CHECK with a wrong F; BY PARTS's w without u'; the cycle's 1−k sign; the level cap removed (the
   bench's stack and a host stack test); the fallback removed (a walk that refuses where integrate answers); the LN
   form's sign (w's highest power negative) and its ABS dropped where u can be negative.
+  - As built (scripts/mutants.py, steps-* and lnform-*, 11): those, plus the labels taken from the integrand, a
+    substitution's note taken without G(u)×u' checked, U not in whole coefficients, and the rootless test widened.
+    tests/ibcheck_check.c spoils G two ways: in the search (LN(X^2)'s parts must show no SUBSTITUTION, and the
+    refused try leaves no note), and in the plan's replay only, since after ib_unnote no search-side plant reaches
+    the plan's check (X×EXP(X^2), LN(X)÷X and two more must then be one page, integrate's answer). The full run
+    caught 233 of 234 before that second plant: steps-sub-note-unchecked survived, as no input reached its check.
+  - From the cold review (review-*, 7, and steps-walk-not-asked): a refused substitution's note kept (it pointed into
+    freed arena), whole coefficients unbounded (int64 overflow), the cycle's divisor bare, a sum's "+" dropped,
+    BAD_ARG for a page too long, the LN form inside the search (answers lost at small arenas), labels exhausted, and
+    the walk shown where integrate refuses.
 - **Device:** the S3 bench byte-identical to the host, every 017 row paged, the slowest page and the 017 pages' worst
   stack reported.
