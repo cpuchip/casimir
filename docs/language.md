@@ -109,8 +109,9 @@ odd multiples in RAD, 90 and 270 in DEG, 100 and 300 in GRAD), LN and LOG of 0, 
 subst, derive, integrate, collect, solve, factor and the rest answer UNDEFINED there. TAN(90) in RAD is no pole and is
 kept. A function outside its real domain where it has a complex value is kept as typed, for the calculator to value:
 LN(-1), ASIN(2), SQRT(-4), (-8)^(1÷3), ACOSH(0). So that a pole behind them is seen, SINH, TANH, ASINH and ATANH of 0 are
-0, COSH(0) and ALOG(0) are 1, and ACOSH(1) is 0: LN(SINH(0)) is UNDEFINED. In solve and factor a pole in any term
-decides, whichever comes first.
+0, COSH(0) and ALOG(0) are 1, and ACOSH(1) is 0: LN(SINH(0)) is UNDEFINED. In solve and factor a pole decides wherever
+it is: SIN(X)+TAN(π÷2)=0 is UNDEFINED. A known difference: there a division by 0 (X÷0, 1÷0+X) is still NOT_NUMERIC, the
+one place a ÷0 isn't UNDEFINED, until the next unit that touches solve.
 
 | Command | Prints |
 |---|---|
@@ -423,7 +424,10 @@ Any other SGN(0) is UNDECIDED, never a wrong answer: ABS(X)^2 is X^2, but its se
 K×ABS(X) depends on whether K is 0; and ABS(X)-SQRT(X^2), which is 0, has a second hole beside the corner that cancels
 it. In the same way a 0÷0 that appears only in a derivative's formula says that formula can't tell, and is UNDECIDED:
 X×SQRT(X^2)'s derivative holds X^2×(X^2)^(-1÷2) at 0, where the true f'(0) is 0. A c÷0 with c not 0 is proof:
-X^(3÷2) to order 2 (0.75×X^(-1÷2) at 0) is UNDEFINED, and so is any hole in the typed text (X÷X).
+X^(3÷2) to order 2 (0.75×X^(-1÷2) at 0) is UNDEFINED, and so is any hole in the typed text (X÷X). UNDECIDED is sound but
+can be less than the truth: SQRT(X^2) to order 1 is UNDECIDED, though it is ABS(X) and has no first derivative at 0, and
+ABS(X)^3 or ABS(ATAN(X))^2 to order 2 are UNDECIDED, though they have one. A later unit composes power series term by
+term instead of taking derivatives, and these are on its list.
 
 Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,192-byte arena, TAN,
 ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X)) after 6, and
