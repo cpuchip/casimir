@@ -232,3 +232,83 @@ caught (casim).
   LN(ABS(X−0.5×X^2−2)), an ABS that argument needs (it is negative everywhere) but that CAS 013's form,
   LN(−2×X+X^2+4), doesn't;
 - ATAN(X) keeps LN(ABS(X^2+1)) at 8 KB where 64 KB drops the ABS.
+
+## Steps (rule 8's second build)
+
+From casim's measured C prototype (scratch, over 8671ba7), the same shape as CAS 013's: integrate's walk for an
+integrand only this path answers, composed from the walks that exist, by text. The answers don't change apart from the
+two forms in S2.6; every other op's golden and every earlier hidden set stay byte-identical.
+
+### S1. The walk
+
+The search records its own choice for the integrand (the term at depth 0): substitution, parts, the cycle, or a
+constant factor out. The walk prints that choice and walks each piece by calling integrate's steps on the piece's
+printed text, as the search integrated it. The root is at depth 0, and each piece one level below the line that
+introduces it.
+
+1. **A sum** (the table and the rational path refused it whole): SUM, template and result; each term's walk a level
+   down, whichever path answers it (the table's, CAS 013's, or this one).
+2. **SUBSTITUTION** (267), template: ∫(f)dX = ∫(G)dU, U=u. Then ∫(G)dU's walk, CHECK, and the result.
+3. **BY PARTS** (268), template: ∫(f)dX = u×v-∫(w)dX, U=u, V=∫(dv)dX, with w = v×u'. Then the walk of ∫(dv)dX (how
+   v was found), the walk of ∫(w)dX, CHECK, and the result. The polynomial loop is parts again: ∫(w)dX's own walk is
+   the next round.
+4. **The cycle:** BY PARTS's template and ∫(dv)dX's walk; a second BY PARTS template a level down, ∫(w)dX =
+   u2×v2+(-k)×∫(f)dX, with its ∫(dv2)dX's walk; then **CYCLE** (269), a result line at depth 1: ∫(f)dX =
+   (u×v-u2×v2)÷(1-k), with 1-k as a number; CHECK; the result.
+5. **CONSTANT MULTIPLE** (the existing id): a constant factor that isn't a number (rule 1's ib_const, DEG's 180÷π)
+   comes out, ∫(f)dX = k×∫(f÷k)dX, and the rest is walked.
+6. **The last page** is integrate's answer, byte for byte, under the rule of the root's line.
+
+### S2. Decisions
+
+1. **Every CHECK is proven by the search's own checks** (rule 5): G checked in U and G(u)×u' = f; (uv)' = f + w with
+   ∫w checked; the loop and the cycle differentiated whole. closes() can't prove some of them (fractional powers from
+   back-substitution), so it isn't re-run. The CHECK reads d/dX(F) = f, with f the request's text as typed.
+2. **A piece's walk is integrate's on its text,** so a piece may take another route than the search took inside
+   (a smaller arena, the tries counted afresh). Every line is still true, and judged by value.
+3. **Nesting:** at most 3 levels of this walk (IB_WALKS). Below that, a piece is one line, ∫(w)dX = W (ANSWER), as
+   rule 8's page is today. Each nested walk is a fresh call with its own depth guard, so without a cap the stack
+   grows with the nesting: X^9×EXP(X) took 14,816 B on the host uncapped, and 7,728 B with the cap.
+4. **The walk never refuses what integrate answers** (rule 8). When a piece's walk refuses, or the texts don't fit,
+   the walk falls back to rule 8's one page. That's a soft NO_ROOM, as CAS 013's S3 has it, but with the answer's
+   page kept.
+5. **Letters:** U is substitution's own (the first of U, V, W, T, S, R, Q not in the integrand). BY PARTS's U and V
+   are labels on the line only, the same letters.
+6. **Two answer forms change (abacus's Accepted section names them):**
+   - substitution's LN(ABS(u)) is written as LN(ABS(w)), w being u with whole coefficients, none in common, and its
+     highest power's positive. They differ by a constant. With no ABS when w is a quadratic with no real root, or u
+     is never negative, as CAS 013 writes them: (7×X−7)÷(X^2−2×X+1) is 3.5×LN(ABS(-2×X+X^2+1)),
+     15×X^2÷(5×X^3+2) is LN(ABS(5×X^3+2)), SIN(X)+(9×X−9)÷(X^2−2×X+4) in DEG is
+     4.5×LN(-2×X+X^2+4)-180×COS(X)÷π, and ATAN(X) at 8 KB is -0.5×LN(X^2+1)+X×ATAN(X), as at 64 KB.
+   - In the prototype, golden moves 7 rows, all LN(ABS(X^2+1)) → LN(X^2+1) in rows 017 added (ATAN(X), X^2×ATAN(X)
+     at 8 KB). Each is judged by value; abacus reruns h013 and h017.
+7. **STU:** every text is printed under the request's model; CAS 013's S2.4 check (no `^n^` on any page) covers
+   these pages too.
+8. **Ids:** SUBSTITUTION 267, BY PARTS 268, CYCLE 269, added after ARCTANGENT (266), each with its comment, in
+   casim_rule_name. Nothing below 267 moves.
+
+### S3. Bounds
+
+- **Frames:** no existing frame moves (the frame-table gate, and the S3).
+- **Stack:** the masked bench's worst must not rise (11,712 with the allowance). The bench pages every 017 row,
+  including the deep-nest rows. Prototype, on the host: the walk's worst is 7,728 B against integrate's 5,248
+  (X^5×EXP(X), LN(X)^4 beside a 40-deep nest 7,712).
+- **Arena:** 8,192 B. The prototype walks 52 of the 52 examples integrate answers at 8 KB and all 64 at 64 KB. The
+  only one-page rows are two at 2,000 and 1,500 B. No last page differs from integrate's answer.
+- **Time:** every page recounts the walk: 0.1 to 0.5 ms a page on the host. The slowest S3 page must stay under 1 s.
+- **Flash:** the prototype's walk is +477 B of host text. The estimate is 2 to 3 KB on the S3; stop and report at 6.
+
+### S4. Acceptance
+
+- **Visible examples** in work/017-steps-examples.txt, written by casim: each kind (substitution with and without
+  back-substitution, parts with LN, ATAN and the polynomial loop, the cycle, a constant factor, a sum), DEG and GRAD,
+  an STU twin, the level cap (X^5×EXP(X)), and the two form changes.
+- **Hidden, by abacus:** h017's answered cases walked and judged as CAS 013's steps were: the root is the template
+  and the last page is integrate's answer byte for byte; depths follow S1; RESULT lines by F' = their integrand;
+  templates as integrands, substitutions as G(U)×U'; BY PARTS lines by f = (u×v)' − w; CHECK lines true; every page
+  parsing under the request's model; two runs give the same bytes.
+- **Mutants:** a CHECK with a wrong F; BY PARTS's w without u'; the cycle's 1−k sign; the level cap removed (the
+  bench's stack and a host stack test); the fallback removed (a walk that refuses where integrate answers); the LN
+  form's sign (w's highest power negative) and its ABS dropped where u can be negative.
+- **Device:** the S3 bench byte-identical to the host, every 017 row paged, the slowest page and the 017 pages' worst
+  stack reported.
