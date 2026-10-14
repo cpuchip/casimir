@@ -13,6 +13,11 @@
 #   coefficients past 10^6 no whole form is made, and the LN keeps its ABS (an overflow once dropped it: a wrong
 #   answer). Round 2: a substitution the plan can't replay in the room left (COS(X)÷(SIN(X)+2) at 5,000 B) is one
 #   page, not parts the search never made.
+# - At a page cap (abacus #8227, cap 192 as for integrate): a walk with a line past the cap is its one page, where that
+#   fits (8 KB's LN(X+1) once refused: the count borrowed 384 bytes integrate needed). With --one-line the templates
+#   aren't shown, and the walk fits. Where the one page itself is past the cap (197 bytes here), it is TOO_LONG, never
+#   half a walk. A piece's walk is measured at the cap too: at 100 bytes ∫(2×X×SIN(3×X)÷3)dX is its one page inside
+#   X^2×COS(3×X)'s walk. A sum's answer line is its own: LN(X)+ATAN(X) at 60 bytes is TOO_LONG, one page.
 
 | case | walk |
 |---|---|
@@ -41,3 +46,9 @@
 | `casim steps integrate "SIN(A×X)×COS(X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim steps integrate "(6000000000×X+1)÷(3000000000×X^2+X-3000000000)" X RAD` | `SUBSTITUTION: ∫((6000000000×X+1)÷(3000000000×X^2+X-3000000000))dX = ∫(1÷U)dU, U=X+3000000000×X^2-3000000000 /   CHECK: d/dU(LN(ABS(U))) = 1÷U /   RECIPROCAL: ∫(1÷U)dU = LN(ABS(U)) /   CHECK: d/dX(LN(ABS(X+3000000000×X^2-3000000000))) = (6000000000×X+1)÷(3000000000×X^2+X-3000000000) / SUBSTITUTION: ∫((6000000000×X+1)÷(3000000000×X^2+X-3000000000))dX = LN(ABS(X+3000000000×X^2-3000000000))` |
 | `casim --arena 5000 steps integrate "COS(X)÷(SIN(X)+2)" X GRAD` | `ANSWER: ∫(COS(X)÷(SIN(X)+2))dX = 200×LN(ABS(SIN(X)+2))÷π` |
+| `casim --cap 192 steps integrate "LN(X+1)" X RAD` | `ANSWER: ∫(LN(X+1))dX = -X+LN(ABS(X+1))+X×LN(X+1)` |
+| `casim --arena 65536 --cap 192 steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `ANSWER: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27` |
+| `casim --arena 65536 --cap 192 --one-line steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /   CHECK: d/dX(-4×EXP(-3×X)÷9) = 4×EXP((-3)×X)÷3 /   CONSTANT MULTIPLE: ∫(4×EXP((-3)×X)÷3)dX = -4×EXP(-3×X)÷9 /       EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /     CHECK: d/dX(2×EXP(-3×X)÷9) = (-2)×EXP((-3)×X)÷3 /     CONSTANT MULTIPLE: ∫((-2)×EXP((-3)×X)÷3)dX = 2×EXP(-3×X)÷9 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(-10×EXP(-3×X)÷27) = 10×EXP((-3)×X)÷9 /       CONSTANT MULTIPLE: ∫(10×EXP((-3)×X)÷9)dX = -10×EXP(-3×X)÷27 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(10×EXP(-3×X)÷81) = (-10)×EXP((-3)×X)÷27 /       CONSTANT MULTIPLE: ∫((-10)×EXP((-3)×X)÷27)dX = 10×EXP(-3×X)÷81 /       CHECK: d/dX(-10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+0.2)÷27) = 10×EXP(-3×X)×(X+0.2)÷9 /     BY PARTS: ∫(10×EXP(-3×X)×(X+0.2)÷9)dX = -10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+0.2)÷27 /     CHECK: d/dX(10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9+10×EXP(-3×X)×(X+0.2)÷27) = -2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷3 /   BY PARTS: ∫(-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷3)dX = 10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9+10×EXP(-3×X)×(X+0.2)÷27 /   CHECK: d/dX(-10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27) = (5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X) / BY PARTS: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27` |
+| `casim --arena 65536 --cap 192 steps integrate "(X^3+2×X^2+2×X)×COS(X÷3-1)" X DEG` | `TOO_LONG` |
+| `casim --arena 65536 --cap 100 steps integrate "X^2×COS(3×X)" X RAD` | `BY PARTS: ∫(X^2×COS(3×X))dX = X^2×SIN(3×X)÷3-∫(2×X×SIN(3×X)÷3)dX, U=X^2, V=∫(COS(3×X))dX /   COS: ∫(COS(3×X))dX = ∫(COS(U))dU÷3, U=3×X /   CHECK: d/dX(SIN(3×X)÷3) = COS(3×X) /   COS: ∫(COS(3×X))dX = SIN(3×X)÷3 /   ANSWER: ∫(2×X×SIN(3×X)÷3)dX = 2×SIN(3×X)÷27-2×X×COS(3×X)÷9 /   CHECK: d/dX(-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3) = X^2×COS(3×X) / BY PARTS: ∫(X^2×COS(3×X))dX = -2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3` |
+| `casim --arena 65536 --cap 60 steps integrate "LN(X)+ATAN(X)" X RAD` | `TOO_LONG` |

@@ -216,8 +216,9 @@ ANGLE = {"0": "DEG", "1": "RAD", "2": "GRAD"}
 MODEL = {"35": "35", "33": "33", "1": "STU"}
 
 
-def steps(e, deg, one, arena=BIG, var="X", angle=None, model="35"):
-    args = [CLI, "--tsv", "--model", model] + arena + (["--one-line"] if one else []) + [
+def steps(e, deg, one, arena=BIG, var="X", angle=None, model="35", cap=None):
+    args = [CLI, "--tsv", "--model", model] + arena + (["--one-line"] if one else []) + (
+        ["--cap", str(cap)] if cap else []) + [
         "steps", "integrate", e, var, angle or ("DEG" if deg else "RAD")]
     p = subprocess.run(args, stdout=subprocess.PIPE, text=True, encoding="utf-8")
     return p.returncode, p.stdout
@@ -534,12 +535,32 @@ def check_ib(n, rnd):
                                 why.append(f"step {r[0]} {r[2]} {r[3]}: {r[4]}: {w}")
                         if ib_walk(out):
                             why += ib_wrong(rows)
+                    why += cap_fit(e, plain_a, one, arena, angle, model)
                 if why:
                     failed += 1
                     print(f"FAIL scripts/istep-values.py: {e} ({kind}, {angle}, model {model}, "
                           f"{'8 KB' if not arena else 'big arena'}, {'one line' if one else 'two lines'})\n  "
                           + "\n  ".join(why))
     return judged, failed
+
+
+CAP_FIT = (150, 192)       # abacus #8227 judged at 192, as for integrate
+
+
+def cap_fit(e, answer, one, arena, angle, model, var="X"):
+    """S2.4 at a page cap (abacus #8227): where the one page, ∫(f)dX = F, fits the cap, the steps page to the end at
+    that cap, never TOO_LONG on a walk's line (a line past cap makes the walk its one page); where it doesn't fit, the
+    one page is TOO_LONG, never half a walk. Returns the failures' reasons"""
+    why = []
+    page = len(f"∫({e})d{var} = {answer}".encode()) + 1
+    for cap in CAP_FIT:
+        rc, out = steps(e, False, one, arena=arena, var=var, angle=angle, model=model, cap=cap)
+        rows = out.rstrip("\n").split("\n") if out.strip() else []
+        if page <= cap and rc != 0:
+            why.append(f"--cap {cap}: the one page fits ({page} bytes) but the steps end {rows[-1][:60] if rows else ''}")
+        if page > cap and len(rows) > 1:
+            why.append(f"--cap {cap}: the one page doesn't fit ({page} bytes), yet {len(rows) - 1} pages showed first")
+    return why
 
 
 def planted_ib():
@@ -594,7 +615,16 @@ def check_caps():
                 if rc != 0 and last.split("\t")[-1] != "TOO_LONG" and last != "TOO_LONG" and last != refusal:
                     failed += 1
                     print(f"FAIL scripts/istep-values.py: {m.group(2)} with --cap {cap} {' '.join(one)}: ends {last[:80]}")
-    print(f"CAS 017 walks paged at 5 caps: {n} runs, {failed} failed")
+        if refusal is None:
+            prc, plain = cli(*m.group(1).split(), "integrate", m.group(2), m.group(3), m.group(4))
+            arena = [a for a in m.group(1).split()]
+            for one in (False, True):
+                n += 1
+                why = cap_fit(m.group(2), plain, one, arena, m.group(4), "35", var=m.group(3))
+                if why:
+                    failed += 1
+                    print(f"FAIL scripts/istep-values.py: {m.group(2)}: " + "; ".join(why))
+    print(f"CAS 017 walks paged at 5 caps and fitted at {len(CAP_FIT)}: {n} runs, {failed} failed")
     return failed
 
 

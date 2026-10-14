@@ -9476,6 +9476,8 @@ static __attribute__((noinline)) casim_status do_iparts(const char *eqn, int var
 #define IB_NS 12
 #define IB_LEVEL 16                     /* flags: a walk's level, in casim_step's bits above CASIM_STEPS_ONE_LINE */
 #define IB_WALKS 3
+#define IB_LIM 256                      /* flags: the page cap a piece's lines must fit, in the bits above the level */
+#define IB_LIMMAX 65536
 
 typedef struct {
     int how, U, n;                      /* n: the texts in s */
@@ -9603,9 +9605,10 @@ static __attribute__((noinline)) casim_status ib_plan_make(const casim_req *rq, 
     if (c.st != CASIM_OK) return c.st;
     c.var = var;
     if (nd(&c, t)->kind == K_ADD) {
-        if (nd(&c, t)->n > IB_NS) return CASIM_NO_ROOM;
+        if (nd(&c, t)->n > IB_NS - 1) return CASIM_NO_ROOM;
         P->sum = true;
         for (int i = 0; i < nd(&c, t)->n; i++) x[nx++] = list(&c, nd(&c, t)->a)[i];
+        x[nx++] = F;                                    /* F last: the answer line's measure (abacus #8227) */
     } else {
         ref k;
         ib_choose(&c, &B, t, var);
@@ -9744,28 +9747,121 @@ static __attribute__((noinline)) casim_status ib_piece(irs_t *S, const casim_req
 static casim_status ib_one(const casim_req *rq, int k, casim_step_info *info, char *out, size_t cap, void *arena,
                            size_t arena_cap)
 {
-    if (cap < IB_TEXT && k < 0 && arena_cap > 2 * IB_TEXT)
-        return ib_steps(rq, k, info, (char *)arena + arena_cap - IB_TEXT, IB_TEXT, arena, arena_cap - IB_TEXT);
+    if (cap < IB_TEXT && k < 0 && arena_cap > 2 * IB_TEXT) {
+        casim_status st = ib_steps(rq, k, info, (char *)arena + arena_cap - IB_TEXT, IB_TEXT, arena, arena_cap - IB_TEXT);
+        /* the bytes the text took may be the ones integrate lacked: LN(X+1) at 8,192 bytes and cap 192 (abacus #8227) */
+        if ((st != CASIM_NOT_INTEGRABLE && st != CASIM_NO_ROOM) || !cap) return st;
+    }
     return ib_steps(rq, k, info, out, cap, arena, arena_cap);
 }
 
+/* a walk under way: ib_body's one argument */
+typedef struct {
+    irs_t S;
+    const casim_req *rq;
+    const ib_plan *P;
+    void *arena;
+    size_t room;                        /* the pieces' arena */
+    int x, lu, lv, rule;
+    bool tl;                            /* a piece's page was past cap */
+    bool measure;                       /* the walk's own lines only, the pieces left out */
+} ib_wk;
+
+/* a piece's walk, left out when the walk only measures its own lines */
+static casim_status ib_part(ib_wk *K, const casim_req *sub, int down)
+{
+    return K->measure ? CASIM_OK : ib_piece(&K->S, sub, down, K->arena, K->room, &K->tl);
+}
+
+/* the walk's lines and its pieces, page S.k into S.w; measuring, page S.k counts this walk's own lines only, and the
+   answer line is written out (F is the plan's) */
+static __attribute__((noinline)) casim_status ib_body(ib_wk *K)
+{
+    irs_t *S = &K->S;
+    out_t *w = S->w;
+    const ib_plan *P = K->P;
+    const casim_req *rq = K->rq;
+    casim_req sub = *rq;
+    casim_status st = CASIM_OK;
+    int var = rq->var, x = K->x, lu = K->lu, lv = K->lv, nt = P->n - 1;
+    K->rule = CASIM_RULE_SUM;
+    if (P->sum) {
+        if (irs_hit(S, 0, CASIM_STEP_TEMPLATE, K->rule)) {
+            irs_int(w, rq->eqn, var), pf_puts(w, " = ");
+            for (int i = 0; i < nt; i++) {
+                if (i) pf_puts(w, "+");
+                irs_int(w, P->s[i], var);
+            }
+        }
+        for (int i = 0; i < nt && st == CASIM_OK; i++) sub.eqn = P->s[i], st = ib_part(K, &sub, 1);
+    } else if (P->how == IBH_SUB) {
+        K->rule = CASIM_RULE_SUBSTITUTION;
+        if (irs_hit(S, 0, CASIM_STEP_TEMPLATE, K->rule))
+            irs_int(w, rq->eqn, var), pf_puts(w, " = "), irs_int(w, P->s[3], P->U), ib_wlet(w, P->U, P->s[2], -1);
+        sub.eqn = P->s[3], sub.var = P->U;
+        st = ib_part(K, &sub, 1);
+    } else if (P->how == IBH_CONST) {
+        K->rule = CASIM_RULE_CONSTANT_MULTIPLE;
+        if (irs_hit(S, 0, CASIM_STEP_TEMPLATE, K->rule))
+            irs_int(w, rq->eqn, var), pf_puts(w, " = "), ib_wfac(w, P->s[2], true), pf_puts(w, TIMES),
+                irs_int(w, P->s[3], var);
+        sub.eqn = P->s[3];
+        st = ib_part(K, &sub, 1);
+    } else {
+        K->rule = CASIM_RULE_BY_PARTS;
+        if (irs_hit(S, 0, CASIM_STEP_TEMPLATE, K->rule)) {
+            irs_int(w, rq->eqn, var), pf_puts(w, " = "), ib_wprod(w, P->s[x + 2], P->s[x + 3]), pf_puts(w, "-");
+            irs_int(w, P->s[x + 4], var), ib_wlet(w, lu, P->s[x + 2], -1), ib_wlet(w, lv, P->s[x + 5], var);
+        }
+        sub.eqn = P->s[x + 5];
+        st = ib_part(K, &sub, 1);
+        if (P->how == IBH_PARTS && st == CASIM_OK) sub.eqn = P->s[x + 4], st = ib_part(K, &sub, 1);
+        if (P->how == IBH_CYCLE) {
+            /* ∫(w)dX = u2×v2 + (-k)×∫(f)dX, its v2's walk, then ∫(f)dX = (u×v - u2×v2)÷(1-k) */
+            if (irs_hit(S, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_BY_PARTS)) {
+                irs_int(w, P->s[x + 4], var), pf_puts(w, " = "), ib_wprod(w, P->s[2], P->s[3]);
+                if (strcmp(P->s[4], "1") == 0) pf_puts(w, "+");
+                else if (strcmp(P->s[4], "-1") == 0) pf_puts(w, "-");
+                else pf_puts(w, P->s[4][0] == '-' ? "" : "+"), ib_wfac(w, P->s[4], true), pf_puts(w, TIMES);
+                irs_int(w, rq->eqn, var), ib_wlet(w, lu, P->s[2], -1), ib_wlet(w, lv, P->s[5], var);
+            }
+            sub.eqn = P->s[5];
+            if (st == CASIM_OK) st = ib_part(K, &sub, 2);
+            if (irs_hit(S, 1, CASIM_STEP_RESULT, CASIM_RULE_CYCLE)) {
+                irs_int(w, rq->eqn, var), pf_puts(w, " = ("), ib_wprod(w, P->s[x + 2], P->s[x + 3]), pf_puts(w, "-");
+                ib_wprod(w, P->s[2], P->s[3]), pf_puts(w, ")\xc3\xb7");
+                ib_wdiv(w, P->s[6]);
+            }
+        }
+    }
+    if (st != CASIM_OK) return st;
+    if (!P->sum && irs_hit(S, 1, CASIM_STEP_RESULT, CASIM_RULE_CHECK)) {
+        char d[7] = {'d', '/', 'd', (char)('A' + var), '(', '\0'};
+        pf_puts(w, d), pf_puts(w, P->s[1]), pf_puts(w, ") = "), pf_puts(w, rq->eqn);
+    }
+    if (irs_hit(S, 0, CASIM_STEP_RESULT, K->rule)) {
+        if (K->measure) irs_int(w, rq->eqn, var), pf_puts(w, " = "), pf_puts(w, P->s[P->sum ? nt : 1]);
+        else S->want = 2;
+    }
+    return CASIM_OK;
+}
+
 /* the walk (do_irsteps, when the rational path refuses too), with ib_steps's arguments, the flags riding in info's line
-   (do_irsteps's frame and irs_refused's stay as they were) */
+   (do_irsteps's frame and irs_refused's stay as they were). Its own lines must each fit the page cap, or it is rule 8's
+   one page (abacus #8227: a walk is never refused where integrate answers); a piece's walk has the cap in its flags */
 static __attribute__((noinline)) casim_status ib_walk(const casim_req *rq, int k, casim_step_info *info, char *out,
                                                        size_t cap0, void *arena, size_t cap)
 {
     ib_plan P;
-    irs_t S;
-    out_t w = {out, cap0, 0, false};
-    casim_req sub = *rq;
+    ib_wk K;
+    out_t w = {out, cap0, 0, false}, m;
     casim_status st;
-    size_t room = cap > 2 * IB_SLAB ? (cap - IB_SLAB) & ~(size_t)7 : 0, keep;
+    size_t room = cap > 2 * IB_SLAB ? (cap - IB_SLAB) & ~(size_t)7 : 0, keep, lim;
     char *slab = (char *)arena + room, *to;
-    int rule = CASIM_RULE_SUM, var = rq->var, x, lu, lv, flags = info->line;
-    bool tl = false;
+    int flags = info->line;
     memset(info, 0, sizeof *info);
     if (cap0) out[0] = '\0';
-    if (flags / IB_LEVEL >= IB_WALKS || !room) return ib_one(rq, k, info, out, cap0, arena, cap);
+    if (flags % IB_LIM / IB_LEVEL >= IB_WALKS || !room) return ib_one(rq, k, info, out, cap0, arena, cap);
     /* integrate's own answer first: the walk is shown only where it answers (the plan doesn't repeat each of its
        checks: the letter rule refuses SIN(A×X)×COS(X), whose parts the plan would make) */
     if ((st = ib_one(rq, -1, info, out, cap0, arena, cap)) != CASIM_OK) return st;
@@ -9777,71 +9873,32 @@ static __attribute__((noinline)) casim_status ib_walk(const casim_req *rq, int k
     memmove(to, slab, P.used);
     for (int i = 0; i < P.n; i++) P.s[i] = to + (P.s[i] - slab);
     room = (cap - keep) & ~(size_t)7;
-    S.k = k, S.at = 0, S.flags = flags + IB_LEVEL, S.info = info, S.w = &w, S.want = 0, S.skip = false;
-    x = P.how == IBH_CYCLE ? 5 : 0;                     /* parts' u, v, w, f÷u at x + 2 */
-    lu = ib_label(rq->eqn, var, -1), lv = ib_label(rq->eqn, var, lu);
-    if (P.sum) {
-        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule)) {
-            irs_int(&w, rq->eqn, var), pf_puts(&w, " = ");
-            for (int i = 0; i < P.n; i++) {
-                if (i) pf_puts(&w, "+");
-                irs_int(&w, P.s[i], var);
-            }
+    lim = cap0 ? cap0 : (size_t)(flags / IB_LIM);
+    if (lim > IB_LIMMAX) lim = IB_LIMMAX;
+    K.rq = rq, K.P = &P, K.arena = arena, K.room = room, K.tl = false;
+    K.S.flags = flags % IB_LIM + IB_LEVEL + (int)lim * IB_LIM, K.S.info = info, K.S.want = 0, K.S.skip = false;
+    K.x = P.how == IBH_CYCLE ? 5 : 0;                   /* parts' u, v, w, f÷u at x + 2 */
+    K.lu = ib_label(rq->eqn, rq->var, -1), K.lv = ib_label(rq->eqn, rq->var, K.lu);
+    if (lim) {                                          /* each own line, measured in the arena (free till the pieces) */
+        m = (out_t){(char *)arena, lim < room ? lim : room, 0, false};
+        K.measure = true, K.S.w = &m;
+        for (int j = 0;; j++) {
+            K.S.k = j, K.S.at = 0;
+            ib_body(&K);
+            if (K.S.at <= j) break;
+            if (m.full) return ib_one(rq, k, info, out, cap0, arena, cap);
         }
-        for (int i = 0; i < P.n && st == CASIM_OK; i++) sub.eqn = P.s[i], st = ib_piece(&S, &sub, 1, arena, room, &tl);
-    } else if (P.how == IBH_SUB) {
-        rule = CASIM_RULE_SUBSTITUTION;
-        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule))
-            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), irs_int(&w, P.s[3], P.U), ib_wlet(&w, P.U, P.s[2], -1);
-        sub.eqn = P.s[3], sub.var = P.U;
-        st = ib_piece(&S, &sub, 1, arena, room, &tl);
-    } else if (P.how == IBH_CONST) {
-        rule = CASIM_RULE_CONSTANT_MULTIPLE;
-        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule))
-            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), ib_wfac(&w, P.s[2], true), pf_puts(&w, TIMES),
-                irs_int(&w, P.s[3], var);
-        sub.eqn = P.s[3];
-        st = ib_piece(&S, &sub, 1, arena, room, &tl);
-    } else {
-        rule = CASIM_RULE_BY_PARTS;
-        if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, rule)) {
-            irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), ib_wprod(&w, P.s[x + 2], P.s[x + 3]), pf_puts(&w, "-");
-            irs_int(&w, P.s[x + 4], var), ib_wlet(&w, lu, P.s[x + 2], -1), ib_wlet(&w, lv, P.s[x + 5], var);
-        }
-        sub.eqn = P.s[x + 5];
-        st = ib_piece(&S, &sub, 1, arena, room, &tl);
-        if (P.how == IBH_PARTS && st == CASIM_OK) sub.eqn = P.s[x + 4], st = ib_piece(&S, &sub, 1, arena, room, &tl);
-        if (P.how == IBH_CYCLE) {
-            /* ∫(w)dX = u2×v2 + (-k)×∫(f)dX, its v2's walk, then ∫(f)dX = (u×v - u2×v2)÷(1-k) */
-            if (irs_hit(&S, 1, CASIM_STEP_TEMPLATE, CASIM_RULE_BY_PARTS)) {
-                irs_int(&w, P.s[x + 4], var), pf_puts(&w, " = "), ib_wprod(&w, P.s[2], P.s[3]);
-                if (strcmp(P.s[4], "1") == 0) pf_puts(&w, "+");
-                else if (strcmp(P.s[4], "-1") == 0) pf_puts(&w, "-");
-                else pf_puts(&w, P.s[4][0] == '-' ? "" : "+"), ib_wfac(&w, P.s[4], true), pf_puts(&w, TIMES);
-                irs_int(&w, rq->eqn, var), ib_wlet(&w, lu, P.s[2], -1), ib_wlet(&w, lv, P.s[5], var);
-            }
-            sub.eqn = P.s[5];
-            if (st == CASIM_OK) st = ib_piece(&S, &sub, 2, arena, room, &tl);
-            if (irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_CYCLE)) {
-                irs_int(&w, rq->eqn, var), pf_puts(&w, " = ("), ib_wprod(&w, P.s[x + 2], P.s[x + 3]), pf_puts(&w, "-");
-                ib_wprod(&w, P.s[2], P.s[3]), pf_puts(&w, ")\xc3\xb7");
-                ib_wdiv(&w, P.s[6]);
-            }
-        }
+        memset(info, 0, sizeof *info);
     }
-    if (st != CASIM_OK) return ib_one(rq, k, info, out, cap0, arena, cap);
-    if (!P.sum && irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_CHECK)) {
-        char d[7] = {'d', '/', 'd', (char)('A' + var), '(', '\0'};
-        pf_puts(&w, d), pf_puts(&w, P.s[1]), pf_puts(&w, ") = "), pf_puts(&w, rq->eqn);
-    }
-    if (irs_hit(&S, 0, CASIM_STEP_RESULT, rule)) S.want = 2;
-    info->count = S.at;
+    K.measure = false, K.S.w = &w, K.S.k = k, K.S.at = 0;
+    if (ib_body(&K) != CASIM_OK) return ib_one(rq, k, info, out, cap0, arena, cap);
+    info->count = K.S.at;
     if (k < 0) return CASIM_OK;
-    if (k >= S.at) return CASIM_BAD_ARG;
-    if (tl) return out[0] = '\0', CASIM_TOO_LONG;
-    if (S.want) {                                       /* the last page: integrate's answer, byte for byte */
+    if (k >= K.S.at) return CASIM_BAD_ARG;
+    if (K.tl) return out[0] = '\0', CASIM_TOO_LONG;
+    if (K.S.want) {                                     /* the last page: integrate's answer, byte for byte */
         st = ib_steps(rq, 0, info, out, cap0, arena, cap);
-        info->count = S.at, info->rule = rule;
+        info->count = K.S.at, info->rule = K.rule;
         return st;
     }
     if (w.full) return out[0] = '\0', CASIM_TOO_LONG;

@@ -266,7 +266,10 @@ walk of ∫(dv)dX that gives v, then ∫(w)dX's; for the cycle a second BY PARTS
 (u×v−u2×v2)÷(1−k); a constant factor that isn't a number by CONSTANT MULTIPLE; a sum by SUM. Each piece's walk is
 integrate's own on its printed text, so a piece may go through the table, CAS 013's walk or this one. Walks nest at most
 three deep, and below that a piece is one line, its answer (ANSWER). A walk that doesn't fit is that one line for the
-whole integrand: the steps never refuse what integrate answers, and refuse what it refuses with its status.
+whole integrand: the steps never refuse what integrate answers, and refuse what it refuses with its status. That holds
+at a page cap too: a walk with a line past cap is its one page, so the count depends on the cap, and the count's call
+takes the cap the pages will use (abacus #8227). Where the one page itself is past cap it is TOO_LONG, one page, never
+half a walk.
 
 | Command | Prints |
 |---|---|

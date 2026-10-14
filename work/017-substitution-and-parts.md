@@ -277,8 +277,19 @@ introduces it.
 4. **The walk never refuses what integrate answers, and never walks what it refuses** (rule 8). Integrate's own answer
    is asked first, and its refusal is the steps' (the letter rule refuses SIN(A×X)×COS(X), whose parts the plan
    would otherwise make). When a piece's walk refuses, or the texts don't fit, the walk falls back to rule 8's one
-   page: a soft NO_ROOM, as CAS 013's S3 has it, but with the answer's page kept. A page past cap is TOO_LONG with the
-   whole count, however deep its piece.
+   page: a soft NO_ROOM, as CAS 013's S3 has it, but with the answer's page kept. ~~A page past cap is TOO_LONG with
+   the whole count, however deep its piece.~~ Held by abacus (#8227, a14dd08): 13 walks refused at cap 192 where
+   integrate answers. As built after the hold:
+   - **At a page cap,** each walk measures its own lines (templates, CHECK, CYCLE, its answer line) at the cap before
+     its pieces run, in the arena they will use. A line past cap makes the walk its one page. A piece's walk gets the
+     cap in the flags' bits above its level (IB_LIM), so its count and its pages agree. The count depends on the cap
+     for these walks only, and the count's call takes the cap its pages will use (src/casim.h). Where the one page is
+     past cap too (I0837 and I0983: 197 and 203 bytes, 169 and 171 characters), it is TOO_LONG on one page, not half
+     a walk.
+   - **The count's room:** below cap 384 the count borrowed 384 bytes of the arena for integrate's text, and at 8 KB
+     that was what LN(X+1)'s rational path (7,328 bytes) lacked: it now asks again on the whole arena.
+   - A page of an inner walk that isn't this unit's (the table's, CAS 013's) is not measured. istep-values' cap check
+     (150 and 192 bytes, both arenas, every family walk) found none past cap where the one page fits.
 5. **Letters:** U is substitution's own (the first of U, V, W, T, S, R, Q not in the integrand). BY PARTS's two labels
    are the first two of that list free in the integrand and not its variable, so inside a piece in U they are V and W
    (LN(ATAN(X))÷(5×X^2+5)); past the list, any free letter from Z down. A piece's labels may reuse a letter of the
@@ -335,5 +346,7 @@ introduces it.
     freed arena), whole coefficients unbounded (int64 overflow), the cycle's divisor bare, a sum's "+" dropped,
     BAD_ARG for a page too long, the LN form inside the search (answers lost at small arenas), labels exhausted, and
     the walk shown where integrate refuses.
+  - From abacus's hold (hold-*, 5): the count's retry on the whole arena removed, the lines left unmeasured, a piece
+    not given the cap, a sum's answer line measured as a term, and the level read with the cap's bits.
 - **Device:** the S3 bench byte-identical to the host, every 017 row paged, the slowest page and the 017 pages' worst
   stack reported.

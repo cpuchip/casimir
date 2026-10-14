@@ -135,7 +135,9 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
    each page returns PARTIAL when partfrac does. k < 0 only counts. Each call is complete in itself: page k
    again or k ± 1 with the same rq. info gets the count, and for step k its depth (0 for the root), its line and its
    rule. NO_ROOM when the steps don't fit the arena (the op may still); BAD_ARG for k >= count; TOO_LONG when the
-   step's text passes cap (the count is the same whatever cap is); the op's own refusal otherwise. An equation's
+   step's text passes cap (the count is the same whatever cap is, but for integrate by substitution and parts, CAS 017:
+   a walk with a line past cap is its one page, so the count's call takes the cap its pages will use); the op's own
+   refusal otherwise. An equation's
    derive lines are d/dX(a)=d/dX(b) and its derived equation. */
 #define CASIM_STEPS_ONE_LINE 1
 #define CASIM_STEP_TEMPLATE 0
