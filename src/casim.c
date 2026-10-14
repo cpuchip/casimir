@@ -4503,8 +4503,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
             }
         } else pw(&c, n, var, co);
     }
-    pw_refused(&c, n, var);
-    if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
+    if (c.st != CASIM_OK) return pw_refused(&c, n, var), finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
     /* the tree is done with: its arena goes to the search (show steps reads cr and ws here afterwards: do_ssteps) */
     c.used = mark;
     ws = grab(&c, sizeof(solve_ws));
