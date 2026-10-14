@@ -122,24 +122,25 @@ gzipped), most of it the decimal library's tables.
   (cpuchip/stu32-firmware), so these tests need its clone (CORE_REPO, default ../stu32-firmware) at the commit in
   CORE_PIN. They are collect, core_link, defint, derive, exact, examples, expand, factor, fuzz, integrate, opaque,
   pairs, partfrac, poly, simplify, solve, stamp, subst and syntax
-  (tests/*_test.c).
+  (tests/*_test.c). CI runs them too, on the firmware fetched by its sha at exactly CORE_PIN (scripts/ci-test.sh).
 - **The standalone checks** (`make check`, and CI) need only this repository:
-  - the golden test, 9,983 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the golden test, 10,066 calls whose exact answers were recorded from earlier sources, so a change shows up;
   - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
     where one is;
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
     check reached by spoiling a term;
   - check-abn;
-  - the examples in docs/language.md, and CAS 013's walks in work/013-steps-examples.txt.
-  - Taylor polynomials judged exactly against power series over fractions, the opposite method
-    (scripts/taylor-values.py).
+  - the examples in docs/language.md, CAS 013's walks in work/013-steps-examples.txt, and CAS 016's rows in
+    work/016-examples.txt.
+  - Taylor polynomials judged exactly against power series over fractions, the opposite method, in the calculator's
+    arena and in 65,536 bytes; and ABS's corners, X^j×ABS(X)^m, by their truth (scripts/taylor-values.py).
   - limits judged against truths built from those power series (a quotient's limit from its first nonzero terms, at
     a point, at ∞ and at -∞), not from derivatives, read back to 45 digits (scripts/limit-values.py).
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 175 deliberate faults, each of which the tests
-  must catch; `make test` catches all 175 (at CAS 015). Each mutant's copy re-records its frame table first, so a
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 193 deliberate faults, each of which the tests
+  must catch; `make test` catches all 193 (at CAS 016). Each mutant's copy re-records its frame table first, so a
   fault that only moves a frame isn't counted as caught; the one fault whose catch is the frame table itself (the
   rational-integral hook moved into do_integrate) is named in the script. When there were 80, the standalone checks
   first caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose

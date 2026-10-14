@@ -1,0 +1,39 @@
+# The golden lines CAS 016 (poles, ABS's corner, ∞-∞ of quotients, the buffer by arena, and the hyperbolic and ALOG
+# constants folded: abacus #7951) moved. Each line's inputs,
+# then its status and answer before (CAS 015's 14f738c) and after. Every other line is byte-identical.
+simplify	35	23	0	35	65536	65536	TAN(90)	\N	\N
+  before	OK	TAN(90)
+  after	UNDEFINED	
+simplify	35	23	0	35	8192	192	TAN(90)	\N	\N
+  before	OK	TAN(90)
+  after	UNDEFINED	
+simplify	35	23	0	35	8192	65536	TAN(90)	\N	\N
+  before	OK	TAN(90)
+  after	UNDEFINED	
+expand	35	23	1	35	65536	65536	(INV((1.5)-(ASIN(7))))+(LN(((X)-(X))÷((-4)×(0.5))))	\N	\N
+  before	OK	LN(0)-1÷(ASIN(7)-1.5)
+  after	UNDEFINED	
+collect	35	24	1	35	8192	65536	(((ALOG(π))÷(7))+(TAN((0.5)+(π))))-(LOG(((0.5)-(-4))×((2)-(2))))	\N	\N
+  before	OK	(-LOG(0)+ALOG(π)÷7+TAN(π+0.5))
+  after	UNDEFINED	
+integrate	35	23	2	35	8192	65536	((-4)^(LOG((1E3)-(1E3))))-(-4)	\N	\N
+  before	OK	4×X+X×(-4)^LOG(0)
+  after	UNDEFINED	
+taylor	35	23	1	35	65536	65536	EXP(SIN(X))	0	8
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
+taylor	35	23	1	35	65536	65536	((1+X)^(1÷3))×(X×EXP(X))	0	6
+  before	NO_ROOM	
+  after	OK	X+4×X^2÷3+13×X^3÷18+23×X^4÷81+121×X^5÷1944+86×X^6÷3645
+limit	35	23	1	35	8192	192	(1-COS(X))^2÷X^4	0	
+  before	NO_ROOM	
+  after	OK	0.25
+derive	35	24	0	35	65536	65536	(((X)+(Y))^(2))^(SIN(TANH((7)-(7))))	\N	\N
+  before	OK	2×SIN(TANH(0))×((X+Y)^2)^(SIN(TANH(0))-1)×(X+Y)
+  after	OK	0
+expand	35	23	2	35	8192	65536	ALOG(SIN(1E3))	\N	\N
+  before	OK	ALOG(0)
+  after	OK	1
+collect	33	23	1	33	8192	65536	((ALOG((1E3)-(1E3)))^(((2)×(π))-(SIN(1E3))))^((((π)×(X))×((X)^(3)))+(SQ(0.5)))	\N	\N
+  before	OK	(ALOG(0)^(2×π-SIN(1000)))^(X^4×π+0.25)
+  after	OK	1

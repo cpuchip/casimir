@@ -1,5 +1,5 @@
-# Casimir's public CI (CAS 011 rule 6): everything that needs only this repository. The developer tests read answers
-# back through the calculator firmware's core, so they need its clone and run where one is (make test; README.md).
+# Casimir's public CI (CAS 011 rule 6): the standalone checks, which need only this repository, and (CAS 016 rule 5)
+# the developer tests, which read answers back through the calculator firmware's core, fetched public at CORE_PIN.
 # On pushes to main and on pull requests only. No secrets.
 name: ci
 on:
@@ -30,6 +30,19 @@ jobs:
       # the library, CLI and example at -Werror; the golden corpus; the frame and symbol gates; the small-primes
       # gcd check; check-abn (the recorded SHA-256s) and its planted-byte control; docs/language.md's examples
       - run: make check
+
+  test:
+    name: make test (the firmware at CORE_PIN)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: build/intel-dfp/IntelRDFPMathLib20U5.tar.gz
+          key: intel-dfp-85dafd70f0fe2a8da218ade4233fca9d3228b0b04cd6d8527f7499926be01037
+      # CAS 016 rule 5: cpuchip/stu32-firmware fetched by sha at exactly CORE_PIN (failing if it can't be), then the
+      # developer tests, which read every answer back through its core
+      - run: scripts/ci-test.sh
 
   cmake:
     name: cmake (${{ matrix.cc }})

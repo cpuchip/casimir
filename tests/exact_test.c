@@ -78,7 +78,11 @@ static void table(void)
                 else if (angle == CASIM_DEG) snprintf(t, sizeof t, "%s(%d)", FN[f], 15 * n);
                 else snprintf(t, sizeof t, "%s(%d÷3)", FN[f], 50 * n);
                 if (*want) is(t, angle, want);
-                else {
+                else if (f == 2 && m % 12 == 6) {
+                    /* TAN's poles (CAS 016 rule 1): UNDEFINED */
+                    casim_status st = simp(t, angle, CASIM_MODEL_35, out);
+                    CHECK(st == CASIM_UNDEFINED, "simplify %s (%s): %d \"%s\", want UNDEFINED", t, MODE[angle], (int)st, out);
+                } else {
                     /* not exact: stays a function of its (canonical) argument */
                     casim_status st = simp(t, angle, CASIM_MODEL_35, out);
                     CHECK(st == CASIM_OK && strncmp(out, FN[f], 3) == 0, "simplify %s (%s): %d \"%s\", want it as written",
@@ -137,12 +141,20 @@ static void logs_and_powers(void)
     is("SIN(X)+COS(0)", CASIM_RAD, "SIN(X)+1");
 }
 
+static void pole(const char *t, int angle)
+{
+    char out[OUT];
+    casim_status st = simp(t, angle, CASIM_MODEL_35, out);
+    CHECK(st == CASIM_UNDEFINED && out[0] == '\0', "simplify %s (%s): %d \"%s\", want UNDEFINED", t, MODE[angle], (int)st,
+          out);
+}
+
 static void as_written(void)
 {
     is("SIN(π÷12)", CASIM_RAD, "SIN(π÷12)");
     is("SIN(15)", CASIM_DEG, "SIN(15)");
-    is("TAN(π÷2)", CASIM_RAD, "TAN(π÷2)");
-    is("TAN(90)", CASIM_DEG, "TAN(90)");
+    pole("TAN(π÷2)", CASIM_RAD);                    /* CAS 016 rule 1: a pole has no value, as 1÷0 has none */
+    pole("TAN(90)", CASIM_DEG);
     is("SIN(π÷6)", CASIM_DEG, "SIN(π÷6)");
     is("SIN(1)", CASIM_RAD, "SIN(1)");
     is("COS(X+π)", CASIM_RAD, "COS(X+π)");

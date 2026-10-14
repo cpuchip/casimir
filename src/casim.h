@@ -49,13 +49,14 @@ typedef enum {
     CASIM_PARTIAL,              /* CAS 007, factor: out holds a correct factorization (it reads back as the
                                    input exactly), but a factor of degree >= 4 is not proven irreducible (rule 5a);
                                    the firmware shows MAY FACTOR FURTHER beside it */
-    CASIM_UNDEFINED,            /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0): the expression
-                                   has no value; out is "" */
+    CASIM_UNDEFINED,            /* CAS 008: an exact 0 under a negative power (1÷COS(π÷2), 1÷0), or (CAS 016) a pole
+                                   in any op (TAN(π÷2), LN(0), LOG(0), ATANH(±1)): the expression has no value; out is
+                                   "" */
     CASIM_IMPROPER,             /* CAS 009, defint: a pole or domain edge of the integrand on the closed interval
                                    (or within 1E-20 of it), so the integral is improper there; out is "" */
     CASIM_UNDECIDED             /* CAS 015, limit: the walk couldn't decide (past 12 L'Hôpital steps, an ∞-∞ the
                                    rewrites don't resolve, a damped oscillation, a form not covered). Never "no limit"
-                                   (that is UNDEFINED); out is "" */
+                                   (that is UNDEFINED). CAS 016, taylor: an SGN(0) it can't decide; out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -252,8 +253,10 @@ casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char
    integral's bound is, CAS 008's exact values), in ascending powers of (X-a) (of X when a is 0), each term in canonical
    form, a zero term left out, 0 when every term is. point is a real constant read as defint's bounds (a letter in it
    is BAD_ARG); other letters in eqn are constants. UNDEFINED when eqn or a derivative up to n has no value at point (a
-   removable singularity too, as SIN(X)÷X at 0; a function outside its domain, as LN(X) at 0; ABS's corner);
-   NOT_DIFFERENTIABLE for a name derive refuses; NO_ROOM when a derivative outgrows the arena or its text 384 bytes;
+   removable singularity too, as SIN(X)÷X at 0; a function outside its domain, as LN(X) at 0; ABS's corner, a lone SGN
+   whose argument changes sign there); UNDECIDED for another SGN(0) (CAS 016: SGN beside a factor that is 0 there is
+   0, so X×ABS(X) at 0 answers to order 1) and for a 0÷0 only in a derivative's formula (X×SQRT(X^2) to order 1); NOT_DIFFERENTIABLE for a name derive refuses; NO_ROOM when a derivative
+   outgrows the arena or its text 384 bytes (1,024 in an arena of 16,384 bytes or more);
    TOO_LONG past 191 bytes; BAD_ARG for an equation or an order outside 0-12. */
 casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
                           size_t cap, void *arena, size_t arena_cap);

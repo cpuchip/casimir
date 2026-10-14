@@ -98,7 +98,14 @@ int main(void)
            input only through rounding (ATANH(INV(Y)×Y): 1÷Y×Y rounds below 1, but is exactly 1, where
            ATANH is undefined), and the simplified text is undefined there too. abacus's generator refuses
            these cases (SymPy sees the edge); here each is listed, and more than a few fail the test. */
-        if (casim_simplify(e, angle, re, sizeof re, arena, sizeof arena) == CASIM_OK) {
+        st = casim_simplify(e, angle, re, sizeof re, arena, sizeof arena);
+        if (st == CASIM_UNDEFINED) {
+            /* CAS 016 rule 1: the edge exactly, a pole (ATANH(1)), is UNDEFINED in every op; counted with the edges */
+            edges++;
+            printf("domain edge: %s is UNDEFINED (a pole; input %s on the core, by rounding)\n", e, ce_text(&f0));
+            continue;
+        }
+        if (st == CASIM_OK) {
             roundtrips++;
             if (ce_eval(re, &r0) != ABN_OK) {
                 edges++;

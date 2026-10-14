@@ -1504,6 +1504,7 @@ static ref fn(ctx *c, int f, ref a)
     case F_LN:
         if (x->kind == K_FN && x->id == F_EXP) return x->a;
         if (is_k(c, a, 1, 1)) return small(c, C_0);                 /* CAS 008 */
+        if (is_k(c, a, 0, 1)) return c->st = CASIM_UNDEFINED, SPARE;     /* CAS 016 rule 1: a pole, as 1÷0 is */
         if (is_num(c, a) && val(c, a)->p == 1 && val(c, a)->q > 1) return log_of(c, f, val(c, a));   /* -LN(m) */
         break;
     case F_EXP:
@@ -1521,7 +1522,10 @@ static ref fn(ctx *c, int f, ref a)
     case F_TAN: {
         long n;
         xval v;
-        if (angle_n(c, a, &n) && table_val(f, n, &v)) return xval_tree(c, &v);
+        if (!angle_n(c, a, &n)) break;
+        if (table_val(f, n, &v)) return xval_tree(c, &v);
+        if (f == F_TAN && table_val(F_COS, n, &v) && v.p == 0)
+            return c->st = CASIM_UNDEFINED, SPARE;                  /* CAS 016 rule 1: COS is 0 there, a pole */
         break;
     }
     case F_ASIN:
@@ -1531,13 +1535,28 @@ static ref fn(ctx *c, int f, ref a)
         break;
     case F_LOG:
         if (x->kind == K_FN && x->id == F_ALOG) return x->a;
+        if (is_k(c, a, 0, 1)) return c->st = CASIM_UNDEFINED, SPARE;     /* CAS 016 rule 1 */
         if (is_num(c, a) && val(c, a)->p > 0) {
             long j;
             const rat *v = val(c, a);
             if ((v->q == 1 && pow10_of(v->p, &j)) || (v->p == 1 && v->q > 1)) return log_of(c, f, v);    /* j, -LOG(m) */
         }
         break;
-    case F_ALOG: if (x->kind == K_FN && x->id == F_LOG) return x->a; break;
+    case F_ALOG:
+        if (x->kind == K_FN && x->id == F_LOG) return x->a;
+        if (is_k(c, a, 0, 1)) return small(c, C_1);                 /* CAS 016: the exact values a pole hides behind */
+        break;
+    case F_ATANH:
+        if (is_k(c, a, 1, 1) || is_k(c, a, -1, 1)) return c->st = CASIM_UNDEFINED, SPARE;   /* CAS 016 rule 1 */
+        if (is_k(c, a, 0, 1)) return small(c, C_0);
+        break;
+    case F_SINH:
+    case F_TANH:
+    case F_ASINH:
+        if (is_k(c, a, 0, 1)) return small(c, C_0);                 /* CAS 016 (abacus #7951): SINH(0), TANH(0), ASINH(0) */
+        break;
+    case F_COSH: if (is_k(c, a, 0, 1)) return small(c, C_1); break;
+    case F_ACOSH: if (is_k(c, a, 1, 1)) return small(c, C_0); break;
     case F_ABS:
         if (is_num(c, a)) {
             rat v = *val(c, a);
@@ -2952,8 +2971,8 @@ static __attribute__((noinline)) void put_template(ctx *c, out_t *w, ref r, int 
     case CASIM_RULE_POWER:          /* n×u^(n-1)×d/dX(u) */
         t = mul2(c, x->b, power(c, x->a, add2(c, x->b, small(c, C_M1))));
         break;
-    case CASIM_RULE_EXPONENTIAL:    /* a^u×LN(a)×d/dX(u) */
-        t = mul2(c, r, fn(c, F_LN, x->a));
+    case CASIM_RULE_EXPONENTIAL:    /* a^u×LN(a)×d/dX(u); 0^u is 0 where defined, as derive has it (LN(0) is a pole) */
+        t = is_k(c, x->a, 0, 1) ? small(c, C_0) : mul2(c, r, fn(c, F_LN, x->a));
         break;
     case CASIM_RULE_GENERAL_POWER:  /* u^v×(d/dX(v)×LN(u)+v×d/dX(u)÷u) */
         put_whole(c, w, r, 2);
@@ -4338,12 +4357,48 @@ static void pw(ctx *c, ref r, int var, rat *out)
     case K_BDIV: pw_chain(c, r, var, out, false); break;
     case K_BPOW: pw_power(c, r, var, out); break;
     default:
-        /* a function, π, a name, a draw: of var not a polynomial, else not a rational number */
-        c->st = raw_has_var(c, r, var) ? CASIM_NOT_POLYNOMIAL : CASIM_NOT_NUMERIC;
+        /* a function, π, a name, a draw: of var not a polynomial, else not a rational number; but a pole (TAN(π÷2),
+           LN(0)) has no value at all, as in every op (CAS 016 rule 1) */
+        if (raw_has_var(c, r, var)) c->st = CASIM_NOT_POLYNOMIAL;
+        else {
+            canon(c, r);
+            if (c->st != CASIM_UNDEFINED) c->st = CASIM_NOT_NUMERIC;
+        }
         break;
     }
     c->depth--;
     if (c->st == CASIM_OK) c->used = mark;
+}
+
+/* a pole in a raw r (CAS 016 rule 1): a function of a constant whose canonical form is UNDEFINED, anywhere in r. pw
+   stops at its first refusal, so solve and factor ask this of the whole input when pw refuses it, and a pole decides
+   whichever term it is in (SIN(X)+TAN(π÷2)=0, review) */
+static bool pw_pole_(ctx *c, ref r, int var)
+{
+    const node *x = nd(c, r);
+    bool p = false;
+    if (r == 0 || r == SPARE || c->st != CASIM_OK || !enter(c)) return false;
+    if (x->kind == K_RFN && !raw_has_var(c, r, var)) {
+        canon(c, r);
+        p = c->st == CASIM_UNDEFINED;
+        c->st = CASIM_OK;
+    } else if (x->kind == K_RFN || x->kind == K_NEG || x->kind == K_GROUP) p = pw_pole_(c, nd(c, r)->a, var);
+    else if (x->kind >= K_BADD && x->kind <= K_BPOW) p = pw_pole_(c, x->a, var) || pw_pole_(c, nd(c, r)->b, var);
+    else if (x->kind == K_REQ) p = pw_pole_(c, x->a, var) || pw_pole_(c, nd(c, r)->b, var);
+    c->depth--;
+    return p;
+}
+
+/* pw refused r (NOT_POLYNOMIAL, NOT_NUMERIC): UNDEFINED instead when a pole is in it */
+static __attribute__((noinline)) void pw_refused(ctx *c, ref r, int var)
+{
+    casim_status s = c->st;
+    size_t mark = c->used;
+    if (s != CASIM_NOT_POLYNOMIAL && s != CASIM_NOT_NUMERIC) return;
+    c->st = CASIM_OK;
+    s = pw_pole_(c, r, var) ? CASIM_UNDEFINED : s;
+    c->used = mark;
+    c->st = s;
 }
 
 /* co cleared to a primitive integer polynomial, its leading coefficient positive; NO_ROOM past the bounds. */
@@ -4448,6 +4503,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
             }
         } else pw(&c, n, var, co);
     }
+    pw_refused(&c, n, var);
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
     /* the tree is done with: its arena goes to the search (show steps reads cr and ws here afterwards: do_ssteps) */
     c.used = mark;
@@ -6366,6 +6422,7 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
     if (c.st != CASIM_OK || cap == 0) return finish(&c, n, out, ocap);
     co = (rat *)(void *)nd(&c, cr);
     pw(&c, n, var, co);
+    pw_refused(&c, n, var);
     if (c.st != CASIM_OK || !clear(&c, co, &f)) return finish(&c, SPARE, out, ocap);
     c.used = mark;
     if (f.n <= 0) {
@@ -8276,6 +8333,9 @@ static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, i
 
 #define TAYLOR_MAX 12
 #define TAYLOR_TEXT 384      /* a derivative's text, twice at the arena's top: past it, NO_ROOM */
+#define TAYLOR_TEXT_BIG 1024 /* CAS 016 rule 4: in an arena of TAYLOR_BIG_ARENA or more (the host's and the web's, not
+                                the calculator's 8 KB, where a bigger buffer answers fewer: docs/language.md) */
+#define TAYLOR_BIG_ARENA 16384
 
 /* the arena back to mark, the constants cached since dropped (they would point into reused room: ir_reset's rule) */
 static __attribute__((noinline)) void taylor_drop(ctx *c, size_t mark)
@@ -8331,6 +8391,33 @@ static __attribute__((noinline)) void taylor_term(ctx *c, out_t *w, ref ck, ref 
    domains, a fractional power of a negative number, TAN where COS is 0, and SGN of 0, where ABS has its corner
    (derive's ABS' = SGN(u)×u' is right except at u = 0). r is the typed tree as parsed or a canonical f^(k); each node's
    work is dropped after its check, so the arena stays flat */
+/* u is exactly 0 at a (CAS 016 rule 2's zero factor); a hole in u is left for taylor_hole to find */
+static __attribute__((noinline)) bool taylor_zero(ctx *c, ref u, int var, ref a)
+{
+    size_t mark = c->used;
+    bool z;
+    c->sub_var = var, c->sub_val = a;
+    u = canon(c, check_rewrite(c, u));
+    c->sub_val = 0, c->sub_var = -1;
+    z = c->st == CASIM_OK && is_k(c, u, 0, 1);
+    if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+    taylor_drop(c, mark);
+    return z;
+}
+
+/* the i-th term or factor of r, for taylor_hole. CAS 016 rule 2: SGN is bounded, so in a product with a factor that is
+   0 at a, SGN(u) at u = 0 is 0 there (X×SGN(X): ABS's corner in X×ABS(X)'s derivative), and only u is checked */
+static __attribute__((noinline)) ref taylor_part(ctx *c, ref r, int i, int var, ref a)
+{
+    ref g = list(c, nd(c, r)->a)[i];
+    if (nd(c, r)->kind != K_MUL || nd(c, g)->kind != K_FN || nd(c, g)->id != F_SGN) return g;
+    for (int j = 0; j < nd(c, r)->n; j++) {
+        ref y = list(c, nd(c, r)->a)[j];
+        if (!(nd(c, y)->kind == K_FN && nd(c, y)->id == F_SGN) && taylor_zero(c, y, var, a)) return nd(c, g)->a;
+    }
+    return g;
+}
+
 static bool taylor_hole(ctx *c, ref r, int var, ref a)
 {
     bool h = false, raw;
@@ -8364,9 +8451,45 @@ static bool taylor_hole(ctx *c, ref r, int var, ref a)
     else if (!h && (kind == K_POW || kind == K_BPOW || kind == K_BDIV || kind == K_BMUL || kind == K_BADD || kind == K_BSUB))
         h = taylor_hole(c, nd(c, r)->a, var, a) || taylor_hole(c, nd(c, r)->b, var, a);
     else if (!h && (kind == K_ADD || kind == K_MUL))
-        for (int i = 0; i < nd(c, r)->n && !h; i++) h = taylor_hole(c, list(c, nd(c, r)->a)[i], var, a);
+        for (int i = 0; i < nd(c, r)->n && !h; i++) h = taylor_hole(c, taylor_part(c, r, i, var, a), var, a);
     c->depth--;
     return h;
+}
+
+/* r is SGN(u) with u 0 at a: a corner */
+static bool sgn_at0(ctx *c, ref r, int var, ref a)
+{
+    return nd(c, r)->kind == K_FN && nd(c, r)->id == F_SGN && taylor_zero(c, nd(c, r)->a, var, a);
+}
+
+/* the corners in a canonical r (a guarded walk) */
+static int sgn_count(ctx *c, ref r, int var, ref a)
+{
+    const node *x = nd(c, r);
+    int k = 0;
+    if (r == 0 || r == SPARE || !enter(c)) return 0;
+    if (x->kind == K_FN) k = sgn_at0(c, r, var, a) + sgn_count(c, nd(c, r)->a, var, a);
+    else if (x->kind == K_POW) k = sgn_count(c, x->a, var, a) + sgn_count(c, nd(c, r)->b, var, a);
+    else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n; i++) k += sgn_count(c, list(c, nd(c, r)->a)[i], var, a);
+    c->depth--;
+    return k;
+}
+
+/* u changes sign at a: its first derivative that isn't 0 there has an odd order (1), an even one (0), or it can't
+   tell within four (-1) */
+static __attribute__((noinline)) int taylor_turns(ctx *c, ref u, int var, ref a)
+{
+    for (int m = 1; m <= 4 && c->st == CASIM_OK; m++) {
+        ref v;
+        u = canon(c, deriv(c, u));
+        c->sub_var = var, c->sub_val = a;
+        v = canon(c, check_rewrite(c, u));
+        c->sub_val = 0, c->sub_var = -1;
+        if (c->st != CASIM_OK) break;
+        if (!is_k(c, v, 0, 1)) return const_sign(c, v) ? m % 2 : -1;
+    }
+    return -1;
 }
 
 /* rule 7: f (the typed tree as parsed, or a canonical f^(k)) has a value at a, else UNDEFINED */
@@ -8377,6 +8500,96 @@ static __attribute__((noinline)) void taylor_check(ctx *c, ref f, int var, ref a
     if (c->st == CASIM_OK) taylor_drop(c, mark);
 }
 
+/* r has a hole at a, through taylor_check (so taylor_hole keeps one caller shape and its frame) */
+static __attribute__((noinline)) bool taylor_has_hole(ctx *c, ref r, int var, ref a)
+{
+    taylor_check(c, r, var, a);
+    if (c->st != CASIM_UNDEFINED) return false;
+    c->st = CASIM_OK;
+    return true;
+}
+
+/* a hole in f at a outside the corner g (in its term t): another term, another factor of t, or g's argument */
+static __attribute__((noinline)) bool taylor_rest_hole(ctx *c, ref f, ref t, ref g, int var, ref a)
+{
+    if (taylor_has_hole(c, nd(c, g)->a, var, a)) return true;
+    if (nd(c, f)->kind == K_ADD)
+        for (int i = 0; i < nd(c, f)->n; i++)
+            if (list(c, nd(c, f)->a)[i] != t && taylor_has_hole(c, list(c, nd(c, f)->a)[i], var, a)) return true;
+    if (nd(c, t)->kind == K_MUL)
+        for (int i = 0; i < nd(c, t)->n; i++)
+            if (list(c, nd(c, t)->a)[i] != g && taylor_has_hole(c, list(c, nd(c, t)->a)[i], var, a)) return true;
+    return false;
+}
+
+/* a 0÷0 in r at a: a product with a factor that is 0 there beside a negative power of something 0 there (a guarded
+   walk). In a derivative's formula it says only that the formula can't tell (X×SQRT(X^2)'s derivative holds
+   X^2×(X^2)^(-1÷2)): abacus #7951 */
+static int taylor_00(ctx *c, ref r, int var, ref a)
+{
+    const node *x = nd(c, r);
+    int z = 0;
+    if (r == 0 || r == SPARE || !enter(c)) return 0;
+    if (x->kind == K_FN) z = taylor_00(c, x->a, var, a);
+    else if (x->kind == K_POW) z = taylor_00(c, x->a, var, a) || taylor_00(c, nd(c, r)->b, var, a);
+    else if (x->kind == K_ADD || x->kind == K_MUL) {
+        int under = -1, zero = -1;
+        for (int i = 0; i < nd(c, r)->n && !z; i++) {
+            ref y = list(c, nd(c, r)->a)[i];
+            const node *p = nd(c, y);
+            if (nd(c, r)->kind == K_MUL && under < 0 && p->kind == K_POW && is_num(c, p->b) && val(c, p->b)->p < 0 &&
+                taylor_zero(c, p->a, var, a)) under = i;
+            else if (nd(c, r)->kind == K_MUL && zero < 0 && taylor_zero(c, y, var, a)) zero = i;
+            z = taylor_00(c, y, var, a);
+        }
+        z = z || (under >= 0 && zero >= 0);
+    }
+    c->depth--;
+    return z;
+}
+
+/* a hole in f at a (CAS 016 rule 2): UNDEFINED, but UNDECIDED for an SGN(0) that is not a lone corner. A lone corner is
+   f's one SGN, to the first power, a term of f or a factor of one beside factors whose value at a is decided and not
+   0, its argument changing sign at a: there f has a jump, so the derivative before it has no value (ABS(X) to order 1,
+   X×ABS(X) to order 2) */
+static __attribute__((noinline)) casim_status taylor_corner(ctx *c, ref f, int var, ref a, int k)
+{
+    size_t mark = c->used;
+    int n = sgn_count(c, f, var, a), lone = 0;
+    ref t = f, g = 0;
+    if (n == 0) {
+        /* no corner: UNDEFINED, but a 0÷0 in a derivative's formula (not the typed input's: rule 7) is UNDECIDED */
+        lone = k > 0 && taylor_00(c, f, var, a);
+        if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+        if (c->st != CASIM_OK) return c->st;
+        taylor_drop(c, mark);
+        return lone ? CASIM_UNDECIDED : CASIM_UNDEFINED;
+    }
+    if (n == 1 && nd(c, f)->kind == K_ADD)
+        for (int i = 0; i < nd(c, f)->n; i++)
+            if (sgn_count(c, list(c, nd(c, f)->a)[i], var, a)) t = list(c, nd(c, f)->a)[i];
+    if (n == 1 && sgn_at0(c, t, var, a)) g = t, lone = 1;
+    else if (n == 1 && nd(c, t)->kind == K_MUL) {
+        lone = 1;
+        for (int i = 0; i < nd(c, t)->n && lone; i++) {
+            ref y = list(c, nd(c, t)->a)[i];
+            if (sgn_at0(c, y, var, a)) g = y;
+            else {
+                c->sub_var = var, c->sub_val = a;
+                y = canon(c, check_rewrite(c, y));
+                c->sub_val = 0, c->sub_var = -1;
+                lone = c->st == CASIM_OK && !is_k(c, y, 0, 1) && const_sign(c, y) != 0;
+            }
+        }
+    }
+    /* and nothing else in f has a hole, which could cancel the jump (ABS(X)-SQRT(X^2) is 0: review) */
+    if (lone && g) lone = !taylor_rest_hole(c, f, t, g, var, a) && taylor_turns(c, nd(c, g)->a, var, a) == 1;
+    if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+    if (c->st != CASIM_OK) return c->st;
+    taylor_drop(c, mark);
+    return lone && g ? CASIM_UNDEFINED : CASIM_UNDECIDED;
+}
+
 static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var, const char *point, int n, int angle,
                                                         char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
 {
@@ -8385,7 +8598,7 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     char *tb;
     abn av;
     rat kf = {1, 1};
-    size_t ocap = cap < SLOT ? cap : SLOT, base;
+    size_t ocap = cap < SLOT ? cap : SLOT, base, tt;
     int chars = 0;
     bool at0;
     out_t w = {out, ocap, 0, false};
@@ -8416,8 +8629,9 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     /* two text buffers at the arena's top, out of the nodes' reach: each derivative is printed into one, the arena goes
        back to base, and it is read again (a canonical form prints exactly), so a step holds one derivative and its
        work; c.s is the buffer the current tree was read from (a K_LIT keeps its text there), so they alternate */
-    if (c.top < c.used + 2 * TAYLOR_TEXT + 64) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
-    c.top -= 2 * TAYLOR_TEXT;
+    tt = arena_cap >= TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;
+    if (c.top < c.used + 2 * tt + 64) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    c.top -= 2 * tt;
     tb = (char *)c.mem + c.top;
     base = c.used;
     c.opaque = c.own_text = true;               /* from here the parser reads only the derivatives casim printed */
@@ -8429,13 +8643,14 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
         v = check_rewrite(&c, f);                           /* f^(k)(a), exact */
         c.sub_val = 0, c.sub_var = -1;
         taylor_check(&c, f, var, a);                        /* rule 7: it has a value there */
+        if (c.st == CASIM_UNDEFINED) c.st = CASIM_OK, c.st = taylor_corner(&c, f, var, a, k);   /* CAS 016 rule 2 */
         if (c.st != CASIM_OK) break;
         rat_make(&inv, kf.q, kf.p);
         taylor_term(&c, &w, canon(&c, mul2(&c, v, num(&c, &inv))), xa, k, at0);    /* c_k's term, into out */
         if (w.full || k == n || c.st != CASIM_OK) break;
         {
-            char *buf = tb + (k % 2) * TAYLOR_TEXT;
-            out_t tw = {buf, TAYLOR_TEXT, 0, false};
+            char *buf = tb + (k % 2) * tt;
+            out_t tw = {buf, tt, 0, false};
             print(&c, &tw, canon(&c, deriv(&c, f)));
             if (c.st != CASIM_OK) break;
             if (tw.full) {
@@ -8695,8 +8910,50 @@ static bool lm_root(ctx *c, ref r)
     return false;
 }
 
+/* CAS 016 rule 3: p + m (going to +∞ and -∞) over one denominator, n_1÷d_1 + n_2÷d_2 + ... as (n_1×d_2×... + d_1×n_2×...)
+   ÷ (d_1×d_2×...), walked as a quotient (1÷X-1÷SIN(X) is (SIN(X)-X)÷(X×SIN(X))); the sum's finite terms added back.
+   Undecided when no term has a denominator (the quotient would be the sum again). It comes after the test of which
+   term dominates, whose work (arena from mark, L'Hôpital steps past steps) it gives back first */
+static __attribute__((noinline)) lv lm_combine(ctx *c, ref p, ref m, ref fin, lwalk *L, size_t mark, int steps)
+{
+    ref s, num_, den;
+    bool under = false;
+    int cnt;
+    lv r;
+    if (c->st == CASIM_NO_ROOM) c->st = CASIM_OK;
+    if (c->st != CASIM_OK) return lm(L_UND, 0);
+    taylor_drop(c, mark), L->steps = steps;
+    s = canon(c, add2(c, p, m)), num_ = small(c, C_0), den = small(c, C_1);
+    cnt = nd(c, s)->kind == K_ADD ? nd(c, s)->n : 1;
+    for (int i = 0; i < cnt && c->st == CASIM_OK; i++) {
+        ref t = nd(c, s)->kind == K_ADD ? list(c, nd(c, s)->a)[i] : s, n, d;
+        under |= lm_split(c, t, &n, &d);
+        num_ = add2(c, mul2(c, num_, d), mul2(c, n, den));         /* a÷b + n÷d = (a×d + n×b)÷(b×d) */
+        den = mul2(c, den, d);
+    }
+    if (!under || c->st != CASIM_OK) return lm(L_UND, 0);
+    r = lm_quot(c, canon(c, num_), canon(c, den), L);
+    if (r.k == L_FIN) r.v = canon(c, add2(c, r.v, fin));
+    return r;
+}
+
+/* p (1 + m÷p): which term dominates; at a finite point, when neither does, one denominator (rule 3) */
+static __attribute__((noinline)) lv lm_dominant(ctx *c, ref p, ref m, ref fin, lwalk *L)
+{
+    size_t mark = c->used;
+    int steps = L->steps;
+    lv r = lm_quot(c, m, p, L);
+    if (r.k == L_PINF || r.k == L_NINF) return lm_walk(c, m, L);
+    if (r.k == L_FIN) {
+        int s = lm_sgn(c, canon(c, add2(c, small(c, C_1), r.v)));
+        if (s == 1) return lm_walk(c, p, L);
+        if (s == -1) return lm_walk(c, m, L);
+    }
+    return L->a ? lm_combine(c, p, m, fin, L, mark, steps) : lm(L_UND, 0);
+}
+
 /* the ∞-∞ of a sum: the leading terms at ∞, then a conjugate (a square root in a two-term sum), then which term
-   dominates */
+   dominates, then (at a finite point) one denominator */
 static __attribute__((noinline)) lv lm_inf_minus_inf(ctx *c, ref f, ref p, ref m, ref fin, lwalk *L)
 {
     ref k;
@@ -8718,17 +8975,7 @@ static __attribute__((noinline)) lv lm_inf_minus_inf(ctx *c, ref f, ref p, ref m
             return r;
         }
     }
-    {
-        /* p (1 + m÷p): which dominates */
-        lv r = lm_quot(c, m, p, L);
-        if (r.k == L_PINF || r.k == L_NINF) return lm_walk(c, m, L);
-        if (r.k == L_FIN) {
-            int s = lm_sgn(c, canon(c, add2(c, small(c, C_1), r.v)));
-            if (s == 1) return lm_walk(c, p, L);
-            if (s == -1) return lm_walk(c, m, L);
-        }
-        return lm(L_UND, 0);
-    }
+    return lm_dominant(c, p, m, fin, L);
 }
 
 static __attribute__((noinline)) lv lm_sum(ctx *c, ref f, lwalk *L)
@@ -8913,7 +9160,10 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
         if (lm_at(&c, f, &L, &v)) r = lm(L_FIN, v);
         else {
             lv up, dn;
+            size_t mark = c.used;
             L.side = 1, up = lm_walk(&c, f, &L);
+            if (up.k == L_FIN) up.v = compact(&c, mark, up.v);     /* CAS 016: the - side gets the arena back */
+            else if (c.st == CASIM_OK) taylor_drop(&c, mark);
             L.side = -1, L.steps = 0, dn = lm_walk(&c, f, &L);
             if (up.k == L_UND || dn.k == L_UND) r = lm(L_UND, 0);
             else if (up.k == L_NONE || dn.k == L_NONE || up.k == L_OSC || dn.k == L_OSC) r = lm(L_NONE, 0);

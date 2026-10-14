@@ -1,0 +1,111 @@
+# CAS unit 016 visible examples (work/016-poles-and-follow-ups.md), written by casim. Each row is a command and what it
+# prints; scripts/doc-examples.py runs every row (make check), and scripts/golden.py records each in the golden corpus.
+# - Rule 1: a pole is UNDEFINED in every op and angle mode, as 1÷0 is: TAN where COS is 0 (π÷2 in RAD, 90 in DEG, 100 in
+#   GRAD, and their odd multiples), LN and LOG of 0, ATANH of ±1. TAN(90) in RAD is no pole and is kept. The exits
+#   with complex values stay symbolic, and solve's NOT_NUMERIC for a constant that isn't rational stays.
+# - Rule 2: in X×ABS(X)'s derivative ABS(X)+X×SGN(X), SGN(0) beside the factor X (0 at 0) is 0, so order 1 answers 0
+#   (f'(0) = 0); f'' = 2×SGN(X) jumps at 0, so order 2 is UNDEFINED, as ABS(X) is at order 1. ABS(X^3) is |X|^3: 0 to
+#   order 2, UNDEFINED at 3 (X^3 changes sign at 0). ABS(X)^2 is X^2, whose order 2 the rule can't reach: UNDECIDED,
+#   never a wrong answer; K×ABS(X) is UNDECIDED too (K may be 0).
+# - Rule 3: 1÷X-1÷SIN(X) is (SIN(X)-X)÷(X×SIN(X)) → 0; 1÷LN(1+X)-1÷X → 1÷2; 1÷(EXP(X)-1)-1÷X → -1÷2;
+#   1÷(X-1)-2÷(X^2-1) is 1÷(X+1) → 1÷2. In DEG, SIN(X) at 0 is π×X÷180, so 1÷X-1÷SIN(X) is (1-180÷π)÷X → -∞ from above.
+#   1÷X^2-1÷SIN(X)^2 (-1÷3) needs about 15.7 KB: NO_ROOM at 8 KB until the series unit.
+# - A sibling of rule 1: derive's walk of 0^u says its derivative is 0 where it is defined, as derive does, not
+#   LN(0)×0^u×d/dX(u), whose LN(0) is a pole.
+# - Rulings during the build (abacus #7951): ABS(X)-SQRT(X^2) is 0, so its corner is cancelled by the other hole and
+#   order 1 is UNDECIDED, not UNDEFINED. A 0÷0 that appears only in a derivative's formula is UNDECIDED (X×SQRT(X^2)'s
+#   X^2×(X^2)^(-1÷2)), where a c÷0 is proof (X^(3÷2)'s 0.75×X^(-1÷2) at order 2: UNDEFINED). SINH, TANH, ASINH and
+#   ATANH of 0 are 0, COSH(0) and ALOG(0) are 1, ACOSH(1) is 0 (ACOSH(0) has a complex value and is kept), so a pole
+#   behind them is seen. A pole in any term decides solve and factor, whichever term comes first; X÷0 stays NOT_NUMERIC.
+# - Rule 4: EXP(SIN(X)) to 9 needs the 1,024 B buffer, which an arena of 16,384 B or more has and 16,383 hasn't.
+
+| `casim simplify "TAN(π÷2)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(-π÷2)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(3×π÷2)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(90)" DEG` | `UNDEFINED` |
+| `casim simplify "TAN(270)" DEG` | `UNDEFINED` |
+| `casim simplify "TAN(100)" GRAD` | `UNDEFINED` |
+| `casim simplify "TAN(300)" GRAD` | `UNDEFINED` |
+| `casim simplify "LN(0)" RAD` | `UNDEFINED` |
+| `casim simplify "LOG(0)" RAD` | `UNDEFINED` |
+| `casim simplify "ATANH(1)" RAD` | `UNDEFINED` |
+| `casim simplify "ATANH(-1)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(π)" RAD` | `0` |
+| `casim simplify "TAN(π÷4)" RAD` | `1` |
+| `casim simplify "TAN(45)" DEG` | `1` |
+| `casim simplify "TAN(90)" RAD` | `TAN(90)` |
+| `casim simplify "TAN(50)" GRAD` | `1` |
+| `casim simplify "LN(-1)" RAD` | `LN(-1)` |
+| `casim simplify "ASIN(2)" RAD` | `ASIN(2)` |
+| `casim simplify "SQRT(-4)" RAD` | `SQRT(-4)` |
+| `casim simplify "(-8)^(1÷3)" RAD` | `(-8)^(1÷3)` |
+| `casim simplify "LN(1)" RAD` | `0` |
+| `casim expand "(X+1)×TAN(π÷2)" RAD` | `UNDEFINED` |
+| `casim expand "(X+1)×LN(0)" RAD` | `UNDEFINED` |
+| `casim subst "TAN(X)" X "π÷2" RAD` | `UNDEFINED` |
+| `casim subst "TAN(X)" X "90" DEG` | `UNDEFINED` |
+| `casim subst "TAN(X)" X "100" GRAD` | `UNDEFINED` |
+| `casim subst "LN(X)+1" X "0" RAD` | `UNDEFINED` |
+| `casim subst "ATANH(X)" X "-1" RAD` | `UNDEFINED` |
+| `casim derive "TAN(π÷2)×X" X RAD` | `UNDEFINED` |
+| `casim derive "X×LOG(0)" X RAD` | `UNDEFINED` |
+| `casim integrate "TAN(90)" X DEG` | `UNDEFINED` |
+| `casim integrate "LN(0)" X RAD` | `UNDEFINED` |
+| `casim collect "TAN(π÷2)×X+X" X RAD` | `UNDEFINED` |
+| `casim collect "ATANH(1)×X+X" X RAD` | `UNDEFINED` |
+| `casim solve "TAN(π÷2)×X=1" X RAD` | `UNDEFINED` |
+| `casim solve "X=LN(0)" X RAD` | `UNDEFINED` |
+| `casim solve "X^2=ATANH(1)" X RAD` | `UNDEFINED` |
+| `casim solve "SIN(1)×X=1" X RAD` | `NOT_NUMERIC` |
+| `casim factor "X^2-TAN(π÷2)" X RAD` | `UNDEFINED` |
+| `casim factor "X^2-LOG(0)" X RAD` | `UNDEFINED` |
+| `casim taylor "TAN(X)" X "π÷2" 1 RAD` | `UNDEFINED` |
+| `casim limit "TAN(X)" X "π÷2" - RAD` | `∞` |
+| `casim taylor "X×ABS(X)" X 0 1 RAD` | `0` |
+| `casim taylor "X×ABS(X)" X 0 2 RAD` | `UNDEFINED` |
+| `casim taylor "ABS(X)" X 0 1 RAD` | `UNDEFINED` |
+| `casim taylor "X^2×ABS(X)" X 0 2 RAD` | `0` |
+| `casim taylor "X^2×ABS(X)" X 0 3 RAD` | `UNDEFINED` |
+| `casim taylor "ABS(X^3)" X 0 2 RAD` | `0` |
+| `casim taylor "ABS(X^3)" X 0 3 RAD` | `UNDEFINED` |
+| `casim taylor "ABS(SIN(X))" X 0 1 RAD` | `UNDEFINED` |
+| `casim taylor "ABS(X)+ABS(X-1)" X 0 1 RAD` | `UNDEFINED` |
+| `casim taylor "ABS(X)^2" X 0 2 RAD` | `UNDECIDED` |
+| `casim taylor "K×ABS(X)" X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor "X×ABS(X)" X 1 2 RAD` | `1+2×(X-1)+(X-1)^2` |
+| `casim taylor "SIN(X)×ABS(X)" X 0 1 RAD` | `0` |
+| `casim limit "1÷X-1÷SIN(X)" X 0 "" RAD` | `0` |
+| `casim limit "1÷LN(1+X)-1÷X" X 0 "" RAD` | `0.5` |
+| `casim limit "1÷(EXP(X)-1)-1÷X" X 0 "" RAD` | `-0.5` |
+| `casim limit "1÷X-COS(X)÷X" X 0 "" RAD` | `0` |
+| `casim limit "1÷(X-1)-2÷(X^2-1)" X 1 "" RAD` | `0.5` |
+| `casim limit "1÷SIN(X)-1÷TAN(X)" X 0 "" RAD` | `0` |
+| `casim limit "1÷X-1÷SIN(X)+3" X 0 "" RAD` | `3` |
+| `casim limit "1÷X-1÷SIN(X)" X 0 + DEG` | `-∞` |
+| `casim limit "1÷X-1÷X^2" X 0 "" RAD` | `-∞` |
+| `casim limit "1÷X^2-1÷SIN(X)^2" X 0 "" RAD` | `NO_ROOM` |
+| `casim --arena 65536 limit "1÷X^2-1÷SIN(X)^2" X 0 "" RAD` | `-1÷3` |
+| `casim taylor "EXP(SIN(X))" X 0 7 RAD` | `1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90` |
+| `casim taylor "EXP(SIN(X))" X 0 9 RAD` | `NO_ROOM` |
+| `casim --arena 16383 taylor "EXP(SIN(X))" X 0 9 RAD` | `NO_ROOM` |
+| `casim --arena 16384 taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
+| `casim steps derive "(SIN(π))^(X+1)" X RAD` | `EXPONENTIAL: d/dX(0^(X+1)) = 0×d/dX(X+1) /   SUM: d/dX(X+1) = d/dX(X)+d/dX(1) /     VARIABLE: d/dX(X) = 1 /     CONSTANT: d/dX(1) = 0 /   SUM: d/dX(X+1) = 1 / EXPONENTIAL: d/dX(0^(X+1)) = 0` |
+| `casim taylor "ABS(X)-SQRT(X^2)" X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor "X×SQRT(X^2)" X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor "(X^2)^(3÷2)" X 0 1 RAD` | `0` |
+| `casim taylor "X^(3÷2)" X 0 2 RAD` | `UNDEFINED` |
+| `casim simplify "SINH(0)" RAD` | `0` |
+| `casim simplify "COSH(0)" RAD` | `1` |
+| `casim simplify "ALOG(0)" RAD` | `1` |
+| `casim simplify "ACOSH(1)" RAD` | `0` |
+| `casim simplify "ACOSH(0)" RAD` | `ACOSH(0)` |
+| `casim simplify "LN(SINH(0))" RAD` | `UNDEFINED` |
+| `casim simplify "ATANH(COSH(0))" RAD` | `UNDEFINED` |
+| `casim taylor "ATANH(X)" X 0 5 RAD` | `X+X^3÷3+0.2×X^5` |
+| `casim limit "1÷SINH(X)-1÷X" X 0 "" RAD` | `0` |
+| `casim solve "SIN(X)+TAN(π÷2)=0" X RAD` | `UNDEFINED` |
+| `casim solve "TAN(π÷2)+SIN(X)=0" X RAD` | `UNDEFINED` |
+| `casim solve "X÷0=1" X RAD` | `NOT_NUMERIC` |
+| `casim cancel "(X^2-1)÷(X-TAN(π÷2))" X RAD` | `UNDEFINED` |
+| `casim partfrac "1÷(X^2-LN(0))" X RAD` | `UNDEFINED` |
+| `casim pdiv "X^2" X "X-ATANH(1)" RAD` | `UNDEFINED` |

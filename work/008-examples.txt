@@ -1,6 +1,7 @@
 # CAS unit 008 visible examples, written by casim from the rules (work/008-exact-values.md): each value by hand from
 # the unit circle, printed in 002's form (a terminating rational as a decimal, SQRT(k) for the square roots).
 # cas-pi-form (2026-10-10) moved E0022 from 0.25×π: a rational multiple of π prints as a fraction.
+# CAS 016 (2026-10-13) moved E0033 from TAN(90): a pole is UNDEFINED in every op (work/016's rule 1).
 # ID | simplify | text | angle | model | the answer, or the status
 E0001 | simplify | SIN(π÷6) | RAD | 35 | 0.5
 E0002 | simplify | COS(π÷4) | RAD | 35 | 0.5×SQRT(2)
@@ -34,7 +35,7 @@ E0029 | simplify | 0.25^1.5 | RAD | 35 | 0.125
 E0030 | simplify | (27÷8)^(2÷3) | RAD | 35 | 2.25
 E0031 | simplify | SQRT(8) | RAD | 35 | SQRT(8)
 E0032 | simplify | SIN(π÷12) | RAD | 35 | SIN(π÷12)
-E0033 | simplify | TAN(90) | DEG | 35 | TAN(90)
+E0033 | simplify | TAN(90) | DEG | 35 | UNDEFINED
 E0034 | simplify | SIN(π÷6) | DEG | 35 | SIN(π÷6)
 E0035 | simplify | ASIN(2) | RAD | 35 | ASIN(2)
 E0036 | simplify | 1÷COS(π÷2) | RAD | 35 | UNDEFINED

@@ -9,6 +9,7 @@ a seeded random corpus from the generator below. None of abacus's hidden seeds a
 import os
 import random
 import re
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +42,22 @@ def bench():
         lo, hi = repl.split("|", 1) if op in ("defint", "taylor", "limit") else (repl, None)
         for arena, cap in ((65536, 65536), (8192, 192)):    # as measured, and the calculator's budget and slot
             yield line(op, expr, var, angle, model, lo, None, hi, arena, cap)
+
+
+def cli_line(cmd):
+    """a `casim ...` command (work/016-examples.txt) as a golden line"""
+    a = shlex.split(cmd)[1:]
+    arena = 8192
+    if a[0] == "--arena":
+        arena, a = int(a[1]), a[2:]
+    op, t = a[0], a[1:]
+    if op in ("simplify", "expand"):
+        return line(op, t[0], angle=t[1], arena=arena)
+    if op in ("subst", "pdiv", "pgcd"):
+        return line(op, t[0], t[1], t[3], repl=t[2], arena=arena)
+    if op in ("taylor", "limit"):
+        return line(op, t[0], t[1], t[4], repl=t[2], repl2=t[3], arena=arena)
+    return line(op, t[0], t[1], t[2], arena=arena)
 
 
 def examples():
@@ -77,6 +94,9 @@ def examples():
                 yield line("taylor", f[2], f[3], f[6], f[7], repl=f[4], repl2=f[5])
             elif unit == "015":             # id | limit | text | var | point | side | angle | model | answer
                 yield line("limit", f[2], f[3], f[6], f[7], repl=f[4], repl2="" if f[5] == "both" else f[5])
+            elif unit == "016":             # | `casim [--arena N] op args` | `answer` |
+                if not raw.startswith("| `casim steps"):          # (a steps walk: doc-examples.py, as 013's)
+                    yield cli_line(raw.split("`")[1])
             else:
                 raise SystemExit(f"golden.py: {name}: no reader for this unit's columns")
 

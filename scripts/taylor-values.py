@@ -198,9 +198,9 @@ def spelling_wrong(text, a="0"):
     return ""
 
 
-def taylor(text, n, point="0", angle="RAD"):
-    p = subprocess.run([CLI, "taylor", text, "X", point, str(n), angle], stdout=subprocess.PIPE, text=True,
-                       encoding="utf-8")
+def taylor(text, n, point="0", angle="RAD", arena=8192):
+    p = subprocess.run([CLI, "--arena", str(arena), "taylor", text, "X", point, str(n), angle], stdout=subprocess.PIPE,
+                       text=True, encoding="utf-8")
     return p.returncode, p.stdout.strip()
 
 
@@ -266,6 +266,33 @@ def check_examples():
     return rows, exact, failed
 
 
+def check_corners():
+    """CAS 016 rule 2 by its truth: X^j×ABS(X)^m at 0 is SGN(X)^m×X^(j+m). For m even that is X^(j+m), with a series at
+    every order; for m odd its derivatives are 0 at 0 up to order j+m-1 and order j+m has none. An answer must be that
+    series, UNDEFINED only where it is true, and UNDECIDED is never wrong. Returns (cases, answered, failures)"""
+    cases = answered = failed = 0
+    for j in range(4):
+        for m in range(1, 4):
+            text = f"ABS(X)^{m}" if j == 0 else f"X^{j}×ABS(X)^{m}"
+            if m == 1:
+                text = "ABS(X)" if j == 0 else f"X^{j}×ABS(X)" if j > 1 else "X×ABS(X)"
+            for n in range(0, 7):
+                cases += 1
+                _, out = taylor(text, n)
+                d = j + m
+                exists = m % 2 == 0 or n < d
+                want = "0" if n < d else f"X^{d}" if d > 1 else "X"
+                if out == "UNDECIDED" or (out == "UNDEFINED" and not exists):
+                    continue
+                if out == want and exists:
+                    answered += 1
+                    continue
+                failed += 1
+                print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n}: {out}, the truth "
+                      f"{want if exists else 'UNDEFINED'}")
+    return cases, answered, failed
+
+
 def main():
     # the judge must refuse these
     planted = [("X+X^3÷6", [F(0), F(1), F(0), F(-1, 6)]),            # a sign
@@ -282,26 +309,37 @@ def main():
     n_cases = int(sys.argv[1]) if len(sys.argv) > 1 else 300
     rnd = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 20261013)
     judged = failed = soft = 0
+    cases = []
     for _ in range(n_cases):
         n = rnd.randint(1, 10)
         text, s = gen(rnd, n)
-        rc, out = taylor(text, n)
+        cases.append((text, s, n))
+    # each at the calculator's 8,192 B arena (384 B text buffers) and at 65,536 B (1,024 B ones, CAS 016 rule 4)
+    big = {"judged": 0, "soft": 0}
+    for (text, s, n), arena in [(c, a) for a in (8192, 65536) for c in cases]:
+        rc, out = taylor(text, n, arena=arena)
         if rc != 0:
             if out in ("NO_ROOM", "TOO_LONG"):
-                soft += 1
+                soft += arena == 8192
+                big["soft"] += arena != 8192
                 continue
             failed += 1
-            print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n}: {out}")
+            print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n} (arena {arena}): {out}")
             continue
-        judged += 1
+        judged += arena == 8192
+        big["judged"] += arena != 8192
         w = wrong(out, s)
         if w:
             failed += 1
-            print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n}: {out}\n  {w}")
+            print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n} (arena {arena}): {out}\n  {w}")
     rows, exact, efailed = check_examples()
-    print(f"taylor values: {judged} of {n_cases} seeded expressions judged exactly at 0 ({soft} NO_ROOM or TOO_LONG); "
+    ccases, canswered, cfailed = check_corners()
+    efailed += cfailed
+    print(f"taylor values: {judged} of {n_cases} seeded expressions judged exactly at 0 ({soft} NO_ROOM or TOO_LONG), "
+          f"and {big['judged']} at 65,536 B with 1,024 B buffers ({big['soft']}); "
           f"the judge refused its {len(planted)} planted answers; work/014-examples.txt: {rows} rows as printed, "
-          f"{exact} of them exactly by their series\nchecks: {judged + rows} failed: {failed + efailed}")
+          f"{exact} of them exactly by their series; ABS's corners: {ccases} cases of X^j×ABS(X)^m, {canswered} "
+          f"answered exactly, the rest UNDEFINED where true or UNDECIDED\nchecks: {judged + big['judged'] + rows + ccases} failed: {failed + efailed}")
     sys.exit(1 if failed or efailed or rows == 0 else 0)
 
 

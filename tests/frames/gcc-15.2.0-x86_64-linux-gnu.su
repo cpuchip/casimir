@@ -141,8 +141,10 @@ lin_term.isra	48
 linear	16
 literal	336
 lm_at	80
+lm_combine	112
+lm_dominant	128
 lm_func	112
-lm_inf_minus_inf	144
+lm_inf_minus_inf	128
 lm_lead	16
 lm_lead_in	192
 lm_prod	160
@@ -235,6 +237,8 @@ put_whole	64
 puts_	32
 pw	160
 pw_chain	144
+pw_pole_	48
+pw_refused	48
 rat_abn	96
 rat_add	16
 rat_cmp.isra	24
@@ -253,6 +257,7 @@ reduce_to	48
 removed_rows	288
 repeated_factors	464
 rule_of	32
+sgn_count	64
 small	64
 sort	112
 split	480
@@ -269,9 +274,16 @@ steps_const	96
 sum_div.isra	208
 table_val	8
 tan_hits	240
+taylor_00	96
 taylor_check	32
+taylor_corner.constprop	96
+taylor_has_hole	16
 taylor_hole	128
+taylor_part	80
+taylor_rest_hole	80
 taylor_term	96
+taylor_turns	64
+taylor_zero	32
 term_coef	16
 term_of	80
 to_modp	16

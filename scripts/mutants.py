@@ -267,8 +267,8 @@ MUTANTS = {
         ("src/casim.c", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var)) {", "        if (z->kind == K_BDIV && raw_has_var(c, z->b, var) && 0) {"),
     ],
     "solve-function-of-var-numeric": [
-        ("src/casim.c", "        c->st = raw_has_var(c, r, var) ? CASIM_NOT_POLYNOMIAL : CASIM_NOT_NUMERIC;",
-         "        c->st = (raw_has_var(c, r, var), CASIM_NOT_NUMERIC);"),
+        ("src/casim.c", "        if (raw_has_var(c, r, var)) c->st = CASIM_NOT_POLYNOMIAL;",
+         "        if ((raw_has_var(c, r, var), 0)) c->st = CASIM_NOT_POLYNOMIAL;"),
     ],
     "no-room-as-too-long": [
         ("src/casim.c", "    if (c->st == CASIM_OK && c->used + need > c->top) c->st = CASIM_NO_ROOM, c->starved = true;   /* the arena */",
@@ -715,6 +715,42 @@ MUTANTS = {
     "limit-unknown-exponent-positive": [("src/casim.c", "r = se == 1 ? lm(L_PINF, 0) : se == -1 ? lm(L_FIN, small(c, C_0)) : lm(L_UND, 0);", "r = se != -1 ? lm(L_PINF, 0) : lm(L_FIN, small(c, C_0));")],
     # two oscillations taken as proven to have no limit (SIN(X)+SIN(X+π) is 0)
     "limit-oscillations-summed": [("src/casim.c", "    if (none || osc) return osc + none == 1 && !pinf && !ninf ? lm(L_NONE, 0) : lm(L_UND, 0);", "    if (none || osc) return !pinf && !ninf ? lm(L_NONE, 0) : lm(L_UND, 0);")],
+    # CAS 016: TAN at its poles kept (TAN(π÷2) as if it had a value)
+    "pole-tan-dropped": [("src/casim.c", "        if (f == F_TAN && table_val(F_COS, n, &v) && v.p == 0)\n            return c->st = CASIM_UNDEFINED, SPARE;                  /* CAS 016 rule 1: COS is 0 there, a pole */\n", "")],
+    # CAS 016: LN(0) kept
+    "pole-ln-dropped": [("src/casim.c", "        if (is_k(c, a, 0, 1)) return c->st = CASIM_UNDEFINED, SPARE;     /* CAS 016 rule 1: a pole, as 1÷0 is */\n", "")],
+    # CAS 016: LOG(0) kept
+    "pole-log-dropped": [("src/casim.c", "        if (is_k(c, a, 0, 1)) return c->st = CASIM_UNDEFINED, SPARE;     /* CAS 016 rule 1 */\n", "")],
+    # CAS 016: ATANH(±1) kept
+    "pole-atanh-dropped": [("src/casim.c", "        if (is_k(c, a, 1, 1) || is_k(c, a, -1, 1)) return c->st = CASIM_UNDEFINED, SPARE;   /* CAS 016 rule 1 */\n", "")],
+    # CAS 016: pw's own pole check dropped (cancel, partfrac and pdiv see TAN(π÷2) as NOT_NUMERIC)
+    "pole-solve-not-numeric": [("src/casim.c", "            if (c->st != CASIM_UNDEFINED) c->st = CASIM_NOT_NUMERIC;\n", "            c->st = CASIM_NOT_NUMERIC;\n")],
+    # CAS 016: SGN(0) cleared beside any factor, not only one that is 0 (2×SGN(X) at 0 answered)
+    "sgn-product-any-factor": [("src/casim.c", "&& taylor_zero(c, y, var, a)) return nd(c, g)->a;\n", "&& (taylor_zero(c, y, var, a) || 1)) return nd(c, g)->a;\n")],
+    # CAS 016: every SGN(0) the rule can't clear called UNDEFINED (ABS(X)^2's order 2, which exists)
+    "corner-always-undefined": [("src/casim.c", "    return lone && g ? CASIM_UNDEFINED : CASIM_UNDECIDED;\n", "    return CASIM_UNDEFINED;\n")],
+    # CAS 016: a sign change read from an even first derivative
+    "corner-turn-parity": [("src/casim.c", "        if (!is_k(c, v, 0, 1)) return const_sign(c, v) ? m % 2 : -1;\n", "        if (!is_k(c, v, 0, 1)) return const_sign(c, v) ? (m + 1) % 2 : -1;\n")],
+    # CAS 016: an ∞-∞ at a point that no term dominates left undecided (1÷X-1÷SIN(X))
+    "combine-skipped": [("src/casim.c", "    if (!under || c->st != CASIM_OK) return lm(L_UND, 0);\n", "    if (under || !under) return lm(L_UND, 0);\n")],
+    # CAS 016: the one-denominator rewrite applied to a sum whose terms all have limits
+    "combine-finite-sum": [("src/casim.c", "    if (pinf) return lm(L_PINF, 0);\n    if (ninf) return lm(L_NINF, 0);\n    return lm(L_FIN, canon(c, s));\n", "    if (pinf) return lm(L_PINF, 0);\n    if (ninf) return lm(L_NINF, 0);\n    return L->a ? lm_combine(c, f, small(c, C_0), small(c, C_0), L, c->used, L->steps) : lm(L_FIN, canon(c, s));\n")],
+    # CAS 016: the - side walked on top of the + side's work
+    "limit-sides-share-arena": [("src/casim.c", "            if (up.k == L_FIN) up.v = compact(&c, mark, up.v);     /* CAS 016: the - side gets the arena back */\n            else if (c.st == CASIM_OK) taylor_drop(&c, mark);\n", "            (void)mark;\n")],
+    # CAS 016: the 1,024 B buffers from one byte past 16 KB
+    "buffer-threshold-off-by-one": [("src/casim.c", "    tt = arena_cap >= TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;\n", "    tt = arena_cap > TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;\n")],
+    # CAS 016: derive's walk of 0^u through LN(0), a pole (it ends UNDEFINED where derive answers 0)
+    "steps-exp-zero-base": [("src/casim.c", "        t = is_k(c, x->a, 0, 1) ? small(c, C_0) : mul2(c, r, fn(c, F_LN, x->a));\n", "        t = mul2(c, r, fn(c, F_LN, x->a));\n")],
+    # CAS 016: a lone corner claimed while another hole could cancel it (ABS(X)-SQRT(X^2) is 0)
+    "corner-rest-ignored": [("src/casim.c", "    if (lone && g) lone = !taylor_rest_hole(c, f, t, g, var, a) && taylor_turns(c, nd(c, g)->a, var, a) == 1;\n", "    if (lone && g) lone = (taylor_rest_hole(c, f, t, g, var, a) || 1) && taylor_turns(c, nd(c, g)->a, var, a) == 1;\n")],
+    # CAS 016: a 0÷0 in a derivative's formula called UNDEFINED (X×SQRT(X^2)'s order 1 exists)
+    "taylor-00-undefined": [("src/casim.c", "        lone = k > 0 && taylor_00(c, f, var, a);\n", "        lone = k < 0 && taylor_00(c, f, var, a);\n")],
+    # CAS 016: SINH(0), TANH(0), ASINH(0) kept, so LN(SINH(0)) hides its pole
+    "hyperbolic-fold-dropped": [("src/casim.c", "        if (is_k(c, a, 0, 1)) return small(c, C_0);                 /* CAS 016 (abacus #7951): SINH(0), TANH(0), ASINH(0) */\n", "")],
+    # CAS 016: solve's and factor's pole found only in the term pw reaches first (SIN(X)+TAN(π÷2)=0)
+    "solve-pole-first-term": [("src/casim.c", "    s = pw_pole_(c, r, var) ? CASIM_UNDEFINED : s;\n", "    s = pw_pole_(c, r, var) && 0 ? CASIM_UNDEFINED : s;\n")],
+    # CAS 016: CI's make test fetching the firmware's main, not CORE_PIN
+    "ci-pin-from-main": [("scripts/ci-test.sh", "ref=$(cat CORE_PIN)\n", "ref=main\n")],
 }
 
 

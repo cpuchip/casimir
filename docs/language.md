@@ -102,7 +102,15 @@ these things:
   defined where X and Y are both negative.
 
 It never expands, factors or applies trigonometric identities. Statuses: UNDEFINED (an exact 0 under a negative
-power: the expression has no value).
+power, or a pole: the expression has no value).
+
+**Poles (CAS 016).** A function at a pole has no value, in every op, as 1÷0 has none: TAN where COS is 0 (π÷2 and its
+odd multiples in RAD, 90 and 270 in DEG, 100 and 300 in GRAD), LN and LOG of 0, ATANH of 1 and -1. simplify, expand,
+subst, derive, integrate, collect, solve, factor and the rest answer UNDEFINED there. TAN(90) in RAD is no pole and is
+kept. A function outside its real domain where it has a complex value is kept as typed, for the calculator to value:
+LN(-1), ASIN(2), SQRT(-4), (-8)^(1÷3), ACOSH(0). So that a pole behind them is seen, SINH, TANH, ASINH and ATANH of 0 are
+0, COSH(0) and ALOG(0) are 1, and ACOSH(1) is 0: LN(SINH(0)) is UNDEFINED. In solve and factor a pole in any term
+decides, whichever comes first.
 
 | Command | Prints |
 |---|---|
@@ -119,6 +127,10 @@ power: the expression has no value).
 | `casim simplify "LN(0.5)+LN(X)+LN(Y)" RAD` | `LN(X)+LN(Y)-LN(2)` |
 | `casim simplify "LN(8)+LN(4)÷3" RAD` | `LN(4)÷3+LN(8)` |
 | `casim simplify "1÷COS(π÷2)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(π÷2)" RAD` | `UNDEFINED` |
+| `casim simplify "TAN(90)" DEG` | `UNDEFINED` |
+| `casim simplify "LN(0)" RAD` | `UNDEFINED` |
+| `casim simplify "LN(-1)" RAD` | `LN(-1)` |
 
 ### expand, collect, subst
 
@@ -398,19 +410,39 @@ defint's bounds (π÷3, -2, SQRT(2)); other letters in the text are constants. D
 does.
 Statuses: UNDEFINED (the text or one of its derivatives up to N has no value at A: a removable singularity such as
 SIN(X)÷X at 0, a function outside its domain such as LN(X) at 0 or X×LN(X) at 0, a fractional power of a negative
-number, TAN at its poles, or ABS's corner, so ABS(X) at 0 has no first derivative), NOT_DIFFERENTIABLE for a name
-derive refuses (X!, IP), NO_ROOM (a derivative outgrows the arena, or its text 384 bytes: a nested composition at a
-high order), TOO_LONG, and
+number, TAN at its poles, or ABS's corner, so ABS(X) at 0 has no first derivative), UNDECIDED (an SGN(0) it can't
+decide, below), NOT_DIFFERENTIABLE for a name derive refuses (X!, IP), NO_ROOM (a derivative outgrows the arena, or its
+text the buffer between steps: a nested composition at a high order), TOO_LONG, and
 BAD_ARG (an equation, a letter in A, or N outside 0 to 12). The typed text decides UNDEFINED: X÷X at 0 is UNDEFINED,
 though its canonical form is 1.
-SGN of 0 is always refused, which is conservative: X×ABS(X) has a series at 0 to order 1, but its derivative
-ABS(X)+X×SGN(X) holds SGN(0), so order 1 and up are UNDEFINED.
+
+ABS's derivative is SGN, which has no value where its argument is 0 (CAS 016). SGN is bounded, so beside a factor that
+is 0 there it is 0: X×ABS(X)'s derivative ABS(X)+X×SGN(X) is 0 at 0, and order 1 answers 0. Its second derivative,
+2×SGN(X), jumps at 0, so order 2 is UNDEFINED, as ABS(X) is at order 1: a lone SGN(u), u changing sign at A, is a jump.
+Any other SGN(0) is UNDECIDED, never a wrong answer: ABS(X)^2 is X^2, but its second derivative holds SGN(X)^2;
+K×ABS(X) depends on whether K is 0; and ABS(X)-SQRT(X^2), which is 0, has a second hole beside the corner that cancels
+it. In the same way a 0÷0 that appears only in a derivative's formula says that formula can't tell, and is UNDECIDED:
+X×SQRT(X^2)'s derivative holds X^2×(X^2)^(-1÷2) at 0, where the true f'(0) is 0. A c÷0 with c not 0 is proof:
+X^(3÷2) to order 2 (0.75×X^(-1÷2) at 0) is UNDEFINED, and so is any hole in the typed text (X÷X).
 
 Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,192-byte arena, TAN,
 ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X)) after 6, and
-past that the answer is NO_ROOM. A larger arena doesn't move the first of those: EXP(SIN(X))'s eighth derivative is
-416 bytes as text, past the 384 its text has between steps, in 65,536 bytes too. A long answer is TOO_LONG first: COS(X)
-about π÷3 carries SQRT(3) in every other term.
+past that the answer is NO_ROOM. A long answer is TOO_LONG first: COS(X) about π÷3 carries SQRT(3) in every other term.
+
+Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
+1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
+calculator. EXP(SIN(X))'s eighth derivative is 416 bytes as text, so it reaches order 9 in a 16,384-byte arena and not
+in 16,383. On the calculator both buffers come out of its 8,192 bytes, and a bigger buffer answers fewer: measured on
+600 seeded cases of each kind (casim #7916, on 4b91739), cases answered:
+
+| Cases (600 each) | 8,192 B, buffers 384 / 768 / 1,024 | 65,536 B, buffers 384 / 768 / 1,024 |
+|---|---|---|
+| taylor | 496 / 486 / 478 | 521 / 557 / 567 |
+| limit | 499 / 499 / 499 | 514 / 514 / 514 |
+| 0÷0 compositions (limit) | 342 / 342 / 342 | 359 / 359 / 359 |
+
+Every NO_ROOM at 8,192 bytes is the arena's. Repeated derivatives grow faster than the buffers: of taylor's 104, 33
+don't answer even in 1 MiB with 1,024-byte buffers (X^3 inside, order 9 or 10).
 
 | Command | Prints |
 |---|---|
@@ -423,6 +455,9 @@ about π÷3 carries SQRT(3) in every other term.
 | `casim taylor 'SIN(X)÷X' X 0 4 RAD` | `UNDEFINED` |
 | `casim taylor 'X÷X' X 0 2 RAD` | `UNDEFINED` |
 | `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `NO_ROOM` |
+| `casim taylor 'X×ABS(X)' X 0 1 RAD` | `0` |
+| `casim taylor 'X×ABS(X)' X 0 2 RAD` | `UNDEFINED` |
+| `casim taylor 'ABS(X)^2' X 0 2 RAD` | `UNDECIDED` |
 
 ### limit: a limit at a point or at ±∞
 
@@ -438,7 +473,9 @@ question). A part with no value isn't continuity even when the whole folds it aw
 0. Otherwise the walk
 takes the text by its parts: sums, products and powers by their parts' limits; functions by continuity and by their
 ends (LN(0+) is -∞, EXP(-∞) is 0); 0÷0 and ∞÷∞ by L'Hôpital, at most 12 steps; 0×∞ as a quotient; B^E with X in E as
-EXP(E×LN(B)); at ∞ a polynomial by its leading term; an ∞-∞ with a square root by its conjugate. The side near A comes
+EXP(E×LN(B)); at ∞ a polynomial by its leading term; an ∞-∞ with a square root by its conjugate; at a point, an
+∞-∞ that neither term dominates over one denominator (CAS 016: 1÷X-1÷SIN(X) is (SIN(X)-X)÷(X×SIN(X)), then
+L'Hôpital, which there keeps the numerator and denominator apart). The side near A comes
 from the first derivative that isn't 0 there, so 1÷X at 0 is ∞ from above, -∞ from below, and has no two-sided limit.
 
 Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
@@ -462,6 +499,8 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit 'TAN(X)' X 'π÷2' - RAD` | `∞` |
 | `casim limit 'SIN(X)' X ∞ '' RAD` | `UNDEFINED` |
 | `casim limit 'SIN(X)÷X' X ∞ '' RAD` | `UNDECIDED` |
+| `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
+| `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `0.5` |
 
 ## The statuses
 
@@ -477,9 +516,9 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | 7 | NOT_NUMERIC | the same: a coefficient that is not an exact rational | "" |
 | 8 | NOT_INTEGRABLE | integrate and defint: not a form in the table, or the check did not close | "" |
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
-| 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a bound with no value | "" |
+| 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "" |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
-| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit" | "" |
+| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit". taylor: an SGN(0) it can't decide | "" |
 
 ## The bounds
 
