@@ -80,7 +80,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2 MB of flash (260,113 bytes of code, 1,765,372 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.1 MB of flash (328,544 bytes of code, 1,765,456 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (8 KiB is the
@@ -149,7 +149,7 @@ gzipped), most of it the decimal library's tables.
   need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
-- **The S3 bench** (scripts/device.sh) runs 861 cases on the chip, through the ESP-IDF component, and requires every
+- **The S3 bench** (scripts/device.sh) runs 1,065 cases on the chip, through the ESP-IDF component, and requires every
   answer to be byte-identical to the host's.
 
 ## How it was made

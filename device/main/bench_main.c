@@ -20,7 +20,7 @@
 
 #define REPS 15
 #define ARENA_MAX 32768
-#define CASES_MAX 1024          /* more than case_count (checked in app_main): 838 at CAS 012 */
+#define CASES_MAX 1280          /* more than case_count (checked in app_main): 838 at CAS 012, 1,065 at CAS 016 */
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536

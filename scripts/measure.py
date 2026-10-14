@@ -8,6 +8,7 @@ budget case) shaped to make the derivative large: long products, quotients, powe
 functions in DEG, where every level carries the angle factor.
 """
 import os
+import shlex
 import statistics
 import subprocess
 import sys
@@ -344,6 +345,27 @@ def all_cases():
     for n in range(36, 58, 2):      # nests the reading walks down, across the guard (NOT_POLYNOMIAL or NO_ROOM)
         rows.append((f"r sweep X^( {n}", "1÷(" + "X^(" * n + "X" + ")" * n + ")", "X", "RAD", "partfrac", None, "35"))
         rows.append((f"r sweep 1÷(1+ {n}", "1÷(1+" * n + "X" + ")" * n, "X", "RAD", "partfrac", None, "35"))
+    # CAS 016: poles in every op, ABS's corner, ∞-∞ of quotients: the visible examples (each `casim ...` row as the bench
+    # runs it; a row's --arena goes, the bench bisecting its own, and steps rows are the steps bench's)
+    with open(os.path.join(ROOT, "work", "016-examples.txt"), encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if not line.startswith("| `casim "):
+                continue
+            a = shlex.split(line.split("`")[1])[1:]
+            if a[0] == "--arena":
+                a = a[2:]
+            op, t = a[0], a[1:]
+            name = f"p {i} {op}"
+            if op == "steps":
+                continue
+            if op in ("simplify", "expand"):
+                rows.append((name, t[0], "X", t[1], op, None, "35"))
+            elif op in ("subst", "pdiv", "pgcd"):
+                rows.append((name, t[0], t[1], t[3], op, t[2], "35"))
+            elif op in ("taylor", "limit"):
+                rows.append((name, t[0], t[1], t[4], op, t[2] + "|" + t[3], "35"))
+            else:
+                rows.append((name, t[0], t[1], t[2], op, None, "35"))
     # CAS 013: integrals of rational functions, the visible examples and the heaviest forms
     with open(os.path.join(ROOT, "work", "013-examples.txt"), encoding="utf-8") as f:
         for line in f:
