@@ -23,7 +23,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | simplify | one canonical text for each expression, with exact numbers and exact values (SIN(π÷6) is 0.5) |
 | expand, collect, subst | distribute and multiply out; gather the powers of a variable; replace a variable |
 | solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2) |
-| integrate, defint | an antiderivative from a table of forms, and of a rational function through its partial fractions; a definite integral, exactly |
+| integrate, defint | an antiderivative from a table of forms, of a rational function through its partial fractions, and by substitution and by parts (`X×EXP(X)` is `-EXP(X)+X×EXP(X)`); a definite integral, exactly |
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
@@ -34,8 +34,8 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 docs/language.md is the input language, with every operation's statuses and examples.
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
-**What it doesn't do (yet):** complex roots, integration by parts or by a substitution that isn't linear, infinite
-series and sums, trigonometric identities, matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
+**What it doesn't do (yet):** complex roots, infinite series and sums, trigonometric identities (so not SIN(X)^2's
+integral), matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee
@@ -43,7 +43,8 @@ upper-case names) and doesn't read implied products (`2X`).
 Casimir prints an exact answer or a status that says why it can't, never an approximation dressed as an answer.
 
 - **The operations that search for an answer check it before printing it, and refuse when the check can't close.**
-  integrate differentiates its answer and compares it with the integrand exactly. solve divides out every root it
+  integrate differentiates its answer and compares it with the integrand exactly, or, for a substitution or a part,
+  proves it from pieces each checked that way, by the chain and product rules. solve divides out every root it
   prints. factor proves each factor irreducible and reads the product back as the input. pdiv checks f = q×g + r.
   pgcd and cancel accept a gcd only when it divides both polynomials exactly. partfrac multiplies its terms back
   over the denominator and requires the numerator exactly. defint uses integrate's checked answer.
@@ -124,7 +125,7 @@ gzipped), most of it the decimal library's tables.
   pairs, partfrac, poly, simplify, solve, stamp, subst and syntax
   (tests/*_test.c). CI runs them too, on the firmware fetched by its sha at exactly CORE_PIN (scripts/ci-test.sh).
 - **The standalone checks** (`make check`, and CI) need only this repository:
-  - the golden test, 10,066 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the golden test, 10,463 calls whose exact answers were recorded from earlier sources, so a change shows up;
   - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
     where one is;
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
@@ -136,11 +137,14 @@ gzipped), most of it the decimal library's tables.
     arena and in 65,536 bytes; and ABS's corners, X^j×ABS(X)^m, by their truth (scripts/taylor-values.py).
   - limits judged against truths built from those power series (a quotient's limit from its first nonzero terms, at
     a point, at ∞ and at -∞), not from derivatives, read back to 45 digits (scripts/limit-values.py).
+  - integrals by substitution and by parts judged by differentiating the answer numerically at 90 digits against the
+    integrand, at seeded points in every angle mode, with integrands that have no elementary antiderivative refused
+    (scripts/integrate-values.py).
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 193 deliberate faults, each of which the tests
-  must catch; `make test` catches all 193 (at CAS 016). Each mutant's copy re-records its frame table first, so a
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 211 deliberate faults, each of which the tests
+  must catch; `make test` catches all 211 (at CAS 017). Each mutant's copy re-records its frame table first, so a
   fault that only moves a frame isn't counted as caught; the one fault whose catch is the frame table itself (the
   rational-integral hook moved into do_integrate) is named in the script. When there were 80, the standalone checks
   first caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose

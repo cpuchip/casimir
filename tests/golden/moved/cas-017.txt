@@ -1,0 +1,86 @@
+# The golden lines CAS 017 (integration by substitution and by parts) moved. Each line's inputs, then its status and
+# answer before (CAS 016's 2833f14) and after. Every other line is byte-identical.
+integrate	35	23	1	35	65536	65536	X×LN(X)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	8192	192	X×LN(X)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×EXP(X^2)
+integrate	35	23	1	35	8192	192	X×EXP(X^2)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×EXP(X^2)
+integrate	35	23	1	35	8192	65536	X×LN(X)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	8192	65536	X×EXP(X^2)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×EXP(X^2)
+integrate	35	23	1	35	8192	65536	((((1E3)÷(X))÷((X)×(3)))+(((0.5)×(Y))+((Y)+(π))))÷(3)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-1000÷9÷X+0.5×X×Y+X×π÷3
+integrate	35	23	0	35	8192	65536	SQRT((INV((3)-(-4)))×(X))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	14×(X÷7)^1.5÷3
+integrate	35	23	1	35	65536	65536	((((π)+(0.5))-(ATAN(3)))-(2))-(ASIN(X))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-1.5×X-SQRT(-X^2+1)+X×π-X×ASIN(X)-X×ATAN(3)
+integrate	35	23	1	35	8192	65536	(π)÷((X)×(((3)^(1E3))+(SINH(π))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	π×LN(ABS(X))÷(SINH(π)+3^1000)
+integrate	35	23	2	35	8192	65536	((SQRT(1E3))×(((X)-(7))÷((X)×(2))))+((ABS((3)+(1.5)))+(X))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	4.5×X+0.5×X^2+0.5×(X-7×LN(ABS(X)))×SQRT(1000)
+integrate	1	23	2	1	8192	65536	(TAN(Y))×((LOG((X)-(X)))^(SGN((X)+(7))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	UNDEFINED	
+integrate	1	23	1	1	8192	65536	EXP((1E3)×(((π)×(X))+(3)))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.001×EXP(1000×X×π+3000)÷π
+integrate	35	23	1	35	65536	65536	SQ((2)×((SIN(π))×((-4)-(X))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0
+integrate	33	23	1	33	65536	65536	ALOG(((X)×((1.5)^(0.5)))+(EXP((X)-(X))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	ALOG(X×SQRT(1.5)+1)÷LN(10)÷SQRT(1.5)
+integrate	35	24	0	35	8192	65536	COS((((-4)+(0.5))×((X)÷(X)))×(((0.5)×(3))×(Y)))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-240×SIN(-5.25×Y)÷7÷π
+integrate	35	24	0	35	8192	65536	((((1.5)÷(X))÷((0.5)×(-4)))×(((Y)-(Y))^(SIN(0.5))))×((((0.5)×(Y))-((π)^(1.5)))÷(INV(7)))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-1.3125×(Y^2-4×Y×π^1.5)×0^SIN(0.5)÷X
+integrate	1	23	1	1	8192	65536	(π)÷((((X)÷(π))×((1E3)-(7)))×(LOG((1.5)+(3))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	π^2×LN(ABS(X))÷993÷LOG(4.5)
+integrate	35	23	1	35	8192	65536	((((X)-(X))^((3)+(1.5)))-(0.5))×((ATAN(7))÷(3))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	-X×ATAN(7)÷6
+integrate	35	23	1	35	8192	65536	(X)×((((1.5)÷(1E3))-(SINH(X)))÷(((3)^(7))^(ASIN(π))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.0015×X×(X-2000×COSH(X)÷3)×2187^(-ASIN(π))+(SINH(X)-0.00075×X^2)×2187^(-ASIN(π))
+integrate	33	23	1	33	8192	65536	((ALOG((X)-(X)))-(((Y)-(π))+((2)÷(Y))))×(((TAN(7))×(SQRT(π)))+(((7)÷(-4))÷(SIN(1.5))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	1.75×X×(Y-π+2÷Y-1)×(1÷SIN(1.5)-4×SQRT(π)×TAN(7)÷7)
+integrate	33	23	1	33	8192	65536	LN(ALOG(X))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×LN(ALOG(X))^2÷LN(10)
+integrate	35	23	1	35	8192	65536	EXP((((X)×(2))-(SINH(1E3)))÷(SQ(ASIN(0.5))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	π^2×EXP(72×(X-0.5×SINH(1000))÷π^2)÷72
+integrate	33	23	2	33	8192	65536	(2)÷((((X)+(X))÷((Y)×(2)))÷(π))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	2×Y×π×LN(ABS(X))
+integrate	35	23	2	35	8192	65536	((((X)^(1.5))÷(π))×((Y)×(X)))×(1.5)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	3×X^3.5×Y÷7÷π
+integrate	35	23	1	35	65536	65536	SIN(X)+1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)
+integrate	35	23	1	35	8192	192	SIN(X)+1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	NO_ROOM	
+integrate	35	23	1	35	8192	65536	SIN(X)+1÷(X^2-1)	\N	\N
+  before	NOT_INTEGRABLE	
+  after	NO_ROOM	

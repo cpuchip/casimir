@@ -33,9 +33,30 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
      - **Answered:** LN(X)÷X, 1÷(X×LN(X)), EXP(SQRT(X))÷SQRT(X), and a sum holding 3÷X beside X÷SQRT(X), whose answer
        has no value at 0 either.
    - A domain edge is not a hole: 1÷SQRT(X) is 2×SQRT(X) today, and EXP(SQRT(X))÷SQRT(X) is 2×EXP(SQRT(X)) here.
-   - Other letters are constants (CAS 006). But a substitution never divides by an expression of another letter that
-     the integrand doesn't already divide by, because that letter could be 0. So EXP(A×X×Y) in Y stays
-     NOT_INTEGRABLE, as the table refuses EXP(A×X).
+   - **The domain rule** (added after the cold review): canon also drops domains without a division. So every typed
+     LN, LOG, ASIN, ACOS, ATANH, ACOSH or TAN (for its poles), and every SQRT or power that isn't a whole number,
+     whose argument or base still holds X after canon, must survive in the canonical integrand.
+     - **Refused:** LN(X)−LN(X)+X, 0×LN(X)+X, EXP(LN(X)), X^2×TAN(X)^0, X^(−A)×X^A×X.
+     - **Kept:** (X−X)^4.5, whose base is 0 for every X.
+     - A constant base of 0 or less to a power holding X, as typed (0^X, (−2)^X), is refused: it has no value for most
+       X. Canon would fold 0^X×0^(−X) to 1.
+   - **What the procedure can't take** (refused before it starts, and for every piece it integrates):
+     - a literal canon keeps as typed (1.2.0, a number past 2^62), whose printed copy would point into a buffer that
+       goes;
+     - SGN, ABS (except in LN(ABS(…)), the table's own form) and the opaque names (IP, FP) holding X, whose derivative
+       derive takes as 0. A part or a check would otherwise treat them as constants: SGN(X)×EXP(X) was answered with a
+       jump at 0 before the review.
+     - LN(ABS(u))'s derivative SGN(u)×ABS(u)^−1 is written u^−1, as the check writes it, so LN(ABS(X)), and the
+       table's own answers, can be integrated again.
+   - **Other letters** are constants (CAS 006). But no answer may divide by an expression of another letter that the
+     integrand doesn't already divide by, because that letter could be 0. This is checked on every substitution's G
+     and on the whole answer.
+     - **Refused:** EXP(A×X×Y) in Y, as the table refuses EXP(A×X). Also X×EXP(A×X^2)÷B (A), and SIN(A×X)×COS(X),
+       whose cycle divides by A^2−1.
+     - **Answered:** X×EXP(X^2)÷B, and EXP(X)×SIN(A×X), whose A^2+1 is never 0. A denominator that is a sum of even
+       powers and products of them with a positive constant passes.
+     - A hole in another letter's constant follows the table's precedent since CAS 006 (X×Y÷Y in X is 0.5×X^2): canon
+       makes the constant first.
 3. **Substitution** (derivative divides).
    - **The candidates for u:** each function holding X, each function's argument, and each power's base, up to 12, in
      tree order.
@@ -74,7 +95,8 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
    - **Statuses:**
      - NOT_INTEGRABLE when no rule answers.
      - NO_ROOM when a term of the input's own sum needed the rational path and it ran out (SIN(X)+1÷(X^2−1) at
-       8,192 B, which answers at 64 KB).
+       8,192 B, which answers at 64 KB). Room running out deeper in the search (the arena or the depth guard) refuses
+       that try, and the search goes on.
      - UNDEFINED when the canonical integrand holds a pole (CAS 016 rule 1: TAN(Y)×LOG(X−X)^SGN(X+7), today
        NOT_INTEGRABLE).
 7. **Named limits, refused (NOT_INTEGRABLE), each with a visible example:**
@@ -133,8 +155,14 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
   - LIATE with LN last;
   - the depth bound off by one;
   - NO_ROOM from any depth;
-  - the top-level rational retry restored;
-  - steps refusing what integrate answers.
+  - steps refusing what integrate answers;
+  - after the review: the can't-take refusals off, the domain rule off, the answer's letter guard off, and NO_ROOM
+    deep in the search kept.
+  - Substitution's check is reached by no input as built: G(u)×u′ rebuilds the term exactly whenever u was replaced
+    exactly. So tests/ibcheck_check.c (make check) spoils G before it is integrated, and every substitution must then
+    refuse or answer as built, never print the spoiled answer. This is CAS 013's ircheck_check pattern.
+  - The top-level rational retry, skipped because the wrapper already ran it, saves time only once NO_ROOM from the
+    search is a refusal, so it has no mutant.
 - **The device:** no existing frame moves, the S3 bench is byte-identical, and every earlier hidden set is rerun.
 - **Size:** about a day of host work for the answers, and half a day for the steps build. Stop and report at twice
   that.

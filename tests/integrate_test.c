@@ -221,16 +221,23 @@ static void review(void)
 
 static void outside(void)
 {
-    refused("X×LN(X)", CASIM_NOT_INTEGRABLE);               /* by parts */
-    refused("LN(X)", CASIM_NOT_INTEGRABLE);
-    refused("X×EXP(X)", CASIM_NOT_INTEGRABLE);
-    refused("X×EXP(X^2)", CASIM_NOT_INTEGRABLE);            /* a substitution that is not linear */
+    /* CAS 017: by parts and by substitution, refused until then; F written by hand, and valued by Simpson's rule */
+    is("X×LN(X)", CASIM_RAD, "X^2×LN(X)÷2-X^2÷4");
+    is("LN(X)", CASIM_RAD, "X×LN(X)-X");
+    is("X×EXP(X)", CASIM_RAD, "X×EXP(X)-EXP(X)");
+    is("X×EXP(X^2)", CASIM_RAD, "EXP(X^2)÷2");
+    is("SIN(X)×COS(X)", CASIM_RAD, "SIN(X)^2÷2");
+    is("SIN(X)+1÷(X^2-1)", CASIM_RAD, "LN(ABS(X-1))÷2-LN(ABS(X+1))÷2-COS(X)");   /* mixed: a term each way */
+    is("EXP(X)×SIN(X)", CASIM_RAD, "EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2");          /* the cycle */
+    is("LN(X)^2", CASIM_RAD, "X×LN(X)^2-2×X×LN(X)+2×X");
+    is("X×SIN(X)", CASIM_RAD, "SIN(X)-X×COS(X)");
+    is("X^3×SQRT(X^2+1)", CASIM_RAD, "(X^2+1)^2.5÷5-(X^2+1)^1.5÷3");          /* back-substitution */
+    refused("X^2÷X×EXP(X)", CASIM_NOT_INTEGRABLE);          /* CAS 017 rule 2: canon would cancel the hole */
     refused("SIN(X^2)", CASIM_NOT_INTEGRABLE);
     refused("1÷(X^2-2)", CASIM_NOT_INTEGRABLE);             /* D > 0, not a square (CAS 013 rule 5) */
     refused("1÷(X^2+1)^2", CASIM_NOT_INTEGRABLE);           /* a quadratic squared (CAS 013 rule 5) */
     refused("SIN(X)^2", CASIM_NOT_INTEGRABLE);
-    refused("SIN(X)×COS(X)", CASIM_NOT_INTEGRABLE);
-    refused("SIN(X)+1÷(X^2-1)", CASIM_NOT_INTEGRABLE);      /* mixed (CAS 013 rule 1): X^2÷X answers since 013 */
+    refused("X×COS(X)^2", CASIM_NOT_INTEGRABLE);            /* CAS 017 rule 7: trig powers need identities */
     refused("(X+A)÷(X^2-1)", CASIM_NOT_INTEGRABLE);         /* another letter: integrate's status kept (CAS 013, #6686) */
     refused("1÷(X^3-2)", CASIM_NOT_INTEGRABLE);             /* a cubic factor */
     refused("(X^2+1)^6", CASIM_NOT_INTEGRABLE);             /* degree 12: its X^13 is past the bound (CAS 013 rule 2) */

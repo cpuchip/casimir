@@ -191,7 +191,7 @@ equation), TOO_LONG.
 | `casim integrate "3×X^2+COS(2×X)" X RAD` | `0.5×SIN(2×X)+X^3` |
 | `casim integrate "1÷(2×X+1)" X RAD` | `0.5×LN(ABS(2×X+1))` |
 | `casim integrate "SIN(X)" X DEG` | `-180×COS(X)÷π` |
-| `casim integrate "X×EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X=1" X RAD` | `BAD_ARG` |
 
 When the table refuses, a rational integrand n÷d (as partfrac reads it) is integrated through its partial fractions
@@ -215,6 +215,55 @@ It answers NO_ROOM only when partfrac itself runs out of room (or past int64), n
 | `casim integrate "1÷(X^2+1)" X DEG` | `π×ATAN(X)÷180` |
 | `casim integrate "X^2÷X" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "1÷(X^2-2)" X RAD` | `NOT_INTEGRABLE` |
+
+When both refuse, integrate tries substitution and parts on the integrand's canonical form, term by term
+(work/017-substitution-and-parts.md). Each piece they need is integrated by the whole procedure (the table, the
+rational path, then these), at most four levels deep:
+- **Substitution:** u is a function in the integrand, its argument, or a power's base. When the integrand over u′ is a
+  function G of u alone, ∫G(U)dU is found and U is put back: X×EXP(X^2) is 0.5×EXP(X^2), LN(X)÷X is 0.5×LN(X)^2. When
+  u is a×X^k+b, X is written in U first, as X^3×SQRT(X^2+1) needs.
+- **Parts:** ∫u dv = u×v − ∫v du, with u the first factor in the order log, inverse function, algebraic,
+  trigonometric, exponential. A polynomial against EXP, SIN, COS, SINH or COSH goes round until it is used up
+  (X^5×EXP(X)). Two steps that come back to k times the integrand, as EXP(X)×SIN(X) does, give the integral as
+  (u×v − u2×v2)÷(1 − k).
+
+Each answer is proven from checked pieces: a substitution's G checked in U and G(u)×u′ equal to the integrand, a part's
+(u×v)′ equal to the integrand plus v×u′ with ∫v×u′ checked where it was made, and the loop and the cycle differentiated
+whole. Summands free of X are left out, as one antiderivative is enough.
+
+So that no answer has a value where the integrand has none, every divisor typed with X in it must stay a denominator
+in the canonical form. Canon would otherwise cancel the hole: X^2÷X×EXP(X) is refused. A typed LN, LOG, ASIN, ACOS,
+ATANH, ACOSH, TAN, SQRT or a power that isn't whole must survive canon too: LN(X)−LN(X)+X and EXP(LN(X)) are refused.
+So are SGN, ABS (but LN(ABS(…)), which answers) and IP or FP of X, whose derivative derive takes as 0, and 0^X.
+Another letter is a constant, but no answer divides by an expression of one that the integrand doesn't already divide
+by, unless it is never 0: EXP(A×X×Y) in Y and SIN(A×X)×COS(X) (A^2−1) are refused, EXP(X)×SIN(A×X) (A^2+1) answers.
+
+The answer can depend on the arena. At 8,192 bytes the rational path, which needs 7,328 bytes whatever its input, has
+no room inside a substitution or a part. So ATAN(X) answers −0.5×LN(ABS(X^2+1))+X×ATAN(X) by substitution there, and
+−0.5×LN(X^2+1)+X×ATAN(X) through the rational path at 65,536. Both are right: X^2+1 is never negative. X×ATAN(X) needs
+the rational path for its ∫v×u′ and is NOT_INTEGRABLE at 8,192.
+
+It refuses (NOT_INTEGRABLE):
+- powers and products of SIN, COS and TAN of one argument (SIN(X)^2, TAN(X)^2), which need identities;
+- forms whose antiderivative is an inverse function the table doesn't hold (1÷SQRT(1−X^2));
+- integrands with no elementary antiderivative (EXP(X^2), SIN(X)÷X).
+
+NO_ROOM is for a term of the integrand's own sum that the rational path ran out of room on. A pole in the integrand is
+UNDEFINED. steps shows one page for these answers, the answer itself (ANSWER); the working pages come later.
+
+| Command | Prints |
+|---|---|
+| `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
+| `casim integrate "LN(X)÷X" X RAD` | `0.5×LN(X)^2` |
+| `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
+| `casim integrate "X×SIN(X)" X RAD` | `SIN(X)-X×COS(X)` |
+| `casim integrate "LN(X)^2" X RAD` | `2×X-2×X×LN(X)+X×LN(X)^2` |
+| `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
+| `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(ABS(X^2+1))+X×ATAN(X)` |
+| `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
+| `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim steps integrate "X×EXP(X)" X RAD` | `ANSWER: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
 
 ### defint: a definite integral, exactly
 

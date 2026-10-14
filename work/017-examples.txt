@@ -1,0 +1,101 @@
+# CAS unit 017 visible examples (work/017-substitution-and-parts.md), written by casim. Each row is a command and what it
+# prints; scripts/doc-examples.py runs every row (make check), scripts/golden.py records each in the golden corpus, and
+# scripts/integrate-values.py differentiates each answer numerically against its integrand.
+# - Rule 3, substitution: u from a function, its argument or a power's base; G(U) by the whole procedure; X^3×SQRT(X^2+1)
+#   by back-substitution (X^2 = U-1). DEG and GRAD carry their factor through u'.
+# - Rule 4, parts by LIATE: the general step (LN(X), ATAN(X), LN(X)^2), the polynomial loop (X^5×EXP(X)), the cycle
+#   (EXP(X)×SIN(X), in DEG with 1+π^2÷32400). ATAN(X) at 8 KB is by substitution (LN with ABS); at 64 KB its ∫v×u'
+#   goes through the rational path (no ABS: X^2+1 is positive). Both are right.
+# - Rule 2: X^2÷X×EXP(X), SIN(X÷X×X) and X÷(1000÷(SINH(π)×X)) lose a typed hole in canon: refused. INV(X^2)+3÷X+
+#   0.5×X÷SQRT(X) keeps 0 out (its 3÷X): answered. EXP(A×X×Y) in Y would divide by A×X: refused; A×X×EXP(X^2) answers.
+# - Rule 6: X-free summands dropped (X^2×ATAN(X)'s -1÷6); NO_ROOM for a sum's term the rational path ran out on at
+#   8 KB; UNDEFINED for a pole; TOO_LONG past 191 bytes.
+# - After the cold review: SGN, ABS and the opaque names (IP) holding X are refused (derive takes their derivative as
+#   0), as is a literal canon keeps as typed (1.2.0); LN(ABS(X)) answers. The domain rule refuses LN(X)-LN(X)+X,
+#   EXP(LN(X)), TAN(X)^0 and X^(-A)×X^A, whose canonical form drops a domain, and 0^X×0^(-X) (canon folds it to 1).
+#   The letter rule refuses SIN(A×X)×COS(X) (÷(A^2-1)) and X×EXP(A×X^2)÷B (÷A), and keeps EXP(X)×SIN(A×X) (÷(A^2+1),
+#   never 0).
+# - Rule 5's depth: LN(X)^4 takes all four levels of parts and answers; LN(X)^5 is past them. At 2,000 and 1,500 bytes
+#   a try that runs out of room is a refusal and the next answers (EXP(X)÷(1+EXP(X)), X^2×EXP(X)).
+# - Rule 7's limits: trig powers, the ASIN form, and X×ATAN(X) at 8 KB (partfrac's 7,328 B can't nest).
+# - Rule 8: steps give one page, the answer, for what only this path answers.
+| `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
+| `casim integrate "X×SIN(X^2)" X RAD` | `-0.5×COS(X^2)` |
+| `casim integrate "X×SIN(X^2)" X DEG` | `-90×COS(X^2)÷π` |
+| `casim integrate "SIN(X)×COS(X)" X RAD` | `0.5×SIN(X)^2` |
+| `casim integrate "SIN(X)×COS(X)" X GRAD` | `100×SIN(X)^2÷π` |
+| `casim integrate "SIN(X)^2×COS(X)" X RAD` | `SIN(X)^3÷3` |
+| `casim integrate "COS(X)^3×SIN(X)" X RAD` | `-0.25×COS(X)^4` |
+| `casim integrate "LN(X)÷X" X RAD` | `0.5×LN(X)^2` |
+| `casim integrate "1÷(X×LN(X))" X RAD` | `LN(ABS(LN(X)))` |
+| `casim integrate "EXP(X)÷(1+EXP(X))" X RAD` | `LN(ABS(EXP(X)+1))` |
+| `casim integrate "X×SQRT(X^2+1)" X RAD` | `(X^2+1)^1.5÷3` |
+| `casim integrate "X^2×(X^3+1)^5" X RAD` | `(X^3+1)^6÷18` |
+| `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
+| `casim integrate "COS(X)×EXP(SIN(X))" X RAD` | `EXP(SIN(X))` |
+| `casim integrate "ATAN(X)÷(1+X^2)" X RAD` | `0.5×ATAN(X)^2` |
+| `casim integrate "EXP(SQRT(X))÷SQRT(X)" X RAD` | `2×EXP(SQRT(X))` |
+| `casim integrate "SIN(LN(X))÷X" X RAD` | `-COS(LN(X))` |
+| `casim integrate "X÷SQRT(1-X^2)" X RAD` | `-SQRT(-X^2+1)` |
+| `casim integrate "X×EXP(X)" X RAD` | `-EXP(X)+X×EXP(X)` |
+| `casim integrate "X^2×EXP(X)" X RAD` | `2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)` |
+| `casim integrate "X^5×EXP(X)" X RAD` | `-120×EXP(X)+120×X×EXP(X)-60×X^2×EXP(X)+20×X^3×EXP(X)-5×X^4×EXP(X)+X^5×EXP(X)` |
+| `casim integrate "X×SIN(X)" X RAD` | `SIN(X)-X×COS(X)` |
+| `casim integrate "X×SIN(X)" X DEG` | `-180×X×COS(X)÷π+32400×SIN(X)÷π^2` |
+| `casim integrate "X^2×COS(3×X)" X RAD` | `-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3` |
+| `casim integrate "X×SINH(X)" X RAD` | `-SINH(X)+X×COSH(X)` |
+| `casim integrate "LN(X)" X RAD` | `-X+X×LN(X)` |
+| `casim integrate "X×LN(X)" X RAD` | `-0.25×X^2+0.5×X^2×LN(X)` |
+| `casim integrate "X^3×LN(X)" X RAD` | `-0.0625×X^4+0.25×X^4×LN(X)` |
+| `casim integrate "LN(X)^2" X RAD` | `2×X-2×X×LN(X)+X×LN(X)^2` |
+| `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(ABS(X^2+1))+X×ATAN(X)` |
+| `casim integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(ABS(X^2+1))÷π` |
+| `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
+| `casim integrate "ASIN(X)" X RAD` | `SQRT(-X^2+1)+X×ASIN(X)` |
+| `casim integrate "X^2×ATAN(X)" X RAD` | `LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3` |
+| `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
+| `casim integrate "EXP(X)×SIN(X)" X DEG` | `-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)` |
+| `casim integrate "EXP(2×X)×COS(3×X)" X RAD` | `3×EXP(2×X)×SIN(3×X)÷13+2×EXP(2×X)×COS(3×X)÷13` |
+| `casim integrate "2×X×COS(X^2)+X×EXP(X)" X RAD` | `-EXP(X)+SIN(X^2)+X×EXP(X)` |
+| `casim integrate "INV(X^2)+3÷X+0.5×X÷SQRT(X)" X RAD` | `3×LN(ABS(X))-1÷X+X^1.5÷3` |
+| `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X÷X×X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X÷(1000÷(SINH(π)×X))" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "EXP(A×X×Y)" Y RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
+| `casim integrate "X×ATAN(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
+| `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "TAN(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X×COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "1÷SQRT(1-X^2)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X)÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X)+1÷(X^2-1)" X RAD` | `NO_ROOM` |
+| `casim --arena 65536 integrate "SIN(X)+1÷(X^2-1)" X RAD` | `0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)` |
+| `casim integrate "TAN(Y)×LOG(X-X)^SGN(X+7)" X RAD` | `UNDEFINED` |
+| `casim integrate "X^10×EXP(X)" X RAD` | `TOO_LONG` |
+| `casim integrate "SGN(X)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "COS(X)×IP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "ABS(X)^2×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "1.2.0×LN(X)÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(A×X)×COS(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X×EXP(A×X^2)÷B" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X×EXP(X^2)÷B" X RAD` | `0.5×EXP(X^2)÷B` |
+| `casim integrate "LN(X)-LN(X)+X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "EXP(LN(X))" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X^2×TAN(X)^0" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X^(-A)×X^A×X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SQRT(X^2)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X×EXP(X)×0^X×0^(-X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "EXP(X)×SIN(A×X)" X RAD` | `-(A×EXP(X)×COS(A×X)-EXP(X)×SIN(A×X))÷(A^2+1)` |
+| `casim integrate "LN(ABS(X))" X RAD` | `-X+X×LN(ABS(X))` |
+| `casim integrate "TAN(X)×LN(ABS(COS(X)))" X RAD` | `-0.5×LN(ABS(COS(X)))^2` |
+| `casim integrate "(X^2-1)÷(X-1)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "LN(X)^4" X RAD` | `24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4` |
+| `casim integrate "LN(X)^5" X RAD` | `NOT_INTEGRABLE` |
+| `casim --arena 2000 integrate "EXP(X)÷(1+EXP(X))" X RAD` | `LN(ABS(EXP(X)+1))` |
+| `casim --arena 1500 integrate "X^2×EXP(X)" X RAD` | `2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)` |
+| `casim steps integrate "X×EXP(X)" X RAD` | `ANSWER: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
+| `casim steps integrate "LN(X)÷X" X RAD` | `ANSWER: ∫(LN(X)÷X)dX = 0.5×LN(X)^2` |

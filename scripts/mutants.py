@@ -126,7 +126,8 @@ MUTANTS = {
          "        case F_COS: r = fn(c, F_SIN, uc); break;"),
     ],
     "integ-verification-skipped": [
-        ("src/casim.c", "    return c->st == CASIM_OK && is_k(c, t, 0, 1);\n}", "    return c->st == CASIM_OK || is_k(c, t, 0, 1);\n}"),
+        ("src/casim.c", "    t = expand_fully(c, t);\n    return c->st == CASIM_OK && is_k(c, t, 0, 1);\n}",
+         "    t = expand_fully(c, t);\n    return c->st == CASIM_OK || is_k(c, t, 0, 1);\n}"),
         ("src/casim.c", "        case F_EXP: r = fn(c, F_EXP, uc); break;", "        case F_EXP: r = fn(c, F_EXP, mul2(c, uc, small(c, C_2))); break;"),
     ],
     "integ-stamp-ignored": [
@@ -138,8 +139,8 @@ MUTANTS = {
          "    if (c.st == CASIM_OK) F = add2(&c, integ(&c, n, var), leaf(&c, K_VAR, 2));"),
     ],
     "integ-check-no-sgn-abs": [
-        ("src/casim.c", "                    list(c, l)[i] = power(c, g->a, small(c, C_M1));\n                    list(c, l)[j] = small(c, C_1);",
-         "                    (void)l;"),
+        ("src/casim.c", "g->a) != 0) continue;\n                    list(c, l)[i] = power(c, g->a, small(c, C_M1));\n                    list(c, l)[j] = small(c, C_1);",
+         "g->a) != 0) continue;\n                    (void)l;"),
     ],
     "integ-check-no-tan": [
         ("src/casim.c", "        if (x->id == F_TAN && !c->sub_val) v = mul2(c, fn(c, F_SIN, a), power(c, fn(c, F_COS, a), small(c, C_M1)));",
@@ -643,8 +644,8 @@ MUTANTS = {
     ],
     # 013: the hook moved inside do_integrate (the frame table catches it)
     "irat-hook-in-do-integrate": [
-        ("src/casim.c", "    return st == CASIM_NOT_INTEGRABLE ? do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;",
-         "    return st;"),
+        ("src/casim.c", "    if (st == CASIM_NOT_INTEGRABLE) st = do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);\n",
+         ""),
         ("src/casim.c", "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);",
          "    if (c.st == CASIM_OK) F = integ(&c, n, var);         /* each term checked as it goes (integ_checked) */\n    if (c.st == CASIM_NOT_INTEGRABLE) return do_irational(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    return finish(&c, F, out, cap < SLOT ? cap : SLOT);"),
     ],    # 013 steps (§S4): a quadratic part's proof skipped, the ATAN part's (ircheck_check's spoiled parts reach it)
@@ -751,6 +752,44 @@ MUTANTS = {
     "solve-pole-first-term": [("src/casim.c", "    s = pw_pole_(c, r, var) ? CASIM_UNDEFINED : s;\n", "    s = pw_pole_(c, r, var) && 0 ? CASIM_UNDEFINED : s;\n")],
     # CAS 016: CI's make test fetching the firmware's main, not CORE_PIN
     "ci-pin-from-main": [("scripts/ci-test.sh", "ref=$(cat CORE_PIN)\n", "ref=main\n")],
+    # CAS 017: integrals by substitution and by parts
+    "sub-check-skipped": [("src/casim.c", "if (c->st == CASIM_OK && ib_same(c, mul2(c, q, du), t)) return c->var = v0, F;",
+                           "if (c->st == CASIM_OK && (ib_same(c, mul2(c, q, du), t) || 1)) return c->var = v0, F;")],
+    "sgnabs-not-rewritten": [("src/casim.c", "nd(c, h->a)->id != F_ABS || cmp(c, nd(c, h->a)->a, g->a) != 0)\n                        continue;\n                    list(c, l)[i] = power(c, g->a, small(c, C_M1));\n                    list(c, l)[j] = small(c, C_1);",
+                              "nd(c, h->a)->id != F_ABS || cmp(c, nd(c, h->a)->a, g->a) != 0)\n                        continue;\n                    (void)l;")],
+    "parts-w-without-du": [("src/casim.c", "    w = ib_canon(c, mul2(c, v, du));", "    w = ib_canon(c, mul2(c, v, u)), (void)du;")],
+    "cycle-one-plus-k": [("src/casim.c", "        omk = ib_canon(c, add2(c, small(c, C_1), ib_neg(c, k)));",
+                          "        omk = ib_canon(c, add2(c, small(c, C_1), k));")],
+    "loop-sign-dropped": [("src/casim.c", "            acc = add2(c, acc, j % 2 ? ib_neg(c, mul2(c, uj, V)) : mul2(c, uj, V));",
+                           "            acc = add2(c, acc, (j % 2 || 1) ? mul2(c, uj, V) : ib_neg(c, mul2(c, uj, V)));")],
+    "divisor-rule-off": [("src/casim.c",
+                          "    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;",
+                          "    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && 0) c.st = CASIM_NOT_INTEGRABLE;")],
+    "letter-rule-off": [("src/casim.c", "                ib_letters_kept(c, g, U, t)) {", "                (ib_letters_kept(c, g, U, t) || 1)) {"),
+                        ("src/casim.c",
+                         "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;",
+                         "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t) && 0) c.st = CASIM_NOT_INTEGRABLE;")],
+    "back-sub-k-not-1-over-k": [("src/casim.c", "                                  power(c, nd(c, xk)->b, small(c, C_M1))));",
+                                 "                                  nd(c, xk)->b));")],
+    "liate-ln-last": [("src/casim.c", "    case F_LN: case F_LOG: return 5;", "    case F_LN: case F_LOG: return 1;")],
+    "ib-depth-short": [("src/casim.c", "    if (d >= IB_DEPTH) return c->st = CASIM_NOT_INTEGRABLE, SPARE;",
+                        "    if (d >= IB_DEPTH - 1) return c->st = CASIM_NOT_INTEGRABLE, SPARE;")],
+    "ib-no-room-any-depth": [("src/casim.c", "            if (st == CASIM_NO_ROOM && d == 0) B->starved = true;",
+                              "            if (st == CASIM_NO_ROOM && d >= 0) B->starved = true;")],
+    "ib-steps-refuse": [("src/casim.c",
+                         "if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? ib_steps(rq, k, info, out, cap, arena, arena_cap) : st;",
+                         "if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE && 0 ? ib_steps(rq, k, info, out, cap, arena, arena_cap) : st;")],
+    "ib-constants-kept": [("src/casim.c", "        if (c.st == CASIM_OK) F = ib_drop(&c, F, var);", "        (void)ib_drop;")],
+    "ib-tries-few": [("src/casim.c", "#define IB_TRIES 160", "#define IB_TRIES 4")],
+    "ib-bad-off": [("src/casim.c", "    if (++B->tries > IB_TRIES || ib_bad(c, t, var)) return",
+                    "    if (++B->tries > IB_TRIES || (ib_bad(c, t, var) && 0)) return")],
+    "ib-domain-rule-off": [("src/casim.c", "    if (ok) ok = ib_domain_kept(c, r, t, var);",
+                            "    if (ok && 0) ok = ib_domain_kept(c, r, t, var);")],
+    "ib-letters-guard-off": [("src/casim.c",
+                              "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;",
+                              "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t) && 0) c.st = CASIM_NOT_INTEGRABLE;")],
+    "ib-deep-no-room-kept": [("src/casim.c", "    c->st = CASIM_OK;\n    c->starved = false;\n    taylor_drop(c, mark);",
+                              "    if (c->st == CASIM_NO_ROOM) return false;\n    c->st = CASIM_OK;\n    c->starved = false;\n    taylor_drop(c, mark);")],
 }
 
 

@@ -5369,6 +5369,8 @@ static __attribute__((noinline)) bool closes(ctx *c, ref F, ref f)
 
 static casim_status do_irational(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
                                  bool rtl);
+static casim_status do_iparts(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
+                              bool rtl);
 
 static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int var, int angle, char *out, size_t cap,
                                                             void *arena, size_t arena_cap, bool rtl)
@@ -5399,7 +5401,9 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
-    return st == CASIM_NOT_INTEGRABLE ? do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
+    if (st == CASIM_NOT_INTEGRABLE) st = do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    /* CAS 017: when both refuse, substitution and parts */
+    return st == CASIM_NOT_INTEGRABLE ? do_iparts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
 }
 
 
@@ -5800,6 +5804,8 @@ static void unparse(ctx *c, size_t parsed)
 }
 
 static casim_status irs_refused(const casim_req *rq, int k, casim_step_info *info, const out_t *o, ctx *tc);
+static casim_status ib_steps(const casim_req *rq, int k, casim_step_info *info, char *out, size_t cap, void *arena,
+                             size_t arena_cap);
 
 static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
                               void *arena, size_t arena_cap)
@@ -8234,7 +8240,8 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
        the prototype); a small out borrows the slot */
     st = cap >= SLOT ? do_irational(rq->eqn, var, rq->angle, out, cap, arena, arena_cap, rtl)
                      : do_irational(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl);
-    if (st != CASIM_OK) return st;
+    /* CAS 017 rule 8: when the rational path refuses too, substitution and parts' one page */
+    if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? ib_steps(rq, k, info, out, cap, arena, arena_cap) : st;
     if (do_partfrac(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return CASIM_NO_ROOM;
     S.k = k, S.at = 0, S.flags = flags, S.info = info, S.w = &w, S.want = 0;
     /* S2.2: partfrac changed nothing when its answer and the integrand have one canonical form */
@@ -8674,6 +8681,642 @@ casim_status casim_taylor(const char *eqn, int var, const char *point, int n, in
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_taylor(eqn, var, point, n, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- integration by substitution and by parts (unit CAS 017) ----
+   When the table and the rational path refuse (work/017-substitution-and-parts.md). The canonical integrand, term by
+   term: the table and the rational path on each term's printed form, read back as typed; then substitution (rule 3)
+   and parts (rule 4), whose pieces are integrated by this whole procedure, at most IB_DEPTH deep and IB_TRIES tries an
+   integrand. Every answer is proven from checked pieces before it is kept: the table's and the rational path's their
+   own way, a substitution's by G checked in U and G(u)×u' against the term, a part's by (uv)' = term + v×u' with
+   ∫v×u' checked where it was made, the loop's and the cycle's whole. */
+
+#define IB_DEPTH 4
+#define IB_TRIES 160
+#define IB_TEXT 384                     /* a term's printed form, read back by the table or the rational path */
+#define IB_CANDS 12
+
+typedef struct {
+    int tries;
+    bool starved;                       /* the rational path ran out on a term of the input's own sum (rule 6) */
+} ib_t;
+
+static ref ib(ctx *c, ib_t *B, ref t, int var, int d);
+
+/* canon, called once: the section's calls through this one leave gcc's inlining of canon elsewhere as it was (an
+   out-of-line canon appeared when they called it directly) */
+static __attribute__((noinline)) ref ib_canon(ctx *c, ref r)
+{
+    return canon(c, r);
+}
+
+/* neg, called once, for the same reason: chain's frame moved 64 -> 48 on the S3 when the section called neg itself
+   (measured: wrapping canon alone left it at 48, neg alone gave 64) */
+static __attribute__((noinline)) ref ib_neg(ctx *c, ref r)
+{
+    return neg(c, r);
+}
+
+/* the arena back to mark after a try that refused or ran out: room run out deep in the search (the arena, or the
+   depth guard) is a refusal there, as rule 6 keeps NO_ROOM for a term of the input's own sum (ib_rational's) */
+static bool ib_fail(ctx *c, size_t mark)
+{
+    c->st = CASIM_OK;
+    c->starved = false;
+    taylor_drop(c, mark);
+    return true;
+}
+
+/* t printed into a buffer under the arena's top; NOT_INTEGRABLE when it doesn't fit */
+static char *ib_print(ctx *c, ref t, size_t len)
+{
+    char *buf;
+    out_t tw;
+    if (c->top < c->used + len + 256) return c->st = CASIM_NO_ROOM, NULL;
+    c->top -= len;
+    buf = (char *)c->mem + c->top;
+    tw = (out_t){buf, IB_TEXT, 0, false};
+    print(c, &tw, t);
+    if (c->st == CASIM_OK && tw.full) c->st = CASIM_NOT_INTEGRABLE;
+    return c->st == CASIM_OK ? buf : NULL;
+}
+
+/* the table (CAS 006), as typed, on t's printed form */
+static ref ib_table(ctx *c, ref t, int var)
+{
+    size_t top = c->top;
+    const char *s = c->s;
+    int v0 = c->var;
+    char *buf = ib_print(c, t, IB_TEXT);
+    ref F = SPARE;
+    c->var = var;
+    if (buf) {
+        c->s = buf;
+        F = integ(c, parse(c), var);
+        if (c->st == CASIM_OK) F = ib_canon(c, F);
+    }
+    c->var = v0, c->s = s, c->top = top;
+    return c->st == CASIM_OK ? F : SPARE;
+}
+
+/* the rational path (CAS 013) on t's printed form, in the arena's free part, its answer read back. Its NO_ROOM is a
+   refusal here: other rules may still answer, and only a term of the input's own sum (d 0) makes the whole NO_ROOM */
+static ref ib_rational(ctx *c, ib_t *B, ref t, int var, int d)
+{
+    size_t top = c->top;
+    const char *s = c->s;
+    char *buf = ib_print(c, t, 2 * IB_TEXT), *ob = buf + IB_TEXT;
+    casim_status st;
+    ref F = SPARE;
+    if (buf) {
+        st = do_irational(buf, var, c->angle, ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
+        if (st == CASIM_OK) {
+            c->s = ob;
+            F = ib_canon(c, parse(c));
+        } else {
+            if (st == CASIM_NO_ROOM && d == 0) B->starved = true;
+            c->st = CASIM_NOT_INTEGRABLE;
+        }
+    }
+    c->s = s, c->top = top;
+    return c->st == CASIM_OK ? F : SPARE;
+}
+
+/* r with every subtree equal to u replaced by the letter U, canonical */
+static ref ib_replace(ctx *c, ref r, ref u, int U)
+{
+    const node *x = nd(c, r);
+    ref v = r;
+    if (c->st != CASIM_OK || !enter(c)) return SPARE;
+    if (cmp(c, r, u) == 0) v = leaf(c, K_VAR, U);
+    else if (x->kind == K_FN) v = fn(c, x->id, ib_replace(c, x->a, u, U));
+    else if (x->kind == K_POW) {
+        ref b = ib_replace(c, x->a, u, U), e = ib_replace(c, nd(c, r)->b, u, U);
+        v = power(c, b, e);
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        int n = x->n, kind = x->kind;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (l) {
+            for (int i = 0; i < n; i++) {
+                ref y = ib_replace(c, list(c, nd(c, r)->a)[i], u, U);
+                list(c, l)[i] = y;
+            }
+            v = kind == K_ADD ? add(c, list(c, l), n) : mul(c, list(c, l), n);
+        }
+    }
+    c->depth--;
+    return v;
+}
+
+/* rule 3's candidates for u: each function holding var, its argument and each power's base, in tree order */
+static void ib_cands(ctx *c, ref r, int var, ref *cs, int *n)
+{
+    const node *x = nd(c, r);
+    if (*n >= IB_CANDS || !contains(c, r, var) || x->kind == K_VAR || !enter(c)) return;
+    if (x->kind == K_FN) {
+        cs[(*n)++] = r;
+        ib_cands(c, x->a, var, cs, n);
+        if (*n < IB_CANDS && nd(c, x->a)->kind != K_VAR) cs[(*n)++] = x->a;
+    } else if (x->kind == K_POW) {
+        ib_cands(c, x->a, var, cs, n);
+        if (*n < IB_CANDS && nd(c, x->a)->kind != K_VAR) cs[(*n)++] = x->a;
+    } else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < nd(c, r)->n && *n < IB_CANDS; i++) ib_cands(c, list(c, nd(c, r)->a)[i], var, cs, n);
+    c->depth--;
+}
+
+static bool ib_den(ctx *c, ref t, ref b);
+
+/* r is never 0 or negative for real letters: a positive constant, π, an even whole power, a product of these, and a sum
+   of such terms with a positive constant among them (EXP(X)×SIN(A×X)'s A^2+1, in DEG A^2×π^2+32400) */
+static bool ib_semi(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    if (x->kind == K_NUM) return val(c, r)->p > 0;
+    if (x->kind == K_PI) return true;
+    if (x->kind == K_POW) return is_num(c, x->b) && val(c, x->b)->q == 1 && val(c, x->b)->p % 2 == 0;
+    if (x->kind == K_MUL) {
+        for (int i = 0; i < x->n; i++)
+            if (!ib_semi(c, list(c, nd(c, r)->a)[i])) return false;
+        return true;
+    }
+    return false;
+}
+
+static bool ib_positive(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    bool k = false;
+    if (x->kind != K_ADD) return x->kind == K_NUM ? val(c, r)->p > 0 : x->kind == K_PI;
+    for (int i = 0; i < x->n; i++) {
+        ref y = list(c, nd(c, r)->a)[i];
+        if (!ib_semi(c, y)) return false;
+        k = k || nd(c, y)->kind == K_NUM || nd(c, y)->kind == K_PI;
+    }
+    return k;
+}
+
+/* rule 2: every expression of another letter that r divides by (one without r's var) is one t divides by already:
+   a parameter may be 0, and the answer must have a value wherever the integrand has one (SIN(A×X)×COS(X)'s cycle
+   divides by A^2-1, X×EXP(A×X^2)'s substitution by A) */
+static bool ib_letters_kept(ctx *c, ref r, int var, ref t)
+{
+    const node *x = nd(c, r);
+    bool ok = true;
+    if (!enter(c)) return false;
+    if (x->kind == K_POW && nd(c, x->b)->kind == K_NUM && val(c, x->b)->p < 0 && !contains(c, x->a, var)) {
+        bool letter = false;
+        for (int l = 0; l < 26 && !letter; l++) letter = contains(c, x->a, l);
+        if (letter && !ib_positive(c, x->a)) ok = ib_den(c, t, x->a);
+    }
+    if (ok && (x->kind == K_POW || x->kind == K_FN))
+        ok = ib_letters_kept(c, x->a, var, t) && (x->kind != K_POW || ib_letters_kept(c, nd(c, r)->b, var, t));
+    else if (ok && (x->kind == K_ADD || x->kind == K_MUL))
+        for (int i = 0; i < x->n && ok; i++) ok = ib_letters_kept(c, list(c, nd(c, r)->a)[i], var, t);
+    c->depth--;
+    return ok;
+}
+
+/* r with each SGN(u)×ABS(u)^-1 written u^-1, as the check writes it (both have no value at u = 0): LN(ABS(u))'s
+   derivative, so a typed LN(ABS(X)) and the table's own answers can be integrated again (the review) */
+static ref ib_sgnabs(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    ref v = r;
+    if (c->st != CASIM_OK || !enter(c)) return SPARE;
+    if (x->kind == K_FN) v = fn(c, x->id, ib_sgnabs(c, x->a));
+    else if (x->kind == K_POW) {
+        ref b = ib_sgnabs(c, x->a), e = ib_sgnabs(c, nd(c, r)->b);
+        v = power(c, b, e);
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        int n = x->n, kind = x->kind;
+        ref l = grab(c, (size_t)n * sizeof(ref));
+        if (l) {
+            for (int i = 0; i < n; i++) {
+                ref y = ib_sgnabs(c, list(c, nd(c, r)->a)[i]);
+                list(c, l)[i] = y;
+            }
+            for (int i = 0; kind == K_MUL && i < n; i++) {
+                const node *g = nd(c, list(c, l)[i]);
+                if (g->kind != K_FN || g->id != F_SGN) continue;
+                for (int j = 0; j < n; j++) {
+                    const node *h = nd(c, list(c, l)[j]);
+                    if (j == i || h->kind != K_POW || !is_k(c, h->b, -1, 1) || nd(c, h->a)->kind != K_FN ||
+                        nd(c, h->a)->id != F_ABS || cmp(c, nd(c, h->a)->a, g->a) != 0)
+                        continue;
+                    list(c, l)[i] = power(c, g->a, small(c, C_M1));
+                    list(c, l)[j] = small(c, C_1);
+                    break;
+                }
+            }
+            v = kind == K_ADD ? add(c, list(c, l), n) : mul(c, list(c, l), n);
+        }
+    }
+    c->depth--;
+    return v;
+}
+
+/* u' (in c->var, set by the caller), canonical, with ib_sgnabs's rewrite */
+static __attribute__((noinline)) ref ib_deriv(ctx *c, ref u)
+{
+    return ib_canon(c, ib_sgnabs(c, ib_canon(c, deriv(c, u))));
+}
+
+/* rule 2: what the procedure can't take. A literal canon kept as typed (1.2.0, past 2^62): its text is the input's,
+   and a printed copy read back would point into a buffer that goes. And, holding var, the functions derive gives no
+   true derivative where it matters: SGN, ABS but in LN(ABS(...)) (the table's own form, smooth where it has a value),
+   and the opaque names (IP, FP), whose derivative derive takes as 0: a part or a check would treat them as constants */
+static bool ib_bad(ctx *c, ref r, int var)
+{
+    const node *x = nd(c, r);
+    bool b = false;
+    if (!enter(c)) return true;
+    if (x->kind == K_LIT) b = true;
+    else if ((x->kind == K_OFN || (x->kind == K_FN && (x->id == F_SGN || x->id == F_ABS))) && contains(c, r, var)) b = true;
+    else if (x->kind == K_POW && is_num(c, x->a) && val(c, x->a)->p <= 0 && contains(c, x->b, var)) b = true;   /* 0^X */
+    else if (x->kind == K_FN && x->id == F_LN && nd(c, x->a)->kind == K_FN && nd(c, x->a)->id == F_ABS)
+        b = ib_bad(c, nd(c, x->a)->a, var);
+    else if (x->kind == K_FN || x->kind == K_POW || x->kind == K_OFN)
+        b = ib_bad(c, x->a, var) || ((x->kind == K_POW || (x->kind == K_OFN && nd(c, r)->b)) && ib_bad(c, nd(c, r)->b, var));
+    else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n && !b; i++) b = ib_bad(c, list(c, nd(c, r)->a)[i], var);
+    c->depth--;
+    return b;
+}
+
+/* a - b expands to 0 */
+static bool ib_same(ctx *c, ref a, ref b)
+{
+    ref t = add2(c, a, ib_neg(c, b));
+    c->sub_var = -1;
+    t = expand_fully(c, check_rewrite(c, t));
+    return c->st == CASIM_OK && is_k(c, t, 0, 1);
+}
+
+/* r with var replaced by v, canonical (check_rewrite's substitution) */
+static ref ib_at(ctx *c, ref r, int var, ref v)
+{
+    c->sub_var = var, c->sub_val = v;
+    r = check_rewrite(c, r);
+    c->sub_val = 0, c->sub_var = -1;
+    return ib_canon(c, r);
+}
+
+/* rule 3's back-substitution: u = a×X^k + b, so X is ((U - b)÷a)^(1÷k) in g; the caller refuses when X is left */
+static ref ib_back(ctx *c, ref g, ref u, int var, int U)
+{
+    const node *x = nd(c, u);
+    ref a = small(c, C_1), b = small(c, C_0), xk = SPARE;
+    if (x->kind != K_ADD) return SPARE;
+    for (int i = 0; i < x->n; i++) {
+        ref o = list(c, nd(c, u)->a)[i];
+        if (!contains(c, o, var)) b = add2(c, b, o);
+        else if (xk == SPARE) xk = o;
+        else return SPARE;
+    }
+    if (xk != SPARE && nd(c, xk)->kind == K_MUL) {      /* a × X^k: canon puts the constant first */
+        ref k0 = list(c, nd(c, xk)->a)[0];
+        if (nd(c, xk)->n != 2 || contains(c, k0, var)) return SPARE;
+        a = k0, xk = list(c, nd(c, xk)->a)[1];
+    }
+    if (xk == SPARE || nd(c, xk)->kind != K_POW || nd(c, nd(c, xk)->a)->kind != K_VAR || nd(c, nd(c, xk)->a)->id != var)
+        return SPARE;
+    return ib_at(c, g, var, power(c, mul2(c, add2(c, leaf(c, K_VAR, U), ib_neg(c, b)), power(c, a, small(c, C_M1))),
+                                  power(c, nd(c, xk)->b, small(c, C_M1))));
+}
+
+/* A test build (tests/ibcheck_check.c) defines this to spoil G before it is integrated, so that substitution's check
+   (G(u)×u' against the term), which no input reaches as built, is seen to refuse */
+#ifndef CASIM_IB_PLANT
+#define CASIM_IB_PLANT(c, g) (g)
+#endif
+
+/* rule 3: ∫ t by substitution, t = G(u)×u' with G integrated in a new letter U */
+static ref ib_sub(ctx *c, ib_t *B, ref t, int var, int d)
+{
+    static const char pick[] = "UVWTSRQ";
+    ref cs[IB_CANDS];
+    int n = 0, U = -1, v0 = c->var;
+    size_t mark;
+    for (int i = 0; pick[i] && U < 0; i++)
+        if (pick[i] - 'A' != var && !contains(c, t, pick[i] - 'A')) U = pick[i] - 'A';
+    if (U < 0) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+    ib_cands(c, t, var, cs, &n);
+    mark = c->used;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref u = cs[i], du, q, g, H, F;
+        c->var = var;
+        du = ib_deriv(c, u);
+        if (c->st == CASIM_OK && contains(c, du, var)) {             /* a u' without var is the table's linear case */
+            q = ib_canon(c, mul2(c, t, power(c, du, small(c, C_M1))));
+            g = ib_canon(c, ib_replace(c, q, u, U));
+            if (c->st == CASIM_OK && contains(c, g, var)) g = ib_back(c, g, u, var, U);
+            if (c->st == CASIM_OK && g != SPARE && !contains(c, g, var) &&
+                ib_letters_kept(c, g, U, t)) {
+                g = CASIM_IB_PLANT(c, g);
+                H = ib(c, B, g, U, d + 1);
+                if (c->st == CASIM_OK) {
+                    F = ib_at(c, H, U, u);
+                    q = ib_at(c, g, U, u);
+                    c->var = var;
+                    if (c->st == CASIM_OK && ib_same(c, mul2(c, q, du), t)) return c->var = v0, F;
+                }
+            }
+        }
+        c->var = v0;
+        if (!ib_fail(c, mark)) return SPARE;
+    }
+    c->var = v0;
+    if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
+    return SPARE;
+}
+
+/* rule 4's LIATE: 5 a log or a power of one, 4 an inverse function, 3 algebraic, 2 trigonometric, 1 exponential, 0 no
+   var */
+static int ib_class(ctx *c, ref f, int var)
+{
+    const node *x = nd(c, f);
+    if (!contains(c, f, var)) return 0;
+    if (x->kind == K_POW && nd(c, x->a)->kind == K_FN && (nd(c, x->a)->id == F_LN || nd(c, x->a)->id == F_LOG)) return 5;
+    if (x->kind != K_FN) return 3;
+    switch (x->id) {
+    case F_LN: case F_LOG: return 5;
+    case F_ATAN: case F_ASIN: case F_ACOS: case F_ASINH: case F_ACOSH: case F_ATANH: return 4;
+    case F_SIN: case F_COS: return 2;
+    case F_EXP: case F_ALOG: case F_SINH: case F_COSH: return 1;
+    default: return 0;
+    }
+}
+
+/* rule 4: ∫ t by parts */
+static ref ib_parts(ctx *c, ib_t *B, ref t, int var, int d)
+{
+    const node *x = nd(c, t);
+    ref u = SPARE, v, du, uv, w, W, F;
+    int best = 0, other = 0;
+    size_t mark = c->used;
+    if (x->kind == K_MUL) {
+        for (int i = 0; i < x->n; i++) {
+            int k = ib_class(c, list(c, nd(c, t)->a)[i], var);
+            if (k > best) best = k, u = list(c, nd(c, t)->a)[i];
+        }
+        for (int i = 0; i < nd(c, t)->n; i++) {
+            int k = ib_class(c, list(c, nd(c, t)->a)[i], var);
+            if (list(c, nd(c, t)->a)[i] != u && k) other = other ? -1 : k;
+        }
+        if (other == 0 && best < 4) goto no;                    /* one factor holds var: nothing to part */
+    } else if ((best = ib_class(c, t, var)) >= 4) u = t;
+    if (u == SPARE || best == 0) goto no;
+    v = ib(c, B, ib_canon(c, mul2(c, t, power(c, u, small(c, C_M1)))), var, d + 1);
+    if (c->st != CASIM_OK) goto no;
+    c->var = var;
+    if (best == 3 && (other == 1 || other == 2)) {
+        /* a polynomial against EXP, SIN, COS, SINH or COSH: round until u^(j) is 0, the whole answer checked */
+        ref acc = small(c, C_0), uj = u, V = v;
+        for (int j = 0; j <= SOLVE_DEG && c->st == CASIM_OK; j++) {
+            acc = add2(c, acc, j % 2 ? ib_neg(c, mul2(c, uj, V)) : mul2(c, uj, V));
+            uj = ib_deriv(c, uj);
+            if (is_k(c, uj, 0, 1)) {
+                F = ib_canon(c, acc);
+                if (c->st == CASIM_OK && closes(c, F, t)) return F;
+                goto no;
+            }
+            V = ib(c, B, V, var, d + 1);
+            c->var = var;
+        }
+        goto no;
+    }
+    du = ib_deriv(c, u);
+    uv = ib_canon(c, mul2(c, u, v));
+    w = ib_canon(c, mul2(c, v, du));
+    if (best <= 2 && other >= 1 && other <= 2) {
+        /* EXP × SIN: a second part, u2 of u's class; back to k × t, ∫ t = (uv - u2v2) ÷ (1 - k), checked before the
+           division as (uv - u2v2)' = (1 - k) t (expand doesn't clear a constant denominator: DEG's 1 + π^2÷32400) */
+        ref u2 = SPARE, v2, k, a, omk;
+        const node *y = nd(c, w);
+        if (y->kind == K_MUL)
+            for (int i = 0; i < y->n; i++)
+                if (ib_class(c, list(c, nd(c, w)->a)[i], var) == best) u2 = list(c, nd(c, w)->a)[i];
+        if (u2 == SPARE) goto no;
+        v2 = ib(c, B, ib_canon(c, mul2(c, w, power(c, u2, small(c, C_M1)))), var, d + 1);
+        if (c->st != CASIM_OK) goto no;
+        c->var = var;
+        k = ib_canon(c, mul2(c, ib_canon(c, mul2(c, v2, ib_deriv(c, u2))), power(c, t, small(c, C_M1))));
+        if (c->st != CASIM_OK || contains(c, k, var) || is_k(c, k, 1, 1)) goto no;
+        a = ib_canon(c, add2(c, uv, ib_neg(c, ib_canon(c, mul2(c, u2, v2)))));
+        omk = ib_canon(c, add2(c, small(c, C_1), ib_neg(c, k)));
+        if (c->st != CASIM_OK || !closes(c, a, ib_canon(c, mul2(c, omk, t)))) goto no;
+        F = ib_canon(c, mul2(c, a, power(c, omk, small(c, C_M1))));
+        if (c->st == CASIM_OK) return F;
+        goto no;
+    }
+    W = ib(c, B, w, var, d + 1);
+    if (c->st != CASIM_OK) goto no;
+    c->var = var;
+    if (!closes(c, uv, add2(c, t, w))) goto no;                 /* (uv)' = t + v u', and ∫ v u' was checked */
+    F = ib_canon(c, add2(c, uv, ib_neg(c, W)));
+    if (c->st == CASIM_OK) return F;
+no:
+    if (ib_fail(c, mark)) c->st = CASIM_NOT_INTEGRABLE;
+    return SPARE;
+}
+
+/* ∫ t dvar: a constant, a sum term by term, the table, the rational path, then substitution and parts a level down.
+   d is -1 for the integrand itself, whose table and rational path the wrapper ran already (a canonical form may suit
+   the table where the typed text didn't, so it runs again; the rational path doesn't) */
+static ref ib(ctx *c, ib_t *B, ref t, int var, int d)
+{
+    size_t mark = c->used;
+    ref F;
+    if (c->st != CASIM_OK) return SPARE;
+    if (!contains(c, t, var)) return ib_canon(c, mul2(c, t, leaf(c, K_VAR, var)));
+    if (++B->tries > IB_TRIES || ib_bad(c, t, var)) return c->st == CASIM_OK ? c->st = CASIM_NOT_INTEGRABLE, SPARE : SPARE;
+    if (nd(c, t)->kind == K_ADD) {
+        ref acc = small(c, C_0);
+        for (int i = 0; i < nd(c, t)->n && c->st == CASIM_OK; i++)
+            acc = add2(c, acc, ib(c, B, list(c, nd(c, t)->a)[i], var, d < 0 ? 0 : d));
+        return c->st == CASIM_OK ? ib_canon(c, acc) : SPARE;
+    }
+    F = ib_table(c, t, var);
+    if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+    if (d >= 0) {
+        F = ib_rational(c, B, t, var, d);
+        if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+    }
+    if (d >= IB_DEPTH) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+    /* a level of substitution or parts counts twice against the depth guard: its frames are about two walks' */
+    if (!enter(c)) return SPARE;
+    if (!enter(c)) return c->depth--, SPARE;
+    if (d < 0) d = 0;
+    F = ib_sub(c, B, t, var, d);
+    if (c->st != CASIM_OK && ib_fail(c, mark)) F = ib_parts(c, B, t, var, d);
+    c->depth -= 2;
+    if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+    return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+}
+
+/* rule 2: whether b (canonical) is a denominator's base anywhere in t */
+static bool ib_den(ctx *c, ref t, ref b)
+{
+    const node *x = nd(c, t);
+    bool h = false;
+    if (!enter(c)) return false;
+    if (x->kind == K_POW && cmp(c, x->a, b) == 0 && nd(c, x->b)->kind == K_NUM && val(c, x->b)->p < 0) h = true;
+    else if (x->kind == K_POW || x->kind == K_FN) h = ib_den(c, x->a, b) || (x->kind == K_POW && ib_den(c, nd(c, t)->b, b));
+    else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n && !h; i++) h = ib_den(c, list(c, nd(c, t)->a)[i], b);
+    c->depth--;
+    return h;
+}
+
+/* rule 2: d, a divisor as typed: each factor of its canonical form holding var (a zero of d, or of a divisor inside
+   it) must still be a denominator in t, or canon cancelled a hole (X^2÷X). EXP and ALOG are never 0. */
+static bool ib_keeps(ctx *c, ref d, ref t, int var)
+{
+    ref dc = ib_canon(c, d);
+    const node *x = nd(c, dc);
+    int n = x->kind == K_MUL ? x->n : 1;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref f = x->kind == K_MUL ? list(c, nd(c, dc)->a)[i] : dc, b = f;
+        if (!contains(c, f, var)) continue;
+        if (nd(c, f)->kind == K_POW) b = nd(c, f)->a;
+        if (nd(c, b)->kind == K_FN && (nd(c, b)->id == F_EXP || nd(c, b)->id == F_ALOG)) continue;
+        if (!ib_den(c, t, b)) return false;
+    }
+    return c->st == CASIM_OK;
+}
+
+/* whether t holds s (canonical) as a subtree, or (pow) s as a base to a power that isn't a whole number */
+static bool ib_holds(ctx *c, ref t, ref s, bool pow)
+{
+    const node *x = nd(c, t);
+    bool h = false;
+    if (!enter(c)) return false;
+    if (!pow && cmp(c, t, s) == 0) h = true;
+    else if (pow && x->kind == K_POW && cmp(c, x->a, s) == 0) {
+        const node *e = nd(c, x->b);
+        h = e->kind != K_NUM || val(c, x->b)->q != 1;
+    }
+    if (!h && (x->kind == K_POW || x->kind == K_FN)) h = ib_holds(c, x->a, s, pow) || (x->kind == K_POW && ib_holds(c, nd(c, t)->b, s, pow));
+    else if (!h && (x->kind == K_ADD || x->kind == K_MUL))
+        for (int i = 0; i < x->n && !h; i++) h = ib_holds(c, list(c, nd(c, t)->a)[i], s, pow);
+    c->depth--;
+    return h;
+}
+
+/* rule 2: a typed function that limits var's domain (LN, LOG, ASIN, ACOS, ATANH, ACOSH; TAN's poles), or SQRT or a power
+   that isn't a whole number, must still be in t: canon drops LN(X)-LN(X), 0×LN(X), EXP(LN(X)), TAN(X)^0 and
+   X^(-A)×X^A, and the answer would have a value where the integrand has none */
+static bool ib_domain_kept(ctx *c, ref r, ref t, int var)
+{
+    const node *x = nd(c, r);
+    /* only where the argument or base still holds var once canon has it: (X-X)^4.5 is 0^4.5, defined everywhere */
+    if (x->kind == K_RFN && raw_has_var(c, x->a, var) && contains(c, ib_canon(c, x->a), var)) {
+        x = nd(c, r);
+        switch (x->id) {
+        case F_LN: case F_LOG: case F_ASIN: case F_ACOS: case F_ATANH: case F_ACOSH: case F_TAN:
+            return ib_holds(c, t, ib_canon(c, r), false);
+        case F_SQRT: return ib_holds(c, t, ib_canon(c, x->a), true) || ib_holds(c, t, ib_canon(c, r), false);
+        default: return true;
+        }
+    }
+    if (x->kind == K_BPOW && !raw_has_var(c, x->a, var) && raw_has_var(c, x->b, var)) {
+        ref b = ib_canon(c, nd(c, r)->a);               /* 0^X, (-2)^X as typed: canon may fold 0^X×0^(-X) to 1 */
+        return c->st == CASIM_OK && !(is_num(c, b) && val(c, b)->p <= 0);
+    }
+    x = nd(c, r);
+    if (x->kind == K_BPOW && raw_has_var(c, x->a, var) && !raw_has_var(c, x->b, var) &&
+        contains(c, ib_canon(c, nd(c, r)->a), var)) {
+        ref e = ib_canon(c, nd(c, r)->b);
+        if (nd(c, e)->kind != K_NUM || val(c, e)->q != 1) return ib_holds(c, t, ib_canon(c, nd(c, r)->a), true);
+    }
+    return c->st == CASIM_OK;
+}
+
+/* rule 2: every divisor in the typed tree r (÷'s right side, INV's argument, a base to a constant negative power),
+   the ones nested in them too, kept in t */
+static bool ib_typed_ok(ctx *c, ref r, ref t, int var)
+{
+    const node *x = nd(c, r);
+    bool ok = true;
+    if (r == 0 || r == SPARE || !raw_has_var(c, r, var) || !enter(c)) return true;
+    if (x->kind == K_BDIV) ok = ib_keeps(c, x->b, t, var);
+    else if (x->kind == K_RFN && x->id == F_INV) ok = ib_keeps(c, x->a, t, var);
+    else if (x->kind == K_BPOW && !raw_has_var(c, x->b, var)) {
+        ref e = ib_canon(c, nd(c, r)->b);
+        if (nd(c, e)->kind == K_NUM && val(c, e)->p < 0) ok = ib_keeps(c, nd(c, r)->a, t, var);
+    }
+    if (ok) ok = ib_domain_kept(c, r, t, var);
+    x = nd(c, r);
+    if (ok && (x->kind == K_RFN || x->kind == K_NEG || x->kind == K_GROUP)) ok = ib_typed_ok(c, x->a, t, var);
+    else if (ok && x->kind >= K_BADD && x->kind <= K_BPOW)
+        ok = ib_typed_ok(c, x->a, t, var) && ib_typed_ok(c, nd(c, r)->b, t, var);
+    c->depth--;
+    return ok;
+}
+
+/* rule 6: the sum's terms free of var dropped (an antiderivative is one up to a constant) */
+static ref ib_drop(ctx *c, ref F, int var)
+{
+    ref acc = small(c, C_0);
+    if (nd(c, F)->kind != K_ADD) return F;
+    for (int i = 0; i < nd(c, F)->n; i++)
+        if (contains(c, list(c, nd(c, F)->a)[i], var)) acc = add2(c, acc, list(c, nd(c, F)->a)[i]);
+    return ib_canon(c, acc);
+}
+
+static __attribute__((noinline)) casim_status do_iparts(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                         void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ib_t B = {0, false};
+    ref n = SPARE, t, F = SPARE;
+    if (cap) out[0] = '\0';
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.var = var;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;
+    t = c.st == CASIM_OK ? ib_canon(&c, n) : SPARE;
+    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;
+    if (c.st == CASIM_OK) {
+        c.own_text = true;                      /* from here the parser reads only what casim printed */
+        F = ib(&c, &B, t, var, -1);
+        if (c.st == CASIM_NO_ROOM && !B.starved) c.st = CASIM_NOT_INTEGRABLE;     /* rule 6: room ran out in the search */
+        if (c.st == CASIM_NOT_INTEGRABLE && B.starved) c.st = CASIM_NO_ROOM;
+        if (c.st == CASIM_OK) F = ib_drop(&c, F, var);
+        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;
+        c.s = eqn;
+    }
+    return finish(&c, F, out, cap < SLOT ? cap : SLOT);
+}
+
+/* rule 8: integrate's one page for an integrand only this path answers, ∫(f)dX = F under ANSWER (the working pages are
+   the unit's second build) */
+static __attribute__((noinline)) casim_status ib_steps(const casim_req *rq, int k, casim_step_info *info, char *out,
+                                                        size_t cap, void *arena, size_t arena_cap)
+{
+    size_t n, m = strlen(rq->eqn), p = 4 + m + 3 + 3;          /* "∫(" text ")dX" " = " */
+    casim_status st;
+    memset(info, 0, sizeof *info);
+    if (cap) out[0] = '\0';
+    if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
+    st = do_iparts(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
+    if (st == CASIM_OK) info->count = 1, info->line = CASIM_STEP_RESULT, info->rule = CASIM_RULE_ANSWER;
+    if (st != CASIM_OK || k < 0 || k >= 1) {
+        if (cap) out[0] = '\0';
+        return st != CASIM_OK ? st : k < 0 ? CASIM_OK : CASIM_BAD_ARG;
+    }
+    n = strlen(out);
+    if (p + n + 1 > cap) return out[0] = '\0', CASIM_TOO_LONG;
+    memmove(out + p, out, n + 1);
+    memcpy(out, "\xe2\x88\xab(", 4);
+    memcpy(out + 4, rq->eqn, m);
+    out[4 + m] = ')', out[5 + m] = 'd', out[6 + m] = (char)('A' + rq->var);
+    memcpy(out + 7 + m, " = ", 3);
+    return CASIM_OK;
 }
 
 /* ---- limits (unit CAS 015) ----

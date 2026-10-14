@@ -94,7 +94,7 @@ def examples():
                 yield line("taylor", f[2], f[3], f[6], f[7], repl=f[4], repl2=f[5])
             elif unit == "015":             # id | limit | text | var | point | side | angle | model | answer
                 yield line("limit", f[2], f[3], f[6], f[7], repl=f[4], repl2="" if f[5] == "both" else f[5])
-            elif unit == "016":             # | `casim [--arena N] op args` | `answer` |
+            elif unit in ("016", "017"):    # | `casim [--arena N] op args` | `answer` |
                 if not raw.startswith("| `casim steps"):          # (a steps walk: doc-examples.py, as 013's)
                     yield cli_line(raw.split("`")[1])
             else:

@@ -345,9 +345,11 @@ def all_cases():
     for n in range(36, 58, 2):      # nests the reading walks down, across the guard (NOT_POLYNOMIAL or NO_ROOM)
         rows.append((f"r sweep X^( {n}", "1÷(" + "X^(" * n + "X" + ")" * n + ")", "X", "RAD", "partfrac", None, "35"))
         rows.append((f"r sweep 1÷(1+ {n}", "1÷(1+" * n + "X" + ")" * n, "X", "RAD", "partfrac", None, "35"))
-    # CAS 016: poles in every op, ABS's corner, ∞-∞ of quotients: the visible examples (each `casim ...` row as the bench
-    # runs it; a row's --arena goes, the bench bisecting its own, and steps rows are the steps bench's)
-    with open(os.path.join(ROOT, "work", "016-examples.txt"), encoding="utf-8") as f:
+    # CAS 016 (poles in every op, ABS's corner, ∞-∞ of quotients) and CAS 017 (integrals by substitution and by parts):
+    # the visible examples (each `casim ...` row as the bench runs it; a row's --arena goes, the bench bisecting its own,
+    # and steps rows are the steps bench's)
+    for unit, tag in (("016", "p"), ("017", "17:")):
+      with open(os.path.join(ROOT, "work", unit + "-examples.txt"), encoding="utf-8") as f:
         for i, line in enumerate(f):
             if not line.startswith("| `casim "):
                 continue
@@ -355,7 +357,7 @@ def all_cases():
             if a[0] == "--arena":
                 a = a[2:]
             op, t = a[0], a[1:]
-            name = f"p {i} {op}"
+            name = f"{tag} {i} {op}"
             if op == "steps":
                 continue
             if op in ("simplify", "expand"):
@@ -366,6 +368,12 @@ def all_cases():
                 rows.append((name, t[0], t[1], t[4], op, t[2] + "|" + t[3], "35"))
             else:
                 rows.append((name, t[0], t[1], t[2], op, None, "35"))
+    # CAS 017's recursion over a deep subtree: parts, the parts chain and a substitution, each beside a constant nest
+    # canon walks at every level (the stack gate through the keys: each level counts twice against the depth guard)
+    for n in (30, 34, 38, 40):
+        for name, pre, fn_ in (("parts", "X×EXP(X)×", "SIN"), ("LN^4", "LN(X)^4×", "COS"), ("sub", "X×EXP(X^2)×", "SIN")):
+            rows.append((f"17: {name} beside a {n} nest", pre + (fn_ + "(") * n + "1" + ")" * n, "X", "RAD", "integrate",
+                         None, "35"))
     # CAS 013: integrals of rational functions, the visible examples and the heaviest forms
     with open(os.path.join(ROOT, "work", "013-examples.txt"), encoding="utf-8") as f:
         for line in f:

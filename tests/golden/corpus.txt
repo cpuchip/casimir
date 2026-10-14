@@ -7,7 +7,8 @@
 # nesting at 45 and 46 levels is NO_ROOM), re-recorded from the commit that made it; CAS 013 moved 3 (1÷(X^2-1) at
 # three budgets: integrals of rational functions), re-recorded from its commit; CAS 016 moved 12 (6 poles to UNDEFINED,
 # 2 Taylor rows at 64 KB answered with the 1,024 B buffer, 1 limit inside 8 KB, 3 with TANH(0) or ALOG(0) folded),
-# re-recorded from its commit.
+# re-recorded from its commit; CAS 017 moved 28 (integrals by substitution and by parts: 25 refusals answered, 2 to
+# NO_ROOM where the rational path ran out at 8 KB, 1 to UNDEFINED for a pole), re-recorded from its commit.
 derive	35	24	1	35	65536	65536	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	24	1	35	8192	192	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	23	0	35	65536	65536	(ALOG(X))×(-(X))	\N	\N	OK	-ALOG(X)-X×LN(10)×ALOG(X)
@@ -612,10 +613,10 @@ integrate	1	23	1	1	65536	65536	X^2^3	\N	\N	OK	X^9÷9
 integrate	1	23	1	1	8192	192	X^2^3	\N	\N	OK	X^9÷9
 integrate	35	23	1	35	65536	65536	X^2^3	\N	\N	OK	X^7÷7
 integrate	35	23	1	35	8192	192	X^2^3	\N	\N	OK	X^7÷7
-integrate	35	23	1	35	65536	65536	X×LN(X)	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	8192	192	X×LN(X)	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	65536	65536	X×EXP(X^2)	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	8192	192	X×EXP(X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×LN(X)	\N	\N	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	8192	192	X×LN(X)	\N	\N	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)	\N	\N	OK	0.5×EXP(X^2)
+integrate	35	23	1	35	8192	192	X×EXP(X^2)	\N	\N	OK	0.5×EXP(X^2)
 integrate	35	23	1	35	65536	65536	1÷(X^2-1)	\N	\N	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
 integrate	35	23	1	35	8192	192	1÷(X^2-1)	\N	\N	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
 integrate	35	23	1	35	65536	65536	SIN(X)^2	\N	\N	NOT_INTEGRABLE	
@@ -1625,8 +1626,8 @@ integrate	35	23	1	35	8192	65536	A×X^2+B	\N	\N	OK	A×X^3÷3+B×X
 integrate	35	23	1	35	8192	65536	3×COS(X)-2÷X	\N	\N	OK	-2×LN(ABS(X))+3×SIN(X)
 integrate	1	23	1	1	8192	65536	X^2^3	\N	\N	OK	X^9÷9
 integrate	35	23	1	35	8192	65536	X^2^3	\N	\N	OK	X^7÷7
-integrate	35	23	1	35	8192	65536	X×LN(X)	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	8192	65536	X×EXP(X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X×LN(X)	\N	\N	OK	-0.25×X^2+0.5×X^2×LN(X)
+integrate	35	23	1	35	8192	65536	X×EXP(X^2)	\N	\N	OK	0.5×EXP(X^2)
 integrate	35	23	1	35	8192	65536	1÷(X^2-1)	\N	\N	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
 integrate	35	23	1	35	8192	65536	SIN(X)^2	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	65536	X^2÷X	\N	\N	NOT_INTEGRABLE	
@@ -2397,7 +2398,7 @@ pdiv	35	23	2	35	8192	65536	(2×X-0)×(X^2-2)	(3×X--5)×(2×X--1)×(X^2-2)	\N	OK
 simplify	1	23	0	1	65536	65536	LN((3)+((X)-(π)))	\N	\N	OK	LN(X-π+3)
 subst	1	23	0	1	8192	65536	((Y)÷((7)+(2)))×((ALOG(7))^((π)^(3)))	X	\N	OK	Y×ALOG(7)^(π^3)÷9
 pgcd	33	23	0	33	8192	65536	-9×X^0	(4×X--6)×(3×X--5)×(X^3-2)	\N	OK	1
-integrate	35	23	1	35	8192	65536	((((1E3)÷(X))÷((X)×(3)))+(((0.5)×(Y))+((Y)+(π))))÷(3)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	((((1E3)÷(X))÷((X)×(3)))+(((0.5)×(Y))+((Y)+(π))))÷(3)	\N	\N	OK	-1000÷9÷X+0.5×X×Y+X×π÷3
 collect	1	23	1	1	8192	65536	((((3)^(1E3))^(3))×(0.5))×(SGN(((X)^(X))÷(ATAN(0.5))))	\N	\N	OK	0.5×SGN(X^X÷ATAN(0.5))×3^3000
 collect	1	23	2	1	8192	65536	ACOS((((X)÷(3))-((7)×(1E3)))+((1E3)+(3)))	\N	\N	OK	ACOS(X÷3-5997)
 collect	35	23	1	35	8192	65536	(SQRT(((-4)÷(Y))+((0.5)÷(2))))÷(X)	\N	\N	OK	SQRT(-4÷Y+0.25)×X^(-1)
@@ -2447,7 +2448,7 @@ expand	1	23	2	1	65536	65536	((SIN((X)×(1.5)))×(-4))^(((X)÷(0.5))-(COSH(1.5)))
 subst	35	23	0	35	8192	65536	(((7)+(2))-(1.5))^((COSH(3))-(2))	(3)^(LOG(π))	\N	OK	7.5^(COSH(3)-2)
 cancel	35	23	2	35	65536	65536	((4×X-4)×(4×X-3)×(X^3-2))÷((4×X-1))	\N	\N	OK	4×(X-1)×(X-0.75)×(X^3-2)÷(X-0.25)
 expand	35	23	1	35	8192	65536	1E3	\N	\N	OK	1000
-integrate	35	23	0	35	8192	65536	SQRT((INV((3)-(-4)))×(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	0	35	8192	65536	SQRT((INV((3)-(-4)))×(X))	\N	\N	OK	14×(X÷7)^1.5÷3
 derive	35	24	0	35	65536	65536	((COSH(0.5))+((0.5)÷(SINH(1E3))))×((7)^(((2)^(X))^(π)))	\N	\N	OK	0
 solve	35	23	0	35	8192	65536	(2×X--4)×(1×X--4)	\N	\N	OK	SOLVED: X=-4; X=-2
 pgcd	33	23	0	33	8192	65536	4×X^0+-5×X^1+-1×X^2+-6×X^3+8×X^4	-1×X^0+-1×X^1	\N	OK	1
@@ -2456,7 +2457,7 @@ simplify	35	23	1	35	8192	65536	3	\N	\N	OK	3
 pdiv	35	23	2	35	65536	65536	(1×X-6)	(4×X-2)×(4×X--5)×(X^3-2)	\N	OK	0; X-6
 integrate	35	23	0	35	8192	65536	(ATAN(0.5))÷(Y)	\N	\N	OK	X×ATAN(0.5)÷Y
 integrate	1	23	0	1	8192	65536	(0.5)-(SQRT(((1E3)^(1E3))-((0.5)×(7))))	\N	\N	OK	0.5×X-X×SQRT(1000^1000-3.5)
-integrate	35	23	1	35	65536	65536	((((π)+(0.5))-(ATAN(3)))-(2))-(ASIN(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	((((π)+(0.5))-(ATAN(3)))-(2))-(ASIN(X))	\N	\N	OK	-1.5×X-SQRT(-X^2+1)+X×π-X×ASIN(X)-X×ATAN(3)
 expand	35	23	0	35	8192	65536	((-4)÷(((7)×(7))+((7)×(X))))-((1.5)÷((1.5)-(2)))	\N	\N	OK	-4÷7÷(X+7)+3
 simplify	1	23	2	1	65536	65536	1E3	\N	\N	OK	1000
 solve	35	23	0	35	65536	65536	3×X^0+-3×X^1+-7×X^2+2×X^3+3×X^4+-9×X^5	\N	\N	OK	PARTIAL, DEGREE 5 LEFT
@@ -2891,7 +2892,7 @@ solve	35	23	0	35	8192	65536	(1×X--5)×(3×X-4)×(4×X--3)×(X^2+1)	\N	\N	OK	SOL
 expand	33	23	1	33	8192	65536	(ALOG((-4)+(X)))÷(7)	\N	\N	OK	ALOG(X-4)÷7
 solve	33	23	2	33	8192	65536	(4×X--4)×(4×X-0)×(X^3-2)	\N	\N	OK	PARTIAL, DEGREE 3 LEFT: X=-1; X=0
 simplify	33	23	0	33	8192	65536	(ATAN(SIN(X)))^(ACOS(0.5))	\N	\N	OK	ATAN(SIN(X))^60
-integrate	35	23	1	35	8192	65536	(π)÷((X)×(((3)^(1E3))+(SINH(π))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	(π)÷((X)×(((3)^(1E3))+(SINH(π))))	\N	\N	OK	π×LN(ABS(X))÷(SINH(π)+3^1000)
 simplify	33	23	0	33	65536	65536	X	\N	\N	OK	X
 solve	35	23	1	35	8192	65536	(2×X-2)×(4×X-1)×(X^3-2)	\N	\N	OK	PARTIAL, DEGREE 3 LEFT: X=1÷4; X=1
 factor	35	23	0	35	65536	65536	(3×X--2)	\N	\N	OK	3×X+2
@@ -3049,7 +3050,7 @@ cancel	35	23	1	35	8192	65536	((4×X--1)×(1×X--6)×(1×X-5)×(X^2+1))÷((2×X-4
 simplify	33	23	1	33	8192	65536	π	\N	\N	OK	π
 subst	1	23	1	1	8192	65536	2	(SQRT(X))-((2)×(0.5))	\N	OK	2
 cancel	35	23	1	35	8192	65536	((1×X-1)×(4×X-0)×(X^2-2))÷((3×X--6)×(2×X--6)×(1×X-0)×(X^2+1))	\N	\N	OK	-4×(X+0.5×X^2-0.5×X^3-1)÷15÷(X+1.4×X^2+X^3+0.2×X^4+1.2); X=0
-integrate	35	23	2	35	8192	65536	((SQRT(1E3))×(((X)-(7))÷((X)×(2))))+((ABS((3)+(1.5)))+(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	2	35	8192	65536	((SQRT(1E3))×(((X)-(7))÷((X)×(2))))+((ABS((3)+(1.5)))+(X))	\N	\N	OK	4.5×X+0.5×X^2+0.5×(X-7×LN(ABS(X)))×SQRT(1000)
 pgcd	33	23	1	33	8192	65536	(4×X--3)×(2×X--4)	2×X^0	\N	OK	1
 pdiv	1	23	0	1	8192	65536	-2×X^0+-1×X^1+-8×X^2+3×X^3	-1×X^0+-5×X^1+-6×X^2	\N	OK	-0.5×X+1.75; 7.25×X-0.25
 pgcd	33	23	2	33	8192	65536	3×X^0	-9×X^0+5×X^1+1×X^2	\N	OK	1
@@ -3095,7 +3096,7 @@ simplify	35	23	0	35	8192	65536	((ABS((1.5)^(Y)))^(((0.5)×(π))×((1.5)+(3))))÷
 derive	1	23	1	1	8192	65536	(LN(((-4)+(π))+((1E3)×(7))))×(COS(1.5))	\N	\N	OK	0
 subst	35	23	2	35	65536	65536	3	(π)+(3)	\N	OK	3
 solve	33	23	0	33	65536	65536	9×X^0+9×X^1	\N	\N	OK	SOLVED: X=-1
-integrate	1	23	2	1	8192	65536	(TAN(Y))×((LOG((X)-(X)))^(SGN((X)+(7))))	\N	\N	NOT_INTEGRABLE	
+integrate	1	23	2	1	8192	65536	(TAN(Y))×((LOG((X)-(X)))^(SGN((X)+(7))))	\N	\N	UNDEFINED	
 subst	35	23	2	35	8192	65536	(X)+(TAN((0.5)×(-4)))	3	\N	OK	TAN(-2)+3
 defint	35	23	1	35	8192	65536	(((X)×(0.5))^(ABS(1E3)))+(0.5)	0	-2	NOT_INTEGRABLE	
 integrate	35	24	1	35	8192	65536	(((SINH(Y))-((π)^(3)))÷(ACOS((1.5)×(7))))×((((7)×(0.5))+(LOG(3)))×(X))	\N	\N	OK	X×(LOG(3)+3.5)×(COSH(Y)-Y×π^3)÷ACOS(10.5)
@@ -3171,7 +3172,7 @@ simplify	35	23	0	35	8192	65536	-4	\N	\N	OK	-4
 cancel	1	23	2	1	65536	65536	((3×X--2)×(X^3-2))÷((4×X-5)×(4×X-4)×(X^2-2))	\N	\N	OK	0.1875×(X+2÷3)×(X^3-2)÷(X-1.25)÷(X-1)÷(X^2-2)
 expand	35	23	1	35	8192	65536	((((2)+(1E3))×((Y)÷(Y)))-((π)÷((1.5)-(1.5))))-(COS(Y))	\N	\N	UNDEFINED	
 defint	35	23	1	35	8192	65536	7	π÷4	2	OK	-7×π÷4+14
-integrate	1	23	1	1	8192	65536	EXP((1E3)×(((π)×(X))+(3)))	\N	\N	NOT_INTEGRABLE	
+integrate	1	23	1	1	8192	65536	EXP((1E3)×(((π)×(X))+(3)))	\N	\N	OK	0.001×EXP(1000×X×π+3000)÷π
 cancel	33	23	1	33	8192	65536	((2×X-3)×(4×X-0))÷((4×X-3))	\N	\N	OK	2×X×(X-1.5)÷(X-0.75)
 pdiv	35	23	2	35	65536	65536	8×X^0	(2×X-4)×(1×X--4)×(X^2-2)	\N	OK	0; 8
 integrate	33	24	0	33	8192	65536	-4	\N	\N	OK	-4×Y
@@ -3471,7 +3472,7 @@ defint	1	23	1	1	8192	65536	(SQRT((1.5)÷(-4)))-(((3)+(7))÷(Y))	1	2	OK	-10÷Y+SQ
 integrate	35	23	2	35	8192	65536	(LN(-4))×(1.5)	\N	\N	OK	1.5×X×LN(-4)
 factor	35	23	0	35	8192	65536	-1×X^0+1×X^1	\N	\N	OK	X-1
 integrate	35	23	1	35	8192	65536	(1E3)^(COSH(1.5))	\N	\N	OK	X×1000^COSH(1.5)
-integrate	35	23	1	35	65536	65536	SQ((2)×((SIN(π))×((-4)-(X))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SQ((2)×((SIN(π))×((-4)-(X))))	\N	\N	OK	0
 solve	35	23	1	35	8192	65536	6×X^0+4×X^1+9×X^2+8×X^3+-8×X^4	\N	\N	OK	PARTIAL, DEGREE 4 LEFT
 pgcd	35	23	1	35	8192	65536	-2×X^0	-7×X^0+4×X^1+-1×X^2	\N	OK	1
 simplify	1	23	1	1	65536	65536	LOG(3)	\N	\N	OK	LOG(3)
@@ -3779,7 +3780,7 @@ factor	35	23	2	35	65536	65536	7×X^0+-9×X^1+-7×X^2+2×X^3	\N	\N	OK	-9×X-7×X^
 cancel	1	23	1	1	8192	65536	((2×X--3)×(X^2-2))÷((2×X-2)×(X^2-2))	\N	\N	OK	(X+1.5)÷(X-1); X^2-2=0
 solve	33	23	0	33	65536	65536	-5×X^0+6×X^1+1×X^2	\N	\N	OK	SOLVED: X=-3-SQRT(14); X=-3+SQRT(14)
 expand	35	23	2	35	8192	65536	((1E3)÷(-4))-(X)	\N	\N	OK	-X-250
-integrate	33	23	1	33	65536	65536	ALOG(((X)×((1.5)^(0.5)))+(EXP((X)-(X))))	\N	\N	NOT_INTEGRABLE	
+integrate	33	23	1	33	65536	65536	ALOG(((X)×((1.5)^(0.5)))+(EXP((X)-(X))))	\N	\N	OK	ALOG(X×SQRT(1.5)+1)÷LN(10)÷SQRT(1.5)
 defint	35	23	1	35	65536	65536	(((Y)^(-4))+(0.5))^((COSH(1.5))^(Y))	π÷4	π	OK	3×π×(1÷Y^4+0.5)^(COSH(1.5)^Y)÷4
 collect	35	23	2	35	8192	65536	EXP((((π)+(7))÷((-4)^(3)))÷(SQ((1.5)+(X))))	\N	\N	OK	EXP(-0.015625×(π+7)÷(X+1.5)^2)
 factor	33	23	2	33	65536	65536	-5×X^0+-2×X^1+8×X^2+-3×X^3+0×X^4+-6×X^5+-3×X^6	\N	\N	OK	-1×(2×X-8×X^2+3×X^3+6×X^5+3×X^6+5)
@@ -5023,7 +5024,7 @@ subst	35	23	1	35	8192	65536	ATAN((0.5)-(X))	7	\N	OK	ATAN(-6.5)
 derive	1	24	1	1	8192	65536	2	\N	\N	OK	0
 expand	1	23	1	1	65536	65536	(TANH((TAN(1E3))^((-4)×(Y))))÷(COS(((1E3)×(1.5))^((π)-(X))))	\N	\N	OK	TANH(TAN(1000)^(-4×Y))÷COS(1500^(-X+π))
 solve	1	23	0	1	65536	65536	0×X^0+0×X^1+2×X^2+-6×X^3	\N	\N	OK	SOLVED: X=0 (MULT 2); X=1÷3
-integrate	35	24	0	35	8192	65536	COS((((-4)+(0.5))×((X)÷(X)))×(((0.5)×(3))×(Y)))	\N	\N	NOT_INTEGRABLE	
+integrate	35	24	0	35	8192	65536	COS((((-4)+(0.5))×((X)÷(X)))×(((0.5)×(3))×(Y)))	\N	\N	OK	-240×SIN(-5.25×Y)÷7÷π
 defint	35	23	2	35	8192	65536	EXP(((π)+(-4))-((3)^(Y)))	1	-2	OK	-3×EXP(π-3^Y-4)
 derive	33	23	1	33	8192	65536	((((3)÷(1E3))×(ACOS(X)))-(((1E3)+(3))^(X)))+(COS(X))	\N	\N	OK	-SIN(X)-0.003÷SQRT(-X^2+1)-LN(1003)×1003^X
 pgcd	1	23	1	1	8192	65536	(1×X-6)×(2×X--3)×(4×X-5)	(2×X--6)×(X^2+1)	\N	OK	1
@@ -5554,7 +5555,7 @@ pgcd	1	23	0	1	65536	65536	-2×X^0+4×X^1+-5×X^2+-6×X^3	(1×X-4)×(2×X-3)×(2�
 derive	33	23	1	33	65536	65536	((((X)÷(0.5))+((X)+(0.5)))^(1.5))^(2)	\N	\N	OK	81×(X+1÷6)^2
 factor	35	23	1	35	65536	65536	5×X^0+9×X^1	\N	\N	OK	9×X+5
 cancel	33	23	2	33	8192	65536	((3×X--1)×(4×X--3)×(X^2+1))÷((1×X--3)×(2×X--6)×(1×X-3)×(X^3-2))	\N	\N	OK	6×(X+1÷3)×(X+0.75)×(X^2+1)÷(X-3)÷(X+3)^2÷(X^3-2)
-integrate	35	24	0	35	8192	65536	((((1.5)÷(X))÷((0.5)×(-4)))×(((Y)-(Y))^(SIN(0.5))))×((((0.5)×(Y))-((π)^(1.5)))÷(INV(7)))	\N	\N	NOT_INTEGRABLE	
+integrate	35	24	0	35	8192	65536	((((1.5)÷(X))÷((0.5)×(-4)))×(((Y)-(Y))^(SIN(0.5))))×((((0.5)×(Y))-((π)^(1.5)))÷(INV(7)))	\N	\N	OK	-1.3125×(Y^2-4×Y×π^1.5)×0^SIN(0.5)÷X
 solve	35	23	0	35	8192	65536	1×X^0+-7×X^1+-7×X^2+-2×X^3	\N	\N	OK	PARTIAL, DEGREE 3 LEFT
 defint	33	23	1	33	65536	65536	(((3)+(Y))÷((1E3)^(-4)))^(((X)-(7))×((π)+(-4)))	0.5	3	NOT_INTEGRABLE	
 defint	35	23	0	35	8192	65536	0.5	-1	π	OK	π÷2+0.5
@@ -5731,7 +5732,7 @@ pdiv	1	23	1	1	8192	65536	(3×X-0)×(3×X--2)×(2×X-2)×(2×X-0)	(1×X-0)×(2×X
 pdiv	1	23	2	1	8192	65536	(2×X-0)×(2×X-2)×(X^2-2)	-4×X^0	\N	OK	-2×X+2×X^2+X^3-X^4; 0
 collect	1	24	1	1	65536	65536	-4	\N	\N	OK	-4
 integrate	35	23	0	35	65536	65536	X	\N	\N	OK	0.5×X^2
-integrate	1	23	1	1	8192	65536	(π)÷((((X)÷(π))×((1E3)-(7)))×(LOG((1.5)+(3))))	\N	\N	NOT_INTEGRABLE	
+integrate	1	23	1	1	8192	65536	(π)÷((((X)÷(π))×((1E3)-(7)))×(LOG((1.5)+(3))))	\N	\N	OK	π^2×LN(ABS(X))÷993÷LOG(4.5)
 subst	35	23	1	35	65536	65536	(X)×(((π)^(7))×((0.5)÷(1E3)))	(-4)^((2)-(X))	\N	OK	π^7×(-4)^(-X+2)÷2000
 subst	35	23	0	35	8192	65536	7	((-4)+(1.5))×(-4)	\N	OK	7
 cancel	33	23	1	33	65536	65536	((4×X-4))÷((4×X--5)×(X^3-2))	\N	\N	OK	(X-1)÷(X+1.25)÷(X^3-2)
@@ -5908,7 +5909,7 @@ collect	35	23	1	35	65536	65536	X	\N	\N	OK	X
 integrate	35	23	0	35	8192	65536	TAN((3)+(SQ((0.5)^(1.5))))	\N	\N	OK	X×TAN(3.125)
 subst	35	23	1	35	65536	65536	-4	(2)^((1.5)÷(1E3))	\N	OK	-4
 cancel	1	23	1	1	8192	65536	((2×X--6)×(3×X-4)×(X^2+1))÷((2×X-5)×(3×X--1)×(4×X-6)×(X^2-2))	\N	\N	OK	0.25×(X-4÷3)×(X+3)×(X^2+1)÷(X-2.5)÷(X-1.5)÷(X+1÷3)÷(X^2-2)
-integrate	35	23	1	35	8192	65536	((((X)-(X))^((3)+(1.5)))-(0.5))×((ATAN(7))÷(3))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	((((X)-(X))^((3)+(1.5)))-(0.5))×((ATAN(7))÷(3))	\N	\N	OK	-X×ATAN(7)÷6
 defint	33	23	1	33	8192	65536	2	-1	2	OK	6
 collect	1	23	1	1	65536	65536	(7)-(((TAN(Y))^((7)+(-4)))×(((Y)÷(Y))×((π)^(π))))	\N	\N	OK	(-π^π×TAN(Y)^3+7)
 pgcd	35	23	1	35	65536	65536	(4×X-6)×(1×X-4)×(2×X-0)×(3×X-6)×(X^2+1)	(3×X--1)×(2×X--1)×(4×X-5)×(3×X-3)	\N	OK	1
@@ -6401,7 +6402,7 @@ factor	1	23	2	1	8192	65536	-5×X^0	\N	\N	OK	-5
 derive	33	23	1	33	8192	65536	(ACOS(((2)-(1.5))×(ACOS(X))))÷(2)	\N	\N	OK	0.25÷SQRT(-X^2+1)÷SQRT(-0.25×ACOS(X)^2+1)
 defint	1	23	1	1	8192	65536	(X)÷((ACOS(0.5))+(ATAN(X)))	0	2	NOT_INTEGRABLE	
 pdiv	35	23	1	35	8192	65536	(3×X-4)×(2×X--6)×(1×X-3)×(3×X-1)×(X^3-2)	(3×X-6)×(4×X--5)×(X^3-2)	\N	OK	-1.375×X+1.5×X^2-971÷96; -275.4375×X-375.4375×X^3+137.71875×X^4+750.875
-integrate	35	23	1	35	8192	65536	(X)×((((1.5)÷(1E3))-(SINH(X)))÷(((3)^(7))^(ASIN(π))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	(X)×((((1.5)÷(1E3))-(SINH(X)))÷(((3)^(7))^(ASIN(π))))	\N	\N	OK	0.0015×X×(X-2000×COSH(X)÷3)×2187^(-ASIN(π))+(SINH(X)-0.00075×X^2)×2187^(-ASIN(π))
 solve	35	23	2	35	8192	65536	1×X^0+5×X^1+2×X^2+-3×X^3+-7×X^4+7×X^5+6×X^6	\N	\N	OK	PARTIAL, DEGREE 6 LEFT
 subst	35	23	1	35	8192	65536	((SQRT(7))+((2)÷(2)))÷(LOG((-4)^(1E3)))	0.5	\N	OK	(SQRT(7)+1)÷LOG((-4)^1000)
 solve	1	23	1	1	65536	65536	0×X^0+4×X^1+-3×X^2+3×X^3+-7×X^4+2×X^5	\N	\N	OK	PARTIAL, DEGREE 4 LEFT: X=0
@@ -6713,7 +6714,7 @@ subst	35	23	1	35	8192	65536	(((0.5)+(X))^(X))+(((3)-(1.5))-((2)÷(7)))	2	\N	OK	2
 cancel	35	23	1	35	8192	65536	((4×X-2)×(X^2-2))÷((3×X-0)×(X^3-2))	\N	\N	OK	4×(X-0.5)×(X^2-2)÷3÷X÷(X^3-2)
 subst	35	23	1	35	8192	65536	1.5	3	\N	OK	1.5
 expand	35	23	1	35	8192	65536	((((0.5)×(X))-(SIN(7)))÷(ATAN((X)+(1E3))))^((1E3)-(3))	\N	\N	TOO_LONG	
-integrate	33	23	1	33	8192	65536	((ALOG((X)-(X)))-(((Y)-(π))+((2)÷(Y))))×(((TAN(7))×(SQRT(π)))+(((7)÷(-4))÷(SIN(1.5))))	\N	\N	NOT_INTEGRABLE	
+integrate	33	23	1	33	8192	65536	((ALOG((X)-(X)))-(((Y)-(π))+((2)÷(Y))))×(((TAN(7))×(SQRT(π)))+(((7)÷(-4))÷(SIN(1.5))))	\N	\N	OK	1.75×X×(Y-π+2÷Y-1)×(1÷SIN(1.5)-4×SQRT(π)×TAN(7)÷7)
 solve	33	23	1	33	65536	65536	9×X^0+1×X^1+1×X^2+-3×X^3+0×X^4	\N	\N	OK	PARTIAL, DEGREE 3 LEFT
 derive	35	23	2	35	8192	65536	((X)-(LN((1.5)÷(X))))^(SGN(π))	\N	\N	NOT_DIFFERENTIABLE	SGN
 pgcd	35	23	2	35	65536	65536	(3×X--4)×(X^2-2)	(4×X-3)×(3×X--1)×(2×X-5)×(4×X-0)×(X^3-2)	\N	OK	1
@@ -6795,7 +6796,7 @@ cancel	1	23	1	1	8192	65536	((2×X--6)×(4×X--6)×(3×X--1)×(3×X-4)×(X^2-2))�
 derive	1	23	1	1	8192	65536	(ALOG(SQ((7)^(-4))))^(-4)	\N	\N	OK	0
 derive	35	24	1	35	8192	65536	π	\N	\N	OK	0
 cancel	33	23	1	33	8192	65536	((4×X-5)×(4×X-6)×(4×X-0)×(X^3-2))÷((2×X-0)×(X^2-2))	\N	\N	OK	176×(X-4×X^2÷11+15×X^3÷44-0.5×X^4+2×X^5÷11-15÷22)÷(X^2-2); X=0
-integrate	33	23	1	33	8192	65536	LN(ALOG(X))	\N	\N	NOT_INTEGRABLE	
+integrate	33	23	1	33	8192	65536	LN(ALOG(X))	\N	\N	OK	0.5×LN(ALOG(X))^2÷LN(10)
 integrate	33	24	1	33	8192	65536	(LOG(X))÷(0.5)	\N	\N	OK	2×Y×LOG(X)
 simplify	35	23	1	35	8192	65536	X	\N	\N	OK	X
 solve	35	23	2	35	8192	65536	3×X^0+-2×X^1+1×X^2+-8×X^3+9×X^4+-8×X^5+-8×X^6	\N	\N	OK	PARTIAL, DEGREE 6 LEFT
@@ -6808,7 +6809,7 @@ solve	33	23	1	33	8192	65536	(2×X-4)×(1×X-0)×(2×X--2)×(3×X--6)×(X^3-2)	\N
 integrate	1	24	1	1	8192	65536	((ACOS((1E3)÷(0.5)))×((2)+(2)))÷((X)×(((π)^(X))-(TAN(-4))))	\N	\N	OK	-4×Y×ACOS(2000)÷X÷(TAN(-4)-π^X)
 expand	33	23	1	33	8192	65536	(X)^((((2)-(-4))÷(2))+(3))	\N	\N	OK	X^6
 solve	33	23	1	33	65536	65536	-9×X^0+9×X^1+-9×X^2+-7×X^3+-1×X^4+-6×X^5	\N	\N	OK	PARTIAL, DEGREE 5 LEFT
-integrate	35	23	1	35	8192	65536	EXP((((X)×(2))-(SINH(1E3)))÷(SQ(ASIN(0.5))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	EXP((((X)×(2))-(SINH(1E3)))÷(SQ(ASIN(0.5))))	\N	\N	OK	π^2×EXP(72×(X-0.5×SINH(1000))÷π^2)÷72
 expand	33	23	0	33	8192	65536	(((X)^(LOG(Y)))^((1.5)-(π)))-(-4)	\N	\N	OK	(X^LOG(Y))^(-π+1.5)+4
 derive	33	24	2	33	65536	65536	1.5	\N	\N	OK	0
 simplify	1	23	2	1	65536	65536	((ALOG(X))+((SQ(Y))+((3)÷(Y))))-((INV((2)×(X)))÷(((3)×(X))×((Y)×(π))))	\N	\N	OK	ALOG(X)+3÷Y+Y^2-1÷6÷X^2÷Y÷π
@@ -7159,7 +7160,7 @@ factor	35	23	0	35	65536	65536	(2×X-4)×(X^2+1)	\N	\N	OK	2×(X-2)×(X^2+1)
 subst	33	23	1	33	8192	65536	((0.5)+(TANH(π)))÷((SQ(1.5))-(X))	LN((Y)+(X))	\N	OK	-(TANH(π)+0.5)÷(LN(X+Y)-2.25)
 cancel	1	23	2	1	8192	65536	((3×X-2)×(2×X-3)×(X^2-2))÷((2×X-5)×(1×X--2)×(4×X-2)×(X^3-2))	\N	\N	OK	0.75×(X-1.5)×(X-2÷3)×(X^2-2)÷(X-2.5)÷(X-0.5)÷(X+2)÷(X^3-2)
 pgcd	33	23	1	33	65536	65536	(3×X-4)×(3×X-0)×(X^2-2)	5×X^0	\N	OK	1
-integrate	33	23	2	33	8192	65536	(2)÷((((X)+(X))÷((Y)×(2)))÷(π))	\N	\N	NOT_INTEGRABLE	
+integrate	33	23	2	33	8192	65536	(2)÷((((X)+(X))÷((Y)×(2)))÷(π))	\N	\N	OK	2×Y×π×LN(ABS(X))
 derive	33	24	1	33	8192	65536	3	\N	\N	OK	0
 pgcd	35	23	1	35	8192	65536	9×X^0+8×X^1+-1×X^2+-2×X^3+-7×X^4	(1×X--4)×(1×X--4)×(3×X-2)×(2×X-1)×(X^3-2)	\N	OK	1
 expand	33	23	2	33	8192	65536	π	\N	\N	OK	π
@@ -7227,7 +7228,7 @@ subst	1	23	0	1	65536	65536	((7)÷(0.5))-(((7)+(1.5))×(X))	(ALOG(2))-((X)×(X))	
 subst	35	23	1	35	8192	65536	(X)÷(ASIN(TAN(7)))	(0.5)^((-4)÷(X))	\N	OK	0.5^(-4÷X)÷ASIN(TAN(7))
 cancel	1	23	1	1	65536	65536	((3×X-0)×(2×X--5))÷((4×X-4)×(4×X-6)×(1×X--1)×(4×X-6)×(X^3-2))	\N	\N	OK	0.09375×X×(X+2.5)÷(X-1.5)^2÷(X-1)÷(X+1)÷(X^3-2)
 factor	1	23	1	1	8192	65536	-5×X^0	\N	\N	OK	-5
-integrate	35	23	2	35	8192	65536	((((X)^(1.5))÷(π))×((Y)×(X)))×(1.5)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	2	35	8192	65536	((((X)^(1.5))÷(π))×((Y)×(X)))×(1.5)	\N	\N	OK	3×X^3.5×Y÷7÷π
 defint	33	23	0	33	65536	65536	1.5	0.5	1	OK	0.75
 integrate	35	24	1	35	65536	65536	((X)-(((Y)-(0.5))^(COSH(X))))^((((0.5)×(-4))-((X)×(1E3)))+(COS(-4)))	\N	\N	NOT_INTEGRABLE	
 derive	35	24	2	35	8192	65536	(0.5)-(TAN(X))	\N	\N	OK	0
@@ -8861,8 +8862,8 @@ integrate	35	23	1	35	65536	65536	1÷(X^2-2)	\N	\N	NOT_INTEGRABLE
 integrate	35	23	1	35	8192	192	1÷(X^2-2)	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	65536	65536	1÷(X^2+1)^2	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	192	1÷(X^2+1)^2	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	65536	65536	SIN(X)+1÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	8192	192	SIN(X)+1÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SIN(X)+1÷(X^2-1)	\N	\N	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)
+integrate	35	23	1	35	8192	192	SIN(X)+1÷(X^2-1)	\N	\N	NO_ROOM	
 integrate	35	23	1	35	65536	65536	(X+A)÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	192	(X+A)÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	65536	65536	1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))	\N	\N	TOO_LONG	
@@ -8891,7 +8892,7 @@ integrate	35	23	0	35	8192	65536	1÷(X^2+1)	\N	\N	OK	π×ATAN(X)÷180
 integrate	35	23	2	35	8192	65536	1÷(1-X^4)	\N	\N	OK	-0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+π×ATAN(X)÷400
 integrate	35	23	1	35	8192	65536	1÷(X^2-2)	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	65536	1÷(X^2+1)^2	\N	\N	NOT_INTEGRABLE	
-integrate	35	23	1	35	8192	65536	SIN(X)+1÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SIN(X)+1÷(X^2-1)	\N	\N	NO_ROOM	
 integrate	35	23	1	35	8192	65536	(X+A)÷(X^2-1)	\N	\N	NOT_INTEGRABLE	
 integrate	35	23	1	35	8192	65536	1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))	\N	\N	NO_ROOM	
 integrate	35	23	1	35	8192	65536	(X^6+1)÷((3×X+7)^3×(5×X-11)^2×(2×X+3))	\N	\N	TOO_LONG	
@@ -10108,3 +10109,400 @@ solve	35	23	1	35	8192	65536	X÷0=1	\N	\N	NOT_NUMERIC
 cancel	35	23	1	35	8192	65536	(X^2-1)÷(X-TAN(π÷2))	\N	\N	UNDEFINED	
 partfrac	35	23	1	35	8192	65536	1÷(X^2-LN(0))	\N	\N	UNDEFINED	
 pdiv	35	23	1	35	8192	65536	X^2	X-ATANH(1)	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	TAN(π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	TAN(π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	TAN(-π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	TAN(-π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	TAN(3×π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	TAN(3×π÷2)	\N	\N	UNDEFINED	
+simplify	35	23	0	35	65536	65536	TAN(270)	\N	\N	UNDEFINED	
+simplify	35	23	0	35	8192	192	TAN(270)	\N	\N	UNDEFINED	
+simplify	35	23	2	35	65536	65536	TAN(100)	\N	\N	UNDEFINED	
+simplify	35	23	2	35	8192	192	TAN(100)	\N	\N	UNDEFINED	
+simplify	35	23	2	35	65536	65536	TAN(300)	\N	\N	UNDEFINED	
+simplify	35	23	2	35	8192	192	TAN(300)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	LN(0)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	LN(0)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	LOG(0)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	LOG(0)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	ATANH(1)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	ATANH(1)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	ATANH(-1)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	ATANH(-1)	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	TAN(π)	\N	\N	OK	0
+simplify	35	23	1	35	8192	192	TAN(π)	\N	\N	OK	0
+simplify	35	23	0	35	65536	65536	TAN(45)	\N	\N	OK	1
+simplify	35	23	0	35	8192	192	TAN(45)	\N	\N	OK	1
+simplify	35	23	1	35	65536	65536	TAN(90)	\N	\N	OK	TAN(90)
+simplify	35	23	1	35	8192	192	TAN(90)	\N	\N	OK	TAN(90)
+simplify	35	23	2	35	65536	65536	TAN(50)	\N	\N	OK	1
+simplify	35	23	2	35	8192	192	TAN(50)	\N	\N	OK	1
+simplify	35	23	1	35	65536	65536	LN(-1)	\N	\N	OK	LN(-1)
+simplify	35	23	1	35	8192	192	LN(-1)	\N	\N	OK	LN(-1)
+simplify	35	23	1	35	65536	65536	SQRT(-4)	\N	\N	OK	SQRT(-4)
+simplify	35	23	1	35	8192	192	SQRT(-4)	\N	\N	OK	SQRT(-4)
+simplify	35	23	1	35	65536	65536	(-8)^(1÷3)	\N	\N	OK	(-8)^(1÷3)
+simplify	35	23	1	35	8192	192	(-8)^(1÷3)	\N	\N	OK	(-8)^(1÷3)
+expand	35	23	1	35	65536	65536	(X+1)×TAN(π÷2)	\N	\N	UNDEFINED	
+expand	35	23	1	35	8192	192	(X+1)×TAN(π÷2)	\N	\N	UNDEFINED	
+expand	35	23	1	35	65536	65536	(X+1)×LN(0)	\N	\N	UNDEFINED	
+expand	35	23	1	35	8192	192	(X+1)×LN(0)	\N	\N	UNDEFINED	
+subst	35	23	1	35	65536	65536	TAN(X)	π÷2	\N	UNDEFINED	
+subst	35	23	1	35	8192	192	TAN(X)	π÷2	\N	UNDEFINED	
+subst	35	23	0	35	65536	65536	TAN(X)	90	\N	UNDEFINED	
+subst	35	23	0	35	8192	192	TAN(X)	90	\N	UNDEFINED	
+subst	35	23	2	35	65536	65536	TAN(X)	100	\N	UNDEFINED	
+subst	35	23	2	35	8192	192	TAN(X)	100	\N	UNDEFINED	
+subst	35	23	1	35	65536	65536	LN(X)+1	0	\N	UNDEFINED	
+subst	35	23	1	35	8192	192	LN(X)+1	0	\N	UNDEFINED	
+subst	35	23	1	35	65536	65536	ATANH(X)	-1	\N	UNDEFINED	
+subst	35	23	1	35	8192	192	ATANH(X)	-1	\N	UNDEFINED	
+derive	35	23	1	35	65536	65536	TAN(π÷2)×X	\N	\N	UNDEFINED	
+derive	35	23	1	35	8192	192	TAN(π÷2)×X	\N	\N	UNDEFINED	
+derive	35	23	1	35	65536	65536	X×LOG(0)	\N	\N	UNDEFINED	
+derive	35	23	1	35	8192	192	X×LOG(0)	\N	\N	UNDEFINED	
+integrate	35	23	0	35	65536	65536	TAN(90)	\N	\N	UNDEFINED	
+integrate	35	23	0	35	8192	192	TAN(90)	\N	\N	UNDEFINED	
+integrate	35	23	1	35	65536	65536	LN(0)	\N	\N	UNDEFINED	
+integrate	35	23	1	35	8192	192	LN(0)	\N	\N	UNDEFINED	
+collect	35	23	1	35	65536	65536	TAN(π÷2)×X+X	\N	\N	UNDEFINED	
+collect	35	23	1	35	8192	192	TAN(π÷2)×X+X	\N	\N	UNDEFINED	
+collect	35	23	1	35	65536	65536	ATANH(1)×X+X	\N	\N	UNDEFINED	
+collect	35	23	1	35	8192	192	ATANH(1)×X+X	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	TAN(π÷2)×X=1	\N	\N	UNDEFINED	
+solve	35	23	1	35	8192	192	TAN(π÷2)×X=1	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	X=LN(0)	\N	\N	UNDEFINED	
+solve	35	23	1	35	8192	192	X=LN(0)	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	X^2=ATANH(1)	\N	\N	UNDEFINED	
+solve	35	23	1	35	8192	192	X^2=ATANH(1)	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	SIN(1)×X=1	\N	\N	NOT_NUMERIC	
+solve	35	23	1	35	8192	192	SIN(1)×X=1	\N	\N	NOT_NUMERIC	
+factor	35	23	1	35	65536	65536	X^2-TAN(π÷2)	\N	\N	UNDEFINED	
+factor	35	23	1	35	8192	192	X^2-TAN(π÷2)	\N	\N	UNDEFINED	
+factor	35	23	1	35	65536	65536	X^2-LOG(0)	\N	\N	UNDEFINED	
+factor	35	23	1	35	8192	192	X^2-LOG(0)	\N	\N	UNDEFINED	
+taylor	35	23	1	35	65536	65536	TAN(X)	π÷2	1	UNDEFINED	
+taylor	35	23	1	35	8192	192	TAN(X)	π÷2	1	UNDEFINED	
+taylor	35	23	1	35	65536	65536	X×ABS(X)	0	1	OK	0
+taylor	35	23	1	35	8192	192	X×ABS(X)	0	1	OK	0
+taylor	35	23	1	35	65536	65536	X×ABS(X)	0	2	UNDEFINED	
+taylor	35	23	1	35	8192	192	X×ABS(X)	0	2	UNDEFINED	
+taylor	35	23	1	35	65536	65536	X^2×ABS(X)	0	2	OK	0
+taylor	35	23	1	35	8192	192	X^2×ABS(X)	0	2	OK	0
+taylor	35	23	1	35	65536	65536	X^2×ABS(X)	0	3	UNDEFINED	
+taylor	35	23	1	35	8192	192	X^2×ABS(X)	0	3	UNDEFINED	
+taylor	35	23	1	35	65536	65536	ABS(X^3)	0	2	OK	0
+taylor	35	23	1	35	8192	192	ABS(X^3)	0	2	OK	0
+taylor	35	23	1	35	65536	65536	ABS(X^3)	0	3	UNDEFINED	
+taylor	35	23	1	35	8192	192	ABS(X^3)	0	3	UNDEFINED	
+taylor	35	23	1	35	65536	65536	ABS(SIN(X))	0	1	UNDEFINED	
+taylor	35	23	1	35	8192	192	ABS(SIN(X))	0	1	UNDEFINED	
+taylor	35	23	1	35	65536	65536	ABS(X)+ABS(X-1)	0	1	UNDEFINED	
+taylor	35	23	1	35	8192	192	ABS(X)+ABS(X-1)	0	1	UNDEFINED	
+taylor	35	23	1	35	65536	65536	ABS(X)^2	0	2	UNDECIDED	
+taylor	35	23	1	35	8192	192	ABS(X)^2	0	2	UNDECIDED	
+taylor	35	23	1	35	65536	65536	K×ABS(X)	0	1	UNDECIDED	
+taylor	35	23	1	35	8192	192	K×ABS(X)	0	1	UNDECIDED	
+taylor	35	23	1	35	65536	65536	X×ABS(X)	1	2	OK	1+2×(X-1)+(X-1)^2
+taylor	35	23	1	35	8192	192	X×ABS(X)	1	2	OK	1+2×(X-1)+(X-1)^2
+taylor	35	23	1	35	65536	65536	SIN(X)×ABS(X)	0	1	OK	0
+taylor	35	23	1	35	8192	192	SIN(X)×ABS(X)	0	1	OK	0
+limit	35	23	1	35	65536	65536	1÷X-1÷SIN(X)	0		OK	0
+limit	35	23	1	35	8192	192	1÷X-1÷SIN(X)	0		OK	0
+limit	35	23	1	35	65536	65536	1÷LN(1+X)-1÷X	0		OK	0.5
+limit	35	23	1	35	8192	192	1÷LN(1+X)-1÷X	0		OK	0.5
+limit	35	23	1	35	65536	65536	1÷(EXP(X)-1)-1÷X	0		OK	-0.5
+limit	35	23	1	35	8192	192	1÷(EXP(X)-1)-1÷X	0		OK	-0.5
+limit	35	23	1	35	65536	65536	1÷X-COS(X)÷X	0		OK	0
+limit	35	23	1	35	8192	192	1÷X-COS(X)÷X	0		OK	0
+limit	35	23	1	35	65536	65536	1÷(X-1)-2÷(X^2-1)	1		OK	0.5
+limit	35	23	1	35	8192	192	1÷(X-1)-2÷(X^2-1)	1		OK	0.5
+limit	35	23	1	35	65536	65536	1÷SIN(X)-1÷TAN(X)	0		OK	0
+limit	35	23	1	35	8192	192	1÷SIN(X)-1÷TAN(X)	0		OK	0
+limit	35	23	1	35	65536	65536	1÷X-1÷SIN(X)+3	0		OK	3
+limit	35	23	1	35	8192	192	1÷X-1÷SIN(X)+3	0		OK	3
+limit	35	23	0	35	65536	65536	1÷X-1÷SIN(X)	0	+	OK	-∞
+limit	35	23	0	35	8192	192	1÷X-1÷SIN(X)	0	+	OK	-∞
+limit	35	23	1	35	65536	65536	1÷X-1÷X^2	0		OK	-∞
+limit	35	23	1	35	8192	192	1÷X-1÷X^2	0		OK	-∞
+limit	35	23	1	35	8192	192	1÷X^2-1÷SIN(X)^2	0		NO_ROOM	
+limit	35	23	1	35	8192	192	1÷X^2-1÷SIN(X)^2	0		NO_ROOM	
+taylor	35	23	1	35	65536	65536	EXP(SIN(X))	0	9	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	8192	192	EXP(SIN(X))	0	9	NO_ROOM	
+taylor	35	23	1	35	65536	65536	EXP(SIN(X))	0	9	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	8192	192	EXP(SIN(X))	0	9	NO_ROOM	
+taylor	35	23	1	35	65536	65536	EXP(SIN(X))	0	9	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	8192	192	EXP(SIN(X))	0	9	NO_ROOM	
+taylor	35	23	1	35	65536	65536	ABS(X)-SQRT(X^2)	0	1	UNDECIDED	
+taylor	35	23	1	35	8192	192	ABS(X)-SQRT(X^2)	0	1	UNDECIDED	
+taylor	35	23	1	35	65536	65536	X×SQRT(X^2)	0	1	UNDECIDED	
+taylor	35	23	1	35	8192	192	X×SQRT(X^2)	0	1	UNDECIDED	
+taylor	35	23	1	35	65536	65536	(X^2)^(3÷2)	0	1	OK	0
+taylor	35	23	1	35	8192	192	(X^2)^(3÷2)	0	1	OK	0
+taylor	35	23	1	35	65536	65536	X^(3÷2)	0	2	UNDEFINED	
+taylor	35	23	1	35	8192	192	X^(3÷2)	0	2	UNDEFINED	
+simplify	35	23	1	35	65536	65536	SINH(0)	\N	\N	OK	0
+simplify	35	23	1	35	8192	192	SINH(0)	\N	\N	OK	0
+simplify	35	23	1	35	65536	65536	COSH(0)	\N	\N	OK	1
+simplify	35	23	1	35	8192	192	COSH(0)	\N	\N	OK	1
+simplify	35	23	1	35	65536	65536	ALOG(0)	\N	\N	OK	1
+simplify	35	23	1	35	8192	192	ALOG(0)	\N	\N	OK	1
+simplify	35	23	1	35	65536	65536	ACOSH(1)	\N	\N	OK	0
+simplify	35	23	1	35	8192	192	ACOSH(1)	\N	\N	OK	0
+simplify	35	23	1	35	65536	65536	ACOSH(0)	\N	\N	OK	ACOSH(0)
+simplify	35	23	1	35	8192	192	ACOSH(0)	\N	\N	OK	ACOSH(0)
+simplify	35	23	1	35	65536	65536	LN(SINH(0))	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	LN(SINH(0))	\N	\N	UNDEFINED	
+simplify	35	23	1	35	65536	65536	ATANH(COSH(0))	\N	\N	UNDEFINED	
+simplify	35	23	1	35	8192	192	ATANH(COSH(0))	\N	\N	UNDEFINED	
+taylor	35	23	1	35	65536	65536	ATANH(X)	0	5	OK	X+X^3÷3+0.2×X^5
+taylor	35	23	1	35	8192	192	ATANH(X)	0	5	OK	X+X^3÷3+0.2×X^5
+limit	35	23	1	35	65536	65536	1÷SINH(X)-1÷X	0		OK	0
+limit	35	23	1	35	8192	192	1÷SINH(X)-1÷X	0		OK	0
+solve	35	23	1	35	65536	65536	SIN(X)+TAN(π÷2)=0	\N	\N	UNDEFINED	
+solve	35	23	1	35	8192	192	SIN(X)+TAN(π÷2)=0	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	TAN(π÷2)+SIN(X)=0	\N	\N	UNDEFINED	
+solve	35	23	1	35	8192	192	TAN(π÷2)+SIN(X)=0	\N	\N	UNDEFINED	
+solve	35	23	1	35	65536	65536	X÷0=1	\N	\N	NOT_NUMERIC	
+solve	35	23	1	35	8192	192	X÷0=1	\N	\N	NOT_NUMERIC	
+cancel	35	23	1	35	65536	65536	(X^2-1)÷(X-TAN(π÷2))	\N	\N	UNDEFINED	
+cancel	35	23	1	35	8192	192	(X^2-1)÷(X-TAN(π÷2))	\N	\N	UNDEFINED	
+partfrac	35	23	1	35	65536	65536	1÷(X^2-LN(0))	\N	\N	UNDEFINED	
+partfrac	35	23	1	35	8192	192	1÷(X^2-LN(0))	\N	\N	UNDEFINED	
+pdiv	35	23	1	35	65536	65536	X^2	X-ATANH(1)	\N	UNDEFINED	
+pdiv	35	23	1	35	8192	192	X^2	X-ATANH(1)	\N	UNDEFINED	
+integrate	35	23	1	35	8192	65536	X×SIN(X^2)	\N	\N	OK	-0.5×COS(X^2)
+integrate	35	23	0	35	8192	65536	X×SIN(X^2)	\N	\N	OK	-90×COS(X^2)÷π
+integrate	35	23	1	35	8192	65536	SIN(X)×COS(X)	\N	\N	OK	0.5×SIN(X)^2
+integrate	35	23	2	35	8192	65536	SIN(X)×COS(X)	\N	\N	OK	100×SIN(X)^2÷π
+integrate	35	23	1	35	8192	65536	SIN(X)^2×COS(X)	\N	\N	OK	SIN(X)^3÷3
+integrate	35	23	1	35	8192	65536	COS(X)^3×SIN(X)	\N	\N	OK	-0.25×COS(X)^4
+integrate	35	23	1	35	8192	65536	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
+integrate	35	23	1	35	8192	65536	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
+integrate	35	23	1	35	8192	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	8192	65536	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
+integrate	35	23	1	35	8192	65536	X^2×(X^3+1)^5	\N	\N	OK	(X^3+1)^6÷18
+integrate	35	23	1	35	8192	65536	X^3×SQRT(X^2+1)	\N	\N	OK	-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5
+integrate	35	23	1	35	8192	65536	COS(X)×EXP(SIN(X))	\N	\N	OK	EXP(SIN(X))
+integrate	35	23	1	35	8192	65536	ATAN(X)÷(1+X^2)	\N	\N	OK	0.5×ATAN(X)^2
+integrate	35	23	1	35	8192	65536	EXP(SQRT(X))÷SQRT(X)	\N	\N	OK	2×EXP(SQRT(X))
+integrate	35	23	1	35	8192	65536	SIN(LN(X))÷X	\N	\N	OK	-COS(LN(X))
+integrate	35	23	1	35	8192	65536	X÷SQRT(1-X^2)	\N	\N	OK	-SQRT(-X^2+1)
+integrate	35	23	1	35	8192	65536	X×EXP(X)	\N	\N	OK	-EXP(X)+X×EXP(X)
+integrate	35	23	1	35	8192	65536	X^2×EXP(X)	\N	\N	OK	2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)
+integrate	35	23	1	35	8192	65536	X^5×EXP(X)	\N	\N	OK	-120×EXP(X)+120×X×EXP(X)-60×X^2×EXP(X)+20×X^3×EXP(X)-5×X^4×EXP(X)+X^5×EXP(X)
+integrate	35	23	1	35	8192	65536	X×SIN(X)	\N	\N	OK	SIN(X)-X×COS(X)
+integrate	35	23	0	35	8192	65536	X×SIN(X)	\N	\N	OK	-180×X×COS(X)÷π+32400×SIN(X)÷π^2
+integrate	35	23	1	35	8192	65536	X^2×COS(3×X)	\N	\N	OK	-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3
+integrate	35	23	1	35	8192	65536	X×SINH(X)	\N	\N	OK	-SINH(X)+X×COSH(X)
+integrate	35	23	1	35	8192	65536	LN(X)	\N	\N	OK	-X+X×LN(X)
+integrate	35	23	1	35	8192	65536	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
+integrate	35	23	1	35	8192	65536	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
+integrate	35	23	1	35	8192	65536	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+integrate	35	23	0	35	8192	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+integrate	35	23	1	35	65536	65536	ATAN(X)	\N	\N	OK	-0.5×LN(X^2+1)+X×ATAN(X)
+integrate	35	23	1	35	8192	65536	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
+integrate	35	23	1	35	8192	65536	X^2×ATAN(X)	\N	\N	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	8192	65536	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
+integrate	35	23	0	35	8192	65536	EXP(X)×SIN(X)	\N	\N	OK	-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)
+integrate	35	23	1	35	8192	65536	EXP(2×X)×COS(3×X)	\N	\N	OK	3×EXP(2×X)×SIN(3×X)÷13+2×EXP(2×X)×COS(3×X)÷13
+integrate	35	23	1	35	8192	65536	2×X×COS(X^2)+X×EXP(X)	\N	\N	OK	-EXP(X)+SIN(X^2)+X×EXP(X)
+integrate	35	23	1	35	8192	65536	INV(X^2)+3÷X+0.5×X÷SQRT(X)	\N	\N	OK	3×LN(ABS(X))-1÷X+X^1.5÷3
+integrate	35	23	1	35	8192	65536	X^2÷X×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SIN(X÷X×X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X÷(1000÷(SINH(π)×X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	24	1	35	8192	65536	EXP(A×X×Y)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	A×X×EXP(X^2)	\N	\N	OK	0.5×A×EXP(X^2)
+integrate	35	23	1	35	8192	65536	X×ATAN(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×ATAN(X)	\N	\N	OK	-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)
+integrate	35	23	1	35	8192	65536	COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	TAN(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X×COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	1÷SQRT(1-X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	EXP(X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SIN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	TAN(Y)×LOG(X-X)^SGN(X+7)	\N	\N	UNDEFINED	
+integrate	35	23	1	35	8192	65536	X^10×EXP(X)	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	X×SIN(X^2)	\N	\N	OK	-0.5×COS(X^2)
+integrate	35	23	1	35	8192	192	X×SIN(X^2)	\N	\N	OK	-0.5×COS(X^2)
+integrate	35	23	0	35	65536	65536	X×SIN(X^2)	\N	\N	OK	-90×COS(X^2)÷π
+integrate	35	23	0	35	8192	192	X×SIN(X^2)	\N	\N	OK	-90×COS(X^2)÷π
+integrate	35	23	1	35	65536	65536	SIN(X)×COS(X)	\N	\N	OK	0.5×SIN(X)^2
+integrate	35	23	1	35	8192	192	SIN(X)×COS(X)	\N	\N	OK	0.5×SIN(X)^2
+integrate	35	23	2	35	65536	65536	SIN(X)×COS(X)	\N	\N	OK	100×SIN(X)^2÷π
+integrate	35	23	2	35	8192	192	SIN(X)×COS(X)	\N	\N	OK	100×SIN(X)^2÷π
+integrate	35	23	1	35	65536	65536	SIN(X)^2×COS(X)	\N	\N	OK	SIN(X)^3÷3
+integrate	35	23	1	35	8192	192	SIN(X)^2×COS(X)	\N	\N	OK	SIN(X)^3÷3
+integrate	35	23	1	35	65536	65536	COS(X)^3×SIN(X)	\N	\N	OK	-0.25×COS(X)^4
+integrate	35	23	1	35	8192	192	COS(X)^3×SIN(X)	\N	\N	OK	-0.25×COS(X)^4
+integrate	35	23	1	35	65536	65536	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
+integrate	35	23	1	35	8192	192	LN(X)÷X	\N	\N	OK	0.5×LN(X)^2
+integrate	35	23	1	35	65536	65536	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
+integrate	35	23	1	35	8192	192	1÷(X×LN(X))	\N	\N	OK	LN(ABS(LN(X)))
+integrate	35	23	1	35	65536	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	8192	192	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	65536	65536	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
+integrate	35	23	1	35	8192	192	X×SQRT(X^2+1)	\N	\N	OK	(X^2+1)^1.5÷3
+integrate	35	23	1	35	65536	65536	X^2×(X^3+1)^5	\N	\N	OK	(X^3+1)^6÷18
+integrate	35	23	1	35	8192	192	X^2×(X^3+1)^5	\N	\N	OK	(X^3+1)^6÷18
+integrate	35	23	1	35	65536	65536	X^3×SQRT(X^2+1)	\N	\N	OK	-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5
+integrate	35	23	1	35	8192	192	X^3×SQRT(X^2+1)	\N	\N	OK	-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5
+integrate	35	23	1	35	65536	65536	COS(X)×EXP(SIN(X))	\N	\N	OK	EXP(SIN(X))
+integrate	35	23	1	35	8192	192	COS(X)×EXP(SIN(X))	\N	\N	OK	EXP(SIN(X))
+integrate	35	23	1	35	65536	65536	ATAN(X)÷(1+X^2)	\N	\N	OK	0.5×ATAN(X)^2
+integrate	35	23	1	35	8192	192	ATAN(X)÷(1+X^2)	\N	\N	OK	0.5×ATAN(X)^2
+integrate	35	23	1	35	65536	65536	EXP(SQRT(X))÷SQRT(X)	\N	\N	OK	2×EXP(SQRT(X))
+integrate	35	23	1	35	8192	192	EXP(SQRT(X))÷SQRT(X)	\N	\N	OK	2×EXP(SQRT(X))
+integrate	35	23	1	35	65536	65536	SIN(LN(X))÷X	\N	\N	OK	-COS(LN(X))
+integrate	35	23	1	35	8192	192	SIN(LN(X))÷X	\N	\N	OK	-COS(LN(X))
+integrate	35	23	1	35	65536	65536	X÷SQRT(1-X^2)	\N	\N	OK	-SQRT(-X^2+1)
+integrate	35	23	1	35	8192	192	X÷SQRT(1-X^2)	\N	\N	OK	-SQRT(-X^2+1)
+integrate	35	23	1	35	65536	65536	X×EXP(X)	\N	\N	OK	-EXP(X)+X×EXP(X)
+integrate	35	23	1	35	8192	192	X×EXP(X)	\N	\N	OK	-EXP(X)+X×EXP(X)
+integrate	35	23	1	35	65536	65536	X^2×EXP(X)	\N	\N	OK	2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)
+integrate	35	23	1	35	8192	192	X^2×EXP(X)	\N	\N	OK	2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)
+integrate	35	23	1	35	65536	65536	X^5×EXP(X)	\N	\N	OK	-120×EXP(X)+120×X×EXP(X)-60×X^2×EXP(X)+20×X^3×EXP(X)-5×X^4×EXP(X)+X^5×EXP(X)
+integrate	35	23	1	35	8192	192	X^5×EXP(X)	\N	\N	OK	-120×EXP(X)+120×X×EXP(X)-60×X^2×EXP(X)+20×X^3×EXP(X)-5×X^4×EXP(X)+X^5×EXP(X)
+integrate	35	23	1	35	65536	65536	X×SIN(X)	\N	\N	OK	SIN(X)-X×COS(X)
+integrate	35	23	1	35	8192	192	X×SIN(X)	\N	\N	OK	SIN(X)-X×COS(X)
+integrate	35	23	0	35	65536	65536	X×SIN(X)	\N	\N	OK	-180×X×COS(X)÷π+32400×SIN(X)÷π^2
+integrate	35	23	0	35	8192	192	X×SIN(X)	\N	\N	OK	-180×X×COS(X)÷π+32400×SIN(X)÷π^2
+integrate	35	23	1	35	65536	65536	X^2×COS(3×X)	\N	\N	OK	-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3
+integrate	35	23	1	35	8192	192	X^2×COS(3×X)	\N	\N	OK	-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3
+integrate	35	23	1	35	65536	65536	X×SINH(X)	\N	\N	OK	-SINH(X)+X×COSH(X)
+integrate	35	23	1	35	8192	192	X×SINH(X)	\N	\N	OK	-SINH(X)+X×COSH(X)
+integrate	35	23	1	35	65536	65536	LN(X)	\N	\N	OK	-X+X×LN(X)
+integrate	35	23	1	35	8192	192	LN(X)	\N	\N	OK	-X+X×LN(X)
+integrate	35	23	1	35	65536	65536	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
+integrate	35	23	1	35	8192	192	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
+integrate	35	23	1	35	65536	65536	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
+integrate	35	23	1	35	8192	192	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+integrate	35	23	0	35	65536	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+integrate	35	23	0	35	8192	192	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
+integrate	35	23	1	35	65536	65536	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
+integrate	35	23	1	35	8192	192	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)
+integrate	35	23	1	35	65536	65536	X^2×ATAN(X)	\N	\N	OK	LN(X^2+1)÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	8192	192	X^2×ATAN(X)	\N	\N	OK	LN(ABS(X^2+1))÷6-X^2÷6+X^3×ATAN(X)÷3
+integrate	35	23	1	35	65536	65536	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
+integrate	35	23	1	35	8192	192	EXP(X)×SIN(X)	\N	\N	OK	0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)
+integrate	35	23	0	35	65536	65536	EXP(X)×SIN(X)	\N	\N	OK	-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)
+integrate	35	23	0	35	8192	192	EXP(X)×SIN(X)	\N	\N	OK	-180×(π×EXP(X)×COS(X)-180×EXP(X)×SIN(X))÷(π^2+32400)
+integrate	35	23	1	35	65536	65536	EXP(2×X)×COS(3×X)	\N	\N	OK	3×EXP(2×X)×SIN(3×X)÷13+2×EXP(2×X)×COS(3×X)÷13
+integrate	35	23	1	35	8192	192	EXP(2×X)×COS(3×X)	\N	\N	OK	3×EXP(2×X)×SIN(3×X)÷13+2×EXP(2×X)×COS(3×X)÷13
+integrate	35	23	1	35	65536	65536	2×X×COS(X^2)+X×EXP(X)	\N	\N	OK	-EXP(X)+SIN(X^2)+X×EXP(X)
+integrate	35	23	1	35	8192	192	2×X×COS(X^2)+X×EXP(X)	\N	\N	OK	-EXP(X)+SIN(X^2)+X×EXP(X)
+integrate	35	23	1	35	65536	65536	INV(X^2)+3÷X+0.5×X÷SQRT(X)	\N	\N	OK	3×LN(ABS(X))-1÷X+X^1.5÷3
+integrate	35	23	1	35	8192	192	INV(X^2)+3÷X+0.5×X÷SQRT(X)	\N	\N	OK	3×LN(ABS(X))-1÷X+X^1.5÷3
+integrate	35	23	1	35	65536	65536	X^2÷X×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X^2÷X×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SIN(X÷X×X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	SIN(X÷X×X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X÷(1000÷(SINH(π)×X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X÷(1000÷(SINH(π)×X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	24	1	35	65536	65536	EXP(A×X×Y)	\N	\N	NOT_INTEGRABLE	
+integrate	35	24	1	35	8192	192	EXP(A×X×Y)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	A×X×EXP(X^2)	\N	\N	OK	0.5×A×EXP(X^2)
+integrate	35	23	1	35	8192	192	A×X×EXP(X^2)	\N	\N	OK	0.5×A×EXP(X^2)
+integrate	35	23	1	35	8192	192	X×ATAN(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×ATAN(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	TAN(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	TAN(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×COS(X)^2	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	1÷SQRT(1-X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	1÷SQRT(1-X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	EXP(X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	EXP(X^2)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SIN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	SIN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	TAN(Y)×LOG(X-X)^SGN(X+7)	\N	\N	UNDEFINED	
+integrate	35	23	1	35	8192	192	TAN(Y)×LOG(X-X)^SGN(X+7)	\N	\N	UNDEFINED	
+integrate	35	23	1	35	65536	65536	X^10×EXP(X)	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	X^10×EXP(X)	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	SGN(X)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	SGN(X)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	COS(X)×IP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	COS(X)×IP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	ABS(X)^2×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	ABS(X)^2×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	1.2.0×LN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	1.2.0×LN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SIN(A×X)×COS(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	SIN(A×X)×COS(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×EXP(A×X^2)÷B	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×EXP(A×X^2)÷B	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)÷B	\N	\N	OK	0.5×EXP(X^2)÷B
+integrate	35	23	1	35	8192	192	X×EXP(X^2)÷B	\N	\N	OK	0.5×EXP(X^2)÷B
+integrate	35	23	1	35	65536	65536	LN(X)-LN(X)+X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	LN(X)-LN(X)+X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	EXP(LN(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	EXP(LN(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X^2×TAN(X)^0	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X^2×TAN(X)^0	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X^(-A)×X^A×X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X^(-A)×X^A×X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	SQRT(X^2)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	SQRT(X^2)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×EXP(X)×0^X×0^(-X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×EXP(X)×0^X×0^(-X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	EXP(X)×SIN(A×X)	\N	\N	OK	-(A×EXP(X)×COS(A×X)-EXP(X)×SIN(A×X))÷(A^2+1)
+integrate	35	23	1	35	8192	192	EXP(X)×SIN(A×X)	\N	\N	OK	-(A×EXP(X)×COS(A×X)-EXP(X)×SIN(A×X))÷(A^2+1)
+integrate	35	23	1	35	65536	65536	LN(ABS(X))	\N	\N	OK	-X+X×LN(ABS(X))
+integrate	35	23	1	35	8192	192	LN(ABS(X))	\N	\N	OK	-X+X×LN(ABS(X))
+integrate	35	23	1	35	65536	65536	TAN(X)×LN(ABS(COS(X)))	\N	\N	OK	-0.5×LN(ABS(COS(X)))^2
+integrate	35	23	1	35	8192	192	TAN(X)×LN(ABS(COS(X)))	\N	\N	OK	-0.5×LN(ABS(COS(X)))^2
+integrate	35	23	1	35	65536	65536	(X^2-1)÷(X-1)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	(X^2-1)÷(X-1)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SGN(X)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	COS(X)×IP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	ABS(X)^2×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	1.2.0×LN(X)÷X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SIN(A×X)×COS(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X×EXP(A×X^2)÷B	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X×EXP(X^2)÷B	\N	\N	OK	0.5×EXP(X^2)÷B
+integrate	35	23	1	35	8192	65536	LN(X)-LN(X)+X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	EXP(LN(X))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X^2×TAN(X)^0	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X^(-A)×X^A×X	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	SQRT(X^2)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	X×EXP(X)×0^X×0^(-X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	EXP(X)×SIN(A×X)	\N	\N	OK	-(A×EXP(X)×COS(A×X)-EXP(X)×SIN(A×X))÷(A^2+1)
+integrate	35	23	1	35	8192	65536	LN(ABS(X))	\N	\N	OK	-X+X×LN(ABS(X))
+integrate	35	23	1	35	8192	65536	TAN(X)×LN(ABS(COS(X)))	\N	\N	OK	-0.5×LN(ABS(COS(X)))^2
+integrate	35	23	1	35	8192	65536	(X^2-1)÷(X-1)×EXP(X)	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	LN(X)^4	\N	\N	OK	24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4
+integrate	35	23	1	35	8192	192	LN(X)^4	\N	\N	OK	24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4
+integrate	35	23	1	35	65536	65536	LN(X)^5	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	LN(X)^5	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	65536	LN(X)^4	\N	\N	OK	24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4
+integrate	35	23	1	35	8192	65536	LN(X)^5	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	2000	65536	EXP(X)÷(1+EXP(X))	\N	\N	OK	LN(ABS(EXP(X)+1))
+integrate	35	23	1	35	1500	65536	X^2×EXP(X)	\N	\N	OK	2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)
+integrate	35	23	1	35	65536	65536	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	OK	0.5×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))
+integrate	35	23	1	35	8192	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))	\N	\N	OK	0.5×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))
+integrate	35	23	1	35	65536	65536	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))	\N	\N	OK	0.5×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))
+integrate	35	23	1	35	8192	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))	\N	\N	OK	0.5×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))
+integrate	35	23	1	35	65536	65536	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	8192	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))	\N	\N	TOO_LONG	
+integrate	35	23	1	35	65536	65536	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×EXP(X)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	LN(X)^4×COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(COS(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
+integrate	35	23	1	35	8192	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NOT_INTEGRABLE	
