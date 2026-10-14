@@ -802,6 +802,13 @@ def run(cmd, cwd):
 
 def main():
     names = sys.argv[1:] or list(MUTANTS)
+    # every anchor once in its own file before an hour of builds: a refactor can copy or move a mutant's text
+    stale = [f"{name}: its text appears {open(os.path.join(ROOT, path), encoding='utf-8').read().count(old)} times "
+             f"in {path}" for name in names for path, old, new in MUTANTS[name]
+             if open(os.path.join(ROOT, path), encoding="utf-8").read().count(old) != 1]
+    if stale:
+        print("NOT RUN, stale anchors:\n  " + "\n  ".join(stale))
+        return 1
     survived = 0
     for name in names:
         tree = os.path.join(ROOT, "build", "mutants", name)
