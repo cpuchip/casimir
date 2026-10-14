@@ -765,6 +765,12 @@ MUTANTS = {
     "divisor-rule-off": [("src/casim.c",
                           "    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;",
                           "    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && 0) c.st = CASIM_NOT_INTEGRABLE;")],
+    # after abacus's h017 (#8121): the divisor rule reading d (3×X^2+3) where t holds 3×(X^2+1); the constant left in the
+    # rational path's text (π refuses it); the constant put back on the whole answer, not each term (the form moves)
+    "divisor-bases-from-d": [("src/casim.c", "    ref dc = ib_inv(c, ib_canon(c, d));", "    ref dc = ib_canon(c, d);")],
+    "const-left-in-rational": [("src/casim.c", "        if (!is_num(c, f) && !contains(c, f, var)) k = k ? mul2(c, k, f) : f;",
+                                "        if (!is_num(c, f) && !contains(c, f, var) && 0) k = k ? mul2(c, k, f) : f;")],
+    "const-on-whole-answer": [("src/casim.c", "            if (k && nd(c, F)->kind == K_ADD) {", "            if (0) {")],
     "letter-rule-off": [("src/casim.c", "                ib_letters_kept(c, g, U, t)) {", "                (ib_letters_kept(c, g, U, t) || 1)) {"),
                         ("src/casim.c",
                          "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;",

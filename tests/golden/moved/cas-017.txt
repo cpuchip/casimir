@@ -84,3 +84,6 @@ integrate	35	23	1	35	8192	192	SIN(X)+1÷(X^2-1)	\N	\N
 integrate	35	23	1	35	8192	65536	SIN(X)+1÷(X^2-1)	\N	\N
   before	NOT_INTEGRABLE	
   after	NO_ROOM	
+integrate	33	24	2	33	8192	65536	((((Y)-(7))÷((1E3)-(2)))÷(((2)÷(3))-(Y)))÷((X)^(-4))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	NO_ROOM	

@@ -7,7 +7,7 @@
 # nesting at 45 and 46 levels is NO_ROOM), re-recorded from the commit that made it; CAS 013 moved 3 (1÷(X^2-1) at
 # three budgets: integrals of rational functions), re-recorded from its commit; CAS 016 moved 12 (6 poles to UNDEFINED,
 # 2 Taylor rows at 64 KB answered with the 1,024 B buffer, 1 limit inside 8 KB, 3 with TANH(0) or ALOG(0) folded),
-# re-recorded from its commit; CAS 017 moved 28 (integrals by substitution and by parts: 25 refusals answered, 2 to
+# re-recorded from its commit; CAS 017 moved 29 (integrals by substitution and by parts: 25 refusals answered, 3 to
 # NO_ROOM where the rational path ran out at 8 KB, 1 to UNDEFINED for a pole), re-recorded from its commit.
 derive	35	24	1	35	65536	65536	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	24	1	35	8192	192	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
@@ -5736,7 +5736,7 @@ integrate	1	23	1	1	8192	65536	(π)÷((((X)÷(π))×((1E3)-(7)))×(LOG((1.5)+(3))
 subst	35	23	1	35	65536	65536	(X)×(((π)^(7))×((0.5)÷(1E3)))	(-4)^((2)-(X))	\N	OK	π^7×(-4)^(-X+2)÷2000
 subst	35	23	0	35	8192	65536	7	((-4)+(1.5))×(-4)	\N	OK	7
 cancel	33	23	1	33	65536	65536	((4×X-4))÷((4×X--5)×(X^3-2))	\N	\N	OK	(X-1)÷(X+1.25)÷(X^3-2)
-integrate	33	24	2	33	8192	65536	((((Y)-(7))÷((1E3)-(2)))÷(((2)÷(3))-(Y)))÷((X)^(-4))	\N	\N	NOT_INTEGRABLE	
+integrate	33	24	2	33	8192	65536	((((Y)-(7))÷((1E3)-(2)))÷(((2)÷(3))-(Y)))÷((X)^(-4))	\N	\N	NO_ROOM	
 solve	35	23	1	35	65536	65536	3×X^0	\N	\N	OK	NO SOLUTION
 pdiv	33	23	2	33	8192	65536	-3×X^0+9×X^1+3×X^2+-1×X^3+-4×X^4+2×X^5	-3×X^0+-4×X^1+3×X^2+0×X^3	\N	OK	-7×X÷27-4×X^2÷9+2×X^3÷3+17÷81; 734×X÷81-64÷27
 pdiv	33	23	2	33	8192	65536	6×X^0	6×X^0	\N	OK	1; 0
@@ -10378,7 +10378,7 @@ integrate	35	23	1	35	8192	192	X^3×LN(X)	\N	\N	OK	-0.0625×X^4+0.25×X^4×LN(X)
 integrate	35	23	1	35	65536	65536	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
 integrate	35	23	1	35	8192	192	LN(X)^2	\N	\N	OK	2×X-2×X×LN(X)+X×LN(X)^2
 integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
-integrate	35	23	0	35	65536	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
+integrate	35	23	0	35	65536	65536	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(X^2+1)÷π
 integrate	35	23	0	35	8192	192	ATAN(X)	\N	\N	OK	X×ATAN(X)-90×LN(ABS(X^2+1))÷π
 integrate	35	23	1	35	8192	192	ATAN(X)	\N	\N	OK	-0.5×LN(ABS(X^2+1))+X×ATAN(X)
 integrate	35	23	1	35	65536	65536	ASIN(X)	\N	\N	OK	SQRT(-X^2+1)+X×ASIN(X)

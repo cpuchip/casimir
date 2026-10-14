@@ -300,6 +300,10 @@ SUBS = [("X^2+1", "2×X"), ("X^3-2", "3×X^2"), ("2×X^2+3", "4×X"), ("SIN(X)",
         ("1+EXP(X)", "EXP(X)"), ("X^2+X+1", "(2×X+1)")]
 GS = ["EXP(U)", "SIN(U)", "COS(U)", "U^2", "U^3", "U^5", "U^(-2)", "SQRT(U)", "U^1.5", "1÷U", "ATAN(U)", "LN(U)"]
 FNS = ["EXP", "SIN", "COS", "SINH", "COSH"]
+# abacus's h017 (#8121): u' as a divisor with a constant in it, as textbooks type it; a constant factor the rational path
+# couldn't take (π, LN(2), and DEG's 180÷π in ATAN's u')
+RATS = ["X^2÷(X^2+1)", "X÷(X^2+2×X+2)", "1÷(X^2+4)", "(X+1)÷(X^2+X+1)", "X^3÷(X^2+1)"]
+CONSTS = ["π×", "LN(2)×", "SQRT(2)×", "EXP(1)×", "1÷π×"]
 
 
 def poly(rnd, deg):
@@ -312,7 +316,7 @@ def poly(rnd, deg):
 
 
 def gen_case(rnd):
-    kind = rnd.choice(["sub", "sub", "sub", "poly", "poly", "lnpow", "ln", "cycle"])
+    kind = rnd.choice(["sub", "sub", "sub", "poly", "poly", "lnpow", "ln", "cycle", "subdiv", "subdiv", "atanp", "const"])
     mode = rnd.choice(["RAD", "RAD", "RAD", "DEG", "GRAD"])
     k = rnd.choice(["", "3×", "0.5×", "-2×"])
     if kind == "sub":
@@ -323,6 +327,20 @@ def gen_case(rnd):
         a, b = rnd.choice([1, 2, 3, -1]), rnd.choice([0, 1, -2])
         arg = f"{a}×X" + (f"+{b}" if b > 0 else f"{b}" if b < 0 else "")
         return kind, f"{k}{poly(rnd, rnd.randint(1, 3))}×{rnd.choice(FNS)}({arg})", mode
+    if kind == "subdiv":
+        m, a, b, n = rnd.choice([2, 3, 5]), rnd.choice([2, 3, 5]), rnd.choice([1, 2, -3]), rnd.randint(1, 3)
+        g = rnd.choice(GS)
+        return kind, rnd.choice([f"{k}{g.replace('U', '(ATAN(X))')}÷({m}×(X^2+1))",
+                                 f"{k}{g.replace('U', '(ATAN(X))')}÷({m}×X^2+{m})",
+                                 f"{k}X^{n - 1}÷({a}×X^{n}+{b})".replace("X^0", "1").replace("X^1", "X"),
+                                 f"{k}X^{n - 1}÷({a}×X^{n}+{b})^{rnd.choice([2, 3, 0.5])}".replace("X^0", "1").replace("X^1", "X"),
+                                 f"{k}EXP(X)÷({a}×EXP(X)+{b})"]), mode
+    if kind == "atanp":
+        n, a, b = rnd.randint(0, 2), rnd.choice([1, 2]), rnd.choice([0, 1])
+        arg = f"{a}×X" + (f"+{b}" if b else "")
+        return kind, (f"{k}X^{n}×ATAN({arg})" if n else f"{k}ATAN({arg})").replace("X^1×", "X×"), mode
+    if kind == "const":
+        return kind, f"{rnd.choice(CONSTS)}{rnd.choice(RATS)}", mode
     if kind == "lnpow":
         return kind, f"{k}LN(X)^{rnd.randint(1, 3)}", mode
     if kind == "ln":
@@ -381,7 +399,7 @@ def main():
     counts, unjudged = {}, []
     for _ in range(n):
         kind, f, mode = gen_case(rnd)
-        arena = 65536 if rnd.random() < 0.25 else None
+        arena = 65536 if rnd.random() < (0.5 if kind in ("atanp", "const") else 0.25) else None   # the rational path
         rc, out = integrate(f, "X", mode, arena)
         c = counts.setdefault(kind, [0, 0])
         c[1] += 1
@@ -419,9 +437,13 @@ def main():
             print(f"FAIL scripts/integrate-values.py: golden {cur[7]} {var} {mode} = {ans}: {why}")
     ex = 0
     for line in open(os.path.join(ROOT, "work", "017-examples.txt"), encoding="utf-8"):
-        if not line.startswith("| `casim integrate"):
+        if not line.startswith("| `casim "):
             continue
         a = shlex.split(line.split("`")[1])
+        if a[1] == "--arena":                    # the arena changes which rule answers, never what is right
+            a = a[:1] + a[3:]
+        if a[1] != "integrate":
+            continue
         ans = line.split("`")[3]
         if ans.split(" ")[0] in ("NOT_INTEGRABLE", "NO_ROOM", "TOO_LONG", "UNDEFINED", "BAD_ARG"):
             continue

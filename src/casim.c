@@ -8717,6 +8717,12 @@ static __attribute__((noinline)) ref ib_neg(ctx *c, ref r)
     return neg(c, r);
 }
 
+/* 1÷r, canonical; out of line so that ib_keeps's frame stays as it was (80 -> 112 on the host with power inline) */
+static __attribute__((noinline)) ref ib_inv(ctx *c, ref r)
+{
+    return ib_canon(c, power(c, r, small(c, C_M1)));
+}
+
 /* the arena back to mark after a try that refused or ran out: room run out deep in the search (the arena, or the
    depth guard) is a refusal there, as rule 6 keeps NO_ROOM for a term of the input's own sum (ib_rational's) */
 static bool ib_fail(ctx *c, size_t mark)
@@ -8759,20 +8765,41 @@ static ref ib_table(ctx *c, ref t, int var)
     return c->st == CASIM_OK ? F : SPARE;
 }
 
-/* the rational path (CAS 013) on t's printed form, in the arena's free part, its answer read back. Its NO_ROOM is a
-   refusal here: other rules may still answer, and only a term of the input's own sum (d 0) makes the whole NO_ROOM */
+/* the product of t's factors free of var that aren't numbers (π, LN(2), A, 180÷π from DEG's ATAN), or 0 when none:
+   the rational path takes only rational coefficients */
+static ref ib_const(ctx *c, ref t, int var)
+{
+    ref k = 0;
+    if (nd(c, t)->kind != K_MUL) return 0;
+    for (int i = 0; i < nd(c, t)->n; i++) {
+        ref f = list(c, nd(c, t)->a)[i];
+        if (!is_num(c, f) && !contains(c, f, var)) k = k ? mul2(c, k, f) : f;
+    }
+    return k;
+}
+
+/* the rational path (CAS 013) on t's printed form, in the arena's free part, its answer read back; a constant factor
+   ib_const finds comes out first and goes back on the answer. Its NO_ROOM is a refusal here: other rules may still
+   answer, and only a term of the input's own sum (d 0) makes the whole NO_ROOM */
 static ref ib_rational(ctx *c, ib_t *B, ref t, int var, int d)
 {
     size_t top = c->top;
     const char *s = c->s;
-    char *buf = ib_print(c, t, 2 * IB_TEXT), *ob = buf + IB_TEXT;
+    ref k = ib_const(c, t, var);
+    char *buf = ib_print(c, k ? ib_canon(c, mul2(c, t, ib_inv(c, k))) : t, 2 * IB_TEXT),
+         *ob = buf + IB_TEXT;
     casim_status st;
     ref F = SPARE;
-    if (buf) {
+    if (buf && c->st == CASIM_OK) {
         st = do_irational(buf, var, c->angle, ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
         if (st == CASIM_OK) {
             c->s = ob;
             F = ib_canon(c, parse(c));
+            if (k && nd(c, F)->kind == K_ADD) {        /* term by term: -90×LN(…)÷π+ATAN(X+1), not -90×(LN(…)-…)÷π */
+                ref acc = small(c, C_0);
+                for (int i = 0; i < nd(c, F)->n; i++) acc = add2(c, acc, mul2(c, k, list(c, nd(c, F)->a)[i]));
+                F = ib_canon(c, acc);
+            } else if (k) F = ib_canon(c, mul2(c, k, F));
         } else {
             if (st == CASIM_NO_ROOM && d == 0) B->starved = true;
             c->st = CASIM_NOT_INTEGRABLE;
@@ -9139,8 +9166,8 @@ static ref ib(ctx *c, ib_t *B, ref t, int var, int d)
     }
     F = ib_table(c, t, var);
     if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
-    if (d >= 0) {
-        F = ib_rational(c, B, t, var, d);
+    if (d >= 0 || ib_const(c, t, var)) {             /* the wrapper's rational path refused a constant factor */
+        F = ib_rational(c, B, t, var, d < 0 ? 0 : d);
         if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
     }
     if (d >= IB_DEPTH) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
@@ -9170,10 +9197,11 @@ static bool ib_den(ctx *c, ref t, ref b)
 }
 
 /* rule 2: d, a divisor as typed: each factor of its canonical form holding var (a zero of d, or of a divisor inside
-   it) must still be a denominator in t, or canon cancelled a hole (X^2÷X). EXP and ALOG are never 0. */
+   it) must still be a denominator in t, or canon cancelled a hole (X^2÷X). EXP and ALOG are never 0. The bases come
+   from 1÷d's canonical form, whose sums carry no constant factor, as t's don't (3×X^2+3 is 3×(X^2+1) there) */
 static bool ib_keeps(ctx *c, ref d, ref t, int var)
 {
-    ref dc = ib_canon(c, d);
+    ref dc = ib_inv(c, ib_canon(c, d));
     const node *x = nd(c, dc);
     int n = x->kind == K_MUL ? x->n : 1;
     for (int i = 0; i < n && c->st == CASIM_OK; i++) {

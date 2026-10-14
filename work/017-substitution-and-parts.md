@@ -23,15 +23,24 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
    (NOT_INTEGRABLE) does this path run.
    - The hook sits in casim_integrate's wrapper, as 013's does, so do_integrate's and do_irational's frames don't move.
    - Every answer the table or the rational path gives today is unchanged.
+   - **Inside this path, a constant factor comes out before the rational path runs** (added after abacus's h017,
+     #8121): the rational path takes rational coefficients only, so π, LN(2), another letter, or DEG's and GRAD's
+     180÷π and 200÷π in ATAN's u′ refused it. The factors free of X that aren't numbers come out, the rest goes
+     through the rational path, and the constant goes back on each term of its answer (X^2÷(X^2+1)÷π is
+     X÷π−ATAN(X)÷π; ATAN(X+1) in DEG is ATAN(X+1)+X×ATAN(X+1)−90×LN(2×X+X^2+2)÷π). The integrand itself goes
+     through this too, since the wrapper's rational path refused it for the constant.
 2. **The input, and CAS 006's guarantee.** The path works on the integrand's canonical form, term by term.
    - integrate never prints an antiderivative defined where the integrand isn't. A canonical form can lose a typed
      hole (X^2÷X is X), so before anything runs, the **divisor rule** applies to every divisor in the typed text that
      holds X (÷'s right side, INV's argument, a base to a negative power, and divisors nested inside these). Each
-     factor of its canonical form that holds X must still be a denominator somewhere in the canonical integrand.
-     EXP and ALOG factors are exempt, because they are never 0.
+     factor holding X of 1÷d's canonical form must still be a denominator somewhere in the canonical integrand.
+     EXP and ALOG factors are exempt, because they are never 0. The bases come from 1÷d, not d, because a sum
+     there carries no constant factor, as in the integrand: 3×X^2+3 alone is canonical, but 3×(X^2+1) is how it
+     divides (abacus's h017, #8121, found 33 refusals of this shape).
      - **Refused (NOT_INTEGRABLE):** X^2÷X×EXP(X), SIN(X÷X×X), X÷(1000÷(SINH(π)×X)).
      - **Answered:** LN(X)÷X, 1÷(X×LN(X)), EXP(SQRT(X))÷SQRT(X), and a sum holding 3÷X beside X÷SQRT(X), whose answer
-       has no value at 0 either.
+       has no value at 0 either; EXP(ATAN(X))÷(3×X^2+3), ATAN(X)^3÷(2×(X^2+1)) and 15×X^2÷(5×X^3+2), whose
+       constants are typed in the divisor.
    - A domain edge is not a hole: 1÷SQRT(X) is 2×SQRT(X) today, and EXP(SQRT(X))÷SQRT(X) is 2×EXP(SQRT(X)) here.
    - **The domain rule** (added after the cold review): canon also drops domains without a division. So every typed
      LN, LOG, ASIN, ACOS, ATANH, ACOSH or TAN (for its poles), and every SQRT or power that isn't a whole number,
@@ -108,7 +117,8 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
    - **At the calculator's 8,192 B arena, the rational path doesn't fit inside a substitution or a part.** partfrac's
      work area takes 7,328 B for any input. So X×ATAN(X), whose ∫v×u′ is 0.5×X^2÷(X^2+1), answers at 16 KB and is
      NOT_INTEGRABLE at 8 KB. ATAN(X) still answers at 8 KB, by substitution, as −0.5×LN(ABS(X^2+1))+X×ATAN(X), where
-     the rational path would have written LN(X^2+1).
+     the rational path would have written LN(X^2+1). DEG and GRAD are the same since the constant factor comes out
+     (rule 1): ATAN(X+1) and X×ATAN(X) answer at 16 KB.
    - **defint** keeps the table alone, as CAS 013 left it. Bringing the rational path and this one into defint is its
      own follow-up.
 8. **Steps.** For an integrand only this path answers, casim_step gives one page for now: the answer, with the rule
@@ -142,7 +152,9 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
   - planted wrong answers (a sign flipped, a factor of 2, a dropped term) must be refused by the judge first.
 - **Golden:** the rows that move are refusals that now answer, plus the statuses in rule 6. Each is listed in
   tests/golden/moved/cas-017.txt with its before and after.
-  - The prototype moves 28: 25 to answers, 2 SIN(X)+1÷(X^2-1) rows at 8,192 to NO_ROOM, and 1 to UNDEFINED.
+  - The prototype moves 28: 25 to answers, 2 SIN(X)+1÷(X^2-1) rows at 8,192 to NO_ROOM, and 1 to UNDEFINED. The
+    constant factor (rule 1) moves one more to NO_ROOM at 8,192: a rational function of Y times X^4, integrated in
+    Y, which answers at 16 KB. 29 in all.
   - No other row moves.
 - **Mutants** (about 12):
   - substitution's check skipped;
@@ -157,7 +169,9 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
   - NO_ROOM from any depth;
   - steps refusing what integrate answers;
   - after the review: the can't-take refusals off, the domain rule off, the answer's letter guard off, and NO_ROOM
-    deep in the search kept.
+    deep in the search kept;
+  - after abacus's h017: the divisor rule's bases taken from d instead of 1÷d, the constant factor left in the
+    rational path's text, and the constant put back on the whole answer instead of term by term.
   - Substitution's check is reached by no input as built: G(u)×u′ rebuilds the term exactly whenever u was replaced
     exactly. So tests/ibcheck_check.c (make check) spoils G before it is integrated, and every substitution must then
     refuse or answer as built, never print the spoiled answer. This is CAS 013's ircheck_check pattern.

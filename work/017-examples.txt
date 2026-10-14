@@ -19,6 +19,11 @@
 #   a try that runs out of room is a refusal and the next answers (EXP(X)÷(1+EXP(X)), X^2×EXP(X)).
 # - Rule 7's limits: trig powers, the ASIN form, and X×ATAN(X) at 8 KB (partfrac's 7,328 B can't nest).
 # - Rule 8: steps give one page, the answer, for what only this path answers.
+# - After abacus's h017 (#8121): a constant typed in a divisor (EXP(ATAN(X))÷(3×X^2+3), 15×X^2÷(5×X^3+2)) answers as
+#   when typed elsewhere: the divisor rule reads 1÷d's canonical form, whose sums carry no constant factor, as the
+#   integrand's don't; X^2÷(3×X)×EXP(X) still loses X's hole and is refused. A constant factor that isn't a number (π,
+#   LN(2), A, DEG's 180÷π) comes out before the rational path: X^2÷(X^2+1)÷π answers at 64 KB (NO_ROOM at 8 KB, a
+#   term of the input's own sum), and ATAN by parts answers in DEG and GRAD as in RAD.
 | `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
 | `casim integrate "X×SIN(X^2)" X RAD` | `-0.5×COS(X^2)` |
 | `casim integrate "X×SIN(X^2)" X DEG` | `-90×COS(X^2)÷π` |
@@ -99,3 +104,18 @@
 | `casim --arena 1500 integrate "X^2×EXP(X)" X RAD` | `2×EXP(X)-2×X×EXP(X)+X^2×EXP(X)` |
 | `casim steps integrate "X×EXP(X)" X RAD` | `ANSWER: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
 | `casim steps integrate "LN(X)÷X" X RAD` | `ANSWER: ∫(LN(X)÷X)dX = 0.5×LN(X)^2` |
+| `casim integrate "EXP(ATAN(X))÷(3×(X^2+1))" X RAD` | `EXP(ATAN(X))÷3` |
+| `casim integrate "EXP(ATAN(X))÷(3×X^2+3)" X RAD` | `EXP(ATAN(X))÷3` |
+| `casim integrate "ATAN(X)^3÷(2×(X^2+1))" X RAD` | `0.125×ATAN(X)^4` |
+| `casim integrate "15×X^2÷(5×X^3+2)" X RAD` | `LN(ABS(X^3+0.4))` |
+| `casim integrate "2×X×EXP(X^2)÷(3×EXP(X^2)+3)" X RAD` | `LN(ABS(EXP(X^2)+1))÷3` |
+| `casim integrate "X^2÷(3×X)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
+| `casim integrate "X^2÷(X^2+1)÷π" X RAD` | `NO_ROOM` |
+| `casim --arena 65536 integrate "X^2÷(X^2+1)×LN(2)" X DEG` | `X×LN(2)-π×LN(2)×ATAN(X)÷180` |
+| `casim --arena 65536 integrate "A×X÷(X^2+2×X+2)" X RAD` | `0.5×A×LN(2×X+X^2+2)-A×ATAN(X+1)` |
+| `casim --arena 65536 integrate "ATAN(X+1)" X DEG` | `ATAN(X+1)+X×ATAN(X+1)-90×LN(2×X+X^2+2)÷π` |
+| `casim --arena 65536 integrate "X×ATAN(X)" X GRAD` | `0.5×ATAN(X)-100×X÷π+0.5×X^2×ATAN(X)` |
+| `casim integrate "X×ATAN(X)" X DEG` | `NOT_INTEGRABLE` |
+| `casim integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(ABS(X^2+1))÷π` |
+| `casim --arena 16384 integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(X^2+1)÷π` |

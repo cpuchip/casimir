@@ -99,9 +99,11 @@ ib_bad	48
 ib_cands	64
 ib_canon	16
 ib_class	16
+ib_const	64
 ib_den	80
 ib_deriv	48
 ib_holds	80
+ib_inv	64
 ib_keeps	80
 ib_letters_kept	64
 ib_neg	64

@@ -232,7 +232,8 @@ Each answer is proven from checked pieces: a substitution's G checked in U and G
 whole. Summands free of X are left out, as one antiderivative is enough.
 
 So that no answer has a value where the integrand has none, every divisor typed with X in it must stay a denominator
-in the canonical form. Canon would otherwise cancel the hole: X^2÷X×EXP(X) is refused. A typed LN, LOG, ASIN, ACOS,
+in the canonical form. Canon would otherwise cancel the hole: X^2÷X×EXP(X) is refused. A constant typed in the divisor
+doesn't matter: EXP(ATAN(X))÷(3×X^2+3) answers as EXP(ATAN(X))÷(3×(X^2+1)) does. A typed LN, LOG, ASIN, ACOS,
 ATANH, ACOSH, TAN, SQRT or a power that isn't whole must survive canon too: LN(X)−LN(X)+X and EXP(LN(X)) are refused.
 So are SGN, ABS (but LN(ABS(…)), which answers) and IP or FP of X, whose derivative derive takes as 0, and 0^X.
 Another letter is a constant, but no answer divides by an expression of one that the integrand doesn't already divide
@@ -242,6 +243,10 @@ The answer can depend on the arena. At 8,192 bytes the rational path, which need
 no room inside a substitution or a part. So ATAN(X) answers −0.5×LN(ABS(X^2+1))+X×ATAN(X) by substitution there, and
 −0.5×LN(X^2+1)+X×ATAN(X) through the rational path at 65,536. Both are right: X^2+1 is never negative. X×ATAN(X) needs
 the rational path for its ∫v×u′ and is NOT_INTEGRABLE at 8,192.
+
+The rational path takes rational coefficients only. Inside this path a constant factor that isn't a number (π, LN(2),
+another letter, or the 180÷π that DEG puts in ATAN's derivative) comes out first and goes back on each term of the
+answer. So X^2÷(X^2+1)÷π answers, and X×ATAN(X) and ATAN(X+1) answer in DEG and GRAD as in RAD, at 65,536 bytes.
 
 It refuses (NOT_INTEGRABLE):
 - powers and products of SIN, COS and TAN of one argument (SIN(X)^2, TAN(X)^2), which need identities;
@@ -261,6 +266,9 @@ UNDEFINED. steps shows one page for these answers, the answer itself (ANSWER); t
 | `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
 | `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(ABS(X^2+1))+X×ATAN(X)` |
 | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
+| `casim integrate "EXP(ATAN(X))÷(3×X^2+3)" X RAD` | `EXP(ATAN(X))÷3` |
+| `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `0.5×ATAN(X)-90×X÷π+0.5×X^2×ATAN(X)` |
+| `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
 | `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim steps integrate "X×EXP(X)" X RAD` | `ANSWER: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
