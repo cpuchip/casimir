@@ -67,6 +67,9 @@ fractions in every calculus course.
      row of partfrac is put into the rational path's answer, and a value there means a hole (a "p=0" row counts too).
      (7×X−7)÷(X^2−2×X+1) cancels X−1, but its answer has no value at X=1, so nothing is a hole: it still answers
      3.5×LN(ABS(-2×X+X^2+1)), as abacus confirmed. Every other cancelling integrand goes on to CAS 017's search.
+   - **And a "p=0" row only where it has a real root (abacus #8423):** a removed factor with no rational root and no
+     real root (solve's NO REAL ROOTS: X^2+6) is no hole, so (X^4+7×X^2+6)÷(X^2+6) goes on to the search and answers.
+     One with real roots (X^2−2), or one solve leaves PARTIAL (X^3−2), still counts.
 9. **Bounds, decision 68 with decision 80's budget:**
    - **Frames:** no existing frame moves. The prototype measured do_irational at 240 B and ir_term at 192 B. On the stack
      the path is partfrac's own (bench worst about 3 KB) plus about 240 B. The masked bench gives the worst through the
