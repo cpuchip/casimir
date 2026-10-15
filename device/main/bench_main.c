@@ -258,7 +258,7 @@ static void bench_task(void *arg)
         for (int i = 0; i < case_count; i++) {
             const bench_case *k = &cases[i];
             pass &= res[i].ok;
-            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvifnqgkrtl"[k->op], k->chars,
+            printf("%-26s %2c %5d %8lld %8lld %6u %6u %5d %s\n", k->name, "dsecuvifnqgkrtlm"[k->op], k->chars,
                    (long long)res[i].us_min,
                    (long long)res[i].us_med, (unsigned)res[i].arena, res[i].stack,
                    k->status ? -k->status : (int)strlen(k->want),
