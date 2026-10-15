@@ -10776,9 +10776,13 @@ static ref sm_den(ctx *c, ref t, int var);
    canon expands it: abacus #8460, 7 over one divisor were past SM_TERMS). Out of line: sm_split's frame */
 static __attribute__((noinline)) void sm_put(ctx *c, ref *R, int *nr, ref t, int var)
 {
-    ref d = sm_den(c, t, var);
+    size_t mark = c->used;
     int k = 0;
-    while (k < *nr && cmp(c, sm_den(c, R[k], var), d) != 0) k++;
+    for (; k < *nr; k++) {                  /* both divisors' room given back once compared (abacus #8494: each */
+        bool eq = cmp(c, sm_den(c, R[k], var), sm_den(c, t, var)) == 0;    /* left, 5 sums lost to NO_ROOM) */
+        taylor_drop(c, mark);
+        if (eq) break;
+    }
     if (k < *nr) R[k] = ib_canon(c, add2(c, R[k], t));
     else if (*nr == SM_TERMS) c->st = CASIM_NO_CLOSED_FORM;
     else R[(*nr)++] = t;

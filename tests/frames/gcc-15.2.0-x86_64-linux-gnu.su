@@ -315,7 +315,7 @@ sm_letter	16
 sm_lit	48
 sm_mono.isra	32
 sm_poly	48
-sm_put	96
+sm_put	112
 sm_q	112
 sm_rational	640
 sm_read	64
