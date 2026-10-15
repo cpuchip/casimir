@@ -152,7 +152,8 @@ enum {
     CASIM_RULE_POLYNOMIAL,      /* integrate: a product multiplied out, then term by term */
     CASIM_RULE_CHECK,           /* integrate: the term's answer differentiated back to the term */
     CASIM_RULE_INTEGER_COEFFICIENTS,    /* solve: whole coefficients with no common factor, the leading one positive */
-    CASIM_RULE_COMMON_FACTOR,   /* solve: the root 0's factor X^k taken out; partfrac: the gcd of n and d, with its rows */
+    CASIM_RULE_COMMON_FACTOR,   /* solve: the root 0's factor X^k taken out; partfrac: the gcd of n and d, with its rows;
+                                   integrate (CAS 013 rule 8 amended): the integrand as cancel's reduced form (template) */
     CASIM_RULE_LINEAR_FACTOR,   /* solve: a linear factor divided out (template: the division) */
     CASIM_RULE_QUADRATIC_FACTOR,        /* solve: a quadratic factor divided out (template: the division) */
     CASIM_RULE_LINEAR,          /* solve: a linear factor = 0 */

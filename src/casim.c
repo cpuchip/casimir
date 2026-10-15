@@ -5373,6 +5373,8 @@ static casim_status do_irational(const char *eqn, int var, int angle, char *out,
                                  bool rtl);
 static casim_status do_iparts(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
                               bool rtl);
+static casim_status do_poly(int op, const char *eqn, int var, const char *repl, int angle, char *out, size_t cap,
+                            void *arena, size_t arena_cap, bool rtl, bool repl_rtl);
 
 static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int var, int angle, char *out, size_t cap,
                                                             void *arena, size_t arena_cap, bool rtl)
@@ -5438,13 +5440,36 @@ static __attribute__((noinline)) bool ir_cancels(const char *eqn, int var, int a
     return false;
 }
 
-/* CAS 017 after the rational path refused, unless its rule 8 did (ir_cancels); out of line, so casim_integrate keeps
-   its one call there (its frame moved 96 -> 112 with the test inline) */
+/* CAS 013 rule 8 amended (abacus #8494, #8510): a factor cancelled and no removed value is a hole (the caller asked
+   ir_cancels), so the reduced function is defined exactly where the integrand is, and the rational path answers for
+   it: (24X^3+43X^2+61X+7) over (3X^2+5X+7)(X+1) is cancel's 8×(X+0.125)÷(X+1). NOT_INTEGRABLE when nothing cancelled.
+   The rational path only, as the steps walk it (irs_refused). cancel's answer at the arena's top, the path below it */
+static __attribute__((noinline)) casim_status ir_reduced(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                         void *arena, size_t arena_cap, bool rtl)
+{
+    char *txt = (char *)arena + arena_cap - SLOT, *rows;
+    casim_status st;
+    if (arena_cap <= 4 * SLOT ||
+        do_poly(CASIM_CANCEL, eqn, var, NULL, angle, txt, SLOT, arena, arena_cap - SLOT, rtl, false) != CASIM_OK ||
+        !(rows = strchr(txt, ';')))
+        return CASIM_NOT_INTEGRABLE;
+    *rows = '\0';
+    st = do_irational(txt, var, angle, out, cap, arena, arena_cap - SLOT, rtl);
+    if (st != CASIM_OK && cap) out[0] = '\0';
+    return st == CASIM_OK || st == CASIM_NO_ROOM ? st : CASIM_NOT_INTEGRABLE;
+}
+
+/* CAS 017 after the rational path refused, unless its rule 8 did (ir_cancels); first the reduced function where a
+   factor cancelled without a hole (rule 8 amended: one answer at every arena, abacus #8510), then the search. Out of
+   line, so casim_integrate keeps its one call there (its frame moved 96 -> 112 with the test inline) */
 static __attribute__((noinline)) casim_status ir_parts(const char *eqn, int var, int angle, char *out, size_t cap,
                                                        void *arena, size_t arena_cap, bool rtl)
 {
+    casim_status st, r;
     if (ir_cancels(eqn, var, angle, arena, arena_cap, rtl)) return CASIM_NOT_INTEGRABLE;
-    return do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);
+    if ((r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return r;
+    st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);
+    return st == CASIM_NOT_INTEGRABLE && r == CASIM_NO_ROOM ? r : st;
 }
 
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
@@ -8253,7 +8278,8 @@ static __attribute__((noinline)) casim_status irs_quad(irs_t *S, ctx *c, const p
 }
 
 /* an answer line, ∫(text)dX = integrate's answer: the answer into out with the whole arena, then moved right for its
-   left side (SUM's: partfrac's text, into the arena's top slot; the root's: the integrand as typed) */
+   left side (SUM's: partfrac's text, into the arena's top slot; the root's: the integrand as typed, which is rq's repl
+   in a reduced walk, want 3) */
 static __attribute__((noinline)) casim_status irs_answer(const casim_req *rq, int want, char *out, size_t cap,
                                                          void *arena, size_t arena_cap, char *txt, size_t room)
 {
@@ -8262,6 +8288,7 @@ static __attribute__((noinline)) casim_status irs_answer(const casim_req *rq, in
     size_t n, m, p;
     casim_status st = do_irational(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
     if (st != CASIM_OK) return st;
+    if (want == 3) mid = rq->repl;
     if (want == 1) {
         if (do_partfrac(rq->eqn, rq->var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return out[0] = '\0', CASIM_NO_ROOM;
         mid = txt;
@@ -8276,13 +8303,19 @@ static __attribute__((noinline)) casim_status irs_answer(const casim_req *rq, in
     return CASIM_OK;
 }
 
+#define IRS_REDUCED (1 << 30)   /* flags, inside the walk only: rq's eqn is cancel's reduced form of its repl (rule 8) */
+
 /* tc: integrate's walk's context, which refused (do_isteps): its arena is this walk's (aligned, as start() took it); o:
-   its out and cap. Six arguments, so casim_step passes none on the stack (its frame unmoved) */
+   its out and cap. Six arguments, so casim_step passes none on the stack (its frame unmoved). With IRS_REDUCED (rule 8
+   amended, irs_refused), the walk of the reduced form, its first page ∫(typed)dX = ∫(reduced)dX and its root line the
+   typed integrand's; where the reduced form's rational path refuses (integrate answers it by that path only), the
+   typed integrand's search walk */
 static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, int k, int flags, casim_step_info *info,
                                                          const out_t *o, const ctx *tc)
 {
     char *out = o->o;
-    size_t cap = o->cap, arena_cap = tc->cap;
+    bool red = (flags & IRS_REDUCED) != 0;      /* the request and its text above the walk's arena */
+    size_t cap = o->cap, arena_cap = red ? (size_t)((const unsigned char *)rq - tc->mem) : tc->cap;
     void *arena = tc->mem;
     irs_t S;
     out_t w = {out, cap, 0, false};
@@ -8297,10 +8330,17 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
     rat *T;
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
+    flags &= ~IRS_REDUCED;
     /* integrate's answer, or its refusal, with the whole arena (a slot kept at the top cost 94 DEG answers' walks in
        the prototype); a small out borrows the slot */
     st = cap >= SLOT ? do_irational(rq->eqn, var, rq->angle, out, cap, arena, arena_cap, rtl)
                      : do_irational(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl);
+    if (red && st != CASIM_OK) {
+        /* the reduced form's rational path refused: the typed integrand's own walk, the search's (ir_parts' order) */
+        sub.eqn = rq->repl, sub.repl = NULL;
+        if (cap) out[0] = '\0';
+        return info->line = flags, ib_walk(&sub, k, info, out, cap, arena, tc->cap);
+    }
     /* CAS 017 rule 8: when the rational path refuses too, substitution and parts' walk */
     if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl)) return st;    /* rule 8 */
     if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? (info->line = flags, ib_walk(rq, k, info, out, cap, arena, arena_cap)) : st;
@@ -8316,6 +8356,8 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
         if (c.st != CASIM_OK) return CASIM_NO_ROOM;
         S.skip = cmp(&c, x, y) == 0;
     }
+    if (red && irs_hit(&S, 0, CASIM_STEP_TEMPLATE, CASIM_RULE_COMMON_FACTOR))
+        irs_int(&w, rq->repl, var), pf_puts(&w, " = "), irs_int(&w, rq->eqn, var);
     if (!S.skip) {
         if (irs_hit(&S, 0, CASIM_STEP_TEMPLATE, CASIM_RULE_PARTIAL_FRACTIONS))
             irs_int(&w, rq->eqn, var), pf_puts(&w, " = "), irs_int(&w, txt, var);
@@ -8374,11 +8416,13 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
     if (!S.skip) {
         if (nt > 1 && irs_hit(&S, 1, CASIM_STEP_RESULT, CASIM_RULE_SUM)) S.want = 1;
         if (irs_hit(&S, 0, CASIM_STEP_RESULT, CASIM_RULE_PARTIAL_FRACTIONS)) S.want = 2;
+    } else if (red && rdeg(W->poly) >= 0 && irs_hit(&S, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR)) {
+        S.want = 2;     /* the one term is the polynomial, its walk the table's, whose root line names the reduced form */
     }
     info->count = S.at;
     if (k < 0) return CASIM_OK;
     if (k >= S.at) return CASIM_BAD_ARG;
-    if (S.want) return irs_answer(rq, S.want, out, cap, arena, arena_cap, txt, room);
+    if (S.want) return irs_answer(rq, red && S.want == 2 ? 3 : S.want, out, cap, arena, arena_cap, txt, room);
     if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
     return CASIM_OK;
 }
@@ -8387,10 +8431,33 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
    (do_isteps cleared info and set nothing since), from one expression with finish: measured on the S3, the other
    placements moved casim_step's frame from 240 (six or more arguments 256; a separate line, or this call in finish's
    place, 224) */
+/* rule 8 amended (abacus #8494, #8510), as ir_parts answers first: where a factor cancelled and no removed value is a
+   hole, the request for the reduced form's walk, it and its text at the arena's top (the walk below them); else NULL.
+   Out of line, so its work isn't on the stack under the walk */
+static __attribute__((noinline)) casim_req *irs_reduce(const casim_req *rq, const ctx *tc)
+{
+    size_t cap = tc->cap, keep = SLOT + ((sizeof(casim_req) + 7u) & ~(size_t)7u), room;
+    bool rtl = rq->model == CASIM_MODEL_STU;
+    casim_req *g;
+    char *txt, *rows;
+    if (cap <= keep + 5 * SLOT) return NULL;
+    room = (cap - keep) & ~(size_t)7u;
+    g = (casim_req *)(void *)(tc->mem + room);
+    txt = (char *)(g + 1);
+    if (do_poly(CASIM_CANCEL, rq->eqn, rq->var, NULL, rq->angle, txt, SLOT, tc->mem, room, rtl, false) != CASIM_OK ||
+        !(rows = strchr(txt, ';')) || ir_cancels(rq->eqn, rq->var, rq->angle, tc->mem, room, rtl))
+        return NULL;
+    *rows = '\0';
+    *g = *rq, g->eqn = txt, g->repl = rq->eqn;
+    return g;
+}
+
+/* the reduced form's walk where there is one (irs_reduce), else the typed integrand's */
 static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, int k, casim_step_info *info,
                                                           const out_t *o, ctx *tc)
 {
-    return do_irsteps(rq, k, info->line, info, o, tc);
+    const casim_req *g = irs_reduce(rq, tc);
+    return do_irsteps(g ? g : rq, k, info->line | (g ? IRS_REDUCED : 0), info, o, tc);
 }
 
 /* ---- Taylor polynomials (unit CAS 014) ----

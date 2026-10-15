@@ -70,6 +70,18 @@ fractions in every calculus course.
    - **And a "p=0" row only where it has a real root (abacus #8423):** a removed factor with no rational root and no
      real root (solve's NO REAL ROOTS: X^2+6) is no hole, so (X^4+7×X^2+6)÷(X^2+6) goes on to the search and answers.
      One with real roots (X^2−2), or one solve leaves PARTIAL (X^3−2), still counts.
+   - **Amended: the reduced function, where nothing removed is a hole (abacus #8494 item 2, #8510).** Where a factor
+     cancelled and no removed value is a hole, the reduced function is defined exactly where the integrand is, so
+     its antiderivative keeps CAS 006's guarantee. The rational path then answers for cancel's reduced form, before the
+     search: (24×X^3+43×X^2+61×X+7)÷((3×X^2+5×X+7)×(X+1)) is 8×(X+0.125)÷(X+1), so 8×X−7×LN(ABS(X+1)), where it was
+     NOT_INTEGRABLE at every arena.
+     - **Why before the search:** one answer per input at every arena. After it, (X^3+X^2+X+1)÷(X^2+1) printed
+       X+0.5×X^2 where the search ran out (8,800 B) and the search's longer form, equal, at 64 KB.
+     - **What moved:** answers the search gave become the reduced form's: (7×X−7)÷(X^2−2×X+1) is 7×LN(ABS(X−1)), was
+       3.5×LN(ABS(−2×X+X^2+1)), and (X^4+7×X^2+6)÷(X^2+6) is X+X^3÷3 at 64 KB. NO_ROOM ones answer. Where the reduced
+       form's rational path refuses, the search runs as before; a hole still refuses (X^2÷X).
+     - **Steps:** the reduced form's walk after a COMMON FACTOR template, ∫(typed)dX = ∫(reduced)dX; the root's line
+       names the typed integrand, so the last step is integrate's answer. The template is hidden in one line.
 9. **Bounds, decision 68 with decision 80's budget:**
    - **Frames:** no existing frame moves. The prototype measured do_irational at 240 B and ir_term at 192 B. On the stack
      the path is partfrac's own (bench worst about 3 KB) plus about 240 B. The masked bench gives the worst through the

@@ -373,7 +373,7 @@ static void rational(void)
     /* roots outside by_value's points and intervals (a weak pole inside an interval escapes its detection) */
     static const char *const LIN[] = {"(X-2)", "(X+2)", "(2×X-5)", "(3×X+7)", "X", "(X-4)"};
     static const char *const QUAD[] = {"(X^2+1)", "(X^2+X+1)", "(2×X^2-X+3)", "(X^2+4)", "(X^2-2×X+5)"};
-    int judged = 0, refused_ = 0, cancelled = 0;
+    int judged = 0, refused_ = 0, cancelled = 0, holes = 0;
     for (int trial = 0; trial < 300; trial++) {
         char text[512], out[OUT], why[256] = "";
         int len = 0, used[11] = {0}, nf = rnd013(1, 3), deg = 0, angle = ANGLES[trial % 3];
@@ -396,14 +396,38 @@ static void rational(void)
             continue;
         }
         {
-            /* a common factor (partfrac prints its rows) is refused (rule 8, #6708) */
-            char pf[OUT];
+            /* a common factor (partfrac prints its rows) is refused where a removed value is a hole: what is left has a
+               value there (rule 8, #6708, as amended by #8494: else the reduced function's antiderivative, by value
+               below). The QUAD factors have no real root, so only an "X=a" row can be one; the core decides */
+            char pf[OUT], *row;
+            bool hole = false;
+            double v;
             casim_req rq = {CASIM_PARTFRAC, text, CASIM_MODEL_35, 'X' - 'A', NULL, 0, angle, NULL};
             casim_status ps = casim_run(&rq, pf, OUT, arena, sizeof arena);
-            if (ps == CASIM_OK && strstr(pf, "; ")) {
-                CHECK(st == CASIM_NOT_INTEGRABLE, "integrate %s cancels (%s): status %d \"%s\"", text, pf, (int)st, out);
+            if (ps == CASIM_OK && (row = strstr(pf, "; "))) {
+                *row = '\0';
+                for (char *r = row + 2; r;) {
+                    char *e = strstr(r, "; "), a[64] = "", x[64];
+                    abn av;
+                    if (r[0] == 'X' && r[1] == '=') sscanf(r + 2, "%63[^;]", a);
+                    if (!a[0] || ce_eval(a, &av) != ABN_OK) {      /* the value as a number: ce_set reads only those */
+                        r = e ? e + 2 : NULL;
+                        continue;
+                    }
+                    snprintf(x, sizeof x, "%s", ce_text(&av));
+                    hole = hole || at(pf, x, &v);
+                    r = e ? e + 2 : NULL;
+                }
                 cancelled++;
-                continue;
+                if (hole) {
+                    holes++;
+                    CHECK(st == CASIM_NOT_INTEGRABLE, "integrate %s cancels at a hole (%s): status %d \"%s\"", text, pf,
+                          (int)st, out);
+                    continue;
+                }
+                CHECK(st == CASIM_OK || st == CASIM_NOT_INTEGRABLE, "integrate %s cancels (%s): status %d", text, pf,
+                      (int)st);
+                if (st != CASIM_OK) continue;
             }
         }
         CHECK(st == CASIM_OK, "integrate %s (angle %d): status %d", text, angle, (int)st);
@@ -411,8 +435,8 @@ static void rational(void)
         judged++;
         CHECK(by_value(text, out, angle, why, sizeof why), "integrate %s (angle %d) = %s: %s", text, angle, out, why);
     }
-    printf("integrate: CAS 013, %d seeded rational integrands judged by value, %d refused for a common factor, %d NO_ROOM or "
-           "TOO_LONG\n", judged, cancelled, refused_);
+    printf("integrate: CAS 013, %d seeded rational integrands judged by value, %d cancelled a factor (%d at a hole, refused), "
+           "%d NO_ROOM or TOO_LONG\n", judged, cancelled, holes, refused_);
     CHECK(judged > 200, "%d judged", judged);
 }
 

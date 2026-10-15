@@ -186,8 +186,8 @@ JUXTA = re.compile(r"\)(?:d[A-Z])?\s*[∫(]")   # casim writes every product wit
 def wrong(rule, line, text, deg):
     if JUXTA.search(text):              # the cold review: ∫(a)dX∫(-b)dX, which the evaluator abstains on
         return f"two factors side by side, with no operator: {text}"
-    if rule in PF_RULES or rule == "COMPLETE THE SQUARE":
-        return ""                       # not an integral: rational_wrong judges these
+    if (rule in PF_RULES and not text.startswith("∫(")) or rule == "COMPLETE THE SQUARE":
+        return ""                       # not an integral: rational_wrong judges these (COMMON FACTOR's ∫ is rule 8's)
     text = in_x(text)
     if rule == "BY PARTS" and line == "T":
         return parts_wrong(text, deg)
@@ -225,11 +225,15 @@ def steps(e, deg, one, arena=BIG, var="X", angle=None, model="35", cap=None):
 
 
 # integrate inputs the corpus lacks, kept here: abacus's hidden cases H00075 and H00002 (#6252), where the walk once
-# refused what integrate answers, and rule 6a's spellings of a power of X under a constant
+# refused what integrate answers, rule 6a's spellings of a power of X under a constant, and CAS 013 rule 8 amended's
+# reduced walks (a factor cancelled with no hole: to a fraction, to a polynomial, a pole kept; every angle and model)
 AIMED = [("(-3)×SQRT(X)^3", "X", "DEG", "STU"),
          ("2×X×SQRT(X)+(-2)÷((-1÷2)×X-1)+4×INV(X^2)", "X", "DEG", "STU")] + [
     (k + f, "X", "RAD", "35") for k in ("3×", "-2×", "0.5×", "π×") for f in (
-        "SQRT(X)^3", "INV(X^2)", "SQ(X)", "INV(X)", "SQRT(X)×X", "X÷SQRT(X)", "INV(SQRT(X))", "X^2÷X^5")]
+        "SQRT(X)^3", "INV(X^2)", "SQ(X)", "INV(X)", "SQRT(X)×X", "X÷SQRT(X)", "INV(SQRT(X))", "X^2÷X^5")] + [
+    (f, "X", a, md) for f in ("(3×X^3+5×X^2+11×X+6)÷(X^3+2×X-3)", "(X^3+X^2+X+1)÷(X^2+1)", "(7×X-7)÷(X^2-2×X+1)",
+                              "(8×X-7)×(2×X+5)÷(2×X+5)^2", "(X^4+7×X^2+6)÷(X^2+6)")
+    for a, md in (("RAD", "35"), ("DEG", "STU"), ("GRAD", "33"))]
 
 
 def known_inputs():
@@ -268,9 +272,20 @@ def equation_wrong(text, deg):
 
 
 def rational_wrong(e, var, angle, model, rows, one):
-    """CAS 013's walk (rows of the TSV, already split): what is wrong with it, beyond each line's value"""
+    """CAS 013's walk (rows of the TSV, already split): what is wrong with it, beyond each line's value. Where a factor
+    cancelled (rule 8 amended, abacus #8510: integrate answered, so no removed value is a hole), the walk is cancel's
+    reduced form's, after its page ∫(e)dX = ∫(reduced)dX (hidden in one line), and is judged as that form's"""
     why = []
     m = ["--model", model]
+    rc, cn = cli(*m, "cancel", e, var, angle)
+    if rc == 0 and "; " in cn:
+        g = cn.split("; ")[0]
+        if not one:
+            want = f"∫({e})d{var} = ∫({g})d{var}"
+            if (rows[0][2], rows[0][3], rows[0][4]) != ("T", "COMMON FACTOR", want):
+                return [f"rule 8's reduced walk: its first page is {rows[0][2:5]}, not T COMMON FACTOR {want}"]
+            rows = rows[1:]
+        return why + rational_wrong(g, var, angle, model, rows, one)
     rc, pf = cli(*m, "partfrac", e, var, angle)
     _, a = cli(*m, "simplify", e, angle)
     _, b = cli(*m, "simplify", pf, angle)
@@ -320,7 +335,8 @@ def rational(e, var, model):
     is one of 013's, or its last is integrate's answer after a 013 rule)"""
     rc, out = cli("--tsv", "--model", model, "steps", "integrate", e, var, "RAD")
     return rc == 0 and not ib_walk(out) and any(r.split("\t")[3] in ("PARTIAL FRACTIONS", "SPLIT", "LOG DERIVATIVE",
-                                                                        "ARCTANGENT", "COMPLETE THE SQUARE")
+                                                                        "ARCTANGENT", "COMPLETE THE SQUARE") or
+                                                r.split("\t")[3] == "COMMON FACTOR" and r.split("\t")[4].startswith("∫(")
                                                 for r in out.split("\n"))
 
 
