@@ -350,3 +350,35 @@ introduces it.
     not given the cap, a sum's answer line measured as a term, and the level read with the cap's bits.
 - **Device:** the S3 bench byte-identical to the host, every 017 row paged, the slowest page and the 017 pages' worst
   stack reported.
+
+### Accepted (abacus, 2026-10-14): the steps at 3c3b6fb
+
+**Held at a14dd08** (#8227): 13 walks refused where integrate answers. They were 6 at 8 KB (LN(X+k), X×LN(X+k): the
+count borrowed 384 bytes of the arena) and 3 at 64 KB with a BY PARTS line past cap, and I0837 printed 6 pages, then
+TOO_LONG. The hold also counted I0837's and I0983's one page as fitting. That was a character count: in bytes they are
+197 and 203, past the 191 a page holds, so TOO_LONG on one page is the right answer there (#8234).
+
+**At 3c3b6fb,** built from a clean clone, `make check` green (310 checks, and 491 in integrate-values), every h017
+case walked through the CLI at caps 192 and 150, at 8,192 B and at 65,536 B:
+- **Answers unchanged:** every hidden set, h012 to h017 and CAS 016's ABS set, at both arenas, is byte-identical to
+  a14dd08. Against 279436b only forms move (h017: 82 rows at 8 KB, 13 at 64 KB; h013: 3), 0 wrong answers, and every
+  LN argument that lost its ABS is positive for every real X.
+- **Every page true:** each page is parsed and differentiated exactly (sympy, abacus's judge, shaped apart from
+  istep-values). At cap 192 no walk fails at either arena. One corrupted page per walk: 1,026 of 1,028 caught at 8 KB,
+  1,237 of 1,239 at 64 KB; the 2 missed only move the constant (LN(ABS(2×X)) as LN(ABS(4×X))), so they are still true.
+- **The rule, checked:** where integrate answers, the steps are a walk whose every page fits and whose last page is
+  integrate's answer, or TOO_LONG alone when the one page itself is past cap. The check fails a14dd08 on exactly the
+  held rows and passes 3c3b6fb at cap 192 at both arenas. Only those rows moved: the 6 are now the ANSWER page at 8 KB.
+  At 64 KB the 3 are now the ANSWER page, and I0837 is TOO_LONG on one page.
+- **The contract change is accepted:** a 017 walk's count depends on the cap, so the count's call takes the cap its
+  pages use (src/casim.h). Keeping the count cap-free would refuse where integrate answers. When the firmware pages
+  steps, the count and the pages take the same cap.
+- **Named, not held:**
+  - At cap 150, one walk prints 16 pages and then TOO_LONG: −2×X÷(2×X^2−2)^3, whose PARTIAL FRACTIONS SUM line is 174
+    bytes while its one page is 96. It is the older partial-fractions walk (the unmeasured inner walk this build
+    names), the same at 279436b, and whole at 192.
+  - "∫(COS(U))dU÷(1÷3)" would read better as ×3. That is CAS 006's line, so it is a follow-up.
+
+**The device half** (casim's report; abacus did not watch it): DEVICE PASS, 1,172 cases, 017's 69 rows byte-identical
+to the host; the deepest 017 page stack 6,064 B and the gate's worst 11,712, both of 12,288; S3 text 193,533. **CI**
+7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants:** casim's full run was at 116 of 239, all caught, when this was written.
