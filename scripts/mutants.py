@@ -878,6 +878,10 @@ MUTANTS = {
                              "    casim_status st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, true, &direct);")],
     "sum-4b-no-fallback": [("src/casim.c", "    if (st != CASIM_TOO_LONG || !direct) return st;", "    if (st != CASIM_TOO_LONG || !direct || 1) return st;")],
     "sum-4b-odd-sign": [("src/casim.c", "'!', neg ? ib_canon(c, ib_neg(c, u)) : u, L);", "'!', u, L);")],
+    # CAS 018 rule 4b's shift (abacus #8349): a negative power of the ratio's letter cleared
+    "sum-shift-off": [("src/casim.c", "    if (s == 0 || s > SM_DEG) return 0;\n    Bs =", "    if (1) return 0;\n    Bs =")],
+    "sum-shift-bounds": [("src/casim.c", "        lo = sh ? add2(c, S->lo, sm_int(c, -sh)) : S->lo;", "        lo = S->lo;")],
+    "sum-shift-binom": [("src/casim.c", "            for (int r = 1; r <= j - i; r++) w /= r;", "")],
     # CAS 018 rule 4b's cold review
     "sum-4b-no-hole-row": [("src/casim.c", "            hole = c->st == CASIM_UNDEFINED;", "            hole = false;")],
     "sum-4b-pole-as-swing": [("src/casim.c", "    swung = c.st == CASIM_OK;", "    swung = true;")],

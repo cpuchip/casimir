@@ -319,11 +319,13 @@ def gen_letter(rnd):
     region), and the rows against the true excluded set: the real roots of c×X^m = 1, or |X| < or > |c|^(-1/m)"""
     c = rnd.choice((F(1), F(1), F(-1), F(2), F(1, 2), F(-1, 3)))
     m = rnd.choice((1, 1, 2, -1, -2, 3))
-    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1)))] + [rand_frac(rnd)]
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1, 2)))] + [rand_frac(rnd)]   # to degree 2: the shift's
+                                                                                                  # binomials (#8349)
     xm = "X" if m == 1 else f"X^{m}" if m > 0 else f"X^({m})"
     b = f"({xm})" if c == 1 else f"({ft(c)}×{xm})"         # the judge's reader takes ^ right to left
     q = poly_text(co)
-    e = rnd.choice(("K", "K", "K-1", "K+1"))                 # a constant in the exponent: (c×X^m)^(K-1) at X = 0
+    e = rnd.choice(("K", "K", "K-1", "K+1", "K-2"))          # a constant in the exponent: (c×X^m)^(K-1) at X = 0,
+                                                             # and K-2 for rule 4b's shift by 2 (abacus #8349)
     pw = f"{b}^K" if e == "K" else f"{b}^({e})"
     summand = f"({q})×{pw}" if len(co) > 1 or co[0] != 1 else pw
     lo = rnd.randint(0, 2)

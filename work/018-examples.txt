@@ -20,8 +20,11 @@
 #   real root of B = 1 (k×X^m solved for X; any other B as B≠1); at ∞, ABS(X)<r, or > for X^(-K), or ABS(B)<1. Beside a
 #   divergent group without a letter, that group's ∞ with the letter's row; beside a swing, UNDECIDED. Whole bounds at
 #   most 64 apart are summed term by term first (X+X^2+X^3, no row); past 191 bytes, the closed form and its row.
-#   From rule 4b's cold review: X≠0 where the answer itself has no value at 0 though the sum may (K×X^(K-1)'s
-#   X÷(X-X^2); X^(K-1) merges to X^N and needs none); a pole in the range stays UNDEFINED beside a letter group.
+#   From rule 4b's cold review: X≠0 where the answer itself has no value at 0 though the sum may; a pole in the range
+#   stays UNDEFINED beside a letter group. After abacus #8349: a letter group whose coefficient holds a negative power
+#   of the ratio's letter is summed shifted (K×X^(K-1) as (K+1)×X^K from 0 to N-1), so its answer divides by no power
+#   of X and needs no X≠0 the sum doesn't (K×X^(K-1), X^(2×K-1)). K×X^(K-2) keeps it: its first term is 1÷X. The
+#   shift takes a ratio in one letter; Y^K×X^(K-1) (ratio X×Y) still shows X≠0.
 | `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
 | `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
 | `casim sum "K^3" K 1 N RAD` | `0.25×N^2+0.5×N^3+0.25×N^4` |
@@ -118,9 +121,11 @@
 | `casim sum "(SQRT(6)-SQRT(2)×SQRT(3))×(-1)^K" K 0 ∞ RAD` | `UNDECIDED` |
 | `casim sum "i^K" K 0 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)" K 0 N RAD` | `NO_ROOM` |
-| `casim sum "K×X^(K-1)" K 1 ∞ RAD` | `X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1` |
-| `casim sum "K×X^(K-1)" K 1 N RAD` | `-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1` |
-| `casim sum "X^(2×K-1)" K 1 N RAD` | `-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1` |
+| `casim sum "K×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1` |
+| `casim sum "K^2×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-1.5×X÷(X-0.5×X^2-0.5)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1` |
+| `casim sum "K×X^(K-1)" K 1 N RAD` | `-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1` |
+| `casim sum "K×X^(K-2)" K 1 N RAD` | `1÷(X-X^2)-0.5÷(X-0.5×X^2-0.5)+N×X^(N-1)÷(X-1)+0.5×X^N÷(X-0.5×X^2-0.5)+X^(N-1)÷(X-1); X≠0; X≠1` |
+| `casim sum "X^(2×K-1)" K 1 N RAD` | `X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1` |
 | `casim sum "X^(-K)" K 0 N RAD` | `-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1` |
 | `casim sum "X^(K-1)" K 1 N RAD` | `-1÷(X-1)+X^N÷(X-1); X≠1` |
 | `casim sum "Y^K×X^(K-1)" K 1 N RAD` | `-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1` |

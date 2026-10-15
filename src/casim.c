@@ -10955,6 +10955,54 @@ static ref sm_q(ctx *c, const smgroup *g, ref x)
     return q;
 }
 
+static bool sm_mono(ctx *c, ref B, rat *k, int *L, int *m);
+
+/* the most negative whole power of the letter L among t's factors, 0 for none */
+static int sm_negpow(ctx *c, ref t, int L)
+{
+    const node *x = nd(c, t);
+    const ref *f = x->kind == K_MUL ? list(c, x->a) : &t;
+    int n = x->kind == K_MUL ? x->n : 1, e = 0;
+    for (int i = 0; i < n; i++) {
+        const node *y = nd(c, f[i]);
+        if (y->kind == K_POW && nd(c, y->a)->kind == K_VAR && nd(c, y->a)->id == L && is_num(c, y->b) &&
+            val(c, y->b)->q == 1 && val(c, y->b)->p < e)
+            e = (int)val(c, y->b)->p;
+    }
+    return e;
+}
+
+/* rule 4b, abacus #8349: a letter group q(var)×B^var whose q holds a negative power of B's letter L (K×X^(K-1): q is
+   K÷X) is summed shifted, as q(var+s)×B^s×B^var over lo-s .. hi-s, with s the least that clears them; the answer then
+   divides by no power of L, and needs no row for L = 0 that the sum doesn't. g->q becomes q(var+s)×B^s; returns s, 0
+   when there is none to clear (or past SM_DEG, or a binomial that overflows) */
+static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g)
+{
+    rat k;
+    int L, m, s = 0;
+    ref Bs;
+    if (!g->B || !sm_mono(c, g->B, &k, &L, &m) || m <= 0) return 0;
+    for (int j = 0; j <= g->d; j++) {
+        int e = sm_negpow(c, g->q[j], L);
+        if (e < 0 && (-e + m - 1) / m > s) s = (-e + m - 1) / m;
+    }
+    if (s == 0 || s > SM_DEG) return 0;
+    Bs = power(c, g->B, sm_int(c, s));
+    for (int i = 0; i <= g->d; i++) {
+        /* q'(i) = B^s × Σ_{j >= i} q(j) × C(j, i) × s^(j-i) */
+        ref t = small(c, C_0);
+        for (int j = i; j <= g->d; j++) {
+            int64_t w = 1;
+            for (int r = 0; r < j - i; r++)
+                if (!mul64(&w, w, (int64_t)(j - r)) || !mul64(&w, w, s)) return 0;
+            for (int r = 1; r <= j - i; r++) w /= r;                   /* C(j, i) s^(j-i): j!/(i!) / (j-i)! s^(j-i) */
+            t = add2(c, t, mul2(c, sm_int(c, w), g->q[j]));
+        }
+        g->q[i] = ib_canon(c, expand_fully(c, ib_canon(c, mul2(c, Bs, t))));
+    }
+    return c->st == CASIM_OK ? s : 0;
+}
+
 /* rule 8: |B| (1 for a polynomial) against |B2|: the sign of B^2 - B2^2; 2 when exactly equal, 0 when undecided */
 static int sm_cmpabs(ctx *c, ref B, ref B2)
 {
@@ -10977,11 +11025,14 @@ static __attribute__((noinline)) ref sm_groups(ctx *c, const smsum *S, smgroup *
         for (int j = 0; j <= G[gi].d; j++) G[gi].q[j] = ib_canon(c, G[gi].q[j]);
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
         smgroup *g = &G[gi];
-        ref F, q, z, B = g->B, top;
-        size_t mark = c->used;                                      /* each group's work is given back */
+        ref F, q, z, B = g->B, top, lo;
+        size_t mark;
         bool zero = true;
+        int sh;
         for (int j = 0; j <= g->d; j++) zero = zero && is_k(c, g->q[j], 0, 1);
         if (zero) continue;
+        sh = sm_shift(c, g);                                        /* rule 4b: lo-sh .. hi-sh, q shifted */
+        mark = c->used;                                             /* each group's work is given back (not q's) */
         if (B) {
             /* rule 4: a rational B is solved as it is; another with B = W+1, so the check's
                divisions are powers of W, which expand merges (by B-1 they don't: EXP(1)-1), and W is B-1 after */
@@ -11009,9 +11060,10 @@ static __attribute__((noinline)) ref sm_groups(ctx *c, const smsum *S, smgroup *
         }
         if (c->st != CASIM_OK || F == SPARE) return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
         F = compact(c, mark, F);
-        sum = add2(c, sum, ib_neg(c, mul2(c, ib_at(c, F, var, S->lo), B ? power(c, B, S->lo) : small(c, C_1))));
+        lo = sh ? add2(c, S->lo, sm_int(c, -sh)) : S->lo;
+        sum = add2(c, sum, ib_neg(c, mul2(c, ib_at(c, F, var, lo), B ? power(c, B, lo) : small(c, C_1))));
         if (!S->inf) {
-            top = add2(c, S->hi, small(c, C_1));
+            top = add2(c, S->hi, sm_int(c, 1 - sh));
             sum = add2(c, sum, mul2(c, ib_at(c, F, var, top), B ? power(c, B, top) : small(c, C_1)));
         }
         sum = compact(c, mark, ib_canon(c, sum));
