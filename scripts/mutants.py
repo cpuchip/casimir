@@ -880,6 +880,8 @@ MUTANTS = {
     "sum-4b-odd-sign": [("src/casim.c", "'!', neg ? ib_canon(c, ib_neg(c, u)) : u, L);", "'!', u, L);")],
     # CAS 018 after h018 (abacus #8460): a typed n÷d's terms are one rational term; equal fractions one entry
     # abacus #8494: the divisors compared in sm_put keep their room
+    "sum-closed-room-as-long": [("src/casim.c", "    return st == CASIM_OK || st == CASIM_NO_ROOM ? st : CASIM_TOO_LONG;",
+                                 "    return st == CASIM_OK ? st : CASIM_TOO_LONG;")],
     "sum-put-room-kept": [("src/casim.c", "        taylor_drop(c, mark);\n        if (eq) break;", "        (void)mark;\n        if (eq) break;")],
     "sum-terms-unmerged": [("src/casim.c", "    if (k < *nr) R[k] = ib_canon(c, add2(c, R[k], t));", "    if (0) R[k] = ib_canon(c, add2(c, R[k], t));")],
     "sum-fractions-unmerged": [("src/casim.c", "                if (at < nt) tm[at].cf = ib_canon(c, add2(c, tm[at].cf, cm));",

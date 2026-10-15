@@ -84,7 +84,8 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
    exactly first, as canon makes them, each from the typed text with var replaced; when that sum doesn't fit out
    (past 191 bytes), rules 4 and 5's closed form, with rule 4b's rows, and TOO_LONG when there is none (abacus #8320
    (c): Σ X^K from 1 to 3 is X+X^2+X^3, true for every X, with no row). A telescoping closed form isn't used for a
-   range shorter than its shifts (the next point): there it stays TOO_LONG. The terms: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K)
+   range shorter than its shifts (the next point): there it stays TOO_LONG. A closed form that runs out of room says
+   NO_ROOM, not TOO_LONG (abacus #8506: S1848, 3 to 33, said TOO_LONG at 8,800 B and answers at 9,500 B). The terms: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K)
    from 1 to 3 is SIN(1)+SIN(2)+SIN(3), in the request's angle mode (DEG's SIN(30) is 0.5). A term with no value is
    UNDEFINED. Further apart, rules 4 and 5, or NO_CLOSED_FORM.
    - **Why always, and not only when rules 4 and 5 refuse** (found building): over a range shorter than its shifts, a

@@ -33,6 +33,9 @@
 # - After abacus's rerun (#8494): comparing each term's divisor left both divisors in the arena, so sums typed as
 #   separate fractions lost room (S0421 needed 9,260 B, NO_ROOM at 8,800). The room is given back after each
 #   comparison, and these need what they did before the merge (8,540 B; 8,155 B).
+# - A closed form that runs out of room is NO_ROOM (#8506): 1 to 50's term-by-term sum stays a sum of fractions
+#   (483 bytes, past the cap), and its telescoped form needs more than 8,800 B. It said TOO_LONG before, for a
+#   29-byte answer.
 | `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
 | `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
 | `casim sum "K^3" K 1 N RAD` | `0.25×N^2+0.5×N^3+0.25×N^4` |
@@ -145,3 +148,5 @@
 | `casim --arena 65536 sum "1÷(K×(K+1)×(K+2))+1÷((K+1)×(K+2)×(K+3))+1÷(K×(K+1)×(K+3))+1÷(K×(K+2)×(K+3))+1÷((K+1)×(K+3)×(K+4))" K 1 N RAD` | `-1÷(N+1)-1÷6÷(N+2)+5÷6÷(N+3)+1÷3÷(N+4)+13÷18` |
 | `casim sum "K^(-2)+1÷(2×K)+1÷(2×(4+K))-1÷(2+K)-4÷(2+K)^2+3÷(4+K)^2" K 1 ∞ RAD` | `1.1875` |
 | `casim --arena 8192 sum "3÷(2+K)^2-5÷(3×(1+K)^2)-4÷(3×(3+K)^2)-1÷(3×(1+K))+1÷(3×(3+K))" K 1 ∞ RAD` | `-59÷108` |
+| `casim sum "12×(561+16×K^4+160×K^3+568×K^2+856×K)÷((1+2×K)×(3+2×K)^2×(7+2×K)×(9+2×K)^2)" K 1 50 RAD` | `NO_ROOM` |
+| `casim --arena 65536 sum "12×(561+16×K^4+160×K^3+568×K^2+856×K)÷((1+2×K)×(3+2×K)^2×(7+2×K)×(9+2×K)^2)" K 1 50 RAD` | `39928985231992÷39720146275845` |

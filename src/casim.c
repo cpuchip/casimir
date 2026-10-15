@@ -11390,7 +11390,8 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
 }
 
 /* rule 7 first: whole bounds at most 64 apart are summed term by term; when that sum doesn't fit out, the closed
-   form and its rows (rule 4b: X+X^2+X^3 needs no row), and TOO_LONG when there's none */
+   form and its rows (rule 4b: X+X^2+X^3 needs no row), and TOO_LONG when there's none. A closed form that ran out of
+   room is NO_ROOM (abacus #8506: S1848, 3 to 33, answers at 9,500 B) */
 static __attribute__((noinline)) casim_status do_sum(const char *eqn, int var, const char *lo, const char *hi, int angle,
                                                      char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
 {
@@ -11399,7 +11400,7 @@ static __attribute__((noinline)) casim_status do_sum(const char *eqn, int var, c
     if (st != CASIM_TOO_LONG || !direct) return st;
     st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, true, &direct);
     if (st != CASIM_OK && cap) out[0] = '\0';
-    return st == CASIM_OK ? st : CASIM_TOO_LONG;
+    return st == CASIM_OK || st == CASIM_NO_ROOM ? st : CASIM_TOO_LONG;
 }
 
 casim_status casim_sum(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
