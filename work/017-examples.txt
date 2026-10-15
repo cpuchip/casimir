@@ -26,7 +26,8 @@
 #   SIN(X)+1÷(3×X^2+2×X+8) and (8×X-7)×(2×X+5)÷(2×X+5)^2 are NO_ROOM at 8 KB and answer at 64 KB.
 # - The calculator's arena is 8,800 B since Michael's cas-arena-8800: the rows that show NO_ROOM at 8 KB give
 #   --arena 8192, and at 8,800 each of them answers (X×ATAN(X), SIN(X)+1÷(X^2-1), X^2÷(X^2+1)÷π). The two above
-#   are NO_ROOM at 8,800 too.
+#   are NO_ROOM at 8,800 too, but the second runs out inside partfrac there; at 8,192 it runs out before partfrac can
+#   start, so its --arena 8192 row is the one that reaches the start test.
 # - CAS 013's rule 8 after abacus #8423: a removed factor with no rational root is a hole only where it has a real root.
 #   X^2+6 has none, so (X^4+7×X^2+6)÷(X^2+6) answers as 3c3b6fb did, by parts (its ATAN terms' coefficients sum to
 #   0: the answer is X+X^3÷3). X^2-2 has real roots and X^3-2 is PARTIAL to solve, so both are refused, as before.
@@ -90,6 +91,7 @@
 | `casim integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `-COS(X)+ATAN(3×(X+1÷3)÷SQRT(23))÷SQRT(23)` |
 | `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
+| `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-10×LN(ABS(2×X+5))-4×X×LN(ABS(2×X+5))+4×LN(ABS(2×X+5))×(X-0.875)` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
