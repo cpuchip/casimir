@@ -20,7 +20,7 @@
 
 #define REPS 15
 #define ARENA_MAX 32768
-#define CASES_MAX 1280          /* more than case_count (checked in app_main): 838 at CAS 012, 1,065 at CAS 016 */
+#define CASES_MAX 1536          /* more than case_count (checked in app_main): 838 at CAS 012, 1,065 at CAS 016, 1,290 at 018's fix */
 #define OUT_MAX 16384
 #define STACK 65536
 #define WSTACK 65536
@@ -305,13 +305,24 @@ static void bench_task(void *arg)
     }
 }
 
+/* a bench that can't start says so the way a report does, in a block that repeats, so a reader that attaches late
+   (device_capture.py waits for BENCH BEGIN) sees it: a line printed once at boot was lost (1,290 cases, room for 1,280) */
+static void start_fail(const char *why)
+{
+    for (;;) {
+        printf("BENCH BEGIN casim on ESP32-S3: not started\nDEVICE FAIL: %s\nDEVICE DONE\n", why);
+        fflush(stdout);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+}
+
 void app_main(void)
 {
+    char why[64];
     vTaskDelay(pdMS_TO_TICKS(1500));
     if (case_count > (int)(sizeof res / sizeof res[0])) {
-        printf("DEVICE FAIL: %d cases, room for %d\n", case_count, (int)(sizeof res / sizeof res[0]));
-        printf("DEVICE DONE\n");
-        return;
+        snprintf(why, sizeof why, "%d cases, room for %d", case_count, (int)(sizeof res / sizeof res[0]));
+        start_fail(why);
     }
-    if (xTaskCreate(bench_task, "casim_bench", STACK, NULL, 5, NULL) != pdPASS) printf("DEVICE FAIL: no task\n");
+    if (xTaskCreate(bench_task, "casim_bench", STACK, NULL, 5, NULL) != pdPASS) start_fail("no task");
 }
