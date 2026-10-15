@@ -285,6 +285,50 @@ def gen_tele(rnd):
     return summand, lo, "N", "RAD", "N"
 
 
+def gen_tele_typed(rnd):
+    """a telescoping sum typed as one n÷d, multiplied out (abacus #8460: canon splits it into one term per power of K
+    in the numerator, over one divisor); integer shifts, two to four fractions of power 1 or 2"""
+    m = rnd.choice((1, 2, 2))
+    shifts = rnd.sample([0, 1, 2, 3], rnd.choice((1, 2)))
+    g = [(F(rnd.choice((1, 2, 3, -1, -2, 4))), s) for s in shifts]
+    d = rnd.choice((1, 1, 2))
+    while len({x for _, s in g for x in (s, s + d)}) < 2 * len(g):
+        d += 1
+    fr = [(a, s) for a, s in g] + [(-a, s + d) for a, s in g]            # f(k) = Σ a÷(k+s)^m
+    lo = max(-s for _, s in fr) + rnd.randint(1, 2)
+    def pmul(p, q):
+        r = [F(0)] * (len(p) + len(q) - 1)
+        for i, x in enumerate(p):
+            for j, y in enumerate(q):
+                r[i + j] += x * y
+        return r
+    def ppow(s):                                                    # (k+s)^m
+        r = [F(1)]
+        for _ in range(m):
+            r = pmul(r, [F(s), F(1)])
+        return r
+    den = [F(1)]
+    for _, s in fr:
+        den = pmul(den, ppow(s))
+    num = [F(0)] * len(den)
+    for i, (a, s) in enumerate(fr):
+        t = [a]
+        for j, (_, s2) in enumerate(fr):
+            if j != i:
+                t = pmul(t, ppow(s2))
+        for k, x in enumerate(t):
+            num[k] += x
+    def text(co):
+        terms = [(j, c) for j, c in enumerate(co) if c]
+        rnd.shuffle(terms)                                          # the order typed is canon's to fix
+        return "+".join(f"{ft(c)}×K^{j}" if j > 1 else f"{ft(c)}×K" if j == 1 else ft(c) for j, c in terms) or "0"
+    summand = f"({text(num)})÷({text(den)})".replace("+-", "-")
+    if rnd.random() < 0.35:
+        truth = sum((a / (k + s) ** m for a, s in g for k in range(lo, lo + d)), F(0))
+        return summand, lo, INF, "RAD", D(truth.numerator) / D(truth.denominator)
+    return summand, lo, "N", "RAD", "N"
+
+
 def gen_open(rnd):
     """sums that don't close: a class that doesn't telescope, a function of K (symbolic bounds)"""
     summand = rnd.choice(("1÷K", "1÷K^2", "1÷(K×(K+2))+1÷K", "3÷(K+1)^2-1÷K", "SIN(K)", "LN(K)", "SQRT(K)",
@@ -383,7 +427,8 @@ def judge_letter(summand, lo, hi, out, c, m, rnd):
     return ""
 
 
-FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_open, 1), (gen_direct, 2), (gen_pole, 1),
+FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
+            (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
 
 

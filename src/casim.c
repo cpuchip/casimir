@@ -10770,6 +10770,20 @@ static void sm_add(ctx *c, smgroup *G, int *ng, ref coef, int j, ref B)
     if (j > G[gi].d) G[gi].d = j;
 }
 
+static ref sm_den(ctx *c, ref t, int var);
+
+/* a rational term into R: terms over one divisor are one term, through partfrac once (a typed n÷d is several terms once
+   canon expands it: abacus #8460, 7 over one divisor were past SM_TERMS). Out of line: sm_split's frame */
+static __attribute__((noinline)) void sm_put(ctx *c, ref *R, int *nr, ref t, int var)
+{
+    ref d = sm_den(c, t, var);
+    int k = 0;
+    while (k < *nr && cmp(c, sm_den(c, R[k], var), d) != 0) k++;
+    if (k < *nr) R[k] = ib_canon(c, add2(c, R[k], t));
+    else if (*nr == SM_TERMS) c->st = CASIM_NO_CLOSED_FORM;
+    else R[(*nr)++] = t;
+}
+
 /* the canonical summand's terms: polynomial-times-geometric ones into G, the rest into R (by tree) */
 static void sm_split(ctx *c, ref f, int var, smgroup *G, int *ng, ref *R, int *nr)
 {
@@ -10778,10 +10792,7 @@ static void sm_split(ctx *c, ref f, int var, smgroup *G, int *ng, ref *R, int *n
         ref t = nd(c, f)->kind == K_ADD ? list(c, nd(c, f)->a)[i] : f, coef, B;
         int j;
         if (sm_term(c, t, var, &coef, &j, &B)) sm_add(c, G, ng, coef, j, B);
-        else if (c->st == CASIM_OK) {
-            if (*nr == SM_TERMS) c->st = CASIM_NO_CLOSED_FORM;
-            else R[(*nr)++] = t;
-        }
+        else if (c->st == CASIM_OK) sm_put(c, R, nr, t, var);
     }
 }
 
@@ -10819,27 +10830,47 @@ static ref sm_anti(ctx *c, const smgroup *g, ref B, int var)
     return ib_canon(c, acc);
 }
 
-/* rule 5: a rational term as one n÷d text for partfrac, its factors free of var left out (they multiply its answer:
-   CAS 017 rule 1's constant factor); false when it doesn't fit */
-static bool sm_frac(ctx *c, ref t, int var, char *buf, size_t cap)
+/* a rational term's divisor: its factors in var with a negative whole power, each as the positive power, canonical; a
+   sum (sm_split's terms over one divisor, abacus #8460) by its first term */
+static ref sm_den(ctx *c, ref t, int var)
 {
-    int n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
-    ref nu = small(c, C_1), de = small(c, C_1);
-    out_t w = {buf, cap, 0, false};
+    int n;
+    ref de = small(c, C_1);
+    if (nd(c, t)->kind == K_ADD) t = list(c, nd(c, t)->a)[0];
+    n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
     for (int i = 0; i < n; i++) {
         ref f = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[i] : t;
         const node *y = nd(c, f);
-        if (!contains(c, f, var)) continue;
-        if (y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->p < 0 && val(c, y->b)->q == 1) {
+        if (contains(c, f, var) && y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->p < 0 && val(c, y->b)->q == 1) {
             rat e = *val(c, y->b);
             e.p = -e.p;
             de = mul2(c, de, power(c, y->a, num(c, &e)));
-        } else nu = mul2(c, nu, f);
+        }
     }
+    return ib_canon(c, de);
+}
+
+/* rule 5: a rational term as one n÷d text for partfrac, its factors free of var left out (they multiply its answer:
+   CAS 017 rule 1's constant factor); a sum of terms over one divisor as (Σ term×d)÷d; false when it doesn't fit */
+static bool sm_frac(ctx *c, ref t, int var, char *buf, size_t cap)
+{
+    int n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
+    ref nu = small(c, C_1), de = sm_den(c, t, var);
+    out_t w = {buf, cap, 0, false};
+    if (nd(c, t)->kind == K_ADD) {
+        nu = small(c, C_0);                                         /* each term × d: its d^-1 and d one base */
+        for (int i = 0; i < nd(c, t)->n; i++) nu = add2(c, nu, ib_canon(c, mul2(c, list(c, nd(c, t)->a)[i], de)));
+    } else
+        for (int i = 0; i < n; i++) {
+            ref f = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[i] : t;
+            const node *y = nd(c, f);
+            if (!contains(c, f, var)) continue;
+            if (!(y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->p < 0 && val(c, y->b)->q == 1)) nu = mul2(c, nu, f);
+        }
     puts_(&w, "(");
     print(c, &w, ib_canon(c, nu));
     puts_(&w, ")" DIVIDE "(");
-    print(c, &w, ib_canon(c, de));
+    print(c, &w, de);
     puts_(&w, ")");
     if (!w.full) buf[w.n] = '\0';
     return c->st == CASIM_OK && !w.full;
@@ -10919,14 +10950,22 @@ static __attribute__((noinline)) ref sm_rational(ctx *c, const smsum *S, ref *R,
             }
             /* c÷(a×var+b)^m, as (c÷a^m)÷(var+s)^m */
             if (c->st != CASIM_OK || nd(c, f)->kind != K_POW || !is_num(c, nd(c, f)->b) || val(c, nd(c, f)->b)->q != 1 ||
-                val(c, nd(c, f)->b)->p >= 0 || !sm_poly(c, nd(c, f)->a, var, &lin) || pdeg(lin) != 1 || nt == SM_SHIFT)
+                val(c, nd(c, f)->b)->p >= 0 || !sm_poly(c, nd(c, f)->a, var, &lin) || pdeg(lin) != 1)
                 return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
             m = (int)-val(c, nd(c, f)->b)->p;
             if (!rat_make(&ia, lin[1].q, lin[1].p) || !rat_mul(&s, &lin[0], &ia) || !rat_pow(&iam, &ia, m))
                 return c->st = CASIM_NO_ROOM, SPARE;
             if (s.q == 1 && sm_in(S, -s.p)) return c->st = CASIM_UNDEFINED, SPARE;     /* a pole in the range */
-            tm[nt].s = s, tm[nt].m = m, tm[nt].cf = ib_canon(c, mul2(c, cf, num(c, &iam)));
-            nt++;
+            {
+                /* one entry per (s, m): a typed n÷d is several terms over one divisor once canon expands it, each
+                   through partfrac, and each gives the same fractions (abacus #8460: 4 terms of 3 reached 12) */
+                ref cm = ib_canon(c, mul2(c, cf, num(c, &iam)));
+                int at = 0;
+                while (at < nt && !(tm[at].m == m && tm[at].s.p == s.p && tm[at].s.q == s.q)) at++;
+                if (at < nt) tm[at].cf = ib_canon(c, add2(c, tm[at].cf, cm));
+                else if (nt == SM_SHIFT) return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+                else tm[nt].s = s, tm[nt].m = m, tm[nt].cf = cm, nt++;
+            }
         }
     }
     /* classes by (s mod 1, m), each summing to 0: Σ_{k=lo}^{hi} = Σ_i c_i Σ_{j<d_i} [1÷(hi+1+s0+j)^m - 1÷(lo+s0+j)^m] */
