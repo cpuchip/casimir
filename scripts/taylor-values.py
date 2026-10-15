@@ -198,7 +198,7 @@ def spelling_wrong(text, a="0"):
     return ""
 
 
-def taylor(text, n, point="0", angle="RAD", arena=8192):
+def taylor(text, n, point="0", angle="RAD", arena=8800):
     p = subprocess.run([CLI, "--arena", str(arena), "taylor", text, "X", point, str(n), angle], stdout=subprocess.PIPE,
                        text=True, encoding="utf-8")
     return p.returncode, p.stdout.strip()
@@ -314,20 +314,20 @@ def main():
         n = rnd.randint(1, 10)
         text, s = gen(rnd, n)
         cases.append((text, s, n))
-    # each at the calculator's 8,192 B arena (384 B text buffers) and at 65,536 B (1,024 B ones, CAS 016 rule 4)
+    # each at the calculator's 8,800 B arena (384 B text buffers) and at 65,536 B (1,024 B ones, CAS 016 rule 4)
     big = {"judged": 0, "soft": 0}
-    for (text, s, n), arena in [(c, a) for a in (8192, 65536) for c in cases]:
+    for (text, s, n), arena in [(c, a) for a in (8800, 65536) for c in cases]:
         rc, out = taylor(text, n, arena=arena)
         if rc != 0:
             if out in ("NO_ROOM", "TOO_LONG"):
-                soft += arena == 8192
-                big["soft"] += arena != 8192
+                soft += arena == 8800
+                big["soft"] += arena != 8800
                 continue
             failed += 1
             print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n} (arena {arena}): {out}")
             continue
-        judged += arena == 8192
-        big["judged"] += arena != 8192
+        judged += arena == 8800
+        big["judged"] += arena != 8800
         w = wrong(out, s)
         if w:
             failed += 1

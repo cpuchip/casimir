@@ -29,7 +29,7 @@ def esc(s):
     return s.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n")
 
 
-def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, repl2=None, arena=8192, cap=65536):
+def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, repl2=None, arena=8800, cap=65536):
     v = ord(var) - ord("A")
     m = MODEL[model]
     rm = MODEL[repl_model] if repl_model else m
@@ -40,14 +40,14 @@ def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, 
 def bench():
     for _name, expr, var, angle, op, repl, model in measure.all_cases():
         lo, hi = repl.split("|", 1) if op in ("defint", "taylor", "limit") else (repl, None)
-        for arena, cap in ((65536, 65536), (8192, 192)):    # as measured, and the calculator's budget and slot
+        for arena, cap in ((65536, 65536), (8800, 192)):    # as measured, and the calculator's budget and slot
             yield line(op, expr, var, angle, model, lo, None, hi, arena, cap)
 
 
 def cli_line(cmd):
     """a `casim ...` command (work/016-examples.txt) as a golden line"""
     a = shlex.split(cmd)[1:]
-    arena = 8192
+    arena = 8800
     if a[0] == "--arena":
         arena, a = int(a[1]), a[2:]
     op, t = a[0], a[1:]
@@ -127,7 +127,7 @@ def generated():
         model = rng.choice(["35", "35", "33", "STU"])
         op = rng.choice(["derive", "simplify", "expand", "collect", "subst", "integrate", "defint", "solve", "factor",
                          "pdiv", "pgcd", "cancel"])
-        arena = rng.choice([8192, 8192, 65536])
+        arena = rng.choice([8800, 8800, 65536])
         if op in ("simplify", "expand"):
             yield line(op, expr(4), angle=angle, model=model, arena=arena)
         elif op in ("derive", "collect", "integrate"):
@@ -165,7 +165,7 @@ def generated_partfrac():
         common = rng.choice(["", "", "", f"(X{rng.randint(-5, 5):+d})×"])
         text = f"{common}({num(rng.randint(0, 7))})÷({common}{den})"
         yield line("partfrac", text, "X", rng.choice(["RAD", "DEG"]), rng.choice(["35", "35", "33", "STU"]),
-                   arena=rng.choice([8192, 8192, 65536]))
+                   arena=rng.choice([8800, 8800, 65536]))
 
 
 TAYLOR_CASES = 400
@@ -189,7 +189,7 @@ def generated_taylor():
             a = f"({a})÷(2+X^2)"
         point = rng.choice(["0", "0", "0", "1", "-2", "1÷2", "π÷3", "π÷6", "SQRT(2)"])
         yield line("taylor", a, "X", rng.choice(["RAD", "RAD", "DEG", "GRAD"]), rng.choice(["35", "35", "33", "STU"]),
-                   repl=point, repl2=str(rng.randint(0, 12)), arena=rng.choice([8192, 8192, 65536]))
+                   repl=point, repl2=str(rng.randint(0, 12)), arena=rng.choice([8800, 8800, 65536]))
 
 
 LIMIT_CASES = 400
@@ -227,7 +227,7 @@ def generated_limit():
         if "LN" in text or "SQRT(X)" in text:
             side = "+" if point == "0" else side
         yield line("limit", text, "X", rng.choice(["RAD", "RAD", "DEG", "GRAD"]), rng.choice(["35", "35", "33", "STU"]),
-                   repl=point, repl2=side, arena=rng.choice([8192, 8192, 65536]))
+                   repl=point, repl2=side, arena=rng.choice([8800, 8800, 65536]))
 
 
 def main():

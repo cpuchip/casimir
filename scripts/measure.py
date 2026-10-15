@@ -423,7 +423,7 @@ def main():
     print(f"\nderivative length ratio over {len(ratios)} cases: min {min(ratios):.2f}, quartiles "
           f"{q[0]:.2f} / {q[1]:.2f} / {q[2]:.2f}, max {max(ratios):.2f}")
     print(f"largest arena for a 150-191 byte equation: simplify {worst['simplify']}, derive {worst['derive']} "
-          f"bytes (budget 8192)")
+          f"bytes (budget 8800)")
 
 
 if __name__ == "__main__":

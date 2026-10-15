@@ -272,10 +272,10 @@ static void stamp(void)
           "casim_integrate X^2: \"%s\"", out);
 }
 
-/* work/006-examples.txt at the device's 8 KB arena. */
+/* work/006-examples.txt at the device's 8,800 B arena. */
 static void visible(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     FILE *fp = fopen("work/006-examples.txt", "r");
     char line[2048];
     int n = 0;
@@ -316,11 +316,11 @@ static void visible(void)
     CHECK(n == 35, "%d visible examples, want 35", n);
 }
 
-/* CAS 013: work/013-examples.txt at the 8 KB arena, each answer byte for byte (rule 7 joins the terms, each in 002's
+/* CAS 013: work/013-examples.txt at the 8,800 B arena, each answer byte for byte (rule 7 joins the terms, each in 002's
    form, so the file's text is compared as it is) and by value in its angle mode */
 static void visible013(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     FILE *fp = fopen("work/013-examples.txt", "r");
     char line[2048];
     int n = 0;

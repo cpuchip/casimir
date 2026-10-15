@@ -187,7 +187,7 @@ static void multiplicities(void)
    12 at any step is NO_ROOM. */
 static void as_typed(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     char out[OUT];
     refused("X^2÷X", CASIM_NOT_POLYNOMIAL);               /* X in a denominator, though it cancels */
     refused("X^(-1)×X^2", CASIM_NOT_POLYNOMIAL);
@@ -212,13 +212,13 @@ static void as_typed(void)
         snprintf(t + len, sizeof t - (size_t)len, "-120");
         is(t, "SOLVED: X=2");
     }
-    /* (X-1)...(X-9) at the device's 8 KB arena (it needed 10.8 KB expanded: the review) */
+    /* (X-1)...(X-9) at the device's 8,800 B arena (it needed 10.8 KB expanded: the review) */
     {
         casim_req rq = {CASIM_SOLVE, "(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6)×(X-7)×(X-8)×(X-9)", CASIM_MODEL_35, 'X' - 'A',
                         NULL, 0, CASIM_RAD, NULL};
         CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK &&
                   strcmp(out, "SOLVED: X=1; X=2; X=3; X=4; X=5; X=6; X=7; X=8; X=9") == 0,
-              "(X-1)...(X-9) in 8 KB: \"%s\"", out);
+              "(X-1)...(X-9) in 8,800 B: \"%s\"", out);
         {
             /* nesting that alternates × and +: each level recurses, so its temporaries must be few (15 levels) */
             static char t[256];
@@ -229,11 +229,11 @@ static void as_typed(void)
             snprintf(t + len, sizeof t - (size_t)len, "-2");
             rq.eqn = t;
             CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK && strcmp(out, "SOLVED: X=2") == 0,
-                  "a 15-level nest in 8 KB: \"%s\"", out);
+                  "a 15-level nest in 8,800 B: \"%s\"", out);
         }
         rq.eqn = "(2×X^2+X+3)^6";
         CHECK(casim_run(&rq, out, OUT, small, sizeof small) == CASIM_OK && strcmp(out, "NO REAL ROOTS") == 0,
-              "(2X^2+X+3)^6 in 8 KB: \"%s\"", out);
+              "(2X^2+X+3)^6 in 8,800 B: \"%s\"", out);
     }
 }
 
@@ -419,10 +419,10 @@ static void roots_are_roots(void)
     }
 }
 
-/* work/005-examples.txt at the device's 8 KB arena: each answer's exact text, or its status. */
+/* work/005-examples.txt at the device's 8,800 B arena: each answer's exact text, or its status. */
 static void visible(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     FILE *fp = fopen("work/005-examples.txt", "r");
     char line[2048];
     int n = 0;

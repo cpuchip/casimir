@@ -289,7 +289,7 @@ static void visible(void)
     CHECK(n == 16, "%d visible E cases, want 16", n);
 }
 
-/* Every arena size from 0 to 8192 gives NO_ROOM (TOO_LONG before CAS 004) or the one answer, for expand and collect: the arena
+/* Every arena size from 0 to 8800 (the calculator's) gives NO_ROOM (TOO_LONG before CAS 004) or the one answer, for expand and collect: the arena
    is compacted between steps (copied, slid down, references rewritten), so a size that runs out mid-copy
    must still fail cleanly. */
 static void starved(void)
@@ -306,7 +306,7 @@ static void starved(void)
         casim_status s0 = casim_expand(in[i], CASIM_RAD, want[0], OUT, arena, sizeof arena);
         casim_status s1 = casim_collect(in[i], 'X' - 'A', CASIM_RAD, want[1], OUT, arena, sizeof arena);
         CHECK(s0 == CASIM_OK && s1 == CASIM_OK, "%s: %d %d with the full arena", in[i], (int)s0, (int)s1);
-        for (size_t n = 0; n <= 8192; n++) {
+        for (size_t n = 0; n <= 8800; n++) {
             casim_status a = casim_expand(in[i], CASIM_RAD, got, OUT, arena, n);
             if (!((a == CASIM_NO_ROOM && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want[0]) == 0))) bad++;
             a = casim_collect(in[i], 'X' - 'A', CASIM_RAD, got, OUT, arena, n);

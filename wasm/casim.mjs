@@ -9,7 +9,7 @@
 //
 // opts, every one optional: var ("X"; a letter A-Z), angle ("RAD", "DEG" or "GRAD"), model ("35", "33" or "STU",
 // how powers chain), replModel (subst's replacement, pdiv's and pgcd's second polynomial; default model), arena (bytes
-// of working memory, default 65536; the calculator's is 8192), cap (bytes of answer with its NUL, default 65536; the
+// of working memory, default 65536; the calculator's is 8800), cap (bytes of answer with its NUL, default 65536; the
 // calculator's equation slot is 192).
 import createCasimirModule from "./casim.js";
 

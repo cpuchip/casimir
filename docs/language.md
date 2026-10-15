@@ -240,8 +240,9 @@ Another letter is a constant, but no answer divides by an expression of one that
 by, unless it is never 0: EXP(A×X×Y) in Y and SIN(A×X)×COS(X) (A^2−1) are refused, EXP(X)×SIN(A×X) (A^2+1) answers.
 
 The answer can depend on the arena. At 8,192 bytes the rational path, which needs 7,328 bytes whatever its input, has
-no room inside a substitution or a part. So ATAN(X) answers by substitution there and through the rational path at
-65,536, both −0.5×LN(X^2+1)+X×ATAN(X). X×ATAN(X) needs the rational path for its ∫v×u′ and is NOT_INTEGRABLE at 8,192.
+no room inside a substitution or a part. So ATAN(X)'s ∫v×u′ answers by substitution there and through the rational path
+at 65,536, both −0.5×LN(X^2+1)+X×ATAN(X). X×ATAN(X) needs the rational path for its ∫v×u′: it is NO_ROOM at 8,192 (a
+search that ran out says so, never NOT_INTEGRABLE) and answers at the calculator's 8,800.
 
 A substitution's LN is written as CAS 013 writes its own: the argument in whole coefficients with none in common and
 its highest power's positive (LN(ABS(5×X^3+2)), not LN(ABS(X^3+0.4))), and with no ABS where it has no real root: a
@@ -501,15 +502,16 @@ can be less than the truth: SQRT(X^2) to order 1 is UNDECIDED, though it is ABS(
 ABS(X)^3 or ABS(ATAN(X))^2 to order 2 are UNDECIDED, though they have one. A later unit composes power series term by
 term instead of taking derivatives, and these are on its list.
 
-Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,192-byte arena, TAN,
-ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X)) after 6, and
-past that the answer is NO_ROOM. A long answer is TOO_LONG first: COS(X) about π÷3 carries SQRT(3) in every other term.
+Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,800-byte arena (and
+at 8,192), TAN, ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X))
+after 6, and past that the answer is NO_ROOM. A long answer is TOO_LONG first: COS(X) about π÷3 carries SQRT(3) in
+every other term.
 
 Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
 1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
 calculator. EXP(SIN(X))'s eighth derivative is 416 bytes as text, so it reaches order 9 in a 16,384-byte arena and not
-in 16,383. On the calculator both buffers come out of its 8,192 bytes, and a bigger buffer answers fewer: measured on
-600 seeded cases of each kind (casim #7916, on 4b91739), cases answered:
+in 16,383. On the calculator both buffers come out of its arena, and a bigger buffer answers fewer: measured on 600 seeded
+cases of each kind at 8,192 bytes, the arena before Michael's cas-arena-8800 (casim #7916, on 4b91739), cases answered:
 
 | Cases (600 each) | 8,192 B, buffers 384 / 768 / 1,024 | 65,536 B, buffers 384 / 768 / 1,024 |
 |---|---|---|
@@ -642,8 +644,9 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 - **191 bytes.** On the calculator an equation slot holds 191 bytes and its NUL. Every operation except derive and
   simplify returns TOO_LONG past 191 bytes, whatever cap the caller gives. derive and simplify fill the caller's cap,
   and so does a step line (a solve's answer, its last step, still stops at 191 bytes, as solve's does).
-- **The arena.** The calculator gives Casimir 8 KiB, and the visible examples are measured there. A larger arena
-  answers more (the command line's default is 8,192; `--arena` changes it). At most 524,280 bytes of it are used.
+- **The arena.** The calculator gives Casimir 8,800 bytes (Michael, roadmap card cas-arena-8800; 8,192 before), and
+  the visible examples are measured there. A larger arena answers more (the command line's default is 8,800; `--arena`
+  changes it). At most 524,280 bytes of it are used.
 - **The depth guard.** Nesting past 44 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,328
   bytes on the ESP32-S3, read with interrupts masked, plus an allowance of 384 for interrupts (two 192-byte frames;
   unmasked readings have exceeded masked ones by up to 272 bytes, 270 readings of 10 cases on the bench, for a reason

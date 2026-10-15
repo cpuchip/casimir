@@ -189,14 +189,14 @@ static void review(void)
     {
         /* ... and the sign is a plain term's, which negating does not move: a term whose numbers are
            apart sorts elsewhere once negated, and a sign taken from it flipped at every pass, filling
-           the arena (fuzz: 10 of 20,000 collects). Within the 8 KB budget: */
-        static unsigned char small_arena[8192];
+           the arena (fuzz: 10 of 20,000 collects). Within the 8,800 B budget: */
+        static unsigned char small_arena[8800];
         char out[OUT];
         const char *t = "(-4E18×Y+3×Y÷3037000499+Y×(-3)×4E18+Y×3×3E18+Y×3×4E18)×X";
-        CHECK(casim_simplify(t, CASIM_RAD, out, OUT, small_arena, sizeof small_arena) == CASIM_OK, "simplify %s in 8 KB: %s", t,
+        CHECK(casim_simplify(t, CASIM_RAD, out, OUT, small_arena, sizeof small_arena) == CASIM_OK, "simplify %s in 8,800 B: %s", t,
               out);
         CHECK(casim_collect(t, 'X' - 'A', CASIM_RAD, out, OUT, small_arena, sizeof small_arena) == CASIM_OK,
-              "collect %s in 8 KB: %s", t, out);
+              "collect %s in 8,800 B: %s", t, out);
         fixed(t);
     }
     is("3E18+X+(-4E18)+(-4E18)", "X-4000000000000000000-4000000000000000000+3000000000000000000");

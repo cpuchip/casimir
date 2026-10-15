@@ -24,6 +24,9 @@
 #   ends, NOT_INTEGRABLE). A refusal no try ran out on stays NOT_INTEGRABLE at every arena (X^2×TAN(X)^0, EXP(X^2)).
 #   Its follow-up (abacus #8413): a rational piece with no room left for partfrac to start is a run-out too, so
 #   SIN(X)+1÷(3×X^2+2×X+8) and (8×X-7)×(2×X+5)÷(2×X+5)^2 are NO_ROOM at 8 KB and answer at 64 KB.
+# - The calculator's arena is 8,800 B since Michael's cas-arena-8800: the rows that show NO_ROOM at 8 KB give
+#   --arena 8192, and at 8,800 each of them answers (X×ATAN(X), SIN(X)+1÷(X^2-1), X^2÷(X^2+1)÷π). The two above
+#   are NO_ROOM at 8,800 too.
 # - Rule 8: steps give the working for what only this path answers (the steps build, §Steps; its own examples are in
 #   work/017-steps-examples.txt).
 # - The steps build's LN form (S2.6): whole coefficients (LN(ABS(5×X^3+2))) and no ABS where the argument has no real
@@ -77,7 +80,7 @@
 | `casim integrate "X÷(1000÷(SINH(π)×X))" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "EXP(A×X×Y)" Y RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
-| `casim integrate "X×ATAN(X)" X RAD` | `NO_ROOM` |
+| `casim --arena 8192 integrate "X×ATAN(X)" X RAD` | `NO_ROOM` |
 | `casim integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `-COS(X)+ATAN(3×(X+1÷3)÷SQRT(23))÷SQRT(23)` |
 | `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
@@ -90,7 +93,7 @@
 | `casim integrate "1÷SQRT(1-X^2)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "SIN(X)÷X" X RAD` | `NOT_INTEGRABLE` |
-| `casim integrate "SIN(X)+1÷(X^2-1)" X RAD` | `NO_ROOM` |
+| `casim --arena 8192 integrate "SIN(X)+1÷(X^2-1)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "SIN(X)+1÷(X^2-1)" X RAD` | `0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)` |
 | `casim integrate "TAN(Y)×LOG(X-X)^SGN(X+7)" X RAD` | `UNDEFINED` |
 | `casim integrate "X^10×EXP(X)" X RAD` | `TOO_LONG` |
@@ -124,12 +127,12 @@
 | `casim integrate "2×X×EXP(X^2)÷(3×EXP(X^2)+3)" X RAD` | `LN(EXP(X^2)+1)÷3` |
 | `casim integrate "X^2÷(3×X)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
-| `casim integrate "X^2÷(X^2+1)÷π" X RAD` | `NO_ROOM` |
+| `casim --arena 8192 integrate "X^2÷(X^2+1)÷π" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "X^2÷(X^2+1)×LN(2)" X DEG` | `X×LN(2)-π×LN(2)×ATAN(X)÷180` |
 | `casim --arena 65536 integrate "A×X÷(X^2+2×X+2)" X RAD` | `0.5×A×LN(2×X+X^2+2)-A×ATAN(X+1)` |
 | `casim --arena 65536 integrate "ATAN(X+1)" X DEG` | `ATAN(X+1)+X×ATAN(X+1)-90×LN(2×X+X^2+2)÷π` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X GRAD` | `0.5×ATAN(X)-100×X÷π+0.5×X^2×ATAN(X)` |
-| `casim integrate "X×ATAN(X)" X DEG` | `NO_ROOM` |
+| `casim --arena 8192 integrate "X×ATAN(X)" X DEG` | `NO_ROOM` |
 | `casim integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(X^2+1)÷π` |
 | `casim --arena 16384 integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(X^2+1)÷π` |
 | `casim --arena 3000 integrate "3×ATAN(2×X)" X DEG` | `3×X×ATAN(2×X)-135×LN(X^2+0.25)÷π` |

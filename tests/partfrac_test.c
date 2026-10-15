@@ -1,7 +1,7 @@
-/* Unit CAS 012: partial fractions over Q (work/012-partial-fractions.md). The visible examples at the 8 KB arena; then
+/* Unit CAS 012: partial fractions over Q (work/012-partial-fractions.md). The visible examples at the 8,800 B arena; then
  * seeded fractions over planted factors (linear, irreducible quadratics, powers up to the 3rd, a planted common factor),
  * each answer judged by the core's own evaluator against the input at 14 points, its rows against the planted common
- * factor, and its status at 8 KB against its status at 64 KB (a textbook shape never runs out of arena, rule 11).
+ * factor, and its status at 8,800 B against its status at 64 KB (a textbook shape never runs out of arena, rule 11).
  * scripts/partfrac-values.py judges the form (rule 4), the order (rule 5) and the uniqueness exactly. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,10 +30,10 @@ static const char *status_name(casim_status st)
          : "another status";
 }
 
-/* work/012-examples.txt at the 8 KB arena */
+/* work/012-examples.txt at the 8,800 B arena */
 static void visible(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     FILE *fp = fopen("work/012-examples.txt", "r");
     char line[1024];
     int n = 0;
@@ -182,8 +182,8 @@ static void seeded(void)
         }
         snprintf(text + len, sizeof text - (size_t)len, ")");
         st = run(text, CASIM_MODEL_35, out, sizeof arena);
-        st8 = run(text, CASIM_MODEL_35, out8, 8192);
-        CHECK(st8 == st && (st != CASIM_OK || strcmp(out8, out) == 0), "partfrac %s at 8 KB: %d \"%s\", at 64 KB %d \"%s\"",
+        st8 = run(text, CASIM_MODEL_35, out8, 8800);
+        CHECK(st8 == st && (st != CASIM_OK || strcmp(out8, out) == 0), "partfrac %s at 8,800 B: %d \"%s\", at 64 KB %d \"%s\"",
               text, (int)st8, out8, (int)st, out);
         if (st == CASIM_TOO_LONG) {
             too_long++;

@@ -22,7 +22,7 @@
  *                                    steps-integrate.md, steps-solve.md);
  *                                    --one-line: the results only (the answer still last); --tsv: k, depth, T or R, the
  *                                    rule and the text, tab-separated
- *   --arena N                        the arena in bytes (default 8192, the unit's S3 budget)
+ *   --arena N                        the arena in bytes (default 8800, the calculator's: Michael, cas-arena-8800)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
  *                                    the calculator's equation slot, which derive and simplify keep as
@@ -90,7 +90,7 @@ static int model_arg(const char *a)
 
 int main(int argc, char **argv)
 {
-    size_t cap = 8192;
+    size_t cap = 8800;
     int min_arena = 0, op, var = 0, angle = CASIM_RAD, i = 1, args, one_line = 0, tsv = 0;
     const char *repl = NULL;
     char out[OUT];

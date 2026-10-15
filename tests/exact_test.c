@@ -227,10 +227,10 @@ static void seeded(void)
     CHECK(judged > 400, "%d judged", judged);
 }
 
-/* work/008-examples.txt at the 8 KB arena */
+/* work/008-examples.txt at the 8,800 B arena */
 static void visible(void)
 {
-    static unsigned char small[8192];
+    static unsigned char small[8800];
     FILE *fp = fopen("work/008-examples.txt", "r");
     char line[1024];
     int n = 0;

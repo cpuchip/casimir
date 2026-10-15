@@ -1,0 +1,33 @@
+# The golden lines the arena move (8,192 B to 8,800 B, Michael's cas-arena-8800) changed: each line's inputs at 8,800,
+# then its status and answer at 8,192 (18e3bb7) and at 8,800. Every other line at 8,192 gives the same at 8,800. Each
+# answer is its 64 KB twin's (the Taylor row, with no twin, matches the exact series of SQRT(1+X)×EXP(X) to X^11).
+partfrac	35	23	1	35	8800	192	1÷((X+5)×(X+4)×(X+3)×(X+2)×(X+1)×X×(X-1)×(X-2)×(X-3)×(X-4)×(X-5)×(X-6))	\N	\N
+  before	NO_ROOM	
+  after	TOO_LONG	
+partfrac	35	23	1	35	8800	192	1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))	\N	\N
+  before	NO_ROOM	
+  after	OK	-1÷(725760×(X+5))+1÷(90720×(X+4))-1÷(26880×(X+3))+1÷(15120×(X+2))-1÷(17280×(X+1))+1÷(17280×(X-1))-1÷(15120×(X-2))+1÷(26880×(X-3))-1÷(90720×(X-4))+1÷(725760×(X-5))
+integrate	35	23	1	35	8800	192	SIN(X)+1÷(X^2-1)	\N	\N
+  before	NO_ROOM	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)
+integrate	35	23	1	35	8800	192	1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))	\N	\N
+  before	NO_ROOM	
+  after	TOO_LONG	
+integrate	35	23	1	35	8800	65536	SIN(X)+1÷(X^2-1)	\N	\N
+  before	NO_ROOM	
+  after	OK	0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)
+integrate	35	23	1	35	8800	65536	1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25))	\N	\N
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	35	23	2	35	8800	65536	(SQRT(1+X))×(EXP(X))	0	11
+  before	NO_ROOM	
+  after	OK	1+1.5×X+0.875×X^2+17×X^3÷48+0.0859375×X^4+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400
+integrate	35	23	1	35	8800	65536	X×ATAN(X)	\N	\N
+  before	NO_ROOM	
+  after	OK	-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)
+integrate	35	23	1	35	8800	192	X×ATAN(X)	\N	\N
+  before	NO_ROOM	
+  after	OK	-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)
+integrate	35	23	1	35	8800	192	X×ATAN(X)	\N	\N
+  before	NO_ROOM	
+  after	OK	-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)

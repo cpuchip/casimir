@@ -64,7 +64,7 @@ make check            # the standalone checks
 ```c
 #include "casim.h"
 
-static unsigned char arena[8192];       /* all of Casimir's working memory, given by the caller */
+static unsigned char arena[8800];       /* all of Casimir's working memory, given by the caller: the calculator's */
 
 int derivative(char out[192])
 {
@@ -85,7 +85,7 @@ In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component
 library builds with ESP-IDF 5.4. It takes about 2.1 MB of flash (328,544 bytes of code, 1,765,456 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
-src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (8 KiB is the
+src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (8,800 bytes is the
 calculator's budget), and casim keeps no global state.
 
 ## Quick start in JavaScript

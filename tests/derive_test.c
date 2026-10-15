@@ -280,7 +280,7 @@ static void starved(void)
         casim_status st = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, want, sizeof want, arena, sizeof arena);
         casim_status sr = casim_simplify(eqs[i], CASIM_DEG, wantr, sizeof wantr, arena, sizeof arena);
         CHECK(st == CASIM_OK && sr == CASIM_OK, "%s: status %d / %d with the full arena", eqs[i], (int)st, (int)sr);
-        for (size_t n = 0; n <= 8192; n++) {
+        for (size_t n = 0; n <= 8800; n++) {
             casim_status a = casim_derive(eqs[i], 'X' - 'A', CASIM_DEG, got, sizeof got, arena, n);
             casim_status r = casim_simplify(eqs[i], CASIM_DEG, gotr, sizeof gotr, arena, n);
             if (!((a == CASIM_NO_ROOM && got[0] == '\0') || (a == CASIM_OK && strcmp(got, want) == 0))) bad++;
