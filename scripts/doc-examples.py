@@ -23,6 +23,9 @@ def main():
     for doc, i, line in rows:
         m = ROW.match(line.rstrip("\n"))
         if not m:
+            if line.startswith("| `casim"):     # a row the pattern skips would never be run
+                failed += 1
+                print(f"FAIL {doc}:{i}: a casim row not in the form | `casim ...` | `answer` |")
             continue
         n += 1
         p = subprocess.run([CLI] + shlex.split(m.group(1)), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,

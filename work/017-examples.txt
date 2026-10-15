@@ -27,10 +27,15 @@
 # - The calculator's arena is 8,800 B since Michael's cas-arena-8800: the rows that show NO_ROOM at 8 KB give
 #   --arena 8192, and at 8,800 each of them answers (X×ATAN(X), SIN(X)+1÷(X^2-1), X^2÷(X^2+1)÷π). The two above
 #   are NO_ROOM at 8,800 too, but the second runs out inside partfrac there; at 8,192 it runs out before partfrac can
-#   start, so its --arena 8192 row is the one that reaches the start test.
+#   start, so its --arena 8192 row is the one that reaches the start test. Since rule 8 was amended (abacus #8510) both
+#   answer, so the start test's row is a golden corpus input at 8,192 B, NO_ROOM there and NOT_INTEGRABLE where the
+#   search ends; shorter texts of the same function (X÷LN(X-4), 15×X×Y÷LN(X-4)) run out elsewhere.
 # - CAS 013's rule 8 after abacus #8423: a removed factor with no rational root is a hole only where it has a real root.
 #   X^2+6 has none, so (X^4+7×X^2+6)÷(X^2+6) answers as 3c3b6fb did, by parts (its ATAN terms' coefficients sum to
 #   0: the answer is X+X^3÷3). X^2-2 has real roots and X^3-2 is PARTIAL to solve, so both are refused, as before.
+#   After abacus #8510 (rule 8 amended): the reduced function is integrated first where nothing removed is a hole, so
+#   abacus #8546's five, each cancelling a factor with no real root, answer at 8,800 B; at 65369cb the first four were
+#   NO_ROOM there and (2×X^2+2)÷(X^2+1) was NOT_INTEGRABLE even at 64 KB.
 # - Rule 8: steps give the working for what only this path answers (the steps build, §Steps; its own examples are in
 #   work/017-steps-examples.txt).
 # - The steps build's LN form (S2.6): whole coefficients (LN(ABS(5×X^3+2))) and no ABS where the argument has no real
@@ -88,10 +93,18 @@
 | `casim --arena 65536 integrate "(X^4+7×X^2+6)÷(X^2+6)" X RAD` | `X+X^3÷3` |
 | `casim --arena 65536 integrate "(X^2-2)÷((X^2-2)×(X+1))" X RAD` | `NOT_INTEGRABLE` |
 | `casim --arena 65536 integrate "(X^3-2)÷((X^3-2)×(X+1))" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "(X^3+X)÷(X^2+1)" X RAD` | `0.5×X^2` |
+| `casim integrate "(X^3+2×X)÷(X^2+2)" X RAD` | `0.5×X^2` |
+| `casim integrate "(X^4+2×X^2+1)÷(X^2+1)" X RAD` | `X+X^3÷3` |
+| `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+0.5×X^2` |
+| `casim integrate "(2×X^2+2)÷(X^2+1)" X RAD` | `2×X` |
+| `casim --arena 65536 integrate "(2×X^2+2)÷(X^2+1)" X RAD` | `2×X` |
 | `casim integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `-COS(X)+ATAN(3×(X+1÷3)÷SQRT(23))÷SQRT(23)` |
 | `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
 | `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
+| `casim --arena 8192 integrate "((ATAN(SQ(7)))×(((X)×(2))×((7)+(0.5))))×((Y)÷(LN((-4)+(X))))" X GRAD` | `NO_ROOM` |
+| `casim --arena 65536 integrate "((ATAN(SQ(7)))×(((X)×(2))×((7)+(0.5))))×((Y)÷(LN((-4)+(X))))" X GRAD` | `NOT_INTEGRABLE` |
 | `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |

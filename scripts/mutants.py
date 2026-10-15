@@ -904,7 +904,7 @@ MUTANTS = {
                             "    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl) && 0) return st;")],
     # CAS 013 rule 8 amended (abacus #8494, #8510): the reduced function, before the search, in integrate and the steps
     "rule8-reduced-off": [("src/casim.c", "    if ((r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return r;",
-                           "    r = CASIM_NOT_INTEGRABLE;")],
+                           "    r = CASIM_NOT_INTEGRABLE;\n    (void)ir_reduced;")],
     "rule8-reduced-after-search": [("src/casim.c",
         "    if ((r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return r;\n    st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n",
         "    st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    if (st == CASIM_OK || (r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return st == CASIM_OK ? st : r;\n")],
