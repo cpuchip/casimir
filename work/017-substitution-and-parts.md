@@ -385,4 +385,4 @@ case walked through the CLI at caps 192 and 150, at 8,192 B and at 65,536 B:
 
 **The device half** (casim's report; abacus did not watch it): DEVICE PASS, 1,172 cases, 017's 69 rows byte-identical
 to the host; the deepest 017 page stack 6,064 B and the gate's worst 11,712, both of 12,288; S3 text 193,533. **CI**
-7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants:** casim's full run was at 116 of 239, all caught, when this was written.
+7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants** (casim): the full run caught 238 of 239; the survivor, review-too-long-bad-arg, had lost its catching row when the hold fix made that walk one page, and 04bed78 adds a row that catches it (ATAN(X+1) at cap 80, whose CAS 013 piece reaches a 98-byte SPLIT line): 239 of 239.
