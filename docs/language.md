@@ -578,6 +578,46 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
 | `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `0.5` |
 
+### sum: a sum in closed form, or exactly
+
+`casim sum "<text>" K LO HI RAD` (CAS 018, `casim_sum`) is the sum of the text for K = LO, LO+1, ..., HI. LO is a
+whole number or an expression free of K; HI the same, or `∞`. With both bounds whole and at most 64 terms apart, the
+terms are added exactly, each the typed text at its value, in the angle mode (so Σ SIN(30×K) in DEG uses CAS 008's
+exact values); HI below LO is the empty sum, 0. Otherwise the sum needs a closed form: a polynomial times a geometric
+term, q(K)×B^K (q to degree 12, B a constant), by an antidifference checked exactly; a rational
+function through partfrac, when its fractions telescope (each class of shifts whose coefficients sum to 0). The answer
+is expanded, with the telescoped fractions kept as they are.
+
+To ∞, |B| < 1 converges and a telescoping class always does; Σ 1÷(K×(K+1)) from 1 is 1. A sum that grows is `∞` or
+`-∞`, as limit prints them; UNDEFINED where the partial sums swing ((-1)^K, (-2)^K), as limit's "no limit"; UNDECIDED
+on a tie (2^K+(-2)^K) or a sign it can't tell (A×K). UNDEFINED also for a pole in the range: Σ 1÷(K×(K+1)) from 0, and
+Σ 1÷(K-5) from 1 to N, which has a value for N < 5 but not for any N past it.
+
+A letter in the ratio (Σ X^K) is answered with its condition, as rows after the answer, as CANCEL prints the values
+it removed: `X≠1` where the ratio is 1 (X≠-1 too for X^(2×K)), and to ∞ `ABS(X)<1` where it converges (`ABS(X)>1` for
+X^(-K)). Between whole bounds the sum term by term comes first (Σ X^K from 1 to 3 is X+X^2+X^3, true for every X);
+the closed form and its row only when that doesn't fit.
+
+NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
+(SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.
+
+| Command | Prints |
+|---|---|
+| `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
+| `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
+| `casim sum "K×2^K" K 1 N RAD` | `-2^(N+1)+N×2^(N+1)+2` |
+| `casim sum "(1÷2)^K" K 0 ∞ RAD` | `2` |
+| `casim sum "1÷(K×(K+1))" K 1 N RAD` | `-1÷(N+1)+1` |
+| `casim sum "1÷(K×(K+1))" K 1 ∞ RAD` | `1` |
+| `casim sum "K" K 1 100 RAD` | `5050` |
+| `casim sum "1÷K" K 1 10 RAD` | `7381÷2520` |
+| `casim sum "SIN(30×K)" K 1 3 DEG` | `0.5×SQRT(3)+1.5` |
+| `casim sum "1÷K" K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "K" K 1 ∞ RAD` | `∞` |
+| `casim sum "(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
+| `casim sum "X^K" K 0 N RAD` | `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` |
+| `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
+
 ## The statuses
 
 | Value | Status | Means | out holds |
@@ -595,6 +635,7 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "" |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
 | 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit". taylor: an SGN(0) it can't decide | "" |
+| 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |
 
 ## The bounds
 

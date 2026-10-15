@@ -110,7 +110,7 @@ def cli_args(expr, var, angle, op, repl=None, model="35"):
         return m + [op, expr, var, angle]
     if op in ("subst", "pdiv", "pgcd"):
         return m + [op, expr, var, repl, angle]
-    if op in ("defint", "taylor", "limit"):     # CAS 009: repl holds "lo|hi"; CAS 014: "point|n"; CAS 015: "point|side"
+    if op in ("defint", "taylor", "limit", "sum"):     # CAS 009, 018: repl holds "lo|hi"; 014: "point|n"; 015: "point|side"
         return m + [op, expr, var] + repl.split("|", 1) + [angle]
     return m + [op, expr, angle]
 
@@ -348,7 +348,7 @@ def all_cases():
     # CAS 016 (poles in every op, ABS's corner, ∞-∞ of quotients) and CAS 017 (integrals by substitution and by parts):
     # the visible examples (each `casim ...` row as the bench runs it; a row's --arena goes, the bench bisecting its own,
     # and steps rows are the steps bench's)
-    for unit, tag in (("016", "p"), ("017", "17:")):
+    for unit, tag in (("016", "p"), ("017", "17:"), ("018", "18:")):
       with open(os.path.join(ROOT, "work", unit + "-examples.txt"), encoding="utf-8") as f:
         for i, line in enumerate(f):
             if not line.startswith("| `casim "):
@@ -364,7 +364,7 @@ def all_cases():
                 rows.append((name, t[0], "X", t[1], op, None, "35"))
             elif op in ("subst", "pdiv", "pgcd"):
                 rows.append((name, t[0], t[1], t[3], op, t[2], "35"))
-            elif op in ("taylor", "limit"):
+            elif op in ("taylor", "limit", "sum"):
                 rows.append((name, t[0], t[1], t[4], op, t[2] + "|" + t[3], "35"))
             else:
                 rows.append((name, t[0], t[1], t[2], op, None, "35"))
@@ -407,7 +407,7 @@ def main():
         sys.exit("build/casim missing: run make first")
     print(f"{'case':<26} {'op':<3} {'chars':>5} {'bytes':>5} {'arena':>6} {'out':>5} {'ratio':>6}")
     ratios, worst = [], {op: 0 for op in ("derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                          "defint", "pdiv", "pgcd", "cancel", "taylor", "limit")}
+                                          "defint", "pdiv", "pgcd", "cancel", "taylor", "limit", "sum")}
     for name, expr, var, angle, op, repl, model in all_cases():
         arena, out, err = run(expr, var, angle, op, repl, model)
         if err:

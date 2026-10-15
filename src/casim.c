@@ -3740,6 +3740,8 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
         }
         return casim_taylor(rq->eqn, rq->var, rq->repl, n, rq->model, rq->angle, out, cap, arena, arena_cap);
     }
+    case CASIM_SUM:
+        return casim_sum(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, rq->angle, out, cap, arena, arena_cap);
     case CASIM_LIMIT:
         return casim_limit(rq->eqn, rq->var, rq->repl, rq->repl2 ? rq->repl2 : "", rq->model, rq->angle, out, cap,
                            arena, arena_cap);
@@ -10513,4 +10515,787 @@ casim_status casim_limit(const char *eqn, int var, const char *point, const char
     s = !strcmp(side, "+") ? 1 : !strcmp(side, "-") ? -1 : !*side ? 0 : 2;
     if (s == 2) return CASIM_BAD_ARG;
     return do_limit(eqn, var, point, s, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+/* ---- sums (unit CAS 018, work/018-sums.md) ----
+   Σ f for var = lo..hi. Integer bounds at most 64 terms apart are summed term by term (rule 7). Otherwise, terms
+   coef × var^j × B^var by an antidifference, checked exactly (rule 4), and the rest through partfrac, as text, then
+   telescoped (rule 5); to ∞, group by group (rule 8). */
+
+#define SM_DEG 12                       /* var's highest power in a group */
+#define SM_GROUPS 4                     /* ratios */
+#define SM_TERMS 6                      /* rational terms, each through partfrac */
+#define SM_SHIFT 12                     /* fractions in one telescoping class, and their widest shift */
+#define SM_DIRECT 64                    /* rule 7's most terms */
+
+/* tests/smcheck_check.c spoils F before its check (no input reaches the check as built: the antidifference is exact) */
+#ifndef CASIM_SM_PLANT
+#define CASIM_SM_PLANT(c, F) (F)
+#endif
+
+typedef struct {
+    ref B;                              /* the ratio; 0 for a polynomial */
+    ref q[SM_DEG + 1];                  /* q(var)'s coefficients, free of var */
+    int d;
+} smgroup;
+
+typedef struct {
+    const char *eqn;
+    int var;
+    bool inf, ilo, ihi;                 /* hi is ∞; a bound is an integer */
+    int64_t a, b;                       /* ... its value */
+    ref raw, f, e, lo, hi;              /* the typed summand, its canonical form, expanded (q(k)×B^k: the terms
+                                           split), the bounds (hi 0 at ∞) */
+} smsum;
+
+static ref sm_int(ctx *c, int64_t k)
+{
+    rat r = {k, 1};
+    return num(c, &r);
+}
+
+/* whether r holds a literal (a number past 2^62, kept as its text: an offset into the text it was read from) */
+static bool sm_lit(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    bool h = x->kind == K_LIT;
+    if (h || !enter(c)) return true;
+    if (x->kind == K_FN || x->kind == K_POW || x->kind == K_OFN)
+        h = sm_lit(c, x->a) || ((x->kind == K_POW || (x->kind == K_OFN && nd(c, r)->b)) && sm_lit(c, nd(c, r)->b));
+    else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n && !h; i++) h = sm_lit(c, list(c, nd(c, r)->a)[i]);
+    c->depth--;
+    return h;
+}
+
+/* rule 2: a bound, read as defint reads its bounds but free only of var; a constant one a whole number */
+static ref sm_bound(ctx *c, const char *t, int at, int var, bool *whole, int64_t *v)
+{
+    ref r;
+    bool letter = false;
+    c->s2 = t, c->s = t, c->no_eq = true;
+    r = parse(c);
+    if (c->st == CASIM_SYNTAX) c->errpos += at;
+    if (c->st == CASIM_OK) r = ib_canon(c, r);
+    if (c->st == CASIM_UNDEFINED) c->st = CASIM_BAD_ARG;               /* a bound with no value (1÷0) */
+    if (c->st != CASIM_OK) return SPARE;
+    for (int l = 0; l < 26; l++) letter = letter || contains(c, r, l);
+    *whole = is_num(c, r) && val(c, r)->q == 1;
+    if (*whole) *v = val(c, r)->p;
+    /* var, 1.5, π; a number past 2^62, whose text the next bound's would replace */
+    if (contains(c, r, var) || (!letter && !*whole) || sm_lit(c, r)) c->st = CASIM_BAD_ARG;
+    return c->st == CASIM_OK ? r : SPARE;
+}
+
+/* the request read: the summand typed and canonical, then the bounds (a SYNTAX offset as if the call were eqn|lo|hi) */
+static void sm_read(ctx *c, smsum *S, const char *eqn, const char *lo, const char *hi)
+{
+    int chars = 0;
+    c->opaque = true, c->var = S->var, c->sub_var = -1;
+    if (c->st == CASIM_OK) S->raw = parse(c);
+    if (c->st == CASIM_OK && nd(c, S->raw)->kind == K_REQ) c->st = CASIM_BAD_ARG;   /* an equation */
+    if (c->st == CASIM_OK) S->f = ib_canon(c, S->raw);
+    if (c->st != CASIM_OK) return;
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    S->lo = sm_bound(c, lo, chars + 1, S->var, &S->ilo, &S->a);
+    for (const char *p = lo; *p && c->st == CASIM_OK; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    if (!S->inf && c->st == CASIM_OK) S->hi = sm_bound(c, hi, chars + 2, S->var, &S->ihi, &S->b);
+    c->s = eqn;
+    if (c->st == CASIM_OK) S->e = expand_fully(c, S->f);
+}
+
+/* rule 3: ib_keeps, but a positive constant to a power is never 0 either (2^K, as EXP(K)) */
+static bool sm_keeps(ctx *c, ref d, ref t, int var)
+{
+    ref dc = ib_inv(c, ib_canon(c, d));
+    int n = nd(c, dc)->kind == K_MUL ? nd(c, dc)->n : 1;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref f = nd(c, dc)->kind == K_MUL ? list(c, nd(c, dc)->a)[i] : dc, b = f;
+        if (!contains(c, f, var)) continue;
+        if (nd(c, f)->kind == K_POW) b = nd(c, f)->a;
+        if (nd(c, b)->kind == K_FN && (nd(c, b)->id == F_EXP || nd(c, b)->id == F_ALOG)) continue;
+        if (!contains(c, b, var) && const_sign(c, b) > 0) continue;
+        if (!ib_den(c, t, b)) return false;
+    }
+    return c->st == CASIM_OK;
+}
+
+/* rule 3: ib_domain_kept without its constant-base rule ((-1)^K has a value at every whole K); its own copy, since a
+   second call made gcc stop inlining ib_domain_kept (ib_typed_ok's frame moved 80 -> 64) */
+static bool sm_domain(ctx *c, ref r, ref t, int var)
+{
+    const node *x = nd(c, r);
+    if (x->kind == K_RFN && raw_has_var(c, x->a, var) && contains(c, ib_canon(c, x->a), var)) {
+        x = nd(c, r);
+        switch (x->id) {
+        case F_LN: case F_LOG: case F_ASIN: case F_ACOS: case F_ATANH: case F_ACOSH: case F_TAN:
+            return ib_holds(c, t, ib_canon(c, r), false);
+        case F_SQRT: return ib_holds(c, t, ib_canon(c, x->a), true) || ib_holds(c, t, ib_canon(c, r), false);
+        default: return true;
+        }
+    }
+    x = nd(c, r);
+    if (x->kind == K_BPOW && raw_has_var(c, x->a, var) && !raw_has_var(c, x->b, var) &&
+        contains(c, ib_canon(c, nd(c, r)->a), var)) {
+        ref e = ib_canon(c, nd(c, r)->b);
+        if (nd(c, e)->kind != K_NUM || val(c, e)->q != 1) return ib_holds(c, t, ib_canon(c, nd(c, r)->a), true);
+    }
+    return c->st == CASIM_OK;
+}
+
+/* rule 3: CAS 017 rule 2 on the typed text (a hole canon lost), except that a constant base of 0 or less to a power of
+   var keeps its value at a whole var: (-1)^K */
+static bool sm_typed_ok(ctx *c, ref r, ref t, int var)
+{
+    const node *x = nd(c, r);
+    bool ok = true;
+    if (r == 0 || r == SPARE || !raw_has_var(c, r, var) || !enter(c)) return true;
+    if (x->kind == K_BDIV) ok = sm_keeps(c, x->b, t, var);
+    else if (x->kind == K_RFN && x->id == F_INV) ok = sm_keeps(c, x->a, t, var);
+    else if (x->kind == K_BPOW && !raw_has_var(c, x->b, var)) {
+        ref e = ib_canon(c, nd(c, r)->b);
+        if (nd(c, e)->kind == K_NUM && val(c, e)->p < 0) ok = sm_keeps(c, nd(c, r)->a, t, var);
+    }
+    x = nd(c, r);
+    if (ok) ok = sm_domain(c, r, t, var);
+    x = nd(c, r);
+    if (ok && (x->kind == K_RFN || x->kind == K_NEG || x->kind == K_GROUP)) ok = sm_typed_ok(c, x->a, t, var);
+    else if (ok && x->kind >= K_BADD && x->kind <= K_BPOW)
+        ok = sm_typed_ok(c, x->a, t, var) && sm_typed_ok(c, nd(c, r)->b, t, var);
+    c->depth--;
+    return ok && c->st == CASIM_OK;
+}
+
+/* t's polynomial in var (pw reads raw trees: printed and read back, as ib_whole does) */
+static bool sm_poly(ctx *c, ref t, int var, rat **lin)
+{
+    const char *s0 = c->s;
+    size_t top = c->top;
+    char *buf = ib_print(c, t, IB_TEXT);
+    bool ok;
+    ref r;
+    if (!buf && c->st == CASIM_NOT_INTEGRABLE) c->st = CASIM_NO_ROOM;     /* past IB_TEXT: integrate's word */
+    if (!buf) return false;
+    c->s = buf;
+    r = parse(c);
+    ok = c->st == CASIM_OK && poly_of(c, r, var, lin);
+    c->s = s0, c->top = top;
+    return ok;
+}
+
+/* whether B holds a letter A-Z (rule 4b: answered with its condition); i is not one, and is refused with it */
+static bool sm_letter(ctx *c, ref B)
+{
+    bool h = false;
+    for (int l = 0; l < 26; l++) h = h || contains(c, B, l);
+    return h && !contains(c, B, 26);
+}
+
+/* rule 3: t as coef × var^j × B^var (*B 0 for none); false when it isn't that shape */
+static bool sm_term(ctx *c, ref t, int var, ref *coef, int *j, ref *B)
+{
+    int n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
+    *coef = small(c, C_1), *j = 0, *B = 0;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref f = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[i] : t, base = 0, e, a, b, Bn;
+        const node *y = nd(c, f);
+        rat *lin;
+        if (!contains(c, f, var)) {
+            *coef = mul2(c, *coef, f);
+            continue;
+        }
+        if (y->kind == K_VAR) {
+            (*j)++;
+            continue;
+        }
+        if (y->kind == K_POW && nd(c, y->a)->kind == K_VAR && is_num(c, y->b) && val(c, y->b)->q == 1 &&
+            val(c, y->b)->p > 0 && val(c, y->b)->p <= SM_DEG) {
+            *j += (int)val(c, y->b)->p;
+            continue;
+        }
+        if (y->kind == K_POW && !contains(c, y->a, var)) base = y->a, e = y->b;
+        else if (y->kind == K_FN && y->id == F_EXP) e = y->a;
+        else if (y->kind == K_FN && y->id == F_ALOG) base = small(c, C_10), e = y->a;
+        else if (y->kind == K_POW && is_num(c, y->b) && nd(c, y->a)->kind == K_FN &&
+                 (nd(c, y->a)->id == F_EXP || nd(c, y->a)->id == F_ALOG)) {
+            /* EXP(u)^n, ALOG(u)^n (1÷EXP(K)): EXP(n×u), 10^(n×u) */
+            if (nd(c, y->a)->id == F_ALOG) base = small(c, C_10);
+            e = mul2(c, nd(c, f)->b, nd(c, nd(c, f)->a)->a);
+        } else return false;
+        if (!sm_poly(c, e, var, &lin) || pdeg(lin) != 1) return false;
+        /* a base that isn't a positive constant: a and b whole ((-2)^(K÷2) has no value at an odd K) */
+        if (base && const_sign(c, base) <= 0 && (lin[1].q != 1 || lin[0].q != 1)) return false;
+        /* 0^(K+1) isn't 0^1 × (0^1)^K at K = -1; a letter's rows (rule 4b) say where its formula holds */
+        if (base && const_sign(c, base) == 0 && !sm_letter(c, base)) return false;
+        a = num(c, &lin[1]), b = num(c, &lin[0]);
+        Bn = ib_canon(c, base ? power(c, base, a) : fn(c, F_EXP, a));
+        *coef = mul2(c, *coef, base ? power(c, base, b) : fn(c, F_EXP, b));
+        *B = *B ? ib_canon(c, mul2(c, *B, Bn)) : Bn;
+    }
+    *coef = ib_canon(c, *coef);
+    if (*B && is_k(c, *B, 1, 1)) *B = 0;
+    return *j <= SM_DEG && c->st == CASIM_OK;
+}
+
+static void sm_add(ctx *c, smgroup *G, int *ng, ref coef, int j, ref B)
+{
+    int gi;
+    for (gi = 0; gi < *ng; gi++)
+        if ((!G[gi].B && !B) || (G[gi].B && B && cmp(c, G[gi].B, B) == 0)) break;
+    if (gi == *ng) {
+        if (*ng == SM_GROUPS) {
+            c->st = CASIM_NO_CLOSED_FORM;
+            return;
+        }
+        G[gi].B = B, G[gi].d = 0;
+        for (int q = 0; q <= SM_DEG; q++) G[gi].q[q] = small(c, C_0);
+        (*ng)++;
+    }
+    G[gi].q[j] = add2(c, G[gi].q[j], coef);
+    if (j > G[gi].d) G[gi].d = j;
+}
+
+/* the canonical summand's terms: polynomial-times-geometric ones into G, the rest into R (by tree) */
+static void sm_split(ctx *c, ref f, int var, smgroup *G, int *ng, ref *R, int *nr)
+{
+    int n = nd(c, f)->kind == K_ADD ? nd(c, f)->n : 1;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref t = nd(c, f)->kind == K_ADD ? list(c, nd(c, f)->a)[i] : f, coef, B;
+        int j;
+        if (sm_term(c, t, var, &coef, &j, &B)) sm_add(c, G, ng, coef, j, B);
+        else if (c->st == CASIM_OK) {
+            if (*nr == SM_TERMS) c->st = CASIM_NO_CLOSED_FORM;
+            else R[(*nr)++] = t;
+        }
+    }
+}
+
+/* rule 4: F with B×F(k+1) - F(k) = q(k) (B 1 when none), top down; SPARE when B - 1 is 0 */
+static ref sm_anti(ctx *c, const smgroup *g, ref B, int var)
+{
+    ref F[SM_DEG + 2], x = leaf(c, K_VAR, var), acc = small(c, C_0);
+    for (int i = 0; i <= SM_DEG + 1; i++) F[i] = small(c, C_0);
+    if (!B) {
+        for (int i = g->d; i >= 0; i--) {
+            ref s = g->q[i];
+            int64_t bin = i + 1;                                        /* C(i+1, i) */
+            for (int j = i + 2; j <= g->d + 1; j++) {
+                bin = bin * j / (j - i);                                /* C(j, i), each step whole */
+                s = add2(c, s, ib_neg(c, mul2(c, sm_int(c, bin), F[j])));
+            }
+            F[i + 1] = ib_canon(c, mul2(c, s, power(c, sm_int(c, i + 1), small(c, C_M1))));
+        }
+    } else {
+        ref den = ib_canon(c, add2(c, B, small(c, C_M1)));
+        if (is_k(c, den, 0, 1)) return SPARE;
+        for (int i = g->d; i >= 0; i--) {
+            ref s = small(c, C_0);
+            int64_t bin = 1;
+            for (int j = i + 1; j <= g->d; j++) {
+                bin = bin * j / (j - i);
+                s = add2(c, s, mul2(c, sm_int(c, bin), F[j]));
+            }
+            s = add2(c, g->q[i], ib_neg(c, mul2(c, B, s)));
+            F[i] = ib_canon(c, mul2(c, s, power(c, den, small(c, C_M1))));
+        }
+    }
+    for (int i = 0; i <= SM_DEG + 1; i++)
+        if (!is_k(c, F[i], 0, 1)) acc = add2(c, acc, mul2(c, F[i], power(c, x, sm_int(c, i))));
+    return ib_canon(c, acc);
+}
+
+/* rule 5: a rational term as one n÷d text for partfrac, its factors free of var left out (they multiply its answer:
+   CAS 017 rule 1's constant factor); false when it doesn't fit */
+static bool sm_frac(ctx *c, ref t, int var, char *buf, size_t cap)
+{
+    int n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
+    ref nu = small(c, C_1), de = small(c, C_1);
+    out_t w = {buf, cap, 0, false};
+    for (int i = 0; i < n; i++) {
+        ref f = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[i] : t;
+        const node *y = nd(c, f);
+        if (!contains(c, f, var)) continue;
+        if (y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->p < 0 && val(c, y->b)->q == 1) {
+            rat e = *val(c, y->b);
+            e.p = -e.p;
+            de = mul2(c, de, power(c, y->a, num(c, &e)));
+        } else nu = mul2(c, nu, f);
+    }
+    puts_(&w, "(");
+    print(c, &w, ib_canon(c, nu));
+    puts_(&w, ")" DIVIDE "(");
+    print(c, &w, ib_canon(c, de));
+    puts_(&w, ")");
+    if (!w.full) buf[w.n] = '\0';
+    return c->st == CASIM_OK && !w.full;
+}
+
+/* the product of t's factors free of var */
+static ref sm_const(ctx *c, ref t, int var)
+{
+    int n = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
+    ref k = small(c, C_1);
+    for (int i = 0; i < n; i++) {
+        ref f = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[i] : t;
+        if (!contains(c, f, var)) k = mul2(c, k, f);
+    }
+    return ib_canon(c, k);
+}
+
+/* rule 5: whether a pole at var = k0 is in the sum's range (lo is an integer here) */
+static bool sm_in(const smsum *S, int64_t k0)
+{
+    return k0 >= S->a && (S->inf || !S->ihi || k0 <= S->b);
+}
+
+/* rule 5: partfrac's answers pf[0..nr) telescoped: the sum of the fractions (polynomial parts join G), or SPARE */
+static __attribute__((noinline)) ref sm_rational(ctx *c, const smsum *S, ref *R, int nr, char **pf, smgroup *G, int *ng)
+{
+    struct {
+        rat s;
+        ref cf;
+        int m;
+    } tm[SM_SHIFT];
+    int nt = 0, var = S->var;
+    ref T = small(c, C_0);
+    for (int r = 0; r < nr && c->st == CASIM_OK; r++) {
+        ref P, k = sm_const(c, R[r], var);
+        char *rows = strchr(pf[r], ';');
+        bool rtl = c->rtl;
+        if (rows) *rows = '\0';
+        c->s = pf[r], c->rtl = false;
+        P = parse(c);
+        c->rtl = rtl;
+        if (rows) *rows = ';';
+        P = ib_canon(c, P);
+        if (c->st == CASIM_OK && sm_lit(c, P)) c->st = CASIM_NO_ROOM;     /* its text is partfrac's, not eqn */
+        c->s = S->eqn;
+        /* the rows: a value the cancelling removed ("K=a") is a hole of the summand */
+        for (char *p = rows; p && c->st == CASIM_OK; p = strchr(p + 1, ';')) {
+            ref v;
+            const char *q = p + 1;
+            while (*q == ' ') q++;
+            if (q[0] != 'A' + var || q[1] != '=') continue;           /* "p=0": no rational root */
+            {
+                char *e = strchr(q, ';');
+                if (e) *e = '\0';
+                c->s = q + 2;
+                v = parse(c);
+                v = ib_canon(c, v);                             /* a raw number reads its digits from c->s */
+                c->s = S->eqn;
+                if (e) *e = ';';
+            }
+            if (c->st == CASIM_OK && is_num(c, v) && val(c, v)->q == 1 && sm_in(S, val(c, v)->p))
+                c->st = CASIM_UNDEFINED;
+        }
+        for (int i = 0, n = nd(c, P)->kind == K_ADD ? nd(c, P)->n : 1; i < n && c->st == CASIM_OK; i++) {
+            ref t = nd(c, P)->kind == K_ADD ? list(c, nd(c, P)->a)[i] : P, coef, B, f = 0, cf = k;
+            int j, m = nd(c, t)->kind == K_MUL ? nd(c, t)->n : 1;
+            rat *lin, ia, s, iam;
+            if (sm_term(c, t, var, &coef, &j, &B)) {
+                sm_add(c, G, ng, ib_canon(c, mul2(c, k, coef)), j, B);  /* the polynomial part */
+                continue;
+            }
+            for (int q = 0; q < m; q++) {
+                ref h = nd(c, t)->kind == K_MUL ? list(c, nd(c, t)->a)[q] : t;
+                if (!contains(c, h, var)) cf = mul2(c, cf, h);
+                else if (!f) f = h;
+                else return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+            }
+            /* c÷(a×var+b)^m, as (c÷a^m)÷(var+s)^m */
+            if (c->st != CASIM_OK || nd(c, f)->kind != K_POW || !is_num(c, nd(c, f)->b) || val(c, nd(c, f)->b)->q != 1 ||
+                val(c, nd(c, f)->b)->p >= 0 || !sm_poly(c, nd(c, f)->a, var, &lin) || pdeg(lin) != 1 || nt == SM_SHIFT)
+                return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
+            m = (int)-val(c, nd(c, f)->b)->p;
+            if (!rat_make(&ia, lin[1].q, lin[1].p) || !rat_mul(&s, &lin[0], &ia) || !rat_pow(&iam, &ia, m))
+                return c->st = CASIM_NO_ROOM, SPARE;
+            if (s.q == 1 && sm_in(S, -s.p)) return c->st = CASIM_UNDEFINED, SPARE;     /* a pole in the range */
+            tm[nt].s = s, tm[nt].m = m, tm[nt].cf = ib_canon(c, mul2(c, cf, num(c, &iam)));
+            nt++;
+        }
+    }
+    /* classes by (s mod 1, m), each summing to 0: Σ_{k=lo}^{hi} = Σ_i c_i Σ_{j<d_i} [1÷(hi+1+s0+j)^m - 1÷(lo+s0+j)^m] */
+    for (int i = 0; i < nt && c->st == CASIM_OK; i++) {
+        rat s0 = tm[i].s;
+        int m = tm[i].m;
+        ref tot = small(c, C_0), me = sm_int(c, -m);
+        if (!tm[i].cf) continue;
+        for (int j = 0; j < nt; j++) {
+            rat d, ns = {-tm[j].s.p, tm[j].s.q};
+            if (tm[j].cf && tm[j].m == m && rat_add(&d, &s0, &ns) && d.q == 1 && d.p > 0) s0 = tm[j].s;
+        }
+        for (int j = 0; j < nt && c->st == CASIM_OK; j++) {
+            rat d, ns = {-s0.p, s0.q};
+            if (!tm[j].cf || tm[j].m != m || !rat_add(&d, &tm[j].s, &ns) || d.q != 1) continue;
+            if (d.p > SM_SHIFT) return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+            tot = add2(c, tot, tm[j].cf);
+            for (int q = 0; q < d.p; q++) {
+                rat sq = {q, 1}, w;
+                ref at;
+                if (!rat_add(&w, &s0, &sq)) return c->st = CASIM_NO_ROOM, SPARE;
+                if (!S->inf) {
+                    at = add2(c, add2(c, S->hi, small(c, C_1)), num(c, &w));
+                    T = add2(c, T, mul2(c, tm[j].cf, power(c, at, me)));
+                }
+                at = add2(c, S->lo, num(c, &w));
+                T = add2(c, T, ib_neg(c, mul2(c, tm[j].cf, power(c, at, me))));
+            }
+            tm[j].cf = 0;
+        }
+        if (c->st == CASIM_OK && !is_k(c, ib_canon(c, tot), 0, 1)) return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+    }
+    return ib_canon(c, T);
+}
+
+/* q(var) of a group */
+static ref sm_q(ctx *c, const smgroup *g, ref x)
+{
+    ref q = small(c, C_0);
+    for (int j = 0; j <= g->d; j++) q = add2(c, q, mul2(c, g->q[j], power(c, x, sm_int(c, j))));
+    return q;
+}
+
+/* rule 8: |B| (1 for a polynomial) against |B2|: the sign of B^2 - B2^2; 2 when exactly equal, 0 when undecided */
+static int sm_cmpabs(ctx *c, ref B, ref B2)
+{
+    ref one = small(c, C_1), two = small(c, C_2);
+    ref d = ib_canon(c, add2(c, power(c, B ? B : one, two), ib_neg(c, power(c, B2 ? B2 : one, two))));
+    if (c->st != CASIM_OK) return 0;
+    return is_k(c, d, 0, 1) ? 2 : const_sign(c, d);
+}
+
+/* rules 4 and 8: each group's part of the sum into *S (lo's part alone at ∞); at ∞ a divergent sum's status, or ∞
+   (*dir 1 or -1) */
+static __attribute__((noinline)) ref sm_groups(ctx *c, const smsum *S, smgroup *G, int ng, int *dir)
+{
+    int var = S->var, best = -1, W = -1;
+    bool tie = false;
+    ref sum = small(c, C_0), x = leaf(c, K_VAR, var);
+    for (int l = 22; l >= 0 && W < 0; l--)                          /* W, V, U, ... : a letter in nothing here */
+        if (l != var && !contains(c, S->f, l) && !contains(c, S->lo, l) && !(S->hi && contains(c, S->hi, l))) W = l;
+    for (int gi = 0; gi < ng; gi++)
+        for (int j = 0; j <= G[gi].d; j++) G[gi].q[j] = ib_canon(c, G[gi].q[j]);
+    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
+        smgroup *g = &G[gi];
+        ref F, q, z, B = g->B, top;
+        size_t mark = c->used;                                      /* each group's work is given back */
+        bool zero = true;
+        for (int j = 0; j <= g->d; j++) zero = zero && is_k(c, g->q[j], 0, 1);
+        if (zero) continue;
+        if (B) {
+            /* rule 4: a rational B is solved as it is; another with B = W+1, so the check's
+               divisions are powers of W, which expand merges (by B-1 they don't: EXP(1)-1), and W is B-1 after */
+            ref Bw = B;
+            bool w = !is_num(c, B);
+            if (w && W < 0) return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+            /* B - 1 must be decidably nonzero, or B hold a letter (rule 4b: its rows say where it is 1): i^K, or a B
+               that is 1 but not written so (SQRT(2)^K×SQRT(0.5)^K), would divide by 0 */
+            if (w && !sm_letter(c, B) && const_sign(c, ib_canon(c, add2(c, B, small(c, C_M1)))) == 0)
+                return c->st = CASIM_NO_CLOSED_FORM, SPARE;
+            if (w) Bw = ib_canon(c, add2(c, leaf(c, K_VAR, W), small(c, C_1)));
+            F = compact(c, mark, CASIM_SM_PLANT(c, sm_anti(c, g, Bw, var)));
+            if (w) Bw = ib_canon(c, add2(c, leaf(c, K_VAR, W), small(c, C_1)));      /* the compact took it */
+            q = sm_q(c, g, x);
+            z = add2(c, add2(c, mul2(c, Bw, ib_at(c, F, var, add2(c, x, small(c, C_1)))), ib_neg(c, F)), ib_neg(c, q));
+            if (c->st == CASIM_OK && (F == SPARE || !ib_same(c, z, small(c, C_0))))
+                return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
+            if (w) F = ib_at(c, F, W, add2(c, B, small(c, C_M1)));
+        } else {
+            F = compact(c, mark, CASIM_SM_PLANT(c, sm_anti(c, g, 0, var)));
+            q = sm_q(c, g, x);
+            z = add2(c, add2(c, ib_at(c, F, var, add2(c, x, small(c, C_1))), ib_neg(c, F)), ib_neg(c, q));
+            if (c->st == CASIM_OK && !ib_same(c, z, small(c, C_0)))
+                return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
+        }
+        if (c->st != CASIM_OK || F == SPARE) return c->st = c->st == CASIM_OK ? CASIM_NO_CLOSED_FORM : c->st, SPARE;
+        F = compact(c, mark, F);
+        sum = add2(c, sum, ib_neg(c, mul2(c, ib_at(c, F, var, S->lo), B ? power(c, B, S->lo) : small(c, C_1))));
+        if (!S->inf) {
+            top = add2(c, S->hi, small(c, C_1));
+            sum = add2(c, sum, mul2(c, ib_at(c, F, var, top), B ? power(c, B, top) : small(c, C_1)));
+        }
+        sum = compact(c, mark, ib_canon(c, sum));
+        if (!S->inf || (B && sm_letter(c, B))) continue;           /* rule 4b: a letter group's own row at ∞ */
+        /* rule 8: converges when |B| < 1; the dominant divergent group by |B|, then degree */
+        {
+            int s = sm_cmpabs(c, B, 0);
+            if (s == 0) return c->st = c->st == CASIM_OK ? CASIM_UNDECIDED : c->st, SPARE;
+            if (s < 0) continue;
+            if (best < 0) {
+                best = gi;
+                continue;
+            }
+            s = sm_cmpabs(c, B, G[best].B);
+            if (s == 0) return c->st = c->st == CASIM_OK ? CASIM_UNDECIDED : c->st, SPARE;
+            if (s == 2) {
+                /* |B| = 1 both: a polynomial's partial sums grow a degree faster than its terms, a swing's don't */
+                int e = g->d + !B, eb = G[best].d + !G[best].B;
+                if (e == eb) tie = true;
+                else if (e > eb) best = gi, tie = false;
+            } else if (s > 0) best = gi, tie = false;
+        }
+    }
+    if (c->st != CASIM_OK || best < 0) return c->st == CASIM_OK ? sum : SPARE;
+    {
+        smgroup *g = &G[best];
+        int sg;
+        if (tie) return c->st = CASIM_UNDECIDED, SPARE;
+        sg = const_sign(c, g->q[g->d]);                        /* a leading coefficient that may be 0: undecided */
+        if (g->B && const_sign(c, g->B) == 0) sg = 0;
+        if (sg == 0) return c->st = c->st == CASIM_OK ? CASIM_UNDECIDED : c->st, SPARE;
+        if (g->B && const_sign(c, g->B) < 0) return c->st = CASIM_UNDEFINED, SPARE;      /* it swings: no limit */
+        *dir = sg;
+    }
+    return sum;
+}
+
+/* rule 7: term by term, each from the typed text with var replaced by its value */
+static ref sm_direct(ctx *c, const smsum *S)
+{
+    ref acc = small(c, C_0);
+    size_t mark = c->used;
+    for (int64_t k = S->a; k <= S->b && c->st == CASIM_OK; k++) {
+        ref v;
+        c->sub_var = S->var, c->sub_val = sm_int(c, k);
+        v = ib_canon(c, S->raw);
+        c->sub_val = 0, c->sub_var = -1;
+        acc = compact(c, mark, ib_canon(c, add2(c, acc, v)));
+    }
+    return acc;
+}
+
+/* rule 4b: a condition row, l ≠ r ('!'), l < r or l > r */
+typedef struct {
+    ref l, r;
+    char op;
+    int letter;                         /* its order: the letter solved for, or 26 for B itself */
+} smrow;
+
+#define SM_ROWS (2 * SM_GROUPS)
+
+/* B as k × L^m: a rational k, one letter L, a whole m != 0 (|m| <= 12) */
+static bool sm_mono(ctx *c, ref B, rat *k, int *L, int *m)
+{
+    int n = nd(c, B)->kind == K_MUL ? nd(c, B)->n : 1;
+    *k = (rat){1, 1}, *L = -1, *m = 0;
+    for (int i = 0; i < n; i++) {
+        ref f = nd(c, B)->kind == K_MUL ? list(c, nd(c, B)->a)[i] : B;
+        const node *x = nd(c, f);
+        if (x->kind == K_NUM) *k = *val(c, f);
+        else if (*L >= 0) return false;
+        else if (x->kind == K_VAR && x->id < 26) *L = x->id, *m = 1;
+        else if (x->kind == K_POW && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26 && is_num(c, x->b) &&
+                 val(c, x->b)->q == 1 && val(c, x->b)->p != 0 && val(c, x->b)->p >= -SM_DEG && val(c, x->b)->p <= SM_DEG)
+            *L = nd(c, x->a)->id, *m = (int)val(c, x->b)->p;
+        else return false;
+    }
+    return *L >= 0 && k->p != 0;
+}
+
+static void sm_row(ctx *c, smrow *rows, int *n, ref l, char op, ref r, int letter)
+{
+    int at;
+    if (c->st != CASIM_OK) return;
+    for (int i = 0; i < *n; i++)
+        if (rows[i].op == op && cmp(c, rows[i].l, l) == 0 && cmp(c, rows[i].r, r) == 0) return;      /* once */
+    if (*n == SM_ROWS) {
+        c->st = CASIM_NO_ROOM;
+        return;
+    }
+    /* by letter, then by value ascending (X≠-1 before X≠1) */
+    for (at = *n; at > 0; at--) {
+        const smrow *p = &rows[at - 1];
+        if (p->letter < letter) break;
+        if (p->letter == letter && const_sign(c, ib_canon(c, add2(c, p->r, ib_neg(c, r)))) <= 0) break;
+    }
+    memmove(&rows[at + 1], &rows[at], (size_t)(*n - at) * sizeof rows[0]);
+    rows[at] = (smrow){l, r, op, letter};
+    (*n)++;
+}
+
+/* rule 4b: each letter group's rows. Finite: where B is 1 (k×L^m = 1 solved for L, else B ≠ 1). At ∞: where it
+   converges, |B| < 1 (|L| < or > |k|^(-1/m), else ABS(B) < 1) */
+static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, smrow *rows, int *n)
+{
+    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
+        ref B = G[gi].B, one = small(c, C_1);
+        rat k, t;
+        int L, m;
+        bool zero = true;
+        for (int j = 0; j <= G[gi].d; j++) zero = zero && is_k(c, G[gi].q[j], 0, 1);
+        if (zero || !B || !sm_letter(c, B)) continue;
+        /* L ≠ 0, for each letter L of B, where the answer itself has no value at 0, though the sum may (the cold
+           review: K×X^(K-1)'s X÷(X-X^2), X^(-K) from 0). Asked of the answer: X^(K-1)'s merges to X^N and needs none.
+           X^(-K) from a lo of 1 or more has no value at 0 anyway (abacus #8320 (b)). The probe's nodes are given back
+           before the row is made */
+        for (int l = 0; l < 26 && c->st == CASIM_OK; l++) {
+            size_t mark = c->used;
+            bool hole;
+            if (!contains(c, B, l) || (sm_mono(c, B, &k, &L, &m) && m < 0 && S->ilo && S->a >= 1)) continue;
+            ib_at(c, sum, l, small(c, C_0));
+            hole = c->st == CASIM_UNDEFINED;
+            if (hole) c->st = CASIM_OK;
+            if (c->st == CASIM_OK) compact(c, mark, sum);
+            if (hole) sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);
+        }
+        if (!sm_mono(c, B, &k, &L, &m)) {
+            if (S->inf) sm_row(c, rows, n, fn(c, F_ABS, B), '<', one, 26);
+            else sm_row(c, rows, n, B, '!', one, 26);
+            continue;
+        }
+        if (S->inf) {
+            /* |k| |L|^m < 1: |L| < |k|^(-1/m) for m > 0, > for m < 0 */
+            rat ak = k, e = {-1, m};
+            if (ak.p < 0) ak.p = -ak.p;
+            if (e.q < 0) e.p = -e.p, e.q = -e.q;
+            sm_row(c, rows, n, fn(c, F_ABS, leaf(c, K_VAR, L)), m > 0 ? '<' : '>',
+                   ib_canon(c, power(c, num(c, &ak), num(c, &e))), L);
+            continue;
+        }
+        /* L^m = 1/k: m odd, one root; m even, two when 1/k > 0, none when < 0. k is in lowest terms with q > 0, so 1/k
+           is too (no rat_make: a new call to it moves lm_sum's frame, CAS 017's lesson) */
+        t = k.p < 0 ? (rat){-k.q, -k.p} : (rat){k.q, k.p};
+        {
+            bool neg = t.p < 0;
+            rat at = t, e = {1, m};
+            ref u;
+            if (neg) at.p = -at.p;
+            if (e.q < 0) e.p = -e.p, e.q = -e.q;
+            u = ib_canon(c, power(c, num(c, &at), num(c, &e)));
+            if (m % 2) sm_row(c, rows, n, leaf(c, K_VAR, L), '!', neg ? ib_canon(c, ib_neg(c, u)) : u, L);
+            else if (!neg) {
+                sm_row(c, rows, n, leaf(c, K_VAR, L), '!', ib_canon(c, ib_neg(c, u)), L);
+                sm_row(c, rows, n, leaf(c, K_VAR, L), '!', u, L);
+            }
+        }
+    }
+}
+
+/* the answer (∞ or -∞ when dir), then its rows after "; " (CANCEL's) */
+static casim_status sm_print(ctx *c, ref sum, int dir, const smrow *rows, int n, char *out, size_t ocap)
+{
+    out_t w = {out, ocap, 0, false};
+    if (c->st != CASIM_OK || (!dir && !n)) return finish(c, dir ? SPARE : sum, out, ocap);
+    if (ocap == 0) return CASIM_TOO_LONG;
+    if (dir) puts_(&w, dir > 0 ? "\xe2\x88\x9e" : "-\xe2\x88\x9e");
+    else print(c, &w, sum);
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        puts_(&w, "; ");
+        print(c, &w, rows[i].l);
+        puts_(&w, rows[i].op == '!' ? "\xe2\x89\xa0" : rows[i].op == '<' ? "<" : ">");
+        print(c, &w, rows[i].r);
+    }
+    if (c->st == CASIM_OK && w.full) c->st = CASIM_TOO_LONG;
+    if (c->st != CASIM_OK) {
+        out[0] = '\0';
+        return c->st;
+    }
+    out[w.n] = '\0';
+    return CASIM_OK;
+}
+
+/* closed: rule 7's sum was past out, so a closed form instead (rule 4b), its rows saying where it holds; *direct when
+   rule 7's sum was the answer */
+static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, const char *lo, const char *hi, int angle,
+                                                      char *out, size_t cap, void *arena, size_t arena_cap, bool rtl,
+                                                      bool closed, bool *direct)
+{
+    ctx c;
+    smsum S;
+    smgroup G[SM_GROUPS];
+    ref R[SM_TERMS], sum, T = 0;
+    char *pf[SM_TERMS];
+    size_t ocap = cap < SLOT ? cap : SLOT, top = arena_cap;
+    int ng = 0, nr = 0, dir = 0, nrows = 0;
+    smrow rows[SM_ROWS];
+    bool swung;
+    if (cap) out[0] = '\0';
+    if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    memset(&S, 0, sizeof S);
+    S.var = var, S.eqn = eqn;
+    S.inf = !strcmp(hi, "\xe2\x88\x9e");
+    if (!strcmp(lo, "\xe2\x88\x9e") || !strcmp(lo, "-\xe2\x88\x9e") || !strcmp(hi, "-\xe2\x88\x9e")) return CASIM_BAD_ARG;
+    /* rule 5 first: each rational term's n÷d through partfrac, on the whole arena but the texts kept at its top */
+    for (int r = 0;; r++) {
+        size_t len, at;
+        char *buf;
+        casim_status st;
+        start(&c, eqn, angle, arena, top > IB_TEXT ? top - IB_TEXT : 0);
+        c.rtl = rtl;
+        sm_read(&c, &S, eqn, lo, hi);
+        if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+        if (S.ilo && S.ihi && S.b < S.a) return finish(&c, small(&c, C_0), out, ocap);   /* rule 2: none */
+        if (!S.inf && !(S.ilo && S.ihi)) {
+            /* symbolic bounds a known whole number apart: hi < lo is the empty sum too (N+2 to N) */
+            ref span = ib_canon(&c, add2(&c, S.hi, ib_neg(&c, S.lo)));
+            if (c.st == CASIM_OK && is_num(&c, span) && val(&c, span)->q == 1 && val(&c, span)->p < 0)
+                return finish(&c, small(&c, C_0), out, ocap);
+        }
+        if (S.ilo && S.ihi && (uint64_t)S.b - (uint64_t)S.a < SM_DIRECT && !closed)
+            return *direct = true, finish(&c, sm_direct(&c, &S), out, ocap);
+        if (r == 0 && !sm_typed_ok(&c, S.raw, S.f, var) && c.st == CASIM_OK) c.st = CASIM_NO_CLOSED_FORM;
+        ng = nr = 0;
+        if (c.st == CASIM_OK) sm_split(&c, S.e, var, G, &ng, R, &nr);
+        if (c.st == CASIM_OK && nr && !S.ilo) c.st = CASIM_NO_CLOSED_FORM;        /* rule 2: it would divide by lo */
+        /* a telescoped form over fewer terms than its shifts can name a pole outside the range (rule 7) */
+        if (c.st == CASIM_OK && nr && closed && (uint64_t)S.b - (uint64_t)S.a < SM_SHIFT) c.st = CASIM_TOO_LONG;
+        if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+        if (r == nr) break;
+        buf = (char *)arena + top - IB_TEXT;
+        if (top < 2 * IB_TEXT + SLOT || !sm_frac(&c, R[r], var, buf, IB_TEXT))
+            return c.st = c.st == CASIM_OK ? CASIM_NO_ROOM : c.st, finish(&c, SPARE, out, ocap);
+        len = strlen(buf) + 1;
+        memmove((char *)arena + top - len, buf, len);
+        at = top - len - SLOT;
+        st = do_partfrac((char *)arena + top - len, var, angle, (char *)arena + at, SLOT, arena, at, false);
+        if (st == CASIM_TOO_LONG) st = CASIM_NO_ROOM;
+        else if (st == CASIM_PARTIAL) st = CASIM_OK;
+        else if (st != CASIM_OK && st != CASIM_NO_ROOM && st != CASIM_UNDEFINED) st = CASIM_NO_CLOSED_FORM;
+        if (st != CASIM_OK) return st;
+        len = strlen((char *)arena + at) + 1;
+        memmove((char *)arena + top - len, (char *)arena + at, len);
+        top -= len;
+        pf[r] = (char *)arena + top;
+    }
+    /* the sum, in what's left */
+    start(&c, eqn, angle, arena, top);
+    c.rtl = rtl;
+    sm_read(&c, &S, eqn, lo, hi);
+    ng = nr = 0;
+    if (c.st == CASIM_OK) sm_split(&c, S.e, var, G, &ng, R, &nr);
+    if (c.st == CASIM_OK && nr) T = sm_rational(&c, &S, R, nr, pf, G, &ng);
+    swung = c.st == CASIM_OK;                   /* an UNDEFINED from here on is rule 8's swing, not a pole */
+    sum = c.st == CASIM_OK ? sm_groups(&c, &S, G, ng, &dir) : SPARE;
+    if (c.st == CASIM_UNDEFINED && S.inf && swung) {
+        /* a swing beside a letter group: the letter can outgrow it (X^K+(-2)^K at X = 2), so not proven */
+        bool letter = false;
+        for (int gi = 0; gi < ng; gi++) letter = letter || (G[gi].B && sm_letter(&c, G[gi].B));
+        if (letter) c.st = CASIM_UNDECIDED;
+    }
+    if (c.st == CASIM_OK && !dir) sum = expand_fully(&c, ib_canon(&c, sum));
+    if (c.st == CASIM_OK && !dir && T) sum = ib_canon(&c, add2(&c, sum, T));
+    if (c.st == CASIM_OK) sm_rows(&c, &S, G, ng, dir ? small(&c, C_0) : sum, rows, &nrows);
+    return sm_print(&c, sum, dir, rows, nrows, out, ocap);
+}
+
+/* rule 7 first: whole bounds at most 64 apart are summed term by term; when that sum doesn't fit out, the closed
+   form and its rows (rule 4b: X+X^2+X^3 needs no row), and TOO_LONG when there's none */
+static __attribute__((noinline)) casim_status do_sum(const char *eqn, int var, const char *lo, const char *hi, int angle,
+                                                     char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    bool direct = false;
+    casim_status st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, false, &direct);
+    if (st != CASIM_TOO_LONG || !direct) return st;
+    st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, true, &direct);
+    if (st != CASIM_OK && cap) out[0] = '\0';
+    return st == CASIM_OK ? st : CASIM_TOO_LONG;
+}
+
+casim_status casim_sum(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                       size_t cap, void *arena, size_t arena_cap)
+{
+    if (cap) out[0] = '\0';
+    if (!model_ok(model)) return CASIM_BAD_ARG;
+    return do_sum(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }
