@@ -818,8 +818,8 @@ MUTANTS = {
     "hold-level-with-cap": [("src/casim.c", "    if (flags % IB_LIM / IB_LEVEL >= IB_WALKS || !room)",
                              "    if (flags / IB_LEVEL >= IB_WALKS || !room)")],
     # CAS 018: sums
-    "sum-lo-sign": [("src/casim.c", "        sum = add2(c, sum, ib_neg(c, mul2(c, ib_at(c, F, var, S->lo)",
-                     "        sum = add2(c, sum, (mul2(c, ib_at(c, F, var, S->lo)")],
+    "sum-lo-sign": [("src/casim.c", "        sum = add2(c, sum, ib_neg(c, mul2(c, ib_at(c, F, var, lo)",
+                     "        sum = add2(c, sum, (mul2(c, ib_at(c, F, var, lo)")],
     "sum-binom-start": [("src/casim.c", "            int64_t bin = i + 1;                                        /* C(i+1, i) */",
                          "            int64_t bin = 1;")],
     "sum-poly-check-skipped": [("src/casim.c", "            if (c->st == CASIM_OK && !ib_same(c, z, small(c, C_0)))\n",
