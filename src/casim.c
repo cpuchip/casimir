@@ -7820,6 +7820,12 @@ static void ir_reset(ctx *c, size_t mark)
     if (c->pi >= mark / 8u) c->pi = 0;
 }
 
+/* the room the rational path needs to start at arena: its slot, partfrac's block and work area */
+static size_t ir_need(const void *arena)
+{
+    return SLOT + (size_t)(-(uintptr_t)arena & 7u) + sizeof(pfkeep) + sizeof(pfwork) + 64;
+}
+
 /* integrate's table refused eqn: ∫ of it as a rational function, through partfrac (run whole, its arena fresh), a
    term at a time, each term's antiderivative checked against the term by integrate's own check (closes) */
 static __attribute__((noinline)) casim_status do_irational(const char *eqn, int var, int angle, char *out, size_t cap,
@@ -7835,7 +7841,7 @@ static __attribute__((noinline)) casim_status do_irational(const char *eqn, int 
     rat *T;
     out_t w = {out, ocap, 0, false};
     skip = (size_t)(-(uintptr_t)arena & 7u);
-    if (arena_cap < SLOT + skip + sizeof(pfkeep) + sizeof(pfwork) + 64)
+    if (arena_cap < ir_need(arena))
         return CASIM_NOT_INTEGRABLE;            /* partfrac can't start: the table's refusal stands (rule 2) */
     base = (unsigned char *)arena + skip;
     room2 = (room - skip - sizeof(pfkeep)) & ~(size_t)7;
@@ -8832,6 +8838,20 @@ static ref ib_const(ctx *c, ref t, int var)
     return k;
 }
 
+/* t as partfrac reads a rational function of var: numbers, var, sums, products and whole powers (no other letter,
+   no function, no π) */
+static __attribute__((noinline)) bool ib_ratfn(ctx *c, ref t, int var)
+{
+    const node *x = nd(c, t);
+    if (x->kind == K_NUM) return true;
+    if (x->kind == K_VAR) return x->id == var;
+    if (x->kind == K_POW) return is_num(c, x->b) && val(c, x->b)->q == 1 && ib_ratfn(c, x->a, var);
+    if (x->kind != K_ADD && x->kind != K_MUL) return false;
+    for (int i = 0; i < x->n; i++)
+        if (!ib_ratfn(c, list(c, x->a)[i], var)) return false;
+    return true;
+}
+
 /* the rational path (CAS 013) on t's printed form, in the arena's free part, its answer read back; a constant factor
    ib_const finds comes out first and goes back on the answer. Its NO_ROOM is a refusal here: other rules may still
    answer, and at any depth it is noted, so that when nothing answers the whole is NO_ROOM (abacus #8359) */
@@ -8839,13 +8859,15 @@ static ref ib_rational(ctx *c, ib_t *B, ref t, int var)
 {
     size_t top = c->top;
     const char *s = c->s;
-    ref k = ib_const(c, t, var);
-    char *buf = ib_print(c, k ? ib_canon(c, mul2(c, t, ib_inv(c, k))) : t, 2 * IB_TEXT),
-         *ob = buf + IB_TEXT;
+    ref k = ib_const(c, t, var), u = k ? ib_canon(c, mul2(c, t, ib_inv(c, k))) : t;
+    char *buf = ib_print(c, u, 2 * IB_TEXT), *ob = buf + IB_TEXT;
     casim_status st;
     ref F = SPARE;
     if (buf && c->st == CASIM_OK) {
-        st = do_irational(buf, var, c->angle, ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
+        /* where partfrac can't start in the room left, the rational path's refusal is the room's for a rational u
+           (abacus #8413: SIN(X)+1÷(3×X^2+2×X+8) at 8 KB), and only the form's for any other */
+        if (c->top - c->used < ir_need(c->mem + c->used) && ib_ratfn(c, u, var)) st = CASIM_NO_ROOM;
+        else st = do_irational(buf, var, c->angle, ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
         if (st == CASIM_OK) {
             c->s = ob;
             F = ib_canon(c, parse(c));
