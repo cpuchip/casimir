@@ -201,8 +201,9 @@ and (pX+q)÷(aX^2+bX+c) with b^2−4ac < 0 as an LN (no ABS: the quadratic is po
 prints, and the answer is the canonical form of their sum. It refuses (NOT_INTEGRABLE):
 - a quadratic factor with b^2−4ac > 0 that is not a square (X^2−2), or one to a power of 2 or more;
 - a factor of degree 3 or more;
-- a fraction where something cancels (X^2÷X): the reduced function's antiderivative would be defined where the
-  integrand isn't;
+- a fraction where something cancels at a hole, a removed value where what is left has a value (X^2÷X at 0): the
+  reduced function's antiderivative would be defined where the integrand isn't. Where nothing removed is a hole, the
+  reduced function is integrated instead: (X^3+X^2+X+1)÷(X^2+1) is X+0.5×X^2, as X^2+1 is never 0;
 - an integrand that mixes the two (SIN(X)+1÷(X^2−1)), or holds another letter.
 
 It answers NO_ROOM only when partfrac itself runs out of room (or past int64), never for a refusal of the form.
@@ -214,6 +215,7 @@ It answers NO_ROOM only when partfrac itself runs out of room (or past int64), n
 | `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)` |
 | `casim integrate "1÷(X^2+1)" X DEG` | `π×ATAN(X)÷180` |
 | `casim integrate "X^2÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+0.5×X^2` |
 | `casim integrate "1÷(X^2-2)" X RAD` | `NOT_INTEGRABLE` |
 
 When both refuse, integrate tries substitution and parts on the integrand's canonical form, term by term

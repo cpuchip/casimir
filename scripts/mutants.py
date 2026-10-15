@@ -902,6 +902,16 @@ MUTANTS = {
                                "    if (ir_cancels(eqn, var, angle, arena, arena_cap, rtl) && 0) return CASIM_NOT_INTEGRABLE;")],
     "noroom-rule8-steps": [("src/casim.c", "    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl)) return st;",
                             "    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl) && 0) return st;")],
+    # CAS 013 rule 8 amended (abacus #8494, #8510): the reduced function, before the search, in integrate and the steps
+    "rule8-reduced-off": [("src/casim.c", "    if ((r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return r;",
+                           "    r = CASIM_NOT_INTEGRABLE;")],
+    "rule8-reduced-after-search": [("src/casim.c",
+        "    if ((r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return r;\n    st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n",
+        "    st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    if (st == CASIM_OK || (r = ir_reduced(eqn, var, angle, out, cap, arena, arena_cap, rtl)) == CASIM_OK) return st == CASIM_OK ? st : r;\n")],
+    "rule8-steps-unreduced": [("src/casim.c", "    const casim_req *g = irs_reduce(rq, tc);", "    const casim_req *g = NULL;\n    (void)irs_reduce;")],
+    "rule8-steps-hole-reduced": [("src/casim.c", "        !(rows = strchr(txt, ';')) || ir_cancels(rq->eqn, rq->var, rq->angle, tc->mem, room, rtl))",
+                                  "        !(rows = strchr(txt, ';')))")],
+    "rule8-root-names-reduced": [("src/casim.c", "    if (want == 3) mid = rq->repl;\n", "")],
     # abacus #8413: a rational piece with no room for partfrac to start is a run-out
     "noroom-start-unnoted": [("src/casim.c", "&& ib_ratfn(c, u, var)) st = CASIM_NO_ROOM;", "&& ib_ratfn(c, u, var) && 0) st = CASIM_NO_ROOM;")],
     "noroom-ratfn-any": [("src/casim.c", "    if (x->kind == K_NUM) return true;\n    if (x->kind == K_VAR) return x->id == var;",

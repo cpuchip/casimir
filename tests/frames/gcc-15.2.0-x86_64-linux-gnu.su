@@ -66,7 +66,7 @@ do_factor	816
 do_integrate	224
 do_iparts	272
 do_irational	400
-do_irsteps.isra	544
+do_irsteps.isra	560
 do_limit	304
 do_partfrac	272
 do_poly	352
@@ -154,8 +154,9 @@ ipmul	160
 ipoly_tree	256
 ir_cancels	96
 ir_hole	48
-ir_parts	80
+ir_parts	96
 ir_rat	48
+ir_reduced	128
 ir_term	208
 irec_factor	144
 irec_sum	112
@@ -172,7 +173,8 @@ irs_lhs	80
 irs_lin	176
 irs_pterm.constprop	144
 irs_quad	352
-irs_refused	32
+irs_reduce	128
+irs_refused	64
 irs_reset	8
 irs_show	32
 irs_signed.isra	64
@@ -296,6 +298,7 @@ rational_root	240
 raw_has_var	48
 raw_print.isra	64
 raw_side	32
+rdeg	8
 read_back	416
 read_bound	32
 reduce	48

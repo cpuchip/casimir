@@ -85,14 +85,14 @@
 | `casim integrate "EXP(A×X×Y)" Y RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
 | `casim --arena 8192 integrate "X×ATAN(X)" X RAD` | `NO_ROOM` |
-| `casim --arena 65536 integrate "(X^4+7×X^2+6)÷(X^2+6)" X RAD` | `X+X^3÷3-6×ATAN(X÷SQRT(6))÷SQRT(6)-7×ATAN(X÷SQRT(6))×(X^2+X^4÷7)÷SQRT(6)+7×ATAN(X÷SQRT(6))×(X^2+X^4÷7+6÷7)÷SQRT(6)` |
+| `casim --arena 65536 integrate "(X^4+7×X^2+6)÷(X^2+6)" X RAD` | `X+X^3÷3` |
 | `casim --arena 65536 integrate "(X^2-2)÷((X^2-2)×(X+1))" X RAD` | `NOT_INTEGRABLE` |
 | `casim --arena 65536 integrate "(X^3-2)÷((X^3-2)×(X+1))" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `-COS(X)+ATAN(3×(X+1÷3)÷SQRT(23))÷SQRT(23)` |
-| `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
-| `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
-| `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-10×LN(ABS(2×X+5))-4×X×LN(ABS(2×X+5))+4×LN(ABS(2×X+5))×(X-0.875)` |
+| `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
+| `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
+| `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
