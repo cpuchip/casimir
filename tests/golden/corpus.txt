@@ -10515,7 +10515,9 @@ integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SI
 integrate	35	23	1	35	8800	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N	NO_ROOM	
 # CAS 018's sums, added with golden_check's sum op (CAS 018 had none): the S3 bench's sum cases at 65,536 and at the
 # calculator's 8,800 with its 192-byte slot, and work/018-examples.txt's rows, recorded from their commit. New lines;
-# none of the lines above moved.
+# none of the lines above moved. Rule 4b's shift (abacus #8349) moved 9 of them (tests/golden/moved/sum-shift.txt:
+# an X≠0 row the sum doesn't need, gone) and added its 2 example rows at the end (6 lines: the bench takes them too,
+# at both arenas); re-recorded from its commit.
 sum	35	10	1	35	65536	65536	K	1	N	OK	0.5×N+0.5×N^2
 sum	35	10	1	35	8800	192	K	1	N	OK	0.5×N+0.5×N^2
 sum	35	10	1	35	65536	65536	K^2	1	N	OK	N÷6+0.5×N^2+N^3÷3
@@ -10708,12 +10710,12 @@ sum	35	10	1	35	65536	65536	i^K	0	N	NO_CLOSED_FORM
 sum	35	10	1	35	8800	192	i^K	0	N	NO_CLOSED_FORM	
 sum	35	10	1	35	65536	65536	EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)	0	N	NO_ROOM	
 sum	35	10	1	35	8800	192	EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)	0	N	NO_ROOM	
-sum	35	10	1	35	65536	65536	K×X^(K-1)	1	∞	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
-sum	35	10	1	35	8800	192	K×X^(K-1)	1	∞	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
-sum	35	10	1	35	65536	65536	K×X^(K-1)	1	N	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
-sum	35	10	1	35	8800	192	K×X^(K-1)	1	N	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
-sum	35	10	1	35	65536	65536	X^(2×K-1)	1	N	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
-sum	35	10	1	35	8800	192	X^(2×K-1)	1	N	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
+sum	35	10	1	35	65536	65536	K×X^(K-1)	1	∞	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	8800	192	K×X^(K-1)	1	∞	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	65536	65536	K×X^(K-1)	1	N	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	8800	192	K×X^(K-1)	1	N	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	65536	65536	X^(2×K-1)	1	N	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
+sum	35	10	1	35	8800	192	X^(2×K-1)	1	N	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
 sum	35	10	1	35	65536	65536	X^(-K)	0	N	OK	-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
 sum	35	10	1	35	8800	192	X^(-K)	0	N	OK	-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
 sum	35	10	1	35	65536	65536	X^(K-1)	1	N	OK	-1÷(X-1)+X^N÷(X-1); X≠1
@@ -10817,10 +10819,16 @@ sum	35	10	1	35	8800	65536	K^2+(-1)^K×K^2	0	∞	OK	∞
 sum	35	10	1	35	8800	65536	(SQRT(6)-SQRT(2)×SQRT(3))×(-1)^K	0	∞	UNDECIDED	
 sum	35	10	1	35	8800	65536	i^K	0	N	NO_CLOSED_FORM	
 sum	35	10	1	35	8800	65536	EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)	0	N	NO_ROOM	
-sum	35	10	1	35	8800	65536	K×X^(K-1)	1	∞	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
-sum	35	10	1	35	8800	65536	K×X^(K-1)	1	N	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
-sum	35	10	1	35	8800	65536	X^(2×K-1)	1	N	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
+sum	35	10	1	35	8800	65536	K×X^(K-1)	1	∞	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	8800	65536	K×X^(K-1)	1	N	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	8800	65536	X^(2×K-1)	1	N	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
 sum	35	10	1	35	8800	65536	X^(-K)	0	N	OK	-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
 sum	35	10	1	35	8800	65536	X^(K-1)	1	N	OK	-1÷(X-1)+X^N÷(X-1); X≠1
 sum	35	10	1	35	8800	65536	Y^K×X^(K-1)	1	N	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
 sum	35	10	1	35	8800	65536	X^K+1÷(K×(K+1))	0	∞	UNDEFINED	
+sum	35	10	1	35	65536	65536	K^2×X^(K-1)	1	∞	OK	-1÷(X-1)-1.5×X÷(X-0.5×X^2-0.5)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1
+sum	35	10	1	35	8800	192	K^2×X^(K-1)	1	∞	OK	-1÷(X-1)-1.5×X÷(X-0.5×X^2-0.5)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1
+sum	35	10	1	35	65536	65536	K×X^(K-2)	1	N	OK	1÷(X-X^2)-0.5÷(X-0.5×X^2-0.5)+N×X^(N-1)÷(X-1)+0.5×X^N÷(X-0.5×X^2-0.5)+X^(N-1)÷(X-1); X≠0; X≠1
+sum	35	10	1	35	8800	192	K×X^(K-2)	1	N	OK	1÷(X-X^2)-0.5÷(X-0.5×X^2-0.5)+N×X^(N-1)÷(X-1)+0.5×X^N÷(X-0.5×X^2-0.5)+X^(N-1)÷(X-1); X≠0; X≠1
+sum	35	10	1	35	8800	65536	K^2×X^(K-1)	1	∞	OK	-1÷(X-1)-1.5×X÷(X-0.5×X^2-0.5)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1
+sum	35	10	1	35	8800	65536	K×X^(K-2)	1	N	OK	1÷(X-X^2)-0.5÷(X-0.5×X^2-0.5)+N×X^(N-1)÷(X-1)+0.5×X^N÷(X-0.5×X^2-0.5)+X^(N-1)÷(X-1); X≠0; X≠1

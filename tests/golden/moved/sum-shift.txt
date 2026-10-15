@@ -1,0 +1,30 @@
+# The golden lines CAS 018 rule 4b's shift (abacus #8349) moved: each line's inputs, then its status and answer
+# before (ac2152e) and after. Each loses an X≠0 row, and its sum has a value at X = 0. Every other line is
+# byte-identical.
+sum	35	10	1	35	65536	65536	K×X^(K-1)	1	∞
+  before	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
+  after	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	8800	192	K×X^(K-1)	1	∞
+  before	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
+  after	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	65536	65536	K×X^(K-1)	1	N
+  before	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
+  after	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	8800	192	K×X^(K-1)	1	N
+  before	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
+  after	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	65536	65536	X^(2×K-1)	1	N
+  before	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
+  after	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
+sum	35	10	1	35	8800	192	X^(2×K-1)	1	N
+  before	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
+  after	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
+sum	35	10	1	35	8800	65536	K×X^(K-1)	1	∞
+  before	OK	X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1
+  after	OK	-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1
+sum	35	10	1	35	8800	65536	K×X^(K-1)	1	N
+  before	OK	-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1
+  after	OK	-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1
+sum	35	10	1	35	8800	65536	X^(2×K-1)	1	N
+  before	OK	-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1
+  after	OK	X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1
