@@ -22,6 +22,8 @@
 #   NO_ROOM (it answers from 8,592 B), and so are SQRT(X^2)×EXP(X) and (X^2-1)÷(X-1)×EXP(X): no rule refuses them
 #   (canon keeps SQRT(X^2) and doesn't cancel X-1), and at 8 KB their search runs out before it is done (at 64 KB it
 #   ends, NOT_INTEGRABLE). A refusal no try ran out on stays NOT_INTEGRABLE at every arena (X^2×TAN(X)^0, EXP(X^2)).
+#   Its follow-up (abacus #8413): a rational piece with no room left for partfrac to start is a run-out too, so
+#   SIN(X)+1÷(3×X^2+2×X+8) and (8×X-7)×(2×X+5)÷(2×X+5)^2 are NO_ROOM at 8 KB and answer at 64 KB.
 # - Rule 8: steps give the working for what only this path answers (the steps build, §Steps; its own examples are in
 #   work/017-steps-examples.txt).
 # - The steps build's LN form (S2.6): whole coefficients (LN(ABS(5×X^3+2))) and no ABS where the argument has no real
@@ -76,6 +78,10 @@
 | `casim integrate "EXP(A×X×Y)" Y RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
 | `casim integrate "X×ATAN(X)" X RAD` | `NO_ROOM` |
+| `casim integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `NO_ROOM` |
+| `casim --arena 65536 integrate "SIN(X)+1÷(3×X^2+2×X+8)" X RAD` | `-COS(X)+ATAN(3×(X+1÷3)÷SQRT(23))÷SQRT(23)` |
+| `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `NO_ROOM` |
+| `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-10×LN(ABS(2×X+5))-4×X×LN(ABS(2×X+5))+4×LN(ABS(2×X+5))×(X-0.875)` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "COS(X)^2" X RAD` | `NOT_INTEGRABLE` |

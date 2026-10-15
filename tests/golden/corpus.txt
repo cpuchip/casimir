@@ -11,7 +11,8 @@
 # NO_ROOM where the rational path ran out at 8 KB, 1 to UNDEFINED for a pole), re-recorded from its commit; its
 # steps build changed 11 of the lines 017 had added (the LN forms: no ABS where the argument has no real root). The NO_ROOM fix (abacus
 # #8359, #8386) moved 17: a search that ran out is NO_ROOM, never NOT_INTEGRABLE (X×ATAN(X) at 8 KB, the depth-guard
-# nests, and integrands at 8 KB whose search couldn't finish); re-recorded from its commit.
+# nests, and integrands at 8 KB whose search couldn't finish); re-recorded from its commit. Its follow-up (abacus #8413)
+# moved 1 more: a rational piece of the search with no room for partfrac to start is a run-out too.
 derive	35	24	1	35	65536	65536	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	24	1	35	8192	192	((ALOG(3))÷((Y)÷((0.5)÷(1.5))))÷((X)-((X)^0.5))	\N	\N	OK	-ALOG(3)÷3÷Y^2÷(X-SQRT(X))
 derive	35	23	0	35	65536	65536	(ALOG(X))×(-(X))	\N	\N	OK	-ALOG(X)-X×LN(10)×ALOG(X)
@@ -4508,7 +4509,7 @@ pgcd	1	23	1	1	8192	65536	9×X^0	(2×X-5)×(X^3-2)	\N	OK	1
 solve	33	23	0	33	65536	65536	(4×X--6)×(2×X-3)×(4×X-5)×(X^3-2)	\N	\N	OK	PARTIAL, DEGREE 3 LEFT: X=-3÷2; X=5÷4; X=3÷2
 solve	1	23	1	1	65536	65536	3×X^0+2×X^1+-4×X^2+8×X^3+8×X^4	\N	\N	OK	PARTIAL, DEGREE 4 LEFT
 collect	35	23	1	35	8192	65536	((2)×(((0.5)÷(X))×((0.5)-(1E3))))÷(0.5)	\N	\N	OK	-1999×X^(-1)
-integrate	33	23	0	33	8192	65536	((ASIN((7)-(1E3)))×((SQRT(3))+((X)×(X))))+((((0.5)+(-4))÷(SQ(-4)))×(ATAN((3)-(X))))	\N	\N	NOT_INTEGRABLE	
+integrate	33	23	0	33	8192	65536	((ASIN((7)-(1E3)))×((SQRT(3))+((X)×(X))))+((((0.5)+(-4))÷(SQ(-4)))×(ATAN((3)-(X))))	\N	\N	NO_ROOM	
 defint	35	23	2	35	8192	65536	(((X)+(7))-((7)^(3)))×(2)	0	3	OK	-2007
 subst	35	23	0	35	8192	65536	ACOS(π)	Y	\N	OK	ACOS(π)
 pgcd	35	23	1	35	65536	65536	6×X^0+2×X^1+2×X^2	0×X^0	\N	OK	X+X^2+3

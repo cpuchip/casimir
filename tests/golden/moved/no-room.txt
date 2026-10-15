@@ -1,6 +1,7 @@
 # The golden lines the NO_ROOM fix (abacus #8359, #8386, after soroban's repin) moved: a search that ran out reports
 # NO_ROOM, never NOT_INTEGRABLE; a reason that holds for every method (CAS 013's rule 8) stays NOT_INTEGRABLE. Each
-# line's inputs, then its status and answer before (04bed78) and after. Every other line is byte-identical.
+# line's inputs, then its status and answer before (04bed78) and after. Every other line is byte-identical. The last
+# line moved with the follow-up (abacus #8413), before at 360979f: a rational piece with no room for partfrac to start.
 integrate	35	23	1	35	8192	192	(X+A)÷(X^2-1)	\N	\N
   before	NOT_INTEGRABLE	
   after	NO_ROOM	
@@ -50,5 +51,8 @@ integrate	35	23	1	35	65536	65536	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SI
   before	NOT_INTEGRABLE	
   after	NO_ROOM	
 integrate	35	23	1	35	8192	192	X×EXP(X^2)×SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(1))))))))))))))))))))))))))))))))))))))))	\N	\N
+  before	NOT_INTEGRABLE	
+  after	NO_ROOM	
+integrate	33	23	0	33	8192	65536	((ASIN((7)-(1E3)))×((SQRT(3))+((X)×(X))))+((((0.5)+(-4))÷(SQ(-4)))×(ATAN((3)-(X))))	\N	\N
   before	NOT_INTEGRABLE	
   after	NO_ROOM	

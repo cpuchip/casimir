@@ -123,6 +123,7 @@ ib_one	80
 ib_piece	128
 ib_plan_make	400
 ib_print	80
+ib_ratfn	48
 ib_rec.constprop	8
 ib_replace	112
 ib_same	48

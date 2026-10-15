@@ -890,6 +890,10 @@ MUTANTS = {
                                "    if (ir_cancels(eqn, var, angle, arena, arena_cap, rtl) && 0) return CASIM_NOT_INTEGRABLE;")],
     "noroom-rule8-steps": [("src/casim.c", "    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl)) return st;",
                             "    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl) && 0) return st;")],
+    # abacus #8413: a rational piece with no room for partfrac to start is a run-out
+    "noroom-start-unnoted": [("src/casim.c", "&& ib_ratfn(c, u, var)) st = CASIM_NO_ROOM;", "&& ib_ratfn(c, u, var) && 0) st = CASIM_NO_ROOM;")],
+    "noroom-ratfn-any": [("src/casim.c", "    if (x->kind == K_NUM) return true;\n    if (x->kind == K_VAR) return x->id == var;",
+                          "    if (x->kind == K_NUM || 1) return true;\n    if (x->kind == K_VAR) return x->id == var;")],
     "noroom-rational-unnoted": [("src/casim.c", "            if (st == CASIM_NO_ROOM) B->ranout = true;\n",
                                  "            (void)B;\n")],
     "review2-replay-to-parts": [("src/casim.c", "        ib_fail(c, mark);                       /* the search's substitution, not replayed here (the arena): one page, */\n        return;",
