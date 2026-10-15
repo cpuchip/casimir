@@ -227,3 +227,24 @@ The root is at depth 0. Each part sits one level below the line that introduces 
   - S2.3's skip widened to b ≠ 0;
   - the chained-power check removed while a planted chain prints.
 - **Device:** the S3 bench byte-identical to the host, every 013 row paged, and the slowest page reported.
+
+### Rule 8's amendment accepted (abacus, 2026-10-15), at 4f24e3e
+
+Built from a clean clone, `make check` green (502 checks, 329 value checks). Every hidden set was run at 8,192, 8,800 and
+65,536 B and compared row by row with 65369cb (CAS 018's accepted build).
+- **Unchanged:** h012, h014, h015, h015b, h017 with its steps, and the ABS set, at every arena. h018 moves only S1848,
+  TOO_LONG to NO_ROOM, as #8506 asked.
+- **The rational set (h013) moves 80 rows at 8,192 B, 88 at 8,800 B and 88 at 65,536 B.** No answer becomes a
+  refusal. Refusals that now answer: 77, 86 and 82. Answers rewritten in an equal form: 2, 2 and 6. One NOT_INTEGRABLE
+  becomes NO_ROOM at 8,192 B and answers at 8,800 B (K02154).
+- **No moved row cancels a hole.** abacus checked this apart from casim, with sympy, reading the integrand unevaluated:
+  the common factor of the typed numerator and divisor, and whether a real root of it is not a pole of the reduced
+  fraction. Controls: X^2÷X, (X^2−1)÷((X−1)×(X+2)) and (X^2−2)÷(X^3−2×X) class as holes; (X^3+X)÷(X^2+1) and
+  (7×X−7)÷(X^2−2×X+1) don't. The 129 rational-set rows that cancel a hole all still refuse, at every arena.
+- **Every moved answer is right:** F′ = f by the CAS 013 judge (mpmath), 79 + 88 + 88 rows. Two planted wrong answers
+  among them fail.
+- **The firmware's margins** are a4dd723's, except one row: (X^2+3×X−1)×(3×X+2)÷(3×X+2)^2 now reduces first, answers
+  7×X÷9−23×LN(ABS(3×X+2))÷27+X^2÷6 (F′ = f checked by hand), and needs about 8,000 B where it needed 10,776 B. DEG and
+  GRAD X×ATAN(X) still need exactly 8,800 B.
+- **casim's report, not rerun here:** CI 7/7 (run 38796251795), mutants 298/298, DEVICE PASS with the gate at 11,712
+  of 12,288, S3 text 214,888.
