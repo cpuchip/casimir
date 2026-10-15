@@ -2299,12 +2299,20 @@ static void put_int(out_t *w, int64_t v)
     put(w, buf, (size_t)i64_text(buf, v));
 }
 
-/* p/q as a decimal, when it terminates (q has no prime but 2 and 5) and its digits fit. */
-static bool decimal_of(const rat *v, abn *d)
+/* frac-print (prototype, abacus #8392): every rational that isn't whole prints as p÷q, folded as the non-terminating
+   ones are (k×u÷d); 0 prints CAS 002's rule, a terminating rational as a decimal. */
+#ifndef CASIM_FRAC_PRINT
+#define CASIM_FRAC_PRINT 1
+#endif
+
+/* p/q as a decimal, when it terminates (q has no prime but 2 and 5) and its digits fit; with CASIM_FRAC_PRINT, only
+   when q is 1. */
+static __attribute__((noinline)) bool decimal_of(const rat *v, abn *d)
 {
     char buf[48];
     int64_t q = v->q, m;
     int twos = 0, fives = 0, k, n;
+    if (CASIM_FRAC_PRINT && q != 1) return false;
     while (q % 2 == 0) q /= 2, twos++;
     while (q % 5 == 0) q /= 5, fives++;
     if (q != 1) return false;
