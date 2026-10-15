@@ -5394,6 +5394,42 @@ static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int 
 
 /* CAS 013: when the table refuses, the integrand as a rational function (the hook here, not in do_integrate, keeps its
    frame where it was) */
+static casim_status do_partfrac(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
+                                bool rtl);
+
+/* CAS 013's rule 8, where it is a reason that holds for every method (abacus #8386): partfrac cancelled a common factor
+   and a removed value is a hole, where what is left has a value (X^2-1 over (X-1)(X+2) at 1). A removed value that is
+   still a pole ((7X-7) over (X-1)^2 at 1) is no hole, and substitution answers it (3.5×LN(ABS(X^2-2×X+1))). A row
+   with no rational root (p=0) counts, as rule 8 does. Asked in slots at the arena's top, whatever out's cap */
+static __attribute__((noinline)) bool ir_cancels(const char *eqn, int var, int angle, void *arena, size_t arena_cap,
+                                                  bool rtl)
+{
+    char *slot = (char *)arena + arena_cap - 2 * SLOT, *val = slot + SLOT, *rows;
+    if (arena_cap <= 4 * SLOT || do_partfrac(eqn, var, angle, slot, SLOT, arena, arena_cap - 2 * SLOT, rtl) != CASIM_OK ||
+        !(rows = strchr(slot, ';')))
+        return false;
+    *rows = '\0';
+    for (char *p = rows + 1; p; p = strchr(p + 1, ';')) {
+        char *q = p + 1, *e;
+        while (*q == ' ') q++;
+        if (q[0] != 'A' + var || q[1] != '=') return true;              /* p=0: counted, as rule 8 does */
+        if ((e = strchr(q, ';'))) *e = '\0';
+        if (do_subst(slot, var, q + 2, angle, val, SLOT, arena, arena_cap - 2 * SLOT, false, false) != CASIM_UNDEFINED)
+            return true;                                                /* a value there: a hole */
+        if (e) *e = ';';
+    }
+    return false;
+}
+
+/* CAS 017 after the rational path refused, unless its rule 8 did (ir_cancels); out of line, so casim_integrate keeps
+   its one call there (its frame moved 96 -> 112 with the test inline) */
+static __attribute__((noinline)) casim_status ir_parts(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                       void *arena, size_t arena_cap, bool rtl)
+{
+    if (ir_cancels(eqn, var, angle, arena, arena_cap, rtl)) return CASIM_NOT_INTEGRABLE;
+    return do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);
+}
+
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                              size_t arena_cap)
 {
@@ -5403,7 +5439,7 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     if (st == CASIM_NOT_INTEGRABLE) st = do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     /* CAS 017: when both refuse, substitution and parts */
-    return st == CASIM_NOT_INTEGRABLE ? do_iparts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
+    return st == CASIM_NOT_INTEGRABLE ? ir_parts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
 }
 
 
@@ -8243,6 +8279,7 @@ static __attribute__((noinline)) casim_status do_irsteps(const casim_req *rq, in
     st = cap >= SLOT ? do_irational(rq->eqn, var, rq->angle, out, cap, arena, arena_cap, rtl)
                      : do_irational(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl);
     /* CAS 017 rule 8: when the rational path refuses too, substitution and parts' walk */
+    if (st == CASIM_NOT_INTEGRABLE && ir_cancels(rq->eqn, var, rq->angle, arena, arena_cap, rtl)) return st;    /* rule 8 */
     if (st != CASIM_OK) return st == CASIM_NOT_INTEGRABLE ? (info->line = flags, ib_walk(rq, k, info, out, cap, arena, arena_cap)) : st;
     if (do_partfrac(rq->eqn, var, rq->angle, txt, SLOT, arena, room, rtl) != CASIM_OK) return CASIM_NO_ROOM;
     S.k = k, S.at = 0, S.flags = flags, S.info = info, S.w = &w, S.want = 0;
@@ -8706,7 +8743,8 @@ enum { IBH_NONE, IBH_SUB, IBH_PARTS, IBH_CYCLE, IBH_CONST };
 
 typedef struct {
     int tries;
-    bool starved;                       /* the rational path ran out on a term of the input's own sum (rule 6) */
+    bool ranout;                        /* a try anywhere ran out (the rational path at any depth, the arena, the depth
+                                           guard): NO_ROOM when nothing answers, never NOT_INTEGRABLE (abacus #8359) */
     int how;                            /* the choice at depth 0 */
     ref r[6];
 } ib_t;
@@ -8796,8 +8834,8 @@ static ref ib_const(ctx *c, ref t, int var)
 
 /* the rational path (CAS 013) on t's printed form, in the arena's free part, its answer read back; a constant factor
    ib_const finds comes out first and goes back on the answer. Its NO_ROOM is a refusal here: other rules may still
-   answer, and only a term of the input's own sum (d 0) makes the whole NO_ROOM */
-static ref ib_rational(ctx *c, ib_t *B, ref t, int var, int d)
+   answer, and at any depth it is noted, so that when nothing answers the whole is NO_ROOM (abacus #8359) */
+static ref ib_rational(ctx *c, ib_t *B, ref t, int var)
 {
     size_t top = c->top;
     const char *s = c->s;
@@ -8817,7 +8855,7 @@ static ref ib_rational(ctx *c, ib_t *B, ref t, int var, int d)
                 F = ib_canon(c, acc);
             } else if (k) F = ib_canon(c, mul2(c, k, F));
         } else {
-            if (st == CASIM_NO_ROOM && d == 0) B->starved = true;
+            if (st == CASIM_NO_ROOM) B->ranout = true;
             c->st = CASIM_NOT_INTEGRABLE;
         }
     }
@@ -9134,12 +9172,19 @@ static __attribute__((noinline)) ref ib_lnform(ctx *c, ref r, int var)
 /* rule 3: ∫ t by substitution, t = G(u)×u' with G integrated in a new letter U */
 static const char ib_pick[] = "UVWTSRQ";              /* substitution's letters, in order */
 
+/* ib_fail in the search: a try that ran out is noted (abacus #8359) */
+static __attribute__((noinline)) bool ib_failr(ctx *c, ib_t *B, size_t mark)
+{
+    if (c->st == CASIM_NO_ROOM) B->ranout = true;
+    return ib_fail(c, mark);
+}
+
 /* ib_fail after a refused substitution, its note at depth 0 dropped too: the note points into what the arena gives back
    (out of line, as a store in ib moved its frame 240 -> 256) */
 static __attribute__((noinline)) bool ib_unnote(ctx *c, ib_t *B, size_t mark, int d)
 {
     if (d == 0) B->how = IBH_NONE;
-    return ib_fail(c, mark);
+    return ib_failr(c, B, mark);
 }
 
 /* substitution's G integrated a level down, its choice noted first at depth 0 (the last one noted is the one kept):
@@ -9184,7 +9229,7 @@ static ref ib_sub(ctx *c, ib_t *B, ref t, int var, int d)
             }
         }
         c->var = v0;
-        if (!ib_fail(c, mark)) return SPARE;
+        if (!ib_failr(c, B, mark)) return SPARE;
     }
     c->var = v0;
     if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
@@ -9277,7 +9322,7 @@ static ref ib_parts(ctx *c, ib_t *B, ref t, int var, int d)
     F = ib_canon(c, add2(c, uv, ib_neg(c, W)));
     if (c->st == CASIM_OK) return F;
 no:
-    if (ib_fail(c, mark)) c->st = CASIM_NOT_INTEGRABLE;
+    if (ib_failr(c, B, mark)) c->st = CASIM_NOT_INTEGRABLE;
     return SPARE;
 }
 
@@ -9298,10 +9343,10 @@ static ref ib(ctx *c, ib_t *B, ref t, int var, int d)
         return c->st == CASIM_OK ? ib_canon(c, acc) : SPARE;
     }
     F = ib_table(c, t, var);
-    if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+    if (c->st == CASIM_OK || !ib_failr(c, B, mark)) return F;
     if (d >= 0 || ib_const(c, t, var)) {             /* the wrapper's rational path refused a constant factor */
-        F = ib_rational(c, B, t, var, d < 0 ? 0 : d);
-        if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+        F = ib_rational(c, B, t, var);
+        if (c->st == CASIM_OK || !ib_failr(c, B, mark)) return F;
     }
     if (d >= IB_DEPTH) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
     /* a level of substitution or parts counts twice against the depth guard: its frames are about two walks' */
@@ -9311,7 +9356,7 @@ static ref ib(ctx *c, ib_t *B, ref t, int var, int d)
     F = ib_sub(c, B, t, var, d);
     if (c->st != CASIM_OK && ib_unnote(c, B, mark, d)) F = ib_parts(c, B, t, var, d);
     c->depth -= 2;
-    if (c->st == CASIM_OK || !ib_fail(c, mark)) return F;
+    if (c->st == CASIM_OK || !ib_failr(c, B, mark)) return F;
     return c->st = CASIM_NOT_INTEGRABLE, SPARE;
 }
 
@@ -9457,8 +9502,8 @@ static __attribute__((noinline)) casim_status do_iparts(const char *eqn, int var
     if (c.st == CASIM_OK) {
         c.own_text = true;                      /* from here the parser reads only what casim printed */
         F = ib(&c, &B, t, var, -1);
-        if (c.st == CASIM_NO_ROOM && !B.starved) c.st = CASIM_NOT_INTEGRABLE;     /* rule 6: room ran out in the search */
-        if (c.st == CASIM_NOT_INTEGRABLE && B.starved) c.st = CASIM_NO_ROOM;
+        /* rule 6 as amended (abacus #8359): when nothing answers, NO_ROOM where a try ran out, else NOT_INTEGRABLE */
+        if (c.st == CASIM_NO_ROOM || c.st == CASIM_NOT_INTEGRABLE) c.st = B.ranout ? CASIM_NO_ROOM : CASIM_NOT_INTEGRABLE;
         if (c.st == CASIM_OK) F = ib_lnfinal(&c, ib_drop(&c, F, var), var);
         if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;
         c.s = eqn;

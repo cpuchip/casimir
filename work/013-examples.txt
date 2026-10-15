@@ -14,6 +14,9 @@
 #   X-LN(ABS(X+2)), would be defined at X = 1 where the integrand isn't (CAS 006's guarantee: X^2÷X stays refused).
 # - J0014 to J0017 are refused (rule 5, and rule 2 as ruled at #6686: integrate keeps NOT_INTEGRABLE for another
 #   letter). J0018 is NO_ROOM at the 8 KB arena: partfrac needs 8,216 B for ten linear factors.
+# J0017 moved with the NO_ROOM fix (abacus #8359, #8386): at 8 KB CAS 017's search runs out on it before it is done, and
+#   a search that ran out is NO_ROOM; #6686 is the rational path's scope (partfrac reads only rational coefficients),
+#   not a reason that holds for every method. J0011's rule 8 is one, so it stays NOT_INTEGRABLE at every arena.
 # J0016 moved with CAS 017 (work/017-substitution-and-parts.md): SIN(X)+1÷(X^2-1) mixes the table and the rational
 # path term by term; at the calculator's 8,192 B the rational path has no room inside it (NO_ROOM), and with 65,536
 # it answers. Before CAS 017 it was NOT_INTEGRABLE (rule 1).
@@ -34,6 +37,6 @@ J0013 | integrate | 1÷(1-X^4) | X | GRAD | 35 | -0.25×LN(ABS(X-1))+0.25×LN(AB
 J0014 | integrate | 1÷(X^2-2) | X | RAD | 35 | NOT_INTEGRABLE
 J0015 | integrate | 1÷(X^2+1)^2 | X | RAD | 35 | NOT_INTEGRABLE
 J0016 | integrate | SIN(X)+1÷(X^2-1) | X | RAD | 35 | NO_ROOM
-J0017 | integrate | (X+A)÷(X^2-1) | X | RAD | 35 | NOT_INTEGRABLE
+J0017 | integrate | (X+A)÷(X^2-1) | X | RAD | 35 | NO_ROOM
 J0018 | integrate | 1÷((X^2-1)×(X^2-4)×(X^2-9)×(X^2-16)×(X^2-25)) | X | RAD | 35 | NO_ROOM
 J0019 | integrate | (X^6+1)÷((3×X+7)^3×(5×X-11)^2×(2×X+3)) | X | RAD | 35 | TOO_LONG

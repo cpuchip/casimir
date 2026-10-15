@@ -143,8 +143,9 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 239 deliberate faults, each of which the tests
-  must catch; `make test` catches all 239 (at CAS 017's steps, after abacus #8227). Each mutant's copy re-records its frame table first,
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 243 deliberate faults, each of which the tests
+  must catch; `make test` catches all 243 (at the NO_ROOM fix, abacus #8359: 238 in the full run, and the 5 its last
+  change touched, run again after it). Each mutant's copy re-records its frame table first,
   so a fault that only moves a frame isn't counted as caught; the one fault whose catch is the frame table itself (the
   rational-integral hook moved into do_integrate) is named in the script. When there were 80, the standalone checks
   first caught 64. The other 16 changed answers only where the developer tests looked, so their inputs that expose

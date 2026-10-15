@@ -105,6 +105,7 @@ ib_const	64
 ib_den	80
 ib_deriv	48
 ib_drop	80
+ib_failr.isra	8
 ib_holds	80
 ib_inner	16
 ib_inv	64
@@ -145,6 +146,8 @@ integ_term	192
 interval_walk	64
 ipmul	160
 ipoly_tree	256
+ir_cancels	128
+ir_parts	80
 ir_rat	48
 ir_term	208
 irec_factor	144
