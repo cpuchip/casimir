@@ -18,6 +18,10 @@
 # - Rule 5's depth: LN(X)^4 takes all four levels of parts and answers; LN(X)^5 is past them. At 2,000 and 1,500 bytes
 #   a try that runs out of room is a refusal and the next answers (EXP(X)÷(1+EXP(X)), X^2×EXP(X)).
 # - Rule 7's limits: trig powers, the ASIN form, and X×ATAN(X) at 8 KB (partfrac's 7,328 B can't nest).
+# - After soroban's repin (abacus #8359): a search that ran out is NO_ROOM, never NOT_INTEGRABLE. So X×ATAN(X) at 8 KB is
+#   NO_ROOM (it answers from 8,592 B), and so are SQRT(X^2)×EXP(X) and (X^2-1)÷(X-1)×EXP(X): no rule refuses them
+#   (canon keeps SQRT(X^2) and doesn't cancel X-1), and at 8 KB their search runs out before it is done (at 64 KB it
+#   ends, NOT_INTEGRABLE). A refusal no try ran out on stays NOT_INTEGRABLE at every arena (X^2×TAN(X)^0, EXP(X^2)).
 # - Rule 8: steps give the working for what only this path answers (the steps build, §Steps; its own examples are in
 #   work/017-steps-examples.txt).
 # - The steps build's LN form (S2.6): whole coefficients (LN(ABS(5×X^3+2))) and no ABS where the argument has no real
@@ -71,7 +75,7 @@
 | `casim integrate "X÷(1000÷(SINH(π)×X))" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "EXP(A×X×Y)" Y RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
-| `casim integrate "X×ATAN(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "X×ATAN(X)" X RAD` | `NO_ROOM` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
@@ -95,12 +99,12 @@
 | `casim integrate "EXP(LN(X))" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X^2×TAN(X)^0" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X^(-A)×X^A×X" X RAD` | `NOT_INTEGRABLE` |
-| `casim integrate "SQRT(X^2)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SQRT(X^2)×EXP(X)" X RAD` | `NO_ROOM` |
 | `casim integrate "X×EXP(X)×0^X×0^(-X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "EXP(X)×SIN(A×X)" X RAD` | `-(A×EXP(X)×COS(A×X)-EXP(X)×SIN(A×X))÷(A^2+1)` |
 | `casim integrate "LN(ABS(X))" X RAD` | `-X+X×LN(ABS(X))` |
 | `casim integrate "TAN(X)×LN(ABS(COS(X)))" X RAD` | `-0.5×LN(ABS(COS(X)))^2` |
-| `casim integrate "(X^2-1)÷(X-1)×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "(X^2-1)÷(X-1)×EXP(X)" X RAD` | `NO_ROOM` |
 | `casim integrate "LN(X)^4" X RAD` | `24×X-24×X×LN(X)+12×X×LN(X)^2-4×X×LN(X)^3+X×LN(X)^4` |
 | `casim integrate "LN(X)^5" X RAD` | `NOT_INTEGRABLE` |
 | `casim --arena 2000 integrate "EXP(X)÷(1+EXP(X))" X RAD` | `LN(EXP(X)+1)` |
@@ -119,7 +123,7 @@
 | `casim --arena 65536 integrate "A×X÷(X^2+2×X+2)" X RAD` | `0.5×A×LN(2×X+X^2+2)-A×ATAN(X+1)` |
 | `casim --arena 65536 integrate "ATAN(X+1)" X DEG` | `ATAN(X+1)+X×ATAN(X+1)-90×LN(2×X+X^2+2)÷π` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X GRAD` | `0.5×ATAN(X)-100×X÷π+0.5×X^2×ATAN(X)` |
-| `casim integrate "X×ATAN(X)" X DEG` | `NOT_INTEGRABLE` |
+| `casim integrate "X×ATAN(X)" X DEG` | `NO_ROOM` |
 | `casim integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(X^2+1)÷π` |
 | `casim --arena 16384 integrate "ATAN(X)" X DEG` | `X×ATAN(X)-90×LN(X^2+1)÷π` |
 | `casim --arena 3000 integrate "3×ATAN(2×X)" X DEG` | `3×X×ATAN(2×X)-135×LN(X^2+0.25)÷π` |

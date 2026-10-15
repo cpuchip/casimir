@@ -106,6 +106,10 @@ textbook list in each angle mode, within 3,520 B of arena. The six it refuses ar
      - NO_ROOM when a term of the input's own sum needed the rational path and it ran out (SIN(X)+1÷(X^2−1) at
        8,192 B, which answers at 64 KB). Room running out deeper in the search (the arena or the depth guard) refuses
        that try, and the search goes on.
+     - **Amended after soroban's repin (abacus #8359):** when nothing answers and any try ran out (the arena or the
+       depth guard), the status is NO_ROOM, never NOT_INTEGRABLE: CAN'T INTEGRATE would say no method exists where
+       the calculator only ran short. X×ATAN(X) at 8,192 B is NO_ROOM (it answers from 8,592 B). A refusal that no try
+       ran out on stays NOT_INTEGRABLE at every arena (EXP(X^2), SIN(X)÷X).
      - UNDEFINED when the canonical integrand holds a pole (CAS 016 rule 1: TAN(Y)×LOG(X−X)^SGN(X+7), today
        NOT_INTEGRABLE).
 7. **Named limits, refused (NOT_INTEGRABLE), each with a visible example:**
@@ -381,4 +385,4 @@ case walked through the CLI at caps 192 and 150, at 8,192 B and at 65,536 B:
 
 **The device half** (casim's report; abacus did not watch it): DEVICE PASS, 1,172 cases, 017's 69 rows byte-identical
 to the host; the deepest 017 page stack 6,064 B and the gate's worst 11,712, both of 12,288; S3 text 193,533. **CI**
-7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants:** casim's full run was at 116 of 239, all caught, when this was written.
+7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants** (casim): the full run caught 238 of 239; the survivor, review-too-long-bad-arg, had lost its catching row when the hold fix made that walk one page, and 04bed78 adds a row that catches it (ATAN(X+1) at cap 80, whose CAS 013 piece reaches a 98-byte SPLIT line): 239 of 239.

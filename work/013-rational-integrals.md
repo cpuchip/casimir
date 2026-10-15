@@ -62,6 +62,11 @@ fractions in every calculus course.
    - a student who wants the reduced function's integral cancels first (CANCEL or PARTFRAC), and then sees the
      removed values as rows.
    - The 0.9.0 release's published guarantee ("an exact answer, or a status that says why not") reads the same way.
+   - **Narrowed with CAS 017's NO_ROOM fix (abacus #8386, #8388):** the refusal holds for every method only where a
+     removed value is a true hole, so only there does it stay NOT_INTEGRABLE before CAS 017's search runs. Each "X=a"
+     row of partfrac is put into the rational path's answer, and a value there means a hole (a "p=0" row counts too).
+     (7×X−7)÷(X^2−2×X+1) cancels X−1, but its answer has no value at X=1, so nothing is a hole: it still answers
+     3.5×LN(ABS(-2×X+X^2+1)), as abacus confirmed. Every other cancelling integrand goes on to CAS 017's search.
 9. **Bounds, decision 68 with decision 80's budget:**
    - **Frames:** no existing frame moves. The prototype measured do_irational at 240 B and ir_term at 192 B. On the stack
      the path is partfrac's own (bench worst about 3 KB) plus about 240 B. The masked bench gives the worst through the

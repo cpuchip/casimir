@@ -18,6 +18,12 @@
 #   aren't shown, and the walk fits. Where the one page itself is past the cap (197 bytes here), it is TOO_LONG, never
 #   half a walk. A piece's walk is measured at the cap too: at 100 bytes ∫(2×X×SIN(3×X)÷3)dX is its one page inside
 #   X^2×COS(3×X)'s walk. A sum's answer line is its own: LN(X)+ATAN(X) at 60 bytes is TOO_LONG, one page.
+#   A walk that isn't 017's (CAS 013's, the table's) isn't measured, inside a 017 walk as at the top: at 80 bytes
+#   ATAN(X+1)'s piece reaches a 98-byte SPLIT line and the walk stops TOO_LONG there with its whole count, as
+#   X÷(X^2+2×X+2)'s own walk is TOO_LONG at 80. None of the examples does this from 100 bytes up.
+# - The NO_ROOM fix (abacus #8359, #8386): a cancelling integrand with a hole (CAS 013's rule 8, narrowed) is refused
+#   by the steps as by integrate, before the search: (X^2+X)÷X and (X^2-1)÷((X-1)×(X+2)) are NOT_INTEGRABLE at
+#   8 KB, where the search would run out and say NO_ROOM.
 
 | case | walk |
 |---|---|
@@ -52,3 +58,7 @@
 | `casim --arena 65536 --cap 192 steps integrate "(X^3+2×X^2+2×X)×COS(X÷3-1)" X DEG` | `TOO_LONG` |
 | `casim --arena 65536 --cap 100 steps integrate "X^2×COS(3×X)" X RAD` | `BY PARTS: ∫(X^2×COS(3×X))dX = X^2×SIN(3×X)÷3-∫(2×X×SIN(3×X)÷3)dX, U=X^2, V=∫(COS(3×X))dX /   COS: ∫(COS(3×X))dX = ∫(COS(U))dU÷3, U=3×X /   CHECK: d/dX(SIN(3×X)÷3) = COS(3×X) /   COS: ∫(COS(3×X))dX = SIN(3×X)÷3 /   ANSWER: ∫(2×X×SIN(3×X)÷3)dX = 2×SIN(3×X)÷27-2×X×COS(3×X)÷9 /   CHECK: d/dX(-2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3) = X^2×COS(3×X) / BY PARTS: ∫(X^2×COS(3×X))dX = -2×SIN(3×X)÷27+2×X×COS(3×X)÷9+X^2×SIN(3×X)÷3` |
 | `casim --arena 65536 --cap 60 steps integrate "LN(X)+ATAN(X)" X RAD` | `TOO_LONG` |
+| `casim --arena 65536 --cap 80 steps integrate "ATAN(X+1)" X RAD` | `BY PARTS: ∫(ATAN(X+1))dX = ATAN(X+1)×X-∫(X÷((X+1)^2+1))dX, U=ATAN(X+1), V=∫(1)dX /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X /   PARTIAL FRACTIONS: ∫(X÷((X+1)^2+1))dX = ∫(X÷(X^2+2×X+2))dX /     ANSWER: X÷(X^2+2×X+2) / TOO_LONG` |
+| `casim --arena 65536 --cap 80 steps integrate "X÷(X^2+2×X+2)" X RAD` | `TOO_LONG` |
+| `casim steps integrate "(X^2+X)÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim steps integrate "(X^2-1)÷((X-1)×(X+2))" X RAD` | `NOT_INTEGRABLE` |
