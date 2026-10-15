@@ -9,7 +9,8 @@
  *
  * A line is tab-separated: op model var angle repl_model arena cap eqn repl repl2 [status out]. op and status are
  * names (derive, OK); in the three texts and out, \\ \t and \n are escapes, and a lone \N is NULL. taylor's repl2 is
- * its order n, as text, as casim_req carries it; limit's is its side ("+", "-", or empty for both). */
+ * its order n, as text, as casim_req carries it; limit's is its side ("+", "-", or empty for both); sum's repl and
+ * repl2 are its bounds (CAS 018). */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,10 +22,10 @@
 #define ARENA (1 << 19)
 
 static const char *const OPS[] = {"derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor",
-                                  "defint", "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit"};
+                                  "defint", "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit", "sum"};
 static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
                                        "NOT_POLYNOMIAL", "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED",
-                                       "IMPROPER", "UNDECIDED"};
+                                       "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM"};
 #define COUNT(a) ((int)(sizeof a / sizeof a[0]))
 
 static _Alignas(8) unsigned char arena[ARENA];     /* aligned, as tests/golden_log.c logs the arena */

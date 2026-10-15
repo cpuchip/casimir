@@ -39,7 +39,7 @@ def line(op, eqn, var="X", angle="RAD", model="35", repl=None, repl_model=None, 
 
 def bench():
     for _name, expr, var, angle, op, repl, model in measure.all_cases():
-        lo, hi = repl.split("|", 1) if op in ("defint", "taylor", "limit") else (repl, None)
+        lo, hi = repl.split("|", 1) if op in ("defint", "taylor", "limit", "sum") else (repl, None)
         for arena, cap in ((65536, 65536), (8800, 192)):    # as measured, and the calculator's budget and slot
             yield line(op, expr, var, angle, model, lo, None, hi, arena, cap)
 
@@ -55,7 +55,7 @@ def cli_line(cmd):
         return line(op, t[0], angle=t[1], arena=arena)
     if op in ("subst", "pdiv", "pgcd"):
         return line(op, t[0], t[1], t[3], repl=t[2], arena=arena)
-    if op in ("taylor", "limit"):
+    if op in ("taylor", "limit", "sum"):
         return line(op, t[0], t[1], t[4], repl=t[2], repl2=t[3], arena=arena)
     return line(op, t[0], t[1], t[2], arena=arena)
 
@@ -94,7 +94,7 @@ def examples():
                 yield line("taylor", f[2], f[3], f[6], f[7], repl=f[4], repl2=f[5])
             elif unit == "015":             # id | limit | text | var | point | side | angle | model | answer
                 yield line("limit", f[2], f[3], f[6], f[7], repl=f[4], repl2="" if f[5] == "both" else f[5])
-            elif unit in ("016", "017"):    # | `casim [--arena N] op args` | `answer` |
+            elif unit in ("016", "017", "018"):     # | `casim [--arena N] op args` | `answer` |
                 if not raw.startswith("| `casim steps"):          # (a steps walk: doc-examples.py, as 013's)
                     yield cli_line(raw.split("`")[1])
             else:
