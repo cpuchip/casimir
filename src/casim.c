@@ -5399,14 +5399,31 @@ static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int 
 static casim_status do_partfrac(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
                                 bool rtl);
 
+/* One row of ir_cancels, whether its removed value is a hole: what is left (partfrac's answer, in ir_cancels' first
+   slot) has a value there. "X=a" is tried as it is. A "p=0" row (a removed factor with no rational root) is no hole
+   where it has no real root (abacus #8423: solve's NO REAL ROOTS, as X^2+6), and counts otherwise, as rule 8 did (its
+   real roots are irrational, and the search answered none of the shapes tried there). solve's line goes in a third
+   slot, below ir_cancels' two */
+static __attribute__((noinline)) bool ir_hole(const char *row, int var, int angle, void *arena, size_t arena_cap,
+                                              bool rtl)
+{
+    char *slot = (char *)arena + arena_cap - 2 * SLOT, *val = slot + SLOT;
+    if (row[0] == 'A' + var && row[1] == '=')
+        return do_subst(slot, var, row + 2, angle, val, SLOT, arena, arena_cap - 2 * SLOT, false, false) != CASIM_UNDEFINED;
+    return arena_cap <= 5 * SLOT ||
+           do_solve(row, var, angle, slot - SLOT, SLOT, arena, arena_cap - 3 * SLOT, rtl) != CASIM_OK ||
+           strncmp(slot - SLOT, "NO REAL ROOTS", 13) != 0;
+}
+
 /* CAS 013's rule 8, where it is a reason that holds for every method (abacus #8386): partfrac cancelled a common factor
    and a removed value is a hole, where what is left has a value (X^2-1 over (X-1)(X+2) at 1). A removed value that is
    still a pole ((7X-7) over (X-1)^2 at 1) is no hole, and substitution answers it (3.5×LN(ABS(X^2-2×X+1))). A row
-   with no rational root (p=0) counts, as rule 8 does. Asked in slots at the arena's top, whatever out's cap */
+   with no rational root (p=0) is a hole at a real root where what is left has a value (ir_hole). Asked in slots at
+   the arena's top, whatever out's cap */
 static __attribute__((noinline)) bool ir_cancels(const char *eqn, int var, int angle, void *arena, size_t arena_cap,
                                                   bool rtl)
 {
-    char *slot = (char *)arena + arena_cap - 2 * SLOT, *val = slot + SLOT, *rows;
+    char *slot = (char *)arena + arena_cap - 2 * SLOT, *rows;
     if (arena_cap <= 4 * SLOT || do_partfrac(eqn, var, angle, slot, SLOT, arena, arena_cap - 2 * SLOT, rtl) != CASIM_OK ||
         !(rows = strchr(slot, ';')))
         return false;
@@ -5414,10 +5431,8 @@ static __attribute__((noinline)) bool ir_cancels(const char *eqn, int var, int a
     for (char *p = rows + 1; p; p = strchr(p + 1, ';')) {
         char *q = p + 1, *e;
         while (*q == ' ') q++;
-        if (q[0] != 'A' + var || q[1] != '=') return true;              /* p=0: counted, as rule 8 does */
         if ((e = strchr(q, ';'))) *e = '\0';
-        if (do_subst(slot, var, q + 2, angle, val, SLOT, arena, arena_cap - 2 * SLOT, false, false) != CASIM_UNDEFINED)
-            return true;                                                /* a value there: a hole */
+        if (ir_hole(q, var, angle, arena, arena_cap, rtl)) return true;
         if (e) *e = ';';
     }
     return false;

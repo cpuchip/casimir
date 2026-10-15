@@ -152,7 +152,8 @@ integ_term	192
 interval_walk	64
 ipmul	160
 ipoly_tree	256
-ir_cancels	128
+ir_cancels	96
+ir_hole	48
 ir_parts	80
 ir_rat	48
 ir_term	208

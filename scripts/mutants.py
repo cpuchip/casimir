@@ -898,6 +898,8 @@ MUTANTS = {
     "noroom-start-unnoted": [("src/casim.c", "&& ib_ratfn(c, u, var)) st = CASIM_NO_ROOM;", "&& ib_ratfn(c, u, var) && 0) st = CASIM_NO_ROOM;")],
     "noroom-ratfn-any": [("src/casim.c", "    if (x->kind == K_NUM) return true;\n    if (x->kind == K_VAR) return x->id == var;",
                           "    if (x->kind == K_NUM || 1) return true;\n    if (x->kind == K_VAR) return x->id == var;")],
+    # abacus #8423: a removed factor is a hole only at a real root
+    "holes-no-real-root-counted": [("src/casim.c", "           strncmp(slot - SLOT, \"NO REAL ROOTS\", 13) != 0;", "           1;")],
     "noroom-rational-unnoted": [("src/casim.c", "            if (st == CASIM_NO_ROOM) B->ranout = true;\n",
                                  "            (void)B;\n")],
     "review2-replay-to-parts": [("src/casim.c", "        ib_fail(c, mark);                       /* the search's substitution, not replayed here (the arena): one page, */\n        return;",
