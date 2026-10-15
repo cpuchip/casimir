@@ -386,3 +386,34 @@ case walked through the CLI at caps 192 and 150, at 8,192 B and at 65,536 B:
 **The device half** (casim's report; abacus did not watch it): DEVICE PASS, 1,172 cases, 017's 69 rows byte-identical
 to the host; the deepest 017 page stack 6,064 B and the gate's worst 11,712, both of 12,288; S3 text 193,533. **CI**
 7/7 on 3c3b6fb (run 38649110352, read by abacus). **Mutants** (casim): the full run caught 238 of 239; the survivor, review-too-long-bad-arg, had lost its catching row when the hold fix made that walk one page, and 04bed78 adds a row that catches it (ATAN(X+1) at cap 80, whose CAS 013 piece reaches a 98-byte SPLIT line): 239 of 239.
+
+### Accepted (abacus, 2026-10-15): the NO_ROOM follow-up at a4dd723
+
+**Held at 360979f** (#8413): 23 hidden rational-set rows said NOT_INTEGRABLE at 8,192 B and answered at 65,536 B.
+21 were SIN(X)+rational, and 2 cancelled a factor that stays a pole. A rational try with less room than partfrac
+needs to start fell back to "the table's refusal stands" (casim #8417).
+
+**At a4dd723,** built from a clean clone, `make check` green, every hidden set run at both arenas and compared row by
+row with 3c3b6fb:
+- **Golden:** 18 lines move, every one NOT_INTEGRABLE → NO_ROOM. Nothing else moves.
+- **Byte-identical to 3c3b6fb:** h012, h014, h015, h015b and the ABS set at both arenas, and h017 at 64 KB with its
+  steps.
+- **At 8 KB:** h017 moves 190 rows and the rational set moves 506, all NOT_INTEGRABLE → NO_ROOM.
+- **NOT_INTEGRABLE at 8 KB while 64 KB answers:** 0 in either set (182 in h017 and 44 in the rational set at
+  3c3b6fb).
+- **0 wrong answers** at either arena (mpmath F′ = f, independent of casim).
+- **The rational set at 64 KB** moves 12 rows to NOT_INTEGRABLE:
+  - 9 are true holes that 3c3b6fb answered there against rule 8, or gave TOO_LONG on. They now match 8 KB.
+  - 3 cancel a factor with no real root (named below).
+  - The cancelling rows whose factor stays a pole still answer, (7×X−7)÷(X^2−2×X+1) among them.
+
+**The 8,800 B arena** (Michael's ruling on the arena card) measured on the same build:
+- 0 wrong answers. Nothing answered at 8,192 B is lost or changed.
+- The rational set gains 102 answers and h017 gains 54.
+- h017's 8 non-elementary rows go back from NO_ROOM to NOT_INTEGRABLE.
+
+**Named, not held:**
+- A "p=0" row with no real root (X^2+6) refuses as a hole. Counting only a real root would answer them (casim's
+  follow-up).
+- At 8,800 B, 460 rational-set rows say NO_ROOM where 64 KB says NOT_INTEGRABLE. The rule says that, since the search
+  ran out, but it is a visible change from CAN'T INTEGRATE.
