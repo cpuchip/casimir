@@ -54,9 +54,12 @@ typedef enum {
                                    "" */
     CASIM_IMPROPER,             /* CAS 009, defint: a pole or domain edge of the integrand on the closed interval
                                    (or within 1E-20 of it), so the integral is improper there; out is "" */
-    CASIM_UNDECIDED             /* CAS 015, limit: the walk couldn't decide (past 12 L'Hôpital steps, an ∞-∞ the
+    CASIM_UNDECIDED,            /* CAS 015, limit: the walk couldn't decide (past 12 L'Hôpital steps, an ∞-∞ the
                                    rewrites don't resolve, a damped oscillation, a form not covered). Never "no limit"
                                    (that is UNDEFINED). CAS 016, taylor: an SGN(0) it can't decide; out is "" */
+    CASIM_NO_CLOSED_FORM        /* CAS 018, sum: no closed form this unit finds (a class that doesn't telescope, a
+                                   function of var, a letter in a ratio), and the bounds aren't integers at most 64
+                                   apart; out is "" */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
@@ -102,7 +105,7 @@ casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, 
 
 typedef enum { CASIM_DERIVE, CASIM_SIMPLIFY, CASIM_EXPAND, CASIM_COLLECT, CASIM_SUBST, CASIM_SOLVE, CASIM_INTEGRATE,
                CASIM_FACTOR, CASIM_DEFINT, CASIM_PDIV, CASIM_PGCD, CASIM_CANCEL, CASIM_PARTFRAC,
-               CASIM_TAYLOR, CASIM_LIMIT } casim_op;
+               CASIM_TAYLOR, CASIM_LIMIT, CASIM_SUM } casim_op;
 
 typedef struct {
     casim_op op;
@@ -114,7 +117,7 @@ typedef struct {
     int angle;
     const char *repl2;          /* CAS 009, defint: the upper bound (last, so older initializers leave it NULL);
                                    CAS 014, taylor: the order n as text, "0" to "12" (point in repl); CAS 015, limit:
-                                   the side, "+", "-" or "" for both */
+                                   the side, "+", "-" or "" for both; CAS 018, sum: the upper bound (lower in repl) */
 } casim_req;
 
 /* rq's operation, as the calls above; BAD_ARG for an op, model, var or angle outside its range. */
@@ -276,5 +279,17 @@ casim_status casim_taylor(const char *eqn, int var, const char *point, int n, in
    letter in point, or another side. */
 casim_status casim_limit(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
                          size_t cap, void *arena, size_t arena_cap);
+
+/* Unit CAS 018, SUM (work/018-sums.md): Σ eqn for var = lo, lo+1, ..., hi. lo is a whole number or an expression free of
+   var; hi the same, or "∞" (U+221E); a constant bound that isn't a whole number, -∞, or var in a bound is BAD_ARG. Both
+   bounds whole: hi < lo is the empty sum, 0; at most 64 terms apart, the terms are added exactly, each the typed text
+   at its value (rule 7). Otherwise a closed form: coef × var^j × B^var (j <= 12, at most 4 ratios B, none holding a
+   letter) by an antidifference checked exactly; rational terms through partfrac, telescoping (a class whose
+   coefficients sum to 0, shifts at most 12 apart; a pole from lo up is UNDEFINED). Polynomial and geometric parts
+   expanded, telescoped fractions kept. To ∞: |B| < 1 converges; a divergent sum is "∞" or "-∞" by its dominant
+   group's sign, UNDEFINED where its partial sums swing, UNDECIDED on a tie or a sign the evaluator can't decide.
+   NO_CLOSED_FORM where none is found; TOO_LONG past 191 bytes. */
+casim_status casim_sum(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                       size_t cap, void *arena, size_t arena_cap);
 
 #endif

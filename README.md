@@ -29,6 +29,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
 | taylor | a Taylor polynomial to order 12 about a point, exact (`LN(X)` about 1 to 3 is `(X-1)-0.5×(X-1)^2+(X-1)^3÷3`) |
 | limit | a limit at a point from either side or both, or at ∞ and -∞, exact (`(1+3÷X)^X` at ∞ is `EXP(3)`) |
+| sum | a sum in closed form, to N or to ∞ (`K×2^K` from 1 to N is `-2^(N+1)+N×2^(N+1)+2`, `1÷(K×(K+1))` from 1 to ∞ is `1`), or exactly, term by term, between whole bounds |
 | steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
 
 docs/language.md is the input language, with every operation's statuses and examples.
@@ -140,6 +141,9 @@ gzipped), most of it the decimal library's tables.
   - integrals by substitution and by parts judged by differentiating the answer numerically at 90 digits against the
     integrand, at seeded points in every angle mode, with integrands that have no elementary antiderivative refused
     (scripts/integrate-values.py).
+  - sums judged by adding the summand itself, term by term at 60 digits, against the answer read at each N, and to ∞
+    against a sum run until its terms vanish or the telescoping construction's own value (scripts/sum-values.py); the
+    antidifference's check reached by spoiling its answer (tests/smcheck_check.c).
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.

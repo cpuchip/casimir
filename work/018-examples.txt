@@ -1,0 +1,94 @@
+# CAS 018 sums' visible examples (work/018-sums.md), written by casim from the build and read again by
+# scripts/doc-examples.py (make check): each row's command must print exactly its answer or status. Every row with a
+# whole lo and a symbolic or whole hi is also judged by value by scripts/sum-values.py, term by term.
+# - Rules 4 and 5: polynomials (Faulhaber, to degree 12; 8 at the calculator's 8 KB), polynomial times geometric (B
+#   rational, EXP(±1), SQRT(2) from 2^(K÷2)), and telescoping through partfrac, whose polynomial part joins the groups.
+#   A constant factor comes out before partfrac (A÷(K×(K+1))).
+# - Rule 2: a symbolic lo with a polynomial; the empty sum (hi < lo) is 0. A rational term with a symbolic lo is
+#   NO_CLOSED_FORM (its answer would divide by lo).
+# - Rule 7: whole bounds at most 64 apart are summed term by term (Σ 1÷K to 10; a pole outside the shifts' reach,
+#   -1 to -1, which a telescoped form would name), in the request's angle mode; past 64, NO_CLOSED_FORM.
+# - Rules 5, 6 and 8: named limits; poles in the range (from lo up, for a symbolic hi: the safe side, chosen); to ∞,
+#   ∞ or -∞ by the dominant group (the larger |B|, then the degree), UNDEFINED where the partial sums swing, UNDECIDED
+#   on a tie or an unknown sign. K÷(K^3+3×K^2+2×K) is 1÷((K+1)×(K+2)) where partfrac cancels K, a hole at 0.
+# - From the cold review (fixed): a number past 2^62 keeps its text in the text it was read from (a bound holding one
+#   is BAD_ARG; partfrac's are refused); a ratio that is 1 but not written so; 0^(K+1); 1÷EXP(K) and 1÷ALOG(K) as
+#   EXP(-K) and 10^(-K); a polynomial's partial sums grow a degree faster than a swing's (equal growth: UNDECIDED); a
+#   leading coefficient that may be 0 is UNDECIDED before a swing is UNDEFINED; symbolic bounds a known whole number
+#   apart are the empty sum below lo; an exponent past 384 bytes is NO_ROOM, not integrate's word.
+| `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
+| `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
+| `casim sum "K^3" K 1 N RAD` | `0.25×N^2+0.5×N^3+0.25×N^4` |
+| `casim sum "2×K-1" K 1 N RAD` | `N^2` |
+| `casim --arena 65536 sum "K^12" K 1 N RAD` | `-691×N÷2730+5×N^3÷3-3.3×N^5+22×N^7÷7-11×N^9÷6+N^11+0.5×N^12+N^13÷13` |
+| `casim sum "2^K" K 0 N RAD` | `2^(N+1)-1` |
+| `casim sum "(1÷2)^K" K 0 ∞ RAD` | `2` |
+| `casim sum "K×2^K" K 1 N RAD` | `-2^(N+1)+N×2^(N+1)+2` |
+| `casim sum "K÷2^K" K 1 ∞ RAD` | `2` |
+| `casim sum "EXP(K)" K 0 N RAD` | `-1÷(EXP(1)-1)+EXP(1)^(N+1)÷(EXP(1)-1)` |
+| `casim sum "EXP(-K)" K 0 ∞ RAD` | `-1÷(EXP(-1)-1)` |
+| `casim sum "2^(K÷2)" K 0 N RAD` | `-1÷(SQRT(2)-1)+SQRT(2)^(N+1)÷(SQRT(2)-1)` |
+| `casim sum "1÷(K×(K+1))" K 1 N RAD` | `-1÷(N+1)+1` |
+| `casim sum "1÷(K×(K+1))" K 1 ∞ RAD` | `1` |
+| `casim sum "1÷(K^2-1)" K 2 N RAD` | `-0.5÷N-0.5÷(N+1)+0.75` |
+| `casim sum "1÷(K^2-1)" K 2 ∞ RAD` | `0.75` |
+| `casim sum "1÷(K×(K+2))" K 1 ∞ RAD` | `0.75` |
+| `casim sum "1÷(K×(K+1)×(K+2))" K 1 ∞ RAD` | `0.25` |
+| `casim sum "1÷((2×K-1)×(2×K+1))" K 1 ∞ RAD` | `0.5` |
+| `casim sum "(2×K+1)÷(K^2×(K+1)^2)" K 1 N RAD` | `-1÷(N+1)^2+1` |
+| `casim sum "A÷(K×(K+1))" K 1 ∞ RAD` | `A` |
+| `casim sum "(K^3+K^2+1)÷(K×(K+1))" K 1 N RAD` | `0.5×N+0.5×N^2-1÷(N+1)+1` |
+| `casim sum "K^2÷(K+1)-K" K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "K" K 1 100 RAD` | `5050` |
+| `casim sum "K" K M N RAD` | `0.5×M+0.5×N-0.5×M^2+0.5×N^2` |
+| `casim sum "N" K 1 N RAD` | `N^2` |
+| `casim sum "K" K 5 4 RAD` | `0` |
+| `casim sum "K" K 5 3 RAD` | `0` |
+| `casim sum "1÷K" K 1 10 RAD` | `7381÷2520` |
+| `casim sum "SIN(π×K)" K 1 64 RAD` | `0` |
+| `casim sum "SIN(π×K)" K 1 65 RAD` | `NO_CLOSED_FORM` |
+| `casim sum "SIN(K)" K 1 3 RAD` | `SIN(1)+SIN(2)+SIN(3)` |
+| `casim sum "1÷K-1÷(K+2)" K -1 -1 RAD` | `-2` |
+| `casim sum "K÷K" K 0 5 RAD` | `UNDEFINED` |
+| `casim sum "1÷K" K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "1÷K^2" K 1 ∞ RAD` | `NO_CLOSED_FORM` |
+| `casim sum "X^K" K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "(-2)^(K÷2)" K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "SIN(K)" K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "K÷K" K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "1÷(K×(K+1))" K M N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "1÷(K×(K+1))" K 1 100 RAD` | `100÷101` |
+| `casim sum "1÷(K×(K+1))" K 0 N RAD` | `UNDEFINED` |
+| `casim sum "1÷(K-5)" K 1 N RAD` | `UNDEFINED` |
+| `casim sum "(K^2-1)÷(K-1)" K 0 N RAD` | `UNDEFINED` |
+| `casim sum "K÷(K^3+3×K^2+2×K)" K 0 N RAD` | `UNDEFINED` |
+| `casim sum "K÷(K^3+3×K^2+2×K)" K 1 N RAD` | `-1÷(N+2)+0.5` |
+| `casim sum "K" K 1 ∞ RAD` | `∞` |
+| `casim sum "-2^K" K 0 ∞ RAD` | `-∞` |
+| `casim sum "2^K-3^K" K 0 ∞ RAD` | `-∞` |
+| `casim sum "K^3-2^K" K 0 ∞ RAD` | `-∞` |
+| `casim sum "3^K-K^5" K 0 ∞ RAD` | `∞` |
+| `casim sum "(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
+| `casim sum "K×(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
+| `casim sum "K+(-1)^K" K 0 ∞ RAD` | `∞` |
+| `casim sum "A×K" K 1 ∞ RAD` | `UNDECIDED` |
+| `casim sum "2^K+(-2)^K" K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum "K" K 1.5 N RAD` | `BAD_ARG` |
+| `casim sum "K" K π N RAD` | `BAD_ARG` |
+| `casim sum "K" K 1 -∞ RAD` | `BAD_ARG` |
+| `casim sum "K" K 1 K RAD` | `BAD_ARG` |
+| `casim sum "SIN(30×K)" K 1 3 DEG` | `0.5×SQRT(3)+1.5` |
+| `casim sum "SIN(30×K)" K 1 3 GRAD` | `SIN(30)+SIN(60)+SIN(90)` |
+| `casim sum "100000000000000000000÷(K×(K+1))" K 1 N RAD` | `-100000000000000000000÷(N+1)+100000000000000000000` |
+| `casim sum "1÷EXP(K)" K 0 ∞ RAD` | `-1÷(EXP(-1)-1)` |
+| `casim sum "1÷ALOG(K)" K 0 ∞ RAD` | `10÷9` |
+| `casim sum "SQRT(2)^K×SQRT(1÷2)^K" K 1 100 RAD` | `NO_CLOSED_FORM` |
+| `casim sum "0^(K+1)" K -1 100 RAD` | `NO_CLOSED_FORM` |
+| `casim sum "0^(K+1)" K -1 10 RAD` | `1` |
+| `casim sum "1" K N+2 N RAD` | `0` |
+| `casim sum "1" K N+10000000000000000000 M RAD` | `BAD_ARG` |
+| `casim sum "3+(-1)^K×K" K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum "K^2+(-1)^K×K^2" K 0 ∞ RAD` | `∞` |
+| `casim sum "(SQRT(6)-SQRT(2)×SQRT(3))×(-1)^K" K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum "i^K" K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)" K 0 N RAD` | `NO_ROOM` |

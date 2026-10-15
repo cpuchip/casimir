@@ -15,6 +15,7 @@
  *   casim partfrac "<n÷d>" X RAD      n÷d in partial fractions over Q, then the removed values (CAS 012)
  *   casim taylor "<text>" X A N RAD   the Taylor polynomial about A to order N, ascending powers of (X-A) (CAS 014)
  *   casim limit "<text>" X A S RAD    the limit as X goes to A (or ∞, -∞) from side S: +, -, or '' for both (CAS 015)
+ *   casim sum "<text>" K LO HI RAD    the sum for K = LO..HI (HI may be ∞), a closed form or exact (CAS 018)
  *   casim steps [integrate|solve|partfrac] "<text>" X RAD  derive's (or integrate's, solve's, partfrac's) steps, one
  *                                    a line, each
  *                                    indented by its depth: RULE: d/dX(u) = ... (work/steps-derive.md,
@@ -43,7 +44,8 @@ static unsigned char arena[1 << 20];
 enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM_EXPAND, OP_COLLECT = CASIM_COLLECT,
        OP_SUBST = CASIM_SUBST, OP_SOLVE = CASIM_SOLVE, OP_INTEGRATE = CASIM_INTEGRATE, OP_FACTOR = CASIM_FACTOR,
        OP_DEFINT = CASIM_DEFINT, OP_PDIV = CASIM_PDIV, OP_PGCD = CASIM_PGCD, OP_CANCEL = CASIM_CANCEL,
-       OP_PARTFRAC = CASIM_PARTFRAC, OP_TAYLOR = CASIM_TAYLOR, OP_LIMIT = CASIM_LIMIT };
+       OP_PARTFRAC = CASIM_PARTFRAC, OP_TAYLOR = CASIM_TAYLOR, OP_LIMIT = CASIM_LIMIT,
+       OP_SUM = CASIM_SUM };
 
 static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
 static size_t out_cap = OUT;
@@ -128,19 +130,20 @@ int main(int argc, char **argv)
        : strcmp(argv[i], "defint") == 0 ? OP_DEFINT : strcmp(argv[i], "pdiv") == 0 ? OP_PDIV
        : strcmp(argv[i], "pgcd") == 0 ? OP_PGCD : strcmp(argv[i], "cancel") == 0 ? OP_CANCEL
        : strcmp(argv[i], "partfrac") == 0 ? OP_PARTFRAC : strcmp(argv[i], "taylor") == 0 ? OP_TAYLOR
-       : strcmp(argv[i], "limit") == 0 ? OP_LIMIT : -1;
+       : strcmp(argv[i], "limit") == 0 ? OP_LIMIT : strcmp(argv[i], "sum") == 0 ? OP_SUM : -1;
     args = op == OP_DERIVE || op == OP_COLLECT || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR || op == OP_CANCEL ||
            op == OP_PARTFRAC ? 4
-         : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT || op == OP_TAYLOR || op == OP_LIMIT ? 6 : 3;
+         : op == OP_SUBST || op == OP_PDIV || op == OP_PGCD ? 5 : op == OP_DEFINT || op == OP_TAYLOR || op == OP_LIMIT || op == OP_SUM ? 6
+         : 3;
     if (op < 0 || argc - i != args) goto usage;
     if (op == OP_DERIVE || op == OP_COLLECT || op == OP_SUBST || op == OP_SOLVE || op == OP_INTEGRATE || op == OP_FACTOR ||
         op == OP_DEFINT || op == OP_PDIV || op == OP_PGCD || op == OP_CANCEL || op == OP_PARTFRAC || op == OP_TAYLOR ||
-        op == OP_LIMIT) {
+        op == OP_LIMIT || op == OP_SUM) {
         if (strlen(argv[i + 2]) != 1) goto usage;
         var = argv[i + 2][0] - 'A';
     }
     if (op == OP_SUBST || op == OP_PDIV || op == OP_PGCD) repl = argv[i + 3];
-    if (op == OP_DEFINT) repl = argv[i + 3], repl2 = argv[i + 4];
+    if (op == OP_DEFINT || op == OP_SUM) repl = argv[i + 3], repl2 = argv[i + 4];
     if (op == OP_TAYLOR) repl = argv[i + 3], repl2 = argv[i + 4];      /* taylor "<text>" X <point> <n>: n as text */
     if (op == OP_LIMIT) repl = argv[i + 3], repl2 = argv[i + 4];       /* limit "<text>" X <point> <side>, verbatim */
     {
@@ -163,6 +166,7 @@ int main(int argc, char **argv)
     case CASIM_UNDEFINED: printf("UNDEFINED\n"); break;
     case CASIM_IMPROPER: printf("IMPROPER\n"); break;
     case CASIM_UNDECIDED: printf("UNDECIDED\n"); break;
+    case CASIM_NO_CLOSED_FORM: printf("NO_CLOSED_FORM\n"); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */
@@ -198,6 +202,7 @@ usage:
                     "       casim [--arena N] [--min-arena] partfrac \"<n÷d>\" X RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] taylor \"<text>\" X POINT N RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] limit \"<text>\" X POINT +|-|'' RAD|DEG|GRAD (POINT may be ∞, -∞)\n"
+                    "       casim [--arena N] [--min-arena] sum \"<text>\" K LO HI RAD|DEG|GRAD (HI may be ∞)\n"
                     "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

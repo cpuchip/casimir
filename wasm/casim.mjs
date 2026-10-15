@@ -14,9 +14,9 @@
 import createCasimirModule from "./casim.js";
 
 export const STATUSES = ["OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM", "NOT_POLYNOMIAL",
-    "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED", "IMPROPER", "UNDECIDED"];
+    "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED", "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM"];
 export const OPS = ["derive", "simplify", "expand", "collect", "subst", "solve", "integrate", "factor", "defint",
-    "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit"];
+    "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit", "sum"];
 const ANGLES = { DEG: 0, RAD: 1, GRAD: 2 };
 const MODELS = { STU: 1, 33: 33, 35: 35 };
 
@@ -68,5 +68,7 @@ export async function loadCasimir(moduleOptions = {}) {
         },
         // CAS 015: as var goes to point (a text as defint's bounds, or "∞", "-∞"), from side "+", "-" or "" (both)
         limit: (text, point, side, opts) => call("limit", text, opts, String(point), side ?? ""),
+        // CAS 018: for var (default "X"; a sum's is often "K") from lo to hi (texts as defint's bounds; hi may be "∞")
+        sum: (text, lo, hi, opts) => call("sum", text, opts, String(lo), String(hi)),
     };
 }

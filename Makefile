@@ -37,8 +37,9 @@ CORE_LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 all: $(LIB) build/casim build/hello build/golden_check
 
 check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check build/pfcheck_check build/ircheck_check \
-       build/ibcheck_check check-abn
-	scripts/run-tests.sh build/gcdprimes_check build/pfcheck_check build/ircheck_check build/ibcheck_check
+       build/ibcheck_check build/smcheck_check check-abn
+	scripts/run-tests.sh build/gcdprimes_check build/pfcheck_check build/ircheck_check build/ibcheck_check \
+	    build/smcheck_check
 	scripts/frame-table.py
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
@@ -52,6 +53,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/taylor-values.py
 	scripts/limit-values.py
 	scripts/integrate-values.py
+	scripts/sum-values.py
 	@test "$$(scripts/ci-test.sh --ref)" = "$(CORE_PIN)" || { \
 	    echo "FAIL scripts/ci-test.sh: CI's make test would fetch $$(scripts/ci-test.sh --ref), not CORE_PIN (CAS 016)"; exit 1; }
 
@@ -106,6 +108,10 @@ build/ircheck_check: tests/ircheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_
 
 # CAS 017's substitution check, reached by spoiling G: one translation unit with src/casim.c
 build/ibcheck_check: tests/ibcheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_intel.o
+	$(CC) $(CFLAGS) -I$(ABN) -Isrc -Itests -o $@ $< build/abn_intel.o build/intel/libbid.a -lm
+
+# CAS 018's antidifference check, reached by spoiling F: one translation unit with src/casim.c
+build/smcheck_check: tests/smcheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_intel.o
 	$(CC) $(CFLAGS) -I$(ABN) -Isrc -Itests -o $@ $< build/abn_intel.o build/intel/libbid.a -lm
 
 # No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.

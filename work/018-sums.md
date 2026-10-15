@@ -1,7 +1,7 @@
 # CAS work unit 018: sums
 
-**From:** casim · **To:** abacus · **Status:** draft for abacus (#8051: casim writes the unit, abacus writes the hidden
-set and the Accepted section).
+**From:** casim · **To:** abacus · **Status:** ruled (abacus #8247: go; rulings folded in below) (#8051: casim writes
+the unit, abacus writes the hidden set and the Accepted section).
 - It's the next item on v1.0's list after CAS 017.
 - Measured on a throwaway prototype over 3c3b6fb's library (scratch), before this file was written.
 - The budget is decision 80's: 262,144 B for v1.0, with 193,533 used.
@@ -25,7 +25,8 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
    - CASIM_SUM is appended to casim_op, and casim_req carries lo in repl and hi in repl2, as defint does.
    - The CLI is `casim sum "<text>" K LO HI RAD|DEG|GRAD`.
    - **A new status, CASIM_NO_CLOSED_FORM, is appended** for a sum this unit can't close (rule 6). NOT_INTEGRABLE
-     would show the wrong word. The firmware's text for it is Michael's, through a card.
+     would show the wrong word. The firmware's text for it is Michael's, through a card (ruled, #8247). The bench
+     gets a code for it.
 2. **The bounds.**
    - lo is an integer constant, or an expression free of var. hi is the same, or "∞" (U+221E).
    - A numeric bound that isn't a whole number (1.5, π) is BAD_ARG, and so are −∞ and an hi holding var.
@@ -33,19 +34,31 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
      0 by itself; below that it would give −Σ over hi+1..lo−1, which isn't the textbook's meaning.
    - A symbolic bound is a letter the answer may hold. A sum with a rational term (rule 5) and a symbolic lo is
      NO_CLOSED_FORM: its answer would divide by lo, which the input doesn't (integrate's divisor rule, CAS 017 rule 2).
-3. **The input.** The summand's canonical form, term by term, in three kinds.
-   - **Polynomial times geometric:** coef × var^j × B^(a×var+b), where coef and B are free of var, j ≤ 12 and a is
-     a whole number. EXP(a×var+b) is the same, with B = EXP(a). Terms with the same B are grouped, with up to 4 groups.
+3. **The input.** The summand's canonical form, expanded (canon keeps (q(K))×2^K as one product), term by term, in
+   three kinds.
+   - **Polynomial times geometric:** coef × var^j × base^(a×var+b), where coef and base are free of var, j ≤ 12 and a
+     and b are rational; B is base^a. EXP(a×var+b) is the same, with B = EXP(a). A base that isn't a positive constant
+     ((−2)^K, A^K) needs a and b whole, since (−2)^(K÷2) has no value at odd K: so Σ 2^(K÷2) is a geometric sum in
+     B = SQRT(2) (abacus's point, #8247), and Σ (−2)^(K÷2) is NO_CLOSED_FORM. Terms with the same B are grouped, with up to 4 groups.
      A term free of var is a polynomial term with j = 0.
    - **Rational in var:** every other term is written as one n÷d and goes to partfrac (CAS 012) as text, first, on the
      whole arena. partfrac's work area takes 7,328 B for any input, so the sum's own nodes are made after it, in what
      is left. Up to 6 such terms. partfrac's polynomial part joins the first kind.
    - **Anything else** (SIN(K), K!, LN(K), 1÷SQRT(K)) is NO_CLOSED_FORM, unless rule 7 sums it.
+   - **A typed hole canon would lose** (Σ K÷K, Σ K^2÷K) is NO_CLOSED_FORM, by CAS 017 rule 2's divisor and domain
+     rules on the typed text, as integrate refuses them. Two differences: a constant base of 0 or less to a power of
+     var is allowed ((−1)^K has a value at every whole K), and a positive constant to a power is never 0, as EXP isn't
+     (K÷2^K). Rule 7's sums find a hole term by term. A hole canon keeps but partfrac cancels is one of partfrac's
+     removed values ("K=0" for K÷(K^3+3×K^2+2×K)): in the range, UNDEFINED, as a pole is (rule 5).
 4. **Polynomial times geometric, by an antidifference.**
    - **B = 1 (a polynomial):** F with F(k+1) − F(k) = q(k) is solved top down from q's leading coefficient (Faulhaber).
    - **B ≠ 1:** F(k)×B^k with B×F(k+1) − F(k) = q(k), F of q's degree, solved top down, each step dividing by B − 1.
-   - **The check:** F(k+1) − F(k) − q expands to exactly 0. For B ≠ 1 it is checked with B written as W + 1 (W a
-     fresh letter) and multiplied through by W^(d+1), so its divisions merge, and only then is W replaced by B − 1.
+   - **The check:** F(k+1) − F(k) − q (or B×F(k+1) − F(k) − q) expands to exactly 0. A rational B is solved and
+     checked as it is. Any other B (EXP(1), SQRT(2)) is solved as W + 1, W a fresh letter, so the check's divisions
+     are powers of W, which expand merges (by EXP(1) − 1 they don't); only then is W replaced by B − 1. (As built: the
+     unit's first text multiplied the check by W^(d+1), which the merge makes unneeded; its mutant survived, and it
+     went.) No input reaches the check as built, since the antidifference is solved exactly: tests/smcheck_check.c
+     spoils F before it, and every sum must then refuse.
    - **A letter in B is refused** (NO_CLOSED_FORM): the answer divides by B − 1, which could be 0 (CAS 017 rule 2's
      letter rule). So Σ X^K and Σ A^K are refused, and Σ A×2^K answers. The geometric series in a letter is the one
      textbook form this costs; whether to answer it with a stated condition (X ≠ 1) is Michael's call, through a card.
@@ -58,15 +71,21 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
      lowest shift and d each fraction's distance from it.
    - **Poles:** a fraction's pole is var = −s. When −s is an integer in [lo, hi] (from lo up, for a symbolic or ∞ hi),
      the sum has no value: UNDEFINED. Σ 1÷(K×(K+1)) from 0 is UNDEFINED; from 1 it is 1 − 1÷(N+1).
+   - **With a symbolic hi, this is the safe side, chosen:** Σ 1÷(K−5) from 1 to N is UNDEFINED, though it has a value
+     for N < 5. The answer would be wrong for every N ≥ 5, and a formula can't carry the condition.
 6. **Named limits (NO_CLOSED_FORM), each with a visible example:**
    - **Classes that don't telescope:** Σ 1÷K (the harmonic numbers) and Σ 1÷K^2 (ζ(2) at ∞). These need functions
-     casim doesn't have, or ζ(2m) = rational × π^(2m) at ∞ alone. That one is optional and for abacus to rule on; it's
-     not in this build.
+     casim doesn't have, or ζ(2m) = rational × π^(2m) at ∞ alone, which is out of this build (abacus #8247).
    - **A letter in a geometric ratio** (rule 4).
    - **Every other function of var** (SIN(K), LN(K)), unless rule 7 sums it.
-7. **Integer bounds, summed term by term.** When rules 4 and 5 refuse, and both bounds are integers at most 64 terms
-   apart, the terms are added exactly as canon makes them: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K) from 1 to 3 is
-   SIN(1)+SIN(2)+SIN(3). A term with no value is UNDEFINED, as in rule 5. Past 64 terms: NO_CLOSED_FORM.
+   - **A negative or symbolic base to a non-whole multiple of var:** Σ (−2)^(K÷2) (rule 3).
+7. **Integer bounds, summed term by term.** When both bounds are integers at most 64 terms apart, the terms are added
+   exactly as canon makes them, each from the typed text with var replaced: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K)
+   from 1 to 3 is SIN(1)+SIN(2)+SIN(3), in the request's angle mode (DEG's SIN(30) is 0.5). A term with no value is
+   UNDEFINED. Further apart, rules 4 and 5, or NO_CLOSED_FORM.
+   - **Why always, and not only when rules 4 and 5 refuse** (found building): over a range shorter than its shifts, a
+     telescoped form can name a fraction at a pole outside the range. Σ 1÷K − 1÷(K+2) from −1 to −1 is −2, but its
+     telescoped form holds 1÷0. Past 12 terms, any pole the form names is in the range too.
 8. **To ∞.** The sum is the limit of its partial sums, decided group by group, never by evaluating partial sums.
    - **A telescoping class** converges; its hi part goes to 0.
    - **A geometric group** converges when |B| < 1, decided by the evaluator beyond 1E-20 (const_sign, CAS 009 rule 5).
@@ -80,8 +99,9 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
      - B < 0: UNDEFINED, since the partial sums swing with growing size and have no limit (Σ (−2)^K, Σ (−1)^K×K).
      - Σ (−1)^K alone has partial sums 1, 0, 1, …: UNDEFINED, as B = −1 is a dominant group with B < 0.
      - A tie between B and −B, or a leading sign the evaluator can't decide (a letter, as in Σ A×K): UNDECIDED.
-   - **For abacus to rule on:** a divergent sum as ∞ or −∞ (proposed, matching limit), or UNDEFINED for every
-     divergent sum. limit's own NO_ROOM on −2^(N+1)+N×2^(N+1)+2 at N → ∞ is why this doesn't call limit.
+   - **Ruled (abacus #8247):** ∞ and −∞ as limit prints them, UNDEFINED where the partial sums oscillate (limit's word
+     for "no limit"), UNDECIDED on a tie or a sign it can't decide. limit's own NO_ROOM on −2^(N+1)+N×2^(N+1)+2 at
+     N → ∞ is why this doesn't call limit. ζ(2m) is out of this build: Σ 1÷K^2 to ∞ is NO_CLOSED_FORM.
 9. **The answer.**
    - The canonical form of the sum of the parts, with the polynomial and geometric parts expanded (as integrate's
      answers are), and each telescoped fraction left as c÷(hi+1+s)^m. So Σ (2×K+1)÷(K^2×(K+1)^2) from 1 to N is
@@ -100,11 +120,58 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
     - **Frames:** no existing frame moves (partfrac is called through its existing entry, as CAS 013 does). The new
       frames are reported from the S3; the sum's worst stack through the keys is measured on the bench.
     - **Arena:** the list above needs at most 3,408 B beyond partfrac's work area (7,328 B), so all of it answers at
-      8,192 B. Past the arena: NO_ROOM, never an overrun.
+      8,192 B. Past the arena: NO_ROOM, never an overrun. As built, at 8,192 B: polynomials to degree 8 (K^12 needs
+      10,352 B), a polynomial times a rational ratio to degree 6 (K^6×2^K needs 7,160 B); an irrational ratio costs
+      more (W). Each group's work is given back before the next (compact).
     - **Flash:** the prototype is +13.5 KB of text on the host, with its main, a stdio trace and inlining still in it.
       The estimate is 8 to 10 KB on the S3, with the stop at 20. That leaves about 58 KB for complex roots and the
       series engine.
     - **Time:** the S3's worst on the bench.
+
+## Rule 4b: a letter in the ratio, answered with its condition (Michael, 01:07Z via abacus #8293; the shape, to build)
+
+Michael's ruling on the sums-letter card: "Answer it, with 'X≠1' shown under the answer", and "I'd like to spend the
+extra time here to make it good." So Σ X^K is no longer refused. This is the first casim answer that holds only under a
+condition, so the shape is written here first, for abacus to rule on before it is built.
+
+1. **Where the condition goes: CANCEL's rows.** out is the answer, then each condition as a row after "; ", as CANCEL
+   and PARTFRAC already return the values a cancelling removed ("K+1; K=1"). The status stays OK. The firmware shows
+   the rows under the answer, as it would CANCEL's (soroban's side). TOO_LONG when the answer and its rows pass 191
+   bytes, as for CANCEL. The CLI prints out as it is.
+   - `casim sum "X^K" K 0 N RAD` prints `(X^(N+1)-1)÷(X-1); X≠1` (in the form the build gives; expanded as rule 9 says).
+   - The rows' glyphs: ≠ (U+2260) and <. If the firmware's font lacks ≠, soroban says, and the row is written
+     another way.
+2. **Which conditions, and how each is written.** A condition says where the answer's formula fails, which is where a
+   group's ratio B is 1 (its antidifference divides by (B−1)^(d+1)). One row per value, solved for the letter where
+   that is plain:
+   - B is a letter's whole power L^m (X^K, X^(2×K), X^(3×K+1)'s X^3): a row for each real root of L^m = 1. X≠1, and
+     X≠-1 too when m is even. So Σ X^(2×K) is "...; X≠-1; X≠1" (ascending, as CANCEL's rows).
+   - Any other B holding a letter (A×X, 2^X, EXP(X), X÷Y): one row "B≠1" with B as canon prints it (2×X≠1, EXP(X)≠1).
+     Correct, if less plain; solving B = 1 in general is solve's job, not this one's.
+   - K×X^K's divisor is (X−1)^2: the same row, X≠1. The row is about where the answer has no value, not the
+     divisor's multiplicity.
+   - Several letter groups: each one's rows, in the order of their letters, a value once (X^K+Y^K: X≠1; Y≠1).
+   - A ratio whose B − 1 the evaluator proves nonzero (no letter) gets no row, as today. A ratio that is 1 but not
+     written so (SQRT(2)^K×SQRT(0.5)^K) stays NO_CLOSED_FORM: it has no letter to state a condition on.
+3. **To ∞.** Every group with no letter must converge (rule 8), and a telescoping class does. A letter group is answered
+   on condition that it converges: the row is "ABS(B)<1", solved as above where B = L^m: ABS(X)<1 (for any m ≥ 1). It
+   replaces X≠1, which it implies. Σ X^K from 0 to ∞ is "1÷(1-X); ABS(X)<1" (the build's form). A letter group beside a
+   divergent group without a letter: that group's ∞, −∞ or UNDEFINED, as rule 8 (the letter group can't cancel it for
+   every X); beside another letter group, both rows.
+4. **X = 1's own value: excluded, not shown.** Proposed, for abacus's and Michael's word:
+   - Each row then means one thing (a value the formula excludes), as CANCEL's do, and the firmware shows one kind of
+     row. A second kind ("X=1: N+1") would be a second answer in the 191-byte slot, and for K^3×X^K it is a degree-4
+     polynomial on its own.
+   - The student gets X = 1's value with one more sum: `casim sum "1" K 0 N RAD` is N+1. The rows tell them which
+     value to ask about.
+   - If Michael wants it shown, the shape is a row "X=1: <the sum there>" after the ≠ rows, computed by this unit's own
+     polynomial path with X replaced by 1, and TOO_LONG past 191 bytes as a whole.
+5. **What it changes.** sum-values.py gains a letter family judged at seeded values of the letter (excluded values
+   skipped; at ∞ only inside ABS(B)<1), and its rows parsed. h018's judge must read rows. Golden: none. The two rules
+   that refused letters (rule 4's letter refusal, rule 6's list entry) are amended when this is built.
+6. **Not changed:** a letter in a coefficient (A×2^K) already answers with no row, since it divides by nothing. A
+   letter in lo or hi is as before. The UNDECIDED of rule 8 for a leading sign holding a letter (Σ A×K to ∞) stays:
+   a sign isn't a condition this rule states.
 
 ## Acceptance
 
