@@ -584,7 +584,7 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 whole number or an expression free of K; HI the same, or `∞`. With both bounds whole and at most 64 terms apart, the
 terms are added exactly, each the typed text at its value, in the angle mode (so Σ SIN(30×K) in DEG uses CAS 008's
 exact values); HI below LO is the empty sum, 0. Otherwise the sum needs a closed form: a polynomial times a geometric
-term, q(K)×B^K (q to degree 12, B a constant without a letter), by an antidifference checked exactly; a rational
+term, q(K)×B^K (q to degree 12, B a constant), by an antidifference checked exactly; a rational
 function through partfrac, when its fractions telescope (each class of shifts whose coefficients sum to 0). The answer
 is expanded, with the telescoped fractions kept as they are.
 
@@ -593,9 +593,13 @@ To ∞, |B| < 1 converges and a telescoping class always does; Σ 1÷(K×(K+1)) 
 on a tie (2^K+(-2)^K) or a sign it can't tell (A×K). UNDEFINED also for a pole in the range: Σ 1÷(K×(K+1)) from 0, and
 Σ 1÷(K-5) from 1 to N, which has a value for N < 5 but not for any N past it.
 
+A letter in the ratio (Σ X^K) is answered with its condition, as rows after the answer, as CANCEL prints the values
+it removed: `X≠1` where the ratio is 1 (X≠-1 too for X^(2×K)), and to ∞ `ABS(X)<1` where it converges (`ABS(X)>1` for
+X^(-K)). Between whole bounds the sum term by term comes first (Σ X^K from 1 to 3 is X+X^2+X^3, true for every X);
+the closed form and its row only when that doesn't fit.
+
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
-(SIN(K), LN(K)), a letter in a ratio (Σ X^K: its answer would divide by X-1), a hole canon would lose (K÷K), or a
-rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.
+(SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.
 
 | Command | Prints |
 |---|---|
@@ -611,6 +615,8 @@ rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole n
 | `casim sum "1÷K" K 1 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "K" K 1 ∞ RAD` | `∞` |
 | `casim sum "(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
+| `casim sum "X^K" K 0 N RAD` | `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` |
+| `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
 
 ## The statuses
 

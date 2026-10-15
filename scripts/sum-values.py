@@ -38,6 +38,10 @@ def sub(text, letter, by):
     return re.sub(rf"(?<![A-Z]){letter}(?![A-Z])", lambda m: f"({by})", text)
 
 
+def dec(f):
+    return D(f.numerator) / D(f.denominator)
+
+
 def ft(c):
     """a Fraction as casim reads it inside a product: 3, (1÷2), (-3)"""
     if c.denominator == 1:
@@ -45,17 +49,73 @@ def ft(c):
     return f"({c.numerator}÷{c.denominator})"
 
 
+def dvalue(text, fns):
+    """limit-values.py's reader, with 0^0 = 1 as casim and the calculator have it (Decimal raises there): numbers, π,
+    the functions in fns, + - × ÷ ^"""
+    toks = lv.TOK.findall(text)
+    if "".join(toks) != text:
+        raise ValueError(f"not readable: {text}")
+    i = 0
+
+    def peek():
+        return toks[i] if i < len(toks) else None
+
+    def take():
+        nonlocal i
+        i += 1
+        return toks[i - 1]
+
+    def atom():
+        t = take()
+        if t == "(":
+            v = expr()
+            take()
+            return v
+        if t == "π":
+            return lv.PI
+        if t == "-":
+            return -factor()
+        if t in fns:
+            take()
+            v = expr()
+            take()
+            return fns[t](v)
+        if t[0].isdigit():
+            return D(t)
+        raise ValueError(f"not readable: {text} at {t}")
+
+    def factor():
+        v = atom()
+        if peek() == "^":
+            take()
+            e = factor()
+            if v == 0 and e == 0:
+                return D(1)
+            v = v ** int(e) if e == int(e) else (e * v.ln()).exp()
+        return v
+
+    def term():
+        v = factor()
+        while peek() in ("×", "÷"):
+            v = v * factor() if take() == "×" else v / factor()
+        return v
+
+    def expr():
+        v = term() if peek() != "-" else (take(), -term())[1]
+        while peek() in ("+", "-"):
+            v = v + term() if take() == "+" else v - term()
+        return v
+
+    return expr()
+
+
 def value(text, angle="RAD"):
     """text with no letter in Decimal, SIN and COS in the angle mode"""
     to_rad = {"RAD": D(1), "DEG": lv.PI / 180, "GRAD": lv.PI / 200}[angle]
-    keep = dict(lv.FN)
-    lv.FN["SIN"] = lambda x: lv.d_sin(x * to_rad)
-    lv.FN["COS"] = lambda x: lv.d_cos(x * to_rad)
-    try:
-        return lv.dvalue(text)
-    finally:
-        lv.FN.clear()
-        lv.FN.update(keep)
+    fns = dict(lv.FN)
+    fns["SIN"] = lambda x: lv.d_sin(x * to_rad)
+    fns["COS"] = lambda x: lv.d_cos(x * to_rad)
+    return dvalue(text, fns)
 
 
 def term(summand, k, angle):
@@ -254,7 +314,75 @@ def gen_pole(rnd):
     return summand, lo, rnd.choice(("N", INF, lo + 5, lo + 80)), "RAD", "UNDEFINED"
 
 
-FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_open, 1), (gen_direct, 2), (gen_pole, 1)]
+def gen_letter(rnd):
+    """rule 4b: q(K) × (c×X^m)^K, answered with its rows: judged at seeded X (off the excluded values; at ∞, inside the
+    region), and the rows against the true excluded set: the real roots of c×X^m = 1, or |X| < or > |c|^(-1/m)"""
+    c = rnd.choice((F(1), F(1), F(-1), F(2), F(1, 2), F(-1, 3)))
+    m = rnd.choice((1, 1, 2, -1, -2, 3))
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1)))] + [rand_frac(rnd)]
+    xm = "X" if m == 1 else f"X^{m}" if m > 0 else f"X^({m})"
+    b = f"({xm})" if c == 1 else f"({ft(c)}×{xm})"         # the judge's reader takes ^ right to left
+    q = poly_text(co)
+    e = rnd.choice(("K", "K", "K-1", "K+1"))                 # a constant in the exponent: (c×X^m)^(K-1) at X = 0
+    pw = f"{b}^K" if e == "K" else f"{b}^({e})"
+    summand = f"({q})×{pw}" if len(co) > 1 or co[0] != 1 else pw
+    lo = rnd.randint(0, 2)
+    return summand, lo, INF if rnd.random() < 0.35 else "N", "RAD", ("LETTER", c, m)
+
+
+def judge_letter(summand, lo, hi, out, c, m, rnd):
+    """'' when out ('answer; rows') is right at three seeded X and its rows are the truth's"""
+    if out in STATUS or not out:
+        return f"{out} for an answer with rows" if out != "TOO_LONG" else ""
+    parts = out.split("; ")
+    answer, rows = parts[0], parts[1:]
+    # a row X≠0 is right only where the answer itself has no value at 0 (rule 4b's hole row)
+    if "X≠0" in rows:
+        try:
+            value(sub(answer, "X", "0").replace("N", "3") if hi != INF else sub(answer, "X", "0"))
+            return f"row X≠0, but {answer} has a value at X=0"
+        except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+            rows = [r for r in rows if r != "X≠0"]
+    if hi == INF:
+        want_op = "<" if m > 0 else ">"
+        rv = dec(abs(c)) ** (D(-1) / D(m))                     # |X| op |c|^(-1/m)
+        if len(rows) != 1 or not rows[0].startswith("ABS(X)" + want_op):
+            return f"rows {rows} for ABS(X){want_op}{rv:.20}"
+        got = value(rows[0][len("ABS(X)") + 1:])
+        if not close(got, rv):
+            return f"row {rows[0]}: {got:.25} for {rv:.25}"
+        inside = [x for x in (F(0), F(1, 3), F(-1, 5), F(2, 7), F(3), F(-4), F(5, 2))
+                  if (x != 0 or (m > 0 and "X≠0" not in parts)) and abs(c) * abs(x) ** m < F(3, 4)]
+        for x in inside[:3]:
+            why = judge_value(sub(answer, "X", ft(x)), tail_sum(sub(summand, "X", ft(x)), lo))
+            if why:
+                return f"at X={x}: {why}"
+        return ""
+    # finite: rows X≠v, the real roots of c×x^m = 1, ascending
+    t = 1 / c
+    roots = []
+    if m % 2:
+        roots = [(-1 if t < 0 else 1) * dec(abs(t)) ** (D(1) / D(m))]
+    elif t > 0:
+        u = dec(t) ** (D(1) / D(m))
+        roots = [-abs(u), abs(u)]
+    if len(rows) != len(roots) or any(not row.startswith("X≠") for row in rows):
+        return f"rows {rows} for X≠ {[f'{v:.10}' for v in roots]}"
+    for row, v in zip(rows, sorted(roots)):
+        got = value(row[2:])
+        if not close(got, v):
+            return f"row {row}: {got:.25} for {v:.25}"
+    for x in (F(0), F(1, 3), F(-2, 5), F(3), F(-7, 4), F(5, 2)):
+        if any(abs(dec(x) - v) < D(10) ** -9 for v in roots) or (x == 0 and (m < 0 or "X≠0" in parts)):
+            continue
+        why = judge_n(sub(summand, "X", ft(x)), lo, sub(answer, "X", ft(x)), points=12)
+        if why:
+            return f"at X={x}: {why}"
+    return ""
+
+
+FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_open, 1), (gen_direct, 2), (gen_pole, 1),
+            (gen_letter, 2)]
 
 
 def check_examples():
@@ -313,10 +441,13 @@ def main():
         summand, lo, hi, angle, truth = gen(rnd)
         out = run_sum(summand, lo, hi, angle)
         kinds[gen.__name__] = kinds.get(gen.__name__, 0) + 1
-        if out in ("NO_ROOM", "TOO_LONG") and truth not in ("NO_CLOSED_FORM", "UNDEFINED"):
+        if out in ("NO_ROOM", "TOO_LONG") and (isinstance(truth, tuple) or truth not in ("NO_CLOSED_FORM", "UNDEFINED")):
             soft += 1
             continue
-        why = judge_n(summand, lo, out, angle) if truth == "N" else judge_value(out, truth, angle)
+        if isinstance(truth, tuple):
+            why = judge_letter(summand, lo, hi, out, truth[1], truth[2], rnd)
+        else:
+            why = judge_n(summand, lo, out, angle) if truth == "N" else judge_value(out, truth, angle)
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")

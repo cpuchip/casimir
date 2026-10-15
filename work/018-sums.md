@@ -59,9 +59,9 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
      unit's first text multiplied the check by W^(d+1), which the merge makes unneeded; its mutant survived, and it
      went.) No input reaches the check as built, since the antidifference is solved exactly: tests/smcheck_check.c
      spoils F before it, and every sum must then refuse.
-   - **A letter in B is refused** (NO_CLOSED_FORM): the answer divides by B − 1, which could be 0 (CAS 017 rule 2's
-     letter rule). So Σ X^K and Σ A^K are refused, and Σ A×2^K answers. The geometric series in a letter is the one
-     textbook form this costs; whether to answer it with a stated condition (X ≠ 1) is Michael's call, through a card.
+   - **A letter in B** was refused in the first text (the answer divides by B − 1, which could be 0). Michael ruled
+     to answer it with its condition: rule 4b. B − 1 must otherwise be decidably nonzero: i^K, and a B that is 1 but
+     not written so (SQRT(2)^K×SQRT(0.5)^K), are NO_CLOSED_FORM (the cold review's case: it divided by an exact 0).
    - The sum is F(hi+1) − F(lo), or with B, F(hi+1)×B^(hi+1) − F(lo)×B^lo.
 5. **Rational, by telescoping.**
    - Each partial fraction must be c÷(a×var+b)^m with a and b rational; it is written as (c÷a^m)÷(var+s)^m.
@@ -76,11 +76,15 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
 6. **Named limits (NO_CLOSED_FORM), each with a visible example:**
    - **Classes that don't telescope:** Σ 1÷K (the harmonic numbers) and Σ 1÷K^2 (ζ(2) at ∞). These need functions
      casim doesn't have, or ζ(2m) = rational × π^(2m) at ∞ alone, which is out of this build (abacus #8247).
-   - **A letter in a geometric ratio** (rule 4).
+   - **i in a ratio, or a ratio that is 1 but not written so** (rule 4). EXP(X×K), whose exponent's coefficient
+     isn't a number (EXP(X)^K answers, with its row).
    - **Every other function of var** (SIN(K), LN(K)), unless rule 7 sums it.
    - **A negative or symbolic base to a non-whole multiple of var:** Σ (−2)^(K÷2) (rule 3).
 7. **Integer bounds, summed term by term.** When both bounds are integers at most 64 terms apart, the terms are added
-   exactly as canon makes them, each from the typed text with var replaced: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K)
+   exactly first, as canon makes them, each from the typed text with var replaced; when that sum doesn't fit out
+   (past 191 bytes), rules 4 and 5's closed form, with rule 4b's rows, and TOO_LONG when there is none (abacus #8320
+   (c): Σ X^K from 1 to 3 is X+X^2+X^3, true for every X, with no row). A telescoping closed form isn't used for a
+   range shorter than its shifts (the next point): there it stays TOO_LONG. The terms: Σ 1÷K from 1 to 10 is 7381÷2520, Σ SIN(K)
    from 1 to 3 is SIN(1)+SIN(2)+SIN(3), in the request's angle mode (DEG's SIN(30) is 0.5). A term with no value is
    UNDEFINED. Further apart, rules 4 and 5, or NO_CLOSED_FORM.
    - **Why always, and not only when rules 4 and 5 refuse** (found building): over a range shorter than its shifts, a
@@ -93,12 +97,17 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
    - **A polynomial group** with any nonzero coefficient diverges, and so does a geometric group with |B| ≥ 1.
    - **When every group converges**, the answer is lo's part alone: Σ (1÷2)^K from 0 is 2, Σ K÷2^K from 1 is 2,
      Σ 1÷(K×(K+1)) from 1 is 1.
-   - **When one diverges**, the dominant group decides: the largest |B|, then the highest degree.
+   - **When one diverges**, the dominant group decides: the largest |B|, then the fastest growth. A polynomial's
+     partial sums grow a degree faster than its terms, and a swing's (B = −1) don't: so at |B| = 1 a polynomial of
+     degree d grows as N^(d+1), against N^d for (−1)^K×K^d, and equal growth is UNDECIDED (3+(−1)^K×K: its sign
+     depends on the coefficients). The cold review found the first text's "then the highest degree" wrong here.
      - B > 0 (a polynomial is B = 1): ∞ or −∞ by the sign of its leading coefficient (Σ K is ∞, Σ −2^K is −∞), as
        limit prints them.
      - B < 0: UNDEFINED, since the partial sums swing with growing size and have no limit (Σ (−2)^K, Σ (−1)^K×K).
      - Σ (−1)^K alone has partial sums 1, 0, 1, …: UNDEFINED, as B = −1 is a dominant group with B < 0.
-     - A tie between B and −B, or a leading sign the evaluator can't decide (a letter, as in Σ A×K): UNDECIDED.
+     - A tie between B and −B, or a leading sign the evaluator can't decide (a letter, as in Σ A×K): UNDECIDED. The
+       sign is asked before a swing is UNDEFINED: a coefficient that may be 0 ((SQRT(6)−SQRT(2)×SQRT(3))×(−1)^K) can't
+       swing.
    - **Ruled (abacus #8247):** ∞ and −∞ as limit prints them, UNDEFINED where the partial sums oscillate (limit's word
      for "no limit"), UNDECIDED on a tie or a sign it can't decide. limit's own NO_ROOM on −2^(N+1)+N×2^(N+1)+2 at
      N → ∞ is why this doesn't call limit. ζ(2m) is out of this build: Σ 1÷K^2 to ∞ is NO_CLOSED_FORM.
@@ -128,7 +137,7 @@ partfrac's own work area. Σ 1÷K and Σ 1÷K^2 are refused, as rule 6 says.
       series engine.
     - **Time:** the S3's worst on the bench.
 
-## Rule 4b: a letter in the ratio, answered with its condition (Michael, 01:07Z via abacus #8293; the shape, to build)
+## Rule 4b: a letter in the ratio, answered with its condition (Michael, 01:07Z via abacus #8293; shape ruled #8320)
 
 Michael's ruling on the sums-letter card: "Answer it, with 'X≠1' shown under the answer", and "I'd like to spend the
 extra time here to make it good." So Σ X^K is no longer refused. This is the first casim answer that holds only under a
@@ -138,26 +147,36 @@ condition, so the shape is written here first, for abacus to rule on before it i
    and PARTFRAC already return the values a cancelling removed ("K+1; K=1"). The status stays OK. The firmware shows
    the rows under the answer, as it would CANCEL's (soroban's side). TOO_LONG when the answer and its rows pass 191
    bytes, as for CANCEL. The CLI prints out as it is.
-   - `casim sum "X^K" K 0 N RAD` prints `(X^(N+1)-1)÷(X-1); X≠1` (in the form the build gives; expanded as rule 9 says).
+   - `casim sum "X^K" K 0 N RAD` prints `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` (expanded, as rule 9 says).
    - The rows' glyphs: ≠ (U+2260) and <. If the firmware's font lacks ≠, soroban says, and the row is written
      another way.
 2. **Which conditions, and how each is written.** A condition says where the answer's formula fails, which is where a
    group's ratio B is 1 (its antidifference divides by (B−1)^(d+1)). One row per value, solved for the letter where
    that is plain:
-   - B is a letter's whole power L^m (X^K, X^(2×K), X^(3×K+1)'s X^3): a row for each real root of L^m = 1. X≠1, and
-     X≠-1 too when m is even. So Σ X^(2×K) is "...; X≠-1; X≠1" (ascending, as CANCEL's rows).
+   - B is k×L^m, a rational k and a letter's whole power, m ≠ 0 (X^K, X^(2×K), X^(−K), (2×X)^K, (−X)^K): a row for each
+     real root of k×L^m = 1, ascending. X≠1, and X≠-1 too when m is even; (−X)^K is X≠-1 (abacus's minor point: no
+     "-X≠1"), (2×X)^K is X≠0.5, and (−2×X^2)^K, which is never 1, has none. X^(−K) has the same rows as X^K; no X≠0
+     row, since the summand has no value at 0 already (abacus (b)).
    - Any other B holding a letter (A×X, 2^X, EXP(X), X÷Y): one row "B≠1" with B as canon prints it (2×X≠1, EXP(X)≠1).
      Correct, if less plain; solving B = 1 in general is solve's job, not this one's.
    - K×X^K's divisor is (X−1)^2: the same row, X≠1. The row is about where the answer has no value, not the
      divisor's multiplicity.
+   - **L≠0 where the answer itself has no value at 0** (rule 4b's cold review): X^(a×K+b) with b < 0 puts X^b in a
+     coefficient, and the answer can hold X÷(X−X^2), which canon doesn't cancel, where the sum is 1. So for each letter
+     L of a ratio, L = 0 is put in the answer, and where it has no value there the row L≠0 is added (asked of the
+     answer: X^(K−1) from 1 merges to X^N and gets none). X^(−K) from a lo of 1 or more has no value at 0 anyway, and
+     gets none (abacus (b)). EXP(X)^K gets X≠0 beside EXP(X)≠1: the same value, the plainer row first.
    - Several letter groups: each one's rows, in the order of their letters, a value once (X^K+Y^K: X≠1; Y≠1).
    - A ratio whose B − 1 the evaluator proves nonzero (no letter) gets no row, as today. A ratio that is 1 but not
      written so (SQRT(2)^K×SQRT(0.5)^K) stays NO_CLOSED_FORM: it has no letter to state a condition on.
-3. **To ∞.** Every group with no letter must converge (rule 8), and a telescoping class does. A letter group is answered
-   on condition that it converges: the row is "ABS(B)<1", solved as above where B = L^m: ABS(X)<1 (for any m ≥ 1). It
-   replaces X≠1, which it implies. Σ X^K from 0 to ∞ is "1÷(1-X); ABS(X)<1" (the build's form). A letter group beside a
-   divergent group without a letter: that group's ∞, −∞ or UNDEFINED, as rule 8 (the letter group can't cancel it for
-   every X); beside another letter group, both rows.
+3. **To ∞.** A letter group is answered on condition that it converges: the row is ABS(B)<1, solved for k×L^m as
+   ABS(L)<|k|^(−1/m) when m > 0, and ABS(L)>|k|^(−1/m) when m < 0 (abacus (b): X^(−K) converges for |X| > 1). It
+   replaces X≠1, which it implies. Σ X^K from 0 to ∞ is "-1÷(X-1); ABS(X)<1"; (X÷2)^K is "-2÷(X-2); ABS(X)<2".
+   - Groups without a letter are rule 8's. When one diverges to ∞ or −∞, that is the answer, with the letter group's
+     row: Σ X^K+2^K is "∞; ABS(X)<1", true where the row holds (abacus (a)). When it swings, UNDECIDED: X^K+(−2)^K has
+     no limit for |X| < 1 but goes to ∞ at X = 2, and UNDEFINED carries no row. A pole in the range is UNDEFINED still
+     (the cold review: the swing's UNDECIDED once caught it). Beside another letter group, both
+     rows.
 4. **X = 1's own value: excluded, not shown.** Proposed, for abacus's and Michael's word:
    - Each row then means one thing (a value the formula excludes), as CANCEL's do, and the firmware shows one kind of
      row. A second kind ("X=1: N+1") would be a second answer in the 191-byte slot, and for K^3×X^K it is a degree-4
@@ -166,10 +185,14 @@ condition, so the shape is written here first, for abacus to rule on before it i
      value to ask about.
    - If Michael wants it shown, the shape is a row "X=1: <the sum there>" after the ≠ rows, computed by this unit's own
      polynomial path with X replaced by 1, and TOO_LONG past 191 bytes as a whole.
-5. **What it changes.** sum-values.py gains a letter family judged at seeded values of the letter (excluded values
+5. **What it changed, as built.** Whole bounds at most 64 apart are summed term by term first (rule 7, abacus (c)).
+   The judges below are built: sum-values.py's letter family (k×X^m with k from ±1, 2, 1÷2, −1÷3 and m from ±1, 2, −2,
+   3) checks the answer at seeded X off the excluded values against the term-by-term sum, and at ∞ inside the region
+   against a sum run until its terms vanish, and checks every row against the true roots or radius. 10 mutants.
+6. **What it changes (the shape as sent).** sum-values.py gains a letter family judged at seeded values of the letter (excluded values
    skipped; at ∞ only inside ABS(B)<1), and its rows parsed. h018's judge must read rows. Golden: none. The two rules
    that refused letters (rule 4's letter refusal, rule 6's list entry) are amended when this is built.
-6. **Not changed:** a letter in a coefficient (A×2^K) already answers with no row, since it divides by nothing. A
+7. **Not changed:** a letter in a coefficient (A×2^K) already answers with no row, since it divides by nothing. A
    letter in lo or hi is as before. The UNDECIDED of rule 8 for a leading sign holding a letter (Σ A×K to ∞) stays:
    a sign isn't a condition this rule states.
 

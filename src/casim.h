@@ -283,8 +283,9 @@ casim_status casim_limit(const char *eqn, int var, const char *point, const char
 /* Unit CAS 018, SUM (work/018-sums.md): Σ eqn for var = lo, lo+1, ..., hi. lo is a whole number or an expression free of
    var; hi the same, or "∞" (U+221E); a constant bound that isn't a whole number, -∞, or var in a bound is BAD_ARG. Both
    bounds whole: hi < lo is the empty sum, 0; at most 64 terms apart, the terms are added exactly, each the typed text
-   at its value (rule 7). Otherwise a closed form: coef × var^j × B^var (j <= 12, at most 4 ratios B, none holding a
-   letter) by an antidifference checked exactly; rational terms through partfrac, telescoping (a class whose
+   at its value (rule 7); when that doesn't fit out, as below. A closed form: coef × var^j × B^var (j <= 12, at most 4
+   ratios B) by an antidifference checked exactly, a ratio holding a letter answered with its conditions as CANCEL's
+   rows after "; " (rule 4b: X≠1 where B = 1; at ∞ ABS(X)<1 where it converges); rational terms through partfrac, telescoping (a class whose
    coefficients sum to 0, shifts at most 12 apart; a pole from lo up is UNDEFINED). Polynomial and geometric parts
    expanded, telescoped fractions kept. To ∞: |B| < 1 converges; a divergent sum is "∞" or "-∞" by its dominant
    group's sign, UNDEFINED where its partial sums swing, UNDECIDED on a tie or a sign the evaluator can't decide.

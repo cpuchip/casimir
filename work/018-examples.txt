@@ -16,6 +16,12 @@
 #   EXP(-K) and 10^(-K); a polynomial's partial sums grow a degree faster than a swing's (equal growth: UNDECIDED); a
 #   leading coefficient that may be 0 is UNDECIDED before a swing is UNDEFINED; symbolic bounds a known whole number
 #   apart are the empty sum below lo; an exponent past 384 bytes is NO_ROOM, not integrate's word.
+# - Rule 4b (Michael, via abacus #8293 and #8320): a letter in the ratio is answered with its rows, CANCEL's: X≠ each
+#   real root of B = 1 (k×X^m solved for X; any other B as B≠1); at ∞, ABS(X)<r, or > for X^(-K), or ABS(B)<1. Beside a
+#   divergent group without a letter, that group's ∞ with the letter's row; beside a swing, UNDECIDED. Whole bounds at
+#   most 64 apart are summed term by term first (X+X^2+X^3, no row); past 191 bytes, the closed form and its row.
+#   From rule 4b's cold review: X≠0 where the answer itself has no value at 0 though the sum may (K×X^(K-1)'s
+#   X÷(X-X^2); X^(K-1) merges to X^N and needs none); a pole in the range stays UNDEFINED beside a letter group.
 | `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
 | `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
 | `casim sum "K^3" K 1 N RAD` | `0.25×N^2+0.5×N^3+0.25×N^4` |
@@ -52,7 +58,27 @@
 | `casim sum "K÷K" K 0 5 RAD` | `UNDEFINED` |
 | `casim sum "1÷K" K 1 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "1÷K^2" K 1 ∞ RAD` | `NO_CLOSED_FORM` |
-| `casim sum "X^K" K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum "X^K" K 0 N RAD` | `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` |
+| `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
+| `casim sum "X^(2×K)" K 0 N RAD` | `-1÷(X^2-1)+(X^2)^(N+1)÷(X^2-1); X≠-1; X≠1` |
+| `casim sum "X^(2×K)" K 0 ∞ RAD` | `-1÷(X^2-1); ABS(X)<1` |
+| `casim sum "X^(-K)" K 1 N RAD` | `1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1` |
+| `casim sum "X^(-K)" K 1 ∞ RAD` | `1÷(X-1); ABS(X)>1` |
+| `casim sum "K×X^K" K 1 N RAD` | `N×X^(N+1)÷(X-1)-X÷(X-1)+X^(N+1)÷(X-1)+0.5×X^(N+2)÷(X-0.5×X^2-0.5)-0.5×X^2÷(X-0.5×X^2-0.5); X≠1` |
+| `casim sum "(-X)^K" K 0 N RAD` | `1÷(X+1)-(-X)^(N+1)÷(X+1); X≠-1` |
+| `casim sum "(X÷2)^K" K 0 ∞ RAD` | `-2÷(X-2); ABS(X)<2` |
+| `casim sum "(2×X)^K" K 0 N RAD` | `-0.5÷(X-0.5)+0.5×(2×X)^(N+1)÷(X-0.5); X≠0.5` |
+| `casim sum "(-2×X^2)^K" K 0 N RAD` | `0.5÷(X^2+0.5)-0.5×(-2×X^2)^(N+1)÷(X^2+0.5)` |
+| `casim sum "X^K+Y^K" K 0 N RAD` | `-1÷(X-1)-1÷(Y-1)+X^(N+1)÷(X-1)+Y^(N+1)÷(Y-1); X≠1; Y≠1` |
+| `casim sum "X^K+X^(2×K)" K 0 N RAD` | `-1÷(X-1)-1÷(X^2-1)+X^(N+1)÷(X-1)+(X^2)^(N+1)÷(X^2-1); X≠-1; X≠1` |
+| `casim sum "X^K+2^K" K 0 ∞ RAD` | `∞; ABS(X)<1` |
+| `casim sum "X^K+(-2)^K" K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum "X^K+(1÷2)^K" K 0 ∞ RAD` | `-1÷(X-1)+2; ABS(X)<1` |
+| `casim sum "EXP(X)^K" K 0 N RAD` | `-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1` |
+| `casim sum "EXP(X×K)" K 0 ∞ RAD` | `NO_CLOSED_FORM` |
+| `casim sum "X^K" K 1 3 RAD` | `X+X^2+X^3` |
+| `casim sum "X^K" K 1 64 RAD` | `-X÷(X-1)+X^65÷(X-1); X≠1` |
+| `casim sum "K^2×X^K" K 0 N RAD` | `TOO_LONG` |
 | `casim sum "(-2)^(K÷2)" K 0 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "SIN(K)" K 1 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "K÷K" K 0 N RAD` | `NO_CLOSED_FORM` |
@@ -92,3 +118,10 @@
 | `casim sum "(SQRT(6)-SQRT(2)×SQRT(3))×(-1)^K" K 0 ∞ RAD` | `UNDECIDED` |
 | `casim sum "i^K" K 0 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "EXP(K+(SIN(1)+SIN(2)+SIN(3)+SIN(4)+SIN(5)+SIN(6)+SIN(7)+SIN(8))^2)" K 0 N RAD` | `NO_ROOM` |
+| `casim sum "K×X^(K-1)" K 1 ∞ RAD` | `X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5); X≠0; ABS(X)<1` |
+| `casim sum "K×X^(K-1)" K 1 N RAD` | `-N×X^(N+1)÷(X-X^2)+X÷(X-X^2)-0.5×X÷(X-0.5×X^2-0.5)-X^(N+1)÷(X-X^2)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠0; X≠1` |
+| `casim sum "X^(2×K-1)" K 1 N RAD` | `-X÷(X^2-1)-(X^2)^(N+1)÷(X-X^3); X≠-1; X≠0; X≠1` |
+| `casim sum "X^(-K)" K 0 N RAD` | `-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1` |
+| `casim sum "X^(K-1)" K 1 N RAD` | `-1÷(X-1)+X^N÷(X-1); X≠1` |
+| `casim sum "Y^K×X^(K-1)" K 1 N RAD` | `-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1` |
+| `casim sum "X^K+1÷(K×(K+1))" K 0 ∞ RAD` | `UNDEFINED` |
