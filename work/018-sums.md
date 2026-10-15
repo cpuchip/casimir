@@ -221,3 +221,55 @@ condition, so the shape is written here first, for abacus to rule on before it i
   off; the empty sum's 0 dropped; rule 7's 64 as 65.
 - **The device:** no existing frame moves, the S3 bench is byte-identical, and every earlier hidden set is rerun.
 - **Size:** about a day of host work. Stop and report at twice that.
+
+### Accepted (abacus, 2026-10-15), at 65369cb
+
+**The hidden set** (abacus's h018, 2,000 sums written from this doc before the build): POLY 353, GEOM 348, TELE 321
+(typed multiplied out, factored, or as a sum of fractions; m 1 or 2; some half-integer shifts), CONV 143, DIVP 121,
+DIVN 45, OSC 85, POLE 88, NOPOLE 55, NONTEL 36, DIRECT 111, FAR 32, LETTER 55 (rule 4b's rows), LETC 27, LETINF 9,
+HILET 8, EMPTY 38, BADARG 43, SYMLO 79, SYMLOR 3. The judge works apart from sum-values.py: the summand added term by
+term at 60 digits near lo; at N = 10^6+7, sympy's closed form or mpmath's nsum from lo less its nsum from N+1 (60 and
+80 digits must agree); at ∞, nsum or sympy cross-checked with nsum; a LETTER answer at probe values its rows admit.
+
+**Held twice:**
+- **At 18e3bb7** (#8460): at 64 KB, 67 typed telescoping sums and S1581 said NO_CLOSED_FORM. partfrac split all 68
+  right, and the same sums typed as the split answered. 5b6d8c0 fixed it (sm_put merges the terms over one divisor).
+- **At 5bd6623** (#8494): 5 sums typed as separate fractions lost their answers to NO_ROOM: S0421 and S1780 at
+  8,800 B; S0682, S0863 and S1209 at 8,192 B. sm_put left each compared divisor in the arena. 65369cb gives the room
+  back after each comparison.
+
+**At 65369cb,** built from a clean clone, `make check` green (494 checks, 328 value checks):
+
+| arena | answers | wrong values |
+|---|---|---|
+| 8,192 B | 1,581 | 0 |
+| 8,800 B (the default) | 1,603 | 0 |
+| 65,536 B | 1,667 | 0 |
+
+- **The only judge failure** at any arena is the hidden set's own note on S0262: Σ A+K to ∞ is ∞ for every A, since
+  K's group dominates. The generator meant the letter to sit on the dominant group.
+- **Against 5bd6623, row by row:** h012, h013, h014, h015, h015b, h017 with its steps, and the ABS set, at every arena
+  each was run at, are byte-identical. In h018, 12 rows move, every one from NO_ROOM to an answer: 7 at 8,192 B and 5
+  at 8,800 B. Each equals its 64 KB answer and each is judged right (S1581 is UNDEFINED, its pole at K = 0). The five
+  held sums give 18e3bb7's answers again. Three planted wrong answers among those rows were each refused.
+- **Across arenas:** every move from 8,192 to 8,800 to 65,536 B starts at NO_ROOM, except S1848 (below).
+- **NO_CLOSED_FORM:** 71 at each arena, every one a FAR, NONTEL or SYMLOR row, where rules 6 and 7 say so.
+- **Golden:** 65369cb changes no line. From 18e3bb7 to 5bd6623, checked by input and occurrence, not by diff, the
+  only lines that move are the 10 in tests/golden/moved/arena-8800.txt (each now equal to its 64 KB twin) and the 9 in
+  sum-shift.txt. The corpus gains its 325 sum lines (it had none), loses none, and keeps its order.
+- **The firmware's margins** (the least arena each of the firmware's 048 integrals answers in, by bisection) are
+  a4dd723's: X×ATAN(X) 8,592 B in RAD and 8,800 B in DEG and GRAD; SIN(X)+1÷(X^2−1) 8,760 B in RAD and 8,776 B in DEG
+  and GRAD; 9,592 B and 10,776 B for the two longer rows. DEG and GRAD's X×ATAN(X) answers at 8,800 B exactly.
+- **CI** 7/7 on 65369cb (run 38777260930, read by abacus). **Mutants** (casim): 292 of 292, with sum-put-room-kept
+  new. **Frames:** sm_put 96 → 112 on the host. The S3 size and the device bench were not rerun for this 8-line
+  change; at 5bd6623 (casim #8486): DEVICE PASS, 1,290 cases, the gate unchanged at 11,712 of 12,288, S3 text 213,963.
+
+**Named, not held:**
+- **S1848**, a telescoping sum from 3 to 33, says TOO_LONG at 8,192 and 8,800 B, and at 64 KB answers
+  2244737104152012556÷4477394947651250625, 38 bytes. TOO_LONG says the answer passes the cap, and this one doesn't. It is
+  a refusal, not a wrong value. Asked of casim.
+- **Y^K×X^(K−1)** still shows X≠0 (casim's limit, #8486).
+- **CAS 013, found in this rerun:** with 32e5ddd (a p=0 factor is a hole only at a real root), 26 rational-set rows
+  that cancel a factor with no real root say CAN'T INTEGRATE even at 64 KB. K00130 is
+  (24×X^3+43×X^2+61×X+7)÷((3×X^2+5×X+7)×(X+1)) = (8×X+1)÷(X+1), whose antiderivative is 8×X−7×LN(ABS(X+1)). That
+  refusal is CAS 013 rule 8's own. casim's amendment (#8502) is its own unit.
