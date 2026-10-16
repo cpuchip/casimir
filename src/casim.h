@@ -57,15 +57,21 @@ typedef enum {
     CASIM_UNDECIDED,            /* CAS 015, limit: the walk couldn't decide (past 12 L'Hôpital steps, an ∞-∞ the
                                    rewrites don't resolve, a damped oscillation, a form not covered). Never "no limit"
                                    (that is UNDEFINED). CAS 016, taylor: an SGN(0) it can't decide; out is "" */
-    CASIM_NO_CLOSED_FORM        /* CAS 018, sum: no closed form this unit finds (a class that doesn't telescope, a
+    CASIM_NO_CLOSED_FORM,       /* CAS 018, sum: no closed form this unit finds (a class that doesn't telescope, a
                                    function of var, a letter in a ratio), and the bounds aren't integers at most 64
                                    apart; out is "" */
+    CASIM_DECIMAL_FORM          /* CAS 019 rule 5: an answer, printed by CAS 002's rule (as →DEC), because its
+                                   fractions passed cap or the arena (casim_run only); out holds it */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */
 #define CASIM_DEG 0
 #define CASIM_RAD 1
 #define CASIM_GRAD 2
+/* CAS 019 rule 6, OR'd into any call's angle: every number prints by CAS 002's rule (a decimal when it terminates),
+   the decimal one key away (→DEC). Without it a number casim makes prints as a fraction, and one from a typed
+   decimal by CAS 002's rule. A mode bit, not a casim_req field, so no initializer changes. */
+#define CASIM_PRINT_DECIMAL 16
 
 /* d/d(var) of eqn: an expression gives its derivative, L=R gives L'=R' (unit CAS 001). var is 0-25
    for A-Z. The text written to out (cap bytes, NUL included) is valid in the core's grammar. */

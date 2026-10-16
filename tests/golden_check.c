@@ -25,7 +25,7 @@ static const char *const OPS[] = {"derive", "simplify", "expand", "collect", "su
                                   "defint", "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit", "sum"};
 static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
                                        "NOT_POLYNOMIAL", "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED",
-                                       "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM"};
+                                       "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM", "DECIMAL_FORM"};
 #define COUNT(a) ((int)(sizeof a / sizeof a[0]))
 
 static _Alignas(8) unsigned char arena[ARENA];     /* aligned, as tests/golden_log.c logs the arena */

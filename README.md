@@ -111,7 +111,7 @@ gzipped), most of it the decimal library's tables.
 - An equation slot on the calculator is 191 bytes. Every operation but derive and simplify stops at 191 bytes with
   TOO_LONG.
 - Polynomials have degree ≤ 12 and coefficients ≤ 10^7. Numbers are exact rationals below 2^62.
-- Nesting deeper than 44 levels is NO_ROOM, which bounds the stack: at most 11,328 bytes on the ESP32-S3, plus 384
+- Nesting deeper than 44 levels is NO_ROOM, which bounds the stack: at most 11,360 bytes on the ESP32-S3, plus 384
   for interrupts (two 192-byte frames; the bench has measured up to 272 bytes over the masked reading). Size a task
   for 12 KB.
 - Built and tested with gcc and clang on Linux, emscripten, and ESP-IDF 5.4 on the ESP32-S3. macOS and MSVC are
@@ -147,8 +147,8 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 298 deliberate faults, each of which the tests
-  must catch; `make test` catches all 298. After the arena move to 8,800 B, two faults survived, one in the run of
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 328 deliberate faults, each of which the tests
+  must catch; `make test` catches all 328. After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
   new arena, and both are caught again. Each mutant's copy

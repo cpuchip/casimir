@@ -27,8 +27,8 @@ I0018 | integrate | A×X^2+B | X | RAD | 35 | A×X^3÷3+B×X
 I0019 | integrate | 3×COS(X)-2÷X | X | RAD | 35 | 3×SIN(X)-2×LN(ABS(X))
 I0020 | integrate | X^2^3 | X | RAD | STU | X^9÷9
 I0021 | integrate | X^2^3 | X | RAD | 35 | X^7÷7
-I0022 | integrate | X×LN(X) | X | RAD | 35 | -0.25×X^2+0.5×X^2×LN(X)
-I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | 0.5×EXP(X^2)
+I0022 | integrate | X×LN(X) | X | RAD | 35 | -X^2÷4+X^2×LN(X)÷2
+I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | EXP(X^2)÷2
 I0024 | integrate | 1÷(X^2-1) | X | RAD | 35 | -LN(ABS(X+1))÷2+LN(ABS(X-1))÷2
 I0025 | integrate | SIN(X)^2 | X | RAD | 35 | NOT_INTEGRABLE
 I0026 | integrate | X^2÷X | X | RAD | 35 | NOT_INTEGRABLE

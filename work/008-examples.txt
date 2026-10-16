@@ -3,23 +3,23 @@
 # cas-pi-form (2026-10-10) moved E0022 from 0.25×π: a rational multiple of π prints as a fraction.
 # CAS 016 (2026-10-13) moved E0033 from TAN(90): a pole is UNDEFINED in every op (work/016's rule 1).
 # ID | simplify | text | angle | model | the answer, or the status
-E0001 | simplify | SIN(π÷6) | RAD | 35 | 0.5
-E0002 | simplify | COS(π÷4) | RAD | 35 | 0.5×SQRT(2)
-E0003 | simplify | SIN(π÷3) | RAD | 35 | 0.5×SQRT(3)
+E0001 | simplify | SIN(π÷6) | RAD | 35 | 1÷2
+E0002 | simplify | COS(π÷4) | RAD | 35 | SQRT(2)÷2
+E0003 | simplify | SIN(π÷3) | RAD | 35 | SQRT(3)÷2
 E0004 | simplify | COS(π÷2) | RAD | 35 | 0
-E0005 | simplify | COS(2×π÷3) | RAD | 35 | -0.5
-E0006 | simplify | SIN(5×π÷4) | RAD | 35 | -0.5×SQRT(2)
+E0005 | simplify | COS(2×π÷3) | RAD | 35 | -1÷2
+E0006 | simplify | SIN(5×π÷4) | RAD | 35 | -SQRT(2)÷2
 E0007 | simplify | COS(π) | RAD | 35 | -1
-E0008 | simplify | SIN(-π÷6) | RAD | 35 | -0.5
+E0008 | simplify | SIN(-π÷6) | RAD | 35 | -1÷2
 E0009 | simplify | TAN(π÷6) | RAD | 35 | SQRT(3)÷3
 E0010 | simplify | TAN(π÷4) | RAD | 35 | 1
 E0011 | simplify | TAN(2×π÷3) | RAD | 35 | -SQRT(3)
-E0012 | simplify | SIN(30) | DEG | 35 | 0.5
-E0013 | simplify | COS(135) | DEG | 35 | -0.5×SQRT(2)
+E0012 | simplify | SIN(30) | DEG | 35 | 1÷2
+E0013 | simplify | COS(135) | DEG | 35 | -SQRT(2)÷2
 E0014 | simplify | TAN(-60) | DEG | 35 | -SQRT(3)
 E0015 | simplify | COS(360) | DEG | 35 | 1
-E0016 | simplify | SIN(50) | GRAD | 35 | 0.5×SQRT(2)
-E0017 | simplify | COS(100÷3) | GRAD | 35 | 0.5×SQRT(3)
+E0016 | simplify | SIN(50) | GRAD | 35 | SQRT(2)÷2
+E0017 | simplify | COS(100÷3) | GRAD | 35 | SQRT(3)÷2
 E0018 | simplify | SIN(100) | GRAD | 35 | 1
 E0019 | simplify | ASIN(0.5) | RAD | 35 | π÷6
 E0020 | simplify | ASIN(0.5) | DEG | 35 | 30
@@ -32,7 +32,7 @@ E0026 | simplify | EXP(0) | RAD | 35 | 1
 E0027 | simplify | EXP(3×LN(2)) | RAD | 35 | 8
 E0028 | simplify | 4^(3÷2) | RAD | 35 | 8
 E0029 | simplify | 0.25^1.5 | RAD | 35 | 0.125
-E0030 | simplify | (27÷8)^(2÷3) | RAD | 35 | 2.25
+E0030 | simplify | (27÷8)^(2÷3) | RAD | 35 | 9÷4
 E0031 | simplify | SQRT(8) | RAD | 35 | SQRT(8)
 E0032 | simplify | SIN(π÷12) | RAD | 35 | SIN(π÷12)
 E0033 | simplify | TAN(90) | DEG | 35 | UNDEFINED

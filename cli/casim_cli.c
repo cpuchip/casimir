@@ -24,6 +24,8 @@
  *                                    rule and the text, tab-separated
  *   --arena N                        the arena in bytes (default 8800, the calculator's: Michael, cas-arena-8800)
  *   --min-arena                      also print the smallest arena that gives the same result
+ *   --decimal                        every number by CAS 002's rule, the calculator's →DEC (CAS 019 rule 6); an
+ *                                    answer printed so because its fractions didn't fit is "DECIMAL_FORM", then it
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
  *                                    the calculator's equation slot, which derive and simplify keep as
  *                                    the caller's cap (CAS 004, soroban #4831)
@@ -47,7 +49,7 @@ enum { OP_DERIVE = CASIM_DERIVE, OP_SIMPLIFY = CASIM_SIMPLIFY, OP_EXPAND = CASIM
        OP_PARTFRAC = CASIM_PARTFRAC, OP_TAYLOR = CASIM_TAYLOR, OP_LIMIT = CASIM_LIMIT,
        OP_SUM = CASIM_SUM };
 
-static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35;
+static int model = CASIM_MODEL_35, repl_model = CASIM_MODEL_35, print_dec = 0;
 static size_t out_cap = OUT;
 
 /* The calculator's own call (casim_run), with the texts' models. */
@@ -55,7 +57,7 @@ static const char *repl2;
 
 static casim_status run(int op, const char *text, int var, const char *repl, int angle, char *out, size_t arena_cap)
 {
-    casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle, repl2};
+    casim_req rq = {(casim_op)op, text, model, var, repl, repl_model, angle | (print_dec && angle >= 0 ? CASIM_PRINT_DECIMAL : 0), repl2};
     return casim_run(&rq, out, out_cap, arena, arena_cap);
 }
 
@@ -63,7 +65,7 @@ static casim_status run(int op, const char *text, int var, const char *repl, int
    walk it; partfrac's PARTIAL on every page is printed once, after them */
 static casim_status steps(int op, const char *text, int var, int angle, size_t arena_cap, int flags, int tsv)
 {
-    casim_req rq = {(casim_op)op, text, model, var, NULL, 0, angle, NULL};
+    casim_req rq = {(casim_op)op, text, model, var, NULL, 0, angle | (print_dec && angle >= 0 ? CASIM_PRINT_DECIMAL : 0), NULL};
     casim_step_info info;
     char out[OUT];
     casim_status st = casim_step(&rq, -1, flags, &info, out, out_cap, arena, arena_cap);
@@ -98,6 +100,7 @@ int main(int argc, char **argv)
     for (; i < argc && strncmp(argv[i], "--", 2) == 0; i++) {
         if (strcmp(argv[i], "--min-arena") == 0) min_arena = 1;
         else if (strcmp(argv[i], "--one-line") == 0) one_line = 1;
+        else if (strcmp(argv[i], "--decimal") == 0) print_dec = 1;
         else if (strcmp(argv[i], "--tsv") == 0) tsv = 1;
         else if (strcmp(argv[i], "--arena") == 0 && i + 1 < argc) cap = strtoul(argv[++i], NULL, 10);
         else if (strcmp(argv[i], "--cap") == 0 && i + 1 < argc) {
@@ -167,6 +170,7 @@ int main(int argc, char **argv)
     case CASIM_IMPROPER: printf("IMPROPER\n"); break;
     case CASIM_UNDECIDED: printf("UNDECIDED\n"); break;
     case CASIM_NO_CLOSED_FORM: printf("NO_CLOSED_FORM\n"); break;
+    case CASIM_DECIMAL_FORM: printf("DECIMAL_FORM\n%s\n", out); break;
     }
     if (min_arena && st == CASIM_OK) {
         /* the smallest arena giving OK, by bisection over [0, cap] */
@@ -203,6 +207,6 @@ usage:
                     "       casim [--arena N] [--min-arena] taylor \"<text>\" X POINT N RAD|DEG|GRAD\n"
                     "       casim [--arena N] [--min-arena] limit \"<text>\" X POINT +|-|'' RAD|DEG|GRAD (POINT may be ∞, -∞)\n"
                     "       casim [--arena N] [--min-arena] sum \"<text>\" K LO HI RAD|DEG|GRAD (HI may be ∞)\n"
-                    "       (every op takes --model and --cap N; subst also --repl-model; defaults 35, 65536)\n");
+                    "       (every op takes --model, --cap N and --decimal; subst also --repl-model; defaults 35, 65536)\n");
     return 2;
 }

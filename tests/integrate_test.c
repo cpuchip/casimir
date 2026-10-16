@@ -231,7 +231,7 @@ static void outside(void)
     is("EXP(X)×SIN(X)", CASIM_RAD, "EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2");          /* the cycle */
     is("LN(X)^2", CASIM_RAD, "X×LN(X)^2-2×X×LN(X)+2×X");
     is("X×SIN(X)", CASIM_RAD, "SIN(X)-X×COS(X)");
-    is("X^3×SQRT(X^2+1)", CASIM_RAD, "(X^2+1)^2.5÷5-(X^2+1)^1.5÷3");          /* back-substitution */
+    is("X^3×SQRT(X^2+1)", CASIM_RAD, "(X^2+1)^(5÷2)÷5-(X^2+1)^(3÷2)÷3");          /* back-substitution */
     refused("X^2÷X×EXP(X)", CASIM_NOT_INTEGRABLE);          /* CAS 017 rule 2: canon would cancel the hole */
     refused("SIN(X^2)", CASIM_NOT_INTEGRABLE);
     refused("1÷(X^2-2)", CASIM_NOT_INTEGRABLE);             /* D > 0, not a square (CAS 013 rule 5) */

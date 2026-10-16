@@ -61,16 +61,16 @@ static void exact(void)
     is(CASIM_SIMPLIFY, "X^Y^Z", CASIM_MODEL_STU, "X^(Y^Z)");
     is(CASIM_SIMPLIFY, "X^Y^Z", CASIM_MODEL_35, "(X^Y)^Z");
     /* a minus starting an exponent: STU covers the chain after it, 35 binds it to the next operand */
-    is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_STU, "0.001953125");   /* 2^-9 */
-    is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_35, "0.015625");       /* (2^-3)^2 */
-    is(CASIM_SIMPLIFY, "2^-1^2", CASIM_MODEL_STU, "0.5");
+    is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_STU, "1÷512");   /* 2^-9 */
+    is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_35, "1÷64");       /* (2^-3)^2 */
+    is(CASIM_SIMPLIFY, "2^-1^2", CASIM_MODEL_STU, "1÷2");
     is(CASIM_SIMPLIFY, "-2^3^2", CASIM_MODEL_STU, "-512");
     is(CASIM_SIMPLIFY, "2^1^2^3", CASIM_MODEL_STU, "2");
     is(CASIM_SIMPLIFY, "2^1^2^3", CASIM_MODEL_35, "64");
     /* precedence otherwise unchanged (unit 031 rule 4) */
     is(CASIM_SIMPLIFY, "-2^2", CASIM_MODEL_STU, "-4");
-    is(CASIM_SIMPLIFY, "2^-2", CASIM_MODEL_STU, "0.25");
-    is(CASIM_SIMPLIFY, "2^-3×4", CASIM_MODEL_STU, "0.5");
+    is(CASIM_SIMPLIFY, "2^-2", CASIM_MODEL_STU, "1÷4");
+    is(CASIM_SIMPLIFY, "2^-3×4", CASIM_MODEL_STU, "1÷2");
     is(CASIM_SIMPLIFY, "X^2×Y^3^2", CASIM_MODEL_STU, "X^2×Y^9");
     is(CASIM_EXPAND, "(X+1)^2^1", CASIM_MODEL_STU, "2×X+X^2+1");
     is(CASIM_COLLECT, "X^2^2+X", CASIM_MODEL_STU, "X^4+X");

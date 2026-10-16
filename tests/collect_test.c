@@ -36,22 +36,26 @@ static bool power_of_x(const char *t, long *k, char *c)
     const char *x = NULL;
     for (const char *p = t; *p; p++)
         if (*p == 'X' && (p == t || strncmp(p - 2, "×", 2) == 0)) x = p;
+    const char *end;                    /* after var^k: nothing, or (CAS 019) the coefficient's ÷ part: X÷4 */
     if (!x) return false;
-    if (strcmp(x, "X") == 0) *k = 1;
+    if (strcmp(x, "X") == 0 || strncmp(x, "X÷", 3) == 0) *k = 1, end = x + 1;
     else if (x[1] == '^' && x[2] == '(' && x[3] == '-') {
         char *e;
         *k = -strtol(x + 4, &e, 10);
         if (strcmp(e, ")") != 0) return false;
+        end = e + 1;
     } else if (x[1] == '^') {
         char *e;
         *k = strtol(x + 2, &e, 10);
-        if (*e) return false;
+        if (*e && strncmp(e, "÷", 2) != 0) return false;
+        end = e;
     } else return false;
     if (x == t) strcpy(c, "1");
     else {
         memcpy(c, t, (size_t)(x - 2 - t));
         c[x - 2 - t] = '\0';
     }
+    strcat(c, end);
     (void)n;
     return true;
 }

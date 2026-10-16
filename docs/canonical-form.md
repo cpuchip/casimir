@@ -57,9 +57,12 @@ made CAS 001's derivatives 15 to 45 times slower (D0001: 238 µs to 10.4 ms), an
 time in a profile (Euclid on software decimal: gcd 18%, fmod 10%, isZero 13%). With 64-bit integers the
 same derivative takes 0.9 ms, and a 191-byte equation simplifies in at most 2.1 ms.
 
-Printed: a rational whose decimal expansion terminates within 18 digits prints as that decimal (0.3);
-any other prints as a quotient (2÷3). One exception since cas-pi-form: a product with π in its numerator prints its
-coefficient as a quotient (π÷4, below). A number is folded into a whole power only (0.25^1.5 stays: exact
+Printed (CAS 019): a rational casim makes prints as a quotient, folded into its term (X^4÷4, SQRT(2)÷2); a whole one
+as an integer. A rational read from a typed decimal (0.5, 1E-3), or made from one, carries a mark in its node (K_NUM's
+id, which compare ignores) and prints by CAS 002's rule: as its decimal when that terminates within 18 digits (0.3),
+else as a quotient (2÷3). With CASIM_PRINT_DECIMAL (→DEC) every rational prints by CAS 002's rule. One exception since
+cas-pi-form: a product with π in its numerator prints its coefficient as a quotient (π÷4, below). The mark crosses
+casim's own texts as a trailing point (2., 10×X÷3.), which casim_run takes out of what it returns. A number is folded into a whole power only (0.25^1.5 stays: exact
 roots are not part of CAS 002).
 
 **Numbers that do not fold together** (a step past 2^62) are handled all or nothing: when any step of
@@ -110,7 +113,8 @@ source, abacus #6321), for a reason not yet found. So rc5's bench measures every
 frames, 384 bytes, or the excess measured if larger, and the guard is 44: 11,328 + 384 = 11,712 of 12,288, 576 to
 spare (abacus #6321; the rc5 bench: worst masked 11,328, STU's X^X^… of 44 levels, refused at the guard; the excess
 up to 272 bytes over 270 unmasked readings of 10 cases at 27 phases). The calculator runs Casimir on a 32 KB task (soroban #6236), so the 12 KB is the library's
-promise to its other users. The parser
+promise to its other users. CAS 019 moved the worst case to 11,360 (two printer frames grew 16 bytes each): 11,744 of
+12,288, 544 to spare. The parser
 is a loop and a left chain
 of powers prints in one, so neither counts. The constructors (sum, product, power) are not counted: they
 recurse one level on their own, under a walk that is.
@@ -385,7 +389,7 @@ answer. An equation is BAD_ARG.
 - anything else is NOT_INTEGRABLE: by parts (X×LN(X), X×EXP(X)), a substitution that is not linear
   (X×EXP(X^2), SIN(X^2)), SIN(X)^2, ABS(X), 2^X, and a quotient that would only become a form by simplifying
   (X^2÷X: as typed). The table reads the integrand as typed; since CAS 013 a rational integrand it refuses is
-  integrated through partfrac (1÷(X^2−1) is 0.5×LN(ABS(X−1))−0.5×LN(ABS(X+1))), except where something cancels, which
+  integrated through partfrac (1÷(X^2−1) is LN(ABS(X−1))÷2−LN(ABS(X+1))÷2), except where something cancels, which
   stays refused (X^2÷X, CAS 006's guarantee: no antiderivative defined where the integrand isn't).
 
 **Every answer is checked exactly before it prints:** F is differentiated by casim's derive in the angle mode,
@@ -471,7 +475,7 @@ constructors evaluate the exact constants a student expects, so every operation 
 **One table, three angle modes.** A constant argument is first turned into a rational multiple r of π: in RAD it
 must be 0, π or q×π; in DEG a number d gives r = d/180, in GRAD r = d/200 (π inside a DEG or GRAD argument is just a
 number of degrees). When 12r is an integer divisible by 2 or 3 (a multiple of π/6 or π/4), the value is
-s × p/q × SQRT(k) from sin(nπ/12) (COS is n + 6) or tan(nπ/12), printed in 002's form: 0.5×SQRT(2), SQRT(3)÷3, -1.
+s × p/q × SQRT(k) from sin(nπ/12) (COS is n + 6) or tan(nπ/12), printed in 002's form (CAS 019: a fraction): SQRT(2)÷2, SQRT(3)÷3, -1.
 Odd multiples of π/12, TAN at its poles, and any argument that isn't constant stay as written.
 
 **The inverses** return the principal angle in the mode: ASIN and ATAN in [-π/2, π/2], ACOS in [0, π]. ATAN(1) is
@@ -527,7 +531,7 @@ is 1 or −1. So F at a bound prints LN(3), not LN(ABS(3)). Text changes only wh
 is −π+4, X×ABS(COS(2)) is −X×COS(2) in RAD. (SGN typed is refused by the parser; it occurs only inside integrate's
 check.)
 
-**Not reduced, by the unit:** LN(6)−LN(2) stays, as does LN(0.5×SQRT(2)), and SQRT(8)'s square factor stays
+**Not reduced, by the unit:** LN(6)−LN(2) stays, as does LN(SQRT(2)÷2), and SQRT(8)'s square factor stays
 (2×8^1.5÷9): all exact, and whether to reduce them is a casimir-v1 question.
 
 ## CAS 010: polynomial division, GCD and cancelling
@@ -568,11 +572,11 @@ every op's answer).
 
 - **Fractions of π.** A product with π, or π to a whole positive power, among its numerator's factors prints its
   rational coefficient as p÷q, never as a decimal: π÷4, -27×π÷8+27, π^2÷32, π×COS(X)÷200 (GRAD's derivative factor
-  now reads like DEG's π×COS(X)÷180). π under a ÷ or a root keeps 002's decimal: 0.5÷π, 0.5×SQRT(π), 1.5÷π. Only the
+  now reads like DEG's π×COS(X)÷180). π under a ÷ or a root keeps 002's form, a typed decimal's decimal (0.5÷π) and since CAS 019 a made number's quotient (1÷2÷π, SQRT(π)÷2). Only the
   printer changes (`pi_frac`); the tree is the same, and π÷4 reads back as it.
 - **Logs of positive numbers combine in a sum.** Terms k×LN(a), a a positive rational, whose coefficients have one
   denominator in lowest terms are one term: Σ k×LN(a) = g×LN(Π a^(k/g)), g the coefficients' gcd (each k/g whole).
-  LN(6)−LN(2) is LN(3), 3×LN(2)−LN(4) is LN(2), 2×LN(2)+2×LN(3) is 2×LN(6), LN(2)÷2+LN(3)÷2 is 0.5×LN(6). LOG
+  LN(6)−LN(2) is LN(3), 3×LN(2)−LN(4) is LN(2), 2×LN(2)+2×LN(3) is 2×LN(6), LN(2)÷2+LN(3)÷2 is LN(6)÷2. LOG
   likewise, apart from LN. Terms whose coefficients have different denominators form separate groups: LN(8)+LN(4)÷3
   and −2×LN(0.25)+LN(1.5)÷3 stay as they are (one log of 2048 or 6144 is not what a student expects; abacus #6077).
   A group past 2^62 stays apart.

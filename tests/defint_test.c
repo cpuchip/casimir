@@ -94,20 +94,20 @@ static void exact(void)
     is("1÷X", "1", "3", CASIM_RAD, "LN(3)");
     is("1÷X", "-3", "-1", CASIM_RAD, "-LN(3)");
     is("SQRT(X)", "0", "4", CASIM_RAD, "16÷3");
-    is("EXP(2×X)", "0", "LN(2)", CASIM_RAD, "1.5");
+    is("EXP(2×X)", "0", "LN(2)", CASIM_RAD, "3÷2");
     is("X^2", "0", "1", CASIM_RAD, "1÷3");
     is("X^2", "1", "0", CASIM_RAD, "-1÷3");
     is("X^2", "2", "2", CASIM_RAD, "0");
     is("SQRT(X)", "0", "0", CASIM_RAD, "0");                         /* rule 6a: an allowed edge, lo = hi */
-    is("TAN(X)", "0", "π÷4", CASIM_RAD, "-LN(0.5×SQRT(2))");
+    is("TAN(X)", "0", "π÷4", CASIM_RAD, "-LN(SQRT(2)÷2)");
     is("A×X", "0", "2", CASIM_RAD, "2×A");
     is("COS(X)", "0", "π÷2", CASIM_RAD, "1");
     is("3×X^2+2×X+1", "-1", "2", CASIM_RAD, "15");
-    is("1÷(2×X+1)", "0", "1", CASIM_RAD, "0.5×LN(3)");
+    is("1÷(2×X+1)", "0", "1", CASIM_RAD, "LN(3)÷2");
     is("X^(1÷3)", "0", "8", CASIM_RAD, "12");
-    is("1÷X^2", "1", "2", CASIM_RAD, "0.5");
+    is("1÷X^2", "1", "2", CASIM_RAD, "1÷2");
     is("EXP(X)", "0", "1", CASIM_RAD, "EXP(1)-1");
-    is("SIN(2×X)", "0", "π÷4", CASIM_RAD, "0.5");
+    is("SIN(2×X)", "0", "π÷4", CASIM_RAD, "1÷2");
     is("TAN(X)", "120", "240", CASIM_DEG, "0");                     /* between the poles at 90 and 270, odd about 180 */
     is("SQRT(3×X-1)", "1÷3", "17÷3", CASIM_RAD, "128÷9");          /* the edge exactly at a rational endpoint: allowed (u = 16 at 17/3) */
 }

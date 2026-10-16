@@ -10,7 +10,7 @@ import measure  # noqa: E402
 
 ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
 STATUS = {"TOO_LONG": 3, "BAD_ARG": 4, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7, "NOT_INTEGRABLE": 8,
-          "PARTIAL": 9, "UNDEFINED": 10, "IMPROPER": 11, "UNDECIDED": 12, "NO_CLOSED_FORM": 13}
+          "PARTIAL": 9, "UNDEFINED": 10, "IMPROPER": 11, "UNDECIDED": 12, "NO_CLOSED_FORM": 13, "DECIMAL_FORM": 14}
 
 
 def c_str(s):
@@ -23,12 +23,13 @@ def main(path):
     for name, expr, var, angle, op, repl, model in measure.all_cases():
         args = measure.cli_args(expr, var, angle, op, repl, model)
         p = subprocess.run([measure.CLI, "--arena", "65536"] + args, stdout=subprocess.PIPE, text=True)
-        first = p.stdout.strip().split(" ")[0] if p.stdout.strip() else ""
+        first = p.stdout.strip().split("\n")[0].split(" ")[0] if p.stdout.strip() else ""
         status = 0 if p.returncode == 0 else STATUS.get(first)
         if status is None:
             print(f"skipped {name}: {p.stdout.strip()}")
             continue
-        want = p.stdout.rstrip("\n") if status == 0 else p.stdout.rstrip("\n")[8:] if status == 9 else ""   # PARTIAL: its text
+        want = (p.stdout.rstrip("\n") if status == 0 else p.stdout.rstrip("\n")[8:] if status == 9   # PARTIAL: its text
+                else p.stdout.rstrip("\n").split("\n", 1)[1] if status == 14 else "")                 # DECIMAL_FORM's answer
         if len(want.encode()) >= 16000:
             print(f"skipped {name}: its {len(want.encode())}-byte text exceeds the bench's buffer")
             continue

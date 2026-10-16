@@ -103,26 +103,80 @@ than 2 and 5. Michael's ruling keeps one exception: a number the user typed as a
    lines are newly TOO_LONG at cap 192 otherwise. One steps walk of 3,772 is newly TOO_LONG at cap 150, and its input
    has typed decimals.
 
-   **HELD for abacus and Michael: the three lost answers.** A student sees them. →DEC (rule 6) answers all three,
-   because its text and arena are today's. The options:
-   - **(A, my recommendation) casim falls back.** When a run prints fractions and ends TOO_LONG or NO_ROOM, casim
-     runs it again with rule 6's print, and the answer is today's if that fits. The fraction build then answers
-     wherever 4f24e3e did, and the oracle is that guarantee over the whole golden corpus at 8,800 B and cap 192. The
-     cost is about 50 B and a second run on every such refusal. The bench measures the worst of that second run
-     (an integrate search that runs out takes its time twice) before the build is pushed.
-   - **(B)** The firmware shows TOO_LONG or NO_ROOM, and the student presses →DEC.
-   - **(C)** Accept the three as the cost of the form.
+   **Ruled A (abacus #8560, provisional with Michael, who can switch to B): casim falls back, visibly.** When a
+   run prints fractions and ends TOO_LONG or NO_ROOM, casim_run runs it again with rule 6's print. If that answers, the
+   answer is today's text and the status is CASIM_DECIMAL_FORM (14), an answer the firmware can label (the word is
+   soroban's and Michael's), and the CLI prints a DECIMAL_FORM line before it. Nothing a student has today is lost:
+   at 8,800 B and cap 192 the build answers every golden input 4f24e3e answers. The three rows answer in today's form
+   as DECIMAL_FORM, and EXP(K×X) answers with fractions where today's text was TOO_LONG. Rejected: (B) the firmware
+   shows the refusal and the student presses →DEC; (C) accept the loss.
 6. **→DEC: the decimal one key away** (Michael's card; #8557 a). It is casim's: a print choice on the request.
-   - casim_req gains a last field, `int print` (0, as older initializers leave it, prints this unit's fractions;
-     CASIM_PRINT_DECIMAL treats every number as marked).
-   - casim_run and casim_step read it, so an answer and its steps pages both print today's form. The CLI gets
-     --decimal.
-   - The firmware's →DEC runs the same request again with the field set. The keys and the menu are Michael's.
+   - **As built, a mode bit, not a casim_req field:** `CASIM_PRINT_DECIMAL` (16) OR'd into any call's angle. A new
+     field would break every positional casim_req initializer under -Wextra -Werror (24 in this repository, and the
+     firmware's, the app's and the web build's). The angle is also what every do_* already passes to the calls
+     inside it, so the mode reaches them without a global (casim.h promises none): start() takes it out of the angle.
+   - casim_run, casim_step and every op read it, so an answer and its steps pages both print today's form. The CLI
+     gets --decimal.
+   - The firmware's →DEC runs the same request again with the bit set. The keys and the menu are Michael's.
    - It is exact: X^4÷4 becomes 0.25×X^4, and X^6÷6 stays X^6÷6, since 1÷6 has no exact decimal.
    - It is not a numeric evaluation. A 34-digit decimal per term would be the firmware's numeric eval of the answer,
      which is a different key and is not in this unit.
    - **Its oracle is exact:** every golden input, with print set, prints byte for byte what 4f24e3e prints, status
      included, at every arena and cap in the corpus. That also proves the mark costs today's form nothing.
+
+## As built (where the code differs from the reviewed text)
+
+- **Rule 3's list mark is one a typed term, not a mask per coefficient.** A mask beside pw's list would add an argument
+  to pw's recursion, and frames there are stack the device doesn't have. pw sets one mark while it reads (NM_PW in a
+  ctx byte that was padding), integrate clears it at each typed term (integ_checked), and every number the table makes
+  from a list takes it. So ∫(0.5×X+X^3)dX is still 0.25×X^2+X^4÷4. Within one typed term, a typed coefficient marks all
+  the term's numbers: ∫(X×(0.5+X^2))dX prints today's form.
+- **The rational path reads no tree,** so the integrand's text decides its list mark (text_marked): ∫0.5÷(X^2-1)dX is
+  0.25×LN(ABS(X-1))-0.25×LN(ABS(X+1)).
+- **A sum made primitive shares its first coefficient's mark with every term,** because the content is pulled out and
+  multiplied back: ∫3×(0.5×X+X^3)dX is 0.75×X^2+0.75×X^4. Rule 3's OR, at canon's content.
+- **Rule 4's texts:** the point rides on the number itself (2.) or on its quotient's divisor (10×X^2÷3.), so a 1 never
+  needs one. Every do_* prints the same way, whoever reads the text, and casim_run, casim_step and the public ops take
+  each point that follows a digit and precedes none out of what they return (unpoint). The planned out_t flag isn't
+  needed: the calls inside casim read texts through the same functions a user's call does.
+- **collect's fold** prints a group as one product with var^k last, so it also folds a symbolic denominator:
+  1÷COS(Y)^2×X^2 is now X^2÷COS(Y)^2 (8 golden lines with no typed decimal beyond the prototype's, all collect).
+- **Where the mark lives in canon:** fold, like-term runs (term_of), sum_div and a sum's content, mul's coefficient
+  (its sum factors out of line, prim_factor, so mul's own frame is smaller than before), power (out of line: pow_num,
+  power_sum), a run of like factors' number base (run_base), ABS, the log combiner (log_of, combine_logs), the exact
+  trig values and their inverses (xval_tree, exact_inverse), and pdiv's and cancel's quotients (poly_tree).
+- **A typed term's route decides its form.** The mark rides on arithmetic, so a number the route makes from
+  something else is a fraction: ∫X÷(X^2-0.5)dX goes by substitution, its ½ is the derivative's 2×X and the typed 0.5
+  goes into the log's argument, so it prints LN(ABS(2×X^2-1))÷2. ∫X÷(X^2-1.0÷9)dX splits over the rationals, takes
+  the rational path's list mark, and prints 0.5×LN(ABS(3×X-1))+0.5×LN(ABS(3×X+1)). Both are what the rules say; a
+  reader may still see two typed decimals and two forms.
+- **factor's content** is unchanged (1÷4×(2×X-1)×(2×X+1), put_content: "never a decimal"). It has the k÷d×u shape Q1
+  ruled out for collect, and it is CAS 007's own rule. Left to abacus.
+
+## Measured (the build, over 4f24e3e)
+
+- **S3 text:** 214,888 → 220,657 B (+5,769; 41,487 left of 262,144). Over the 2–3 KB estimate, under twice it. Of
+  that, 1,011 B buys back 32 B of every op's stack: rule 5's second run is a second inline call in casim_run, not a
+  call to a frame of its own.
+- **S3 frames that moved** (scripts/size-s3.sh, each with its reason):
+  - decimal_of 96 → 112 and put_signed 32 → 48: the printer leaves that take the mark (Acceptance names them);
+  - term_of 32 → 48: like terms carry their mark out;
+  - do_irational 256 → 272: the rational path's text mark (rule 3);
+  - do_simplify 144 → 160: rule 6's bit split off the angle;
+  - mul 160 → 144 and integ_poly_r 144 → 128: smaller (mul's sum factor out of line, prim_factor);
+  - put_exp lost its .isra clone, same 64;
+  - new frames: the mark helpers (any_marked, coef_mark, content_mark, pnum, pow_num, power_sum, prim_factor,
+    put_dec, run_base, text_marked, unpoint, cterm_product) and the ops' bodies behind the public calls
+    (integrate_, limit_, pdiv_, pgcd_, each where its public call's frame was);
+  - casim_run 64 and casim_step 240: unchanged. The first build had wrappers there (32 + 80 and 48 + 240): +48 B
+    on every op and page, gone.
+- **The device (XIAO S3, scripts/device.sh):** DEVICE PASS: 1,584 rows the same as the host's (379 op cases, the
+  chains, 281 paged walks; 1,570 at 4f24e3e), from the new golden. **The gate moved:** worst masked 11,328 → 11,360 (STU chain X^ 44 d), 11,744 of 12,288 with interrupts,
+  544 left (floor 256). The deepest page 10,896 → 10,944. The 32 B on the chain matches the two printer leaves
+  above (16 each), by the frame table; it isn't isolated by a measurement.
+- **Rule 5's cost:** a TOO_LONG or NO_ROOM answer runs twice. On the bench every such row about doubles: the
+  slowest, a subst that ends TOO_LONG, 309 → 617 ms; an integrate that ends TOO_LONG, 164 → 329 ms. No bench row
+  ends DECIMAL_FORM (the three golden ones are taylor in GRAD, not bench rows).
 
 ## What moves (measured, fractions everywhere, over 4f24e3e)
 

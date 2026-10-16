@@ -5,9 +5,9 @@
 # ID | op | text | second (repl, or -) | model | the answer, or the status
 P0001 | pdiv | X^2-1 | X-1 | 35 | X+1; 0
 P0002 | pdiv | X^3+2 | X-1 | 35 | X+X^2+1; 3
-P0003 | pdiv | X^2 | 2×X+1 | 35 | 0.5×X-0.25; 0.25
+P0003 | pdiv | X^2 | 2×X+1 | 35 | X÷2-1÷4; 1÷4
 P0004 | pdiv | X+1 | X^2+1 | 35 | 0; X+1
-P0005 | pdiv | X^2+2×X | 2 | 35 | X+0.5×X^2; 0
+P0005 | pdiv | X^2+2×X | 2 | 35 | X+X^2÷2; 0
 P0006 | pdiv | X^2+1 | 0 | 35 | UNDEFINED
 P0007 | pgcd | X^2-1 | X^2+X | 35 | X+1
 P0008 | pgcd | X^3-2×X^2+X-2 | X^3+3×X^2+X+3 | 35 | X^2+1
@@ -20,7 +20,7 @@ P0014 | cancel | (X-1)^2×(X+2)÷((X-1)×(X+3)) | - | 35 | (X+X^2-2)÷(X+3); X=1
 P0015 | cancel | (X^2-2)×X÷(X^2-2) | - | 35 | X; X^2-2=0
 P0016 | cancel | (X+1)÷(X+2) | - | 35 | (X+1)÷(X+2)
 P0017 | cancel | 2÷(X+1) | - | 35 | 2÷(X+1)
-P0018 | cancel | (X^2-1)÷(2×X+2) | - | 35 | 0.5×X-0.5; X=-1
+P0018 | cancel | (X^2-1)÷(2×X+2) | - | 35 | X÷2-1÷2; X=-1
 P0019 | pdiv | SIN(X) | X | 35 | NOT_POLYNOMIAL
 P0020 | pdiv | X^12 | 9999991×X+1 | 35 | NO_ROOM
 P0021 | pdiv | X^2^3 | X^3 | STU | X^5; 0

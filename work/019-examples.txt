@@ -1,0 +1,96 @@
+# CAS 019 fractions: visible examples (work/019-fractions.md), written by casim from the build and read again by
+# scripts/doc-examples.py (make check). The default arena is 8,800 B. A status line and its answer join with " / ".
+
+# - Rule 1: a number casim makes prints as a fraction, k×u÷d; whole numbers as before
+| `casim derive "X^3÷6" X RAD` | `X^2÷2` |
+| `casim integrate "X^3" X RAD` | `X^4÷4` |
+| `casim integrate "X×LN(X)" X RAD` | `-X^2÷4+X^2×LN(X)÷2` |
+| `casim integrate "1÷(X^2-1)" X RAD` | `LN(ABS(X-1))÷2-LN(ABS(X+1))÷2` |
+| `casim integrate "X×ATAN(X)" X RAD` | `-X÷2+ATAN(X)÷2+X^2×ATAN(X)÷2` |
+| `casim expand "(X+1÷2)^2" RAD` | `X+X^2+1÷4` |
+| `casim subst "X^2+X" X "1÷2" RAD` | `3÷4` |
+| `casim defint "X" X 0 1 RAD` | `1÷2` |
+| `casim pdiv "X^2+1" X "2×X+1" RAD` | `X÷2-1÷4; 5÷4` |
+| `casim cancel "(X^2-1)÷(2×X-2)" X RAD` | `X÷2+1÷2; X=1` |
+| `casim taylor "EXP(X)" X 0 4 RAD` | `1+X+X^2÷2+X^3÷6+X^4÷24` |
+| `casim taylor "X^3" X "1÷2" 3 RAD` | `1÷8+3×(X-1÷2)÷4+3×(X-1÷2)^2÷2+(X-1÷2)^3` |
+| `casim limit "SIN(X)÷(2×X)" X 0 "" RAD` | `1÷2` |
+| `casim sum "K" K 1 N RAD` | `N÷2+N^2÷2` |
+| `casim simplify "SIN(30)" DEG` | `1÷2` |
+| `casim simplify "1.1.2×X" RAD` | `3×X÷2` |
+
+# - Rule 1, collect (abacus #8557 Q1): a group's coefficient folds with its power of the variable
+| `casim collect "X÷4+X^2÷3+Y×X÷2" X RAD` | `X^2÷3+(Y÷2+1÷4)×X` |
+| `casim collect "(1+Y)×X÷4+0.5×X^2" X RAD` | `0.5×X^2+(Y÷4+1÷4)×X` |
+| `casim collect "X^2÷COS(Y)^2+X" X RAD` | `X^2÷COS(Y)^2+X` |
+
+# - Rule 2: a typed decimal keeps CAS 002's rule, a decimal when it ends, else a quotient
+| `casim derive "0.5×X^2" X RAD` | `X` |
+| `casim simplify "0.5÷3" RAD` | `1÷6` |
+| `casim simplify "2×0.5" RAD` | `1` |
+| `casim simplify "1E-12×X" RAD` | `1E-12×X` |
+| `casim simplify ".5×X" RAD` | `0.5×X` |
+| `casim simplify "2.×X÷4" RAD` | `0.5×X` |
+| `casim simplify "0.25×π" RAD` | `π÷4` |
+| `casim integrate "0.5×X" X RAD` | `0.25×X^2` |
+| `casim integrate "(X+1)^1.5" X RAD` | `0.4×(X+1)^2.5` |
+| `casim subst "X^2+X" X "0.5" RAD` | `0.75` |
+| `casim defint "X" X 0 1.0 RAD` | `0.5` |
+| `casim pdiv "0.5×X^2+1" X "2×X+1" RAD` | `0.25×X-0.125; 1.125` |
+| `casim cancel "(0.5×X^2-0.5)÷(X-1)" X RAD` | `0.5×X+0.5; X=1` |
+| `casim taylor "X^3" X 0.5 3 RAD` | `0.125+0.75×(X-0.5)+1.5×(X-0.5)^2+(X-0.5)^3` |
+| `casim limit "SIN(X)÷(2.0×X)" X 0 "" RAD` | `0.5` |
+| `casim sum "0.5×K" K 1 N RAD` | `0.25×N+0.25×N^2` |
+| `casim collect "0.25×X+X^2÷3" X RAD` | `X^2÷3+0.25×X` |
+
+# - Rule 3: a number made from a marked one is marked; the CAS's own constants are not, and a shared one (the cached
+#   1÷2 of SQRT's derivative) is never marked after it is made
+| `casim integrate "0.5×X+X^3" X RAD` | `0.25×X^2+X^4÷4` |
+| `casim simplify "X÷4+0.5×X" RAD` | `0.75×X` |
+| `casim simplify "3+1.5" RAD` | `4.5` |
+| `casim derive "TANH(0.25×X)" X RAD` | `0.25÷COSH(0.25×X)^2` |
+| `casim expand "(X+0.5)×(X+1÷3)" RAD` | `5×X÷6+X^2+1÷6` |
+| `casim simplify "LOG(1E3)÷2" RAD` | `1.5` |
+| `casim simplify "ABS(-1.5)×X" RAD` | `1.5×X` |
+| `casim simplify "0.5^X×(1÷2)^Y" RAD` | `0.5^(X+Y)` |
+| `casim simplify "SIN(0.5×X)+SIN(X÷2)" RAD` | `2×SIN(0.5×X)` |
+| `casim integrate "1.0×X" X RAD` | `X^2÷2` |
+| `casim integrate "3.0×X" X RAD` | `1.5×X^2` |
+| `casim integrate "0.5÷(X^2-1)" X RAD` | `0.25×LN(ABS(X-1))-0.25×LN(ABS(X+1))` |
+| `casim integrate "X^2×EXP(0.5×X)" X RAD` | `16×EXP(0.5×X)-8×X×EXP(0.5×X)+2×X^2×EXP(0.5×X)` |
+| `casim taylor "EXP(0.5×X)" X 0 3 RAD` | `1+0.5×X+0.125×X^2+X^3÷48` |
+| `casim sum "0.3÷(K×(K+1))" K 1 N RAD` | `-0.3÷(N+1)+0.3` |
+| `casim steps integrate "0.5×X+X^3" X RAD` | `SUM: ∫(0.5×X+X^3)dX = ∫(0.5×X)dX+∫(X^3)dX /   CONSTANT MULTIPLE: ∫(0.5×X)dX = 0.5×∫(X)dX /     POWER: ∫(X)dX = X^2÷2 /   CHECK: d/dX(0.25×X^2) = 0.5×X /   CONSTANT MULTIPLE: ∫(0.5×X)dX = 0.25×X^2 /   CHECK: d/dX(X^4÷4) = X^3 /   POWER: ∫(X^3)dX = X^4÷4 / SUM: ∫(0.5×X+X^3)dX = 0.25×X^2+X^4÷4` |
+| `casim derive "0.5×X^2+SQRT(X)" X RAD` | `X+1÷2÷SQRT(X)` |
+| `casim integrate "0.5+X" X RAD` | `0.5×X+X^2÷2` |
+
+# - Rule 4: the mark through casim's own texts (taylor's derivatives, partfrac's slots)
+| `casim taylor "X^3÷0.3" X 0.5 3 RAD` | `5÷12+2.5×(X-0.5)+5×(X-0.5)^2+10×(X-0.5)^3÷3` |
+| `casim integrate "(X+0.5)÷(X^2+1)" X RAD` | `0.5×LN(X^2+1)+0.5×ATAN(X)` |
+
+# - Rule 5: what fractions don't fit, today's form answers, marked DECIMAL_FORM (the Taylor four at the calculator's 8,800 B and 192 B)
+| `casim --arena 8800 --cap 192 taylor "(1+X)^(1÷3)" X "1÷2" 6 GRAD` | `DECIMAL_FORM / 1.5^(1÷3)+(X-0.5)÷3÷1.5^(2÷3)-(X-0.5)^2÷9÷1.5^(5÷3)+5×(X-0.5)^3÷81÷1.5^(8÷3)-10×(X-0.5)^4÷243÷1.5^(11÷3)+22×(X-0.5)^5÷729÷1.5^(14÷3)-154×(X-0.5)^6÷6561÷1.5^(17÷3)` |
+| `casim --arena 8800 --cap 192 taylor "SIN(X)" X "1÷2" 5 GRAD` | `DECIMAL_FORM / SIN(0.5)+π×COS(0.5)×(X-0.5)÷200-π^2×SIN(0.5)×(X-0.5)^2÷80000-π^3×COS(0.5)×(X-0.5)^3÷48000000+π^4×SIN(0.5)×(X-0.5)^4÷38400000000+π^5×COS(0.5)×(X-0.5)^5÷38400000000000` |
+| `casim --arena 8800 --cap 192 taylor "(SQRT(1+X))×(EXP(X))" X 0 11 GRAD` | `DECIMAL_FORM / 1+1.5×X+0.875×X^2+17×X^3÷48+0.0859375×X^4+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400` |
+| `casim --arena 8800 --cap 192 taylor "EXP(K×X)" X "1÷2" 6 RAD` | `EXP(K÷2)+K×EXP(K÷2)×(X-1÷2)+K^2×EXP(K÷2)×(X-1÷2)^2÷2+K^3×EXP(K÷2)×(X-1÷2)^3÷6+K^4×EXP(K÷2)×(X-1÷2)^4÷24+K^5×EXP(K÷2)×(X-1÷2)^5÷120+K^6×EXP(K÷2)×(X-1÷2)^6÷720` |
+
+# - Rule 6: →DEC (--decimal), every number by CAS 002's rule, steps too
+| `casim --decimal integrate "X^3" X RAD` | `0.25×X^4` |
+| `casim --decimal integrate "X^5" X RAD` | `X^6÷6` |
+| `casim --decimal collect "X÷4+X^2÷3" X RAD` | `1÷3×X^2+0.25×X` |
+| `casim --decimal pdiv "X^2+1" X "2×X+1" RAD` | `0.5×X-0.25; 1.25` |
+| `casim --decimal steps integrate "X^3" X RAD` | `CHECK: d/dX(0.25×X^4) = X^3 / POWER: ∫(X^3)dX = 0.25×X^4` |
+
+# - Unchanged: solve prints a÷b, factor its content as p÷q, partfrac its own forms
+| `casim solve "2×X-1.0=0" X RAD` | `SOLVED: X=1÷2` |
+| `casim factor "X^2-0.25" X RAD` | `1÷4×(2×X-1)×(2×X+1)` |
+| `casim partfrac "(0.5×X+1)÷(X^2+3×X+2)" X RAD` | `1÷(2×(X+1)); X=-2` |
+
+# - Catchers (the mutant run): a typed number's mark through the exact trig table, a number base's run, and the
+#   whole and the quotient read back by the rational path; and CAS 017's measured sum answer, which its row 54 no
+#   longer reaches now that the page holds the fraction form
+| `casim simplify "SIN(30.0)" DEG` | `0.5` |
+| `casim simplify "(1÷2)^X×0.5^Y" RAD` | `0.5^(X+Y)` |
+| `casim integrate "EXP(X)+1÷(X^2-4.0)" X RAD` | `0.25×LN(ABS(X-2))-0.25×LN(ABS(X+2))+EXP(X)` |
+| `casim --arena 65536 integrate "EXP(X)+1÷(X^2-1.0÷9)" X RAD` | `1.5×LN(ABS(3×X-1))-1.5×LN(ABS(3×X+1))+EXP(X)` |
+| `casim --cap 56 --one-line steps integrate "X×SIN(X)+X×COS(X)" X RAD` | `TOO_LONG` |

@@ -118,8 +118,8 @@ MUTANTS = {
          "        case F_SIN: r = mul2(c, fn(c, F_COS, uc), angle_factor(c, true)); break;"),
     ],
     "integ-abs-dropped": [
-        ("src/casim.c", "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, num(c, &lin[1]), small(c, C_M1)));",
-         "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, uc), power(c, num(c, &lin[1]), small(c, C_M1)));"),
+        ("src/casim.c", "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, pnum(c, &lin[1]), small(c, C_M1)));",
+         "    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, uc), power(c, pnum(c, &lin[1]), small(c, C_M1)));"),
     ],
     "integ-deg-factor-lost": [
         ("src/casim.c", "        case F_COS: r = mul2(c, fn(c, F_SIN, uc), angle_factor(c, true)); break;",
@@ -375,7 +375,7 @@ MUTANTS = {
         ("src/casim.c", "    if (combine_logs(c, t, &k)) {", "    if (0 && combine_logs(c, t, &k)) {"),
     ],
     "log-gcd-not-outside": [
-        ("src/casim.c", "            } else if (!rat_is(&g, 1, 1))\n                r = mul2(c, num(c, &g), r);", "            }"),
+        ("src/casim.c", "            } else if (!rat_is(&g, 1, 1))\n                r = mul2(c, numm(c, &g, gm), r);", "            }"),
     ],
     "log-gcd-first": [
         ("src/casim.c", "                    if (!rat_gcd(&g, &g, &kj)) return false;",
@@ -950,6 +950,51 @@ MUTANTS = {
                               "        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t) && 0) c.st = CASIM_NOT_INTEGRABLE;")],
     "ib-deep-no-room-kept": [("src/casim.c", "    c->st = CASIM_OK;\n    c->starved = false;\n    taylor_drop(c, mark);",
                               "    if (c->st == CASIM_NO_ROOM) return false;\n    c->st = CASIM_OK;\n    c->starved = false;\n    taylor_drop(c, mark);")],
+    # CAS 019 (fractions, abacus #8547/#8557): the mark-dropping family, each fault at one site, and the print rule's
+    "mark-parse-none": [("src/casim.c", "    return points == 1 || (points == 0 && e);", "    return (points == 1 || (points == 0 && e)) && 0;")],
+    "mark-parse-abc": [("src/casim.c", "    return points == 1 || (points == 0 && e);", "    return points >= 1 || (points == 0 && e);")],
+    "mark-fold-dropped": [("src/casim.c", "        if (marked(c, t[i])) c->nm |= NM_FOLD;", "        if (marked(c, t[i]) && 0) c->nm |= NM_FOLD;")],
+    "mark-run-dropped": [("src/casim.c", "        for (int q = i; q < j; q++) rm |= coef_mark(c, t[q]);",
+                          "        for (int q = i; q < j && 0; q++) rm |= coef_mark(c, t[q]);")],
+    "mark-sum-constant": [("src/casim.c", "    if (!rat_is(&sum, 0, 1)) t[k++] = numm(c, &sum, sm);",
+                           "    if (!rat_is(&sum, 0, 1)) t[k++] = numm(c, &sum, sm && 0);")],
+    "mark-content-dropped": [("src/casim.c", "    km = content_mark(c, *f, &k);", "    km = false;\n    (void)content_mark;")],
+    "mark-sumdiv-term": [("src/casim.c", "            r = numm(c, &q, km || marked(c, t));", "            r = numm(c, &q, km);")],
+    "mark-mul-coefficient": [("src/casim.c", "marked(c, reuse) != cm ? numm(c, &cv, cm) : reuse;", "marked(c, reuse) != cm ? num(c, &cv) : reuse;")],
+    "mark-power-dropped": [("src/casim.c", "    return numm(c, p, marked(c, b) || marked(c, e));", "    return numm(c, p, ((void)b, marked(c, e)));")],
+    "mark-power-sum": [("src/casim.c", "    bool km = content_mark(c, b, &k) || marked(c, e);", "    bool km = marked(c, e);")],
+    "mark-dedupe-unmarked-base": [("src/casim.c", "&& marked(c, base_of(c, t[q]))) return numm(c, val(c, b), true);",
+                                   "&& marked(c, base_of(c, t[q]))) return b;")],
+    "mark-abs-dropped": [("src/casim.c", "            return numm(c, &v, marked(c, a));", "            return num(c, &v);")],
+    "mark-logs-dropped": [("src/casim.c", "                    gm |= coef_mark(c, t[j]) || marked(c, nd(c, lf)->a);",
+                           "                    gm |= false && (coef_mark(c, t[j]) || marked(c, nd(c, lf)->a));")],
+    "mark-exact-trig": [("src/casim.c", "        if (table_val(f, n, &v)) return xval_tree(c, &v, any_marked(c, a));",
+                         "        if (table_val(f, n, &v)) return xval_tree(c, &v, false);")],
+    "mark-pw-literal": [("src/casim.c", "        if (lit_marked(lit_text(c, x), x->n)) c->nm |= NM_PW;",
+                         "        if (lit_marked(lit_text(c, x), x->n) && 0) c->nm |= NM_PW;")],
+    "mark-pw-term-kept": [("src/casim.c", "    c->nm &= (uint8_t)~NM_PW;           /* CAS 019 rule 3: the table's numbers, one mark a typed term */",
+                           "")],
+    "mark-pnum-dropped": [("src/casim.c", "    return numm(c, v, (c->nm & NM_PW) != 0);", "    return numm(c, v, false);")],
+    "mark-rational-text": [("src/casim.c", "    if (text_marked(eqn)) c.nm |= NM_PW;", "    if (text_marked(eqn) && 0) c.nm |= NM_PW;")],
+    "mark-point-quotient": [("src/casim.c", "    put_int(w, a.q);\n    if (pt) puts_(w, \".\");\n    return 2;", "    put_int(w, a.q);\n    return 2;")],
+    "mark-point-coefficient": [("src/casim.c", "        if (f0 && pt_of(c, f0)) puts_(w, \".\");", "")],
+    "mark-point-whole": [("src/casim.c", "!memchr(w->o + n0, 'E', w->n - n0))\n        puts_(w, \".\");", "!memchr(w->o + n0, 'E', w->n - n0) && 0)\n        puts_(w, \".\");")],
+    "print-ignores-mark": [("src/casim.c", "    return (c->nm & NM_DEC) || marked(c, r);", "    return (void)r, (c->nm & NM_DEC) != 0;")],
+    "print-all-decimal": [("src/casim.c", "    return (c->nm & NM_DEC) || marked(c, r);", "    return true || marked(c, r);")],
+    "unpoint-skipped": [("src/casim.c", "        st = CASIM_DECIMAL_FORM;\n    return unpoint(st, out, cap);", "        st = CASIM_DECIMAL_FORM;\n    return st;")],
+    # (dec-not-nested, the nested rational path called without →DEC's bit, survives: its text is read back as a tree,
+    # so the bit changes only the text's length against IB_TEXT, and no rational part the by-parts path integrates
+    # comes near 384 B (1,600 random EXP/SIN/X×EXP plus p÷q cases, and degree-6 ones it refuses). The bit stays, so a
+    # →DEC walk's inner text is the old printer's; the mutant is equivalent on everything reached.)
+    "fallback-unflagged": [("src/casim.c", "        st = CASIM_DECIMAL_FORM;\n    return unpoint(st, out, cap);", "        st = CASIM_OK;\n    return unpoint(st, out, cap);")],
+    "fallback-skipped": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&",
+                          "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) && 0 &&")],
+    "fallback-any-status": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&",
+                             "    if (!(rq->angle & ANGLE_DEC) &&")],
+    "collect-fold-off": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0 && !(c->nm & NM_DEC) && 0) {")],
+    "collect-fold-under-dec": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0) {")],
+    "mark-cache-poisoned": [("src/casim.c", "    ref r = num(c, v);\n    if (m && r != SPARE) nd(c, r)->id = NUM_MARK;",
+                             "    ref r = rat_is(v, 1, 2) ? small(c, C_HALF) : num(c, v);\n    if (m && r != SPARE) nd(c, r)->id = NUM_MARK;")],
 }
 
 

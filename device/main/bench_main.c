@@ -137,7 +137,7 @@ static void run_cases(void)
         int64_t t[REPS];
         size_t lo = 0, hi = ARENA_MAX;
         casim_status st = run(k, ARENA_MAX);
-        res[i].ok = (int)st == k->status && ((st != CASIM_OK && st != CASIM_PARTIAL) || strcmp(out, k->want) == 0);
+        res[i].ok = (int)st == k->status && ((st != CASIM_OK && st != CASIM_PARTIAL && st != CASIM_DECIMAL_FORM) || strcmp(out, k->want) == 0);
         for (int r = 0; r < REPS; r++) {
             int64_t t0 = esp_timer_get_time();
             run(k, ARENA_MAX);

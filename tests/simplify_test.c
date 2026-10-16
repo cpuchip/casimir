@@ -219,9 +219,11 @@ static void review(void)
     pair("Y-X×4E18×4E18", "-(X×4E18×4E18)+Y", CASIM_RAD);
     is("4E18×X×4E18×Y+4E18×Y×4E18×X", "X×Y×2×4000000000000000000×4000000000000000000");
     is("2×SQRT(1.5)÷3", "2×SQRT(1.5)÷3");          /* a power of a number among numbers (pair test) */
-    /* the third review: a 19-digit decimal the printer writes reads back as the same number */
-    is("531441÷262144×X", "2.027286529541015625×X");
-    is("531441÷262144+531441÷262144", "4.05457305908203125");
+    /* the third review: a 19-digit decimal the printer writes reads back as the same number (CAS 019: made from a
+       typed decimal, 2^-18; from 531441÷262144 alone it is that fraction) */
+    is("531441×0.000003814697265625×X", "2.027286529541015625×X");
+    is("531441×0.000003814697265625+531441÷262144", "4.05457305908203125");
+    is("531441÷262144×X", "531441×X÷262144");
     is("X-0.5×π-SQRT(π+5)-0.5×0.25^1.5×2", "X-π÷2-SQRT(π+5)-0.125");       /* CAS 008 rule 1: a perfect power folds */
 }
 
@@ -263,7 +265,7 @@ static void rules(void)
     is("X^-2", "1÷X^2");
     is("X÷(Y+1)", "X÷(Y+1)");
     is("X×2÷3", "2×X÷3");
-    is("X÷2", "0.5×X");
+    is("X÷2", "X÷2");
     is("X÷3", "X÷3");
     is("-X÷3", "-X÷3");
     /* a sum that is a factor is primitive: its first coefficient 1, the content in the coefficient */
@@ -305,7 +307,7 @@ static void folding(void)
     is("1÷3×3", "1");
     is("0.1×3", "0.3");
     is("2^3", "8");
-    is("2^-2", "0.25");
+    is("2^-2", "1÷4");
     is("(1÷3)^2", "1÷9");
     is("(-2)^3", "-8");
     is("1.5E-3+1", "1.0015");

@@ -94,8 +94,10 @@ these things:
 - makes a sum that is a factor primitive (`(2×X+2)×Y` is `2×Y×(X+1)`);
 - evaluates exact constants: SIN, COS and TAN at multiples of π/6 and π/4, their inverses, LN(1), EXP(0), LOG of a
   power of 10 and perfect powers;
-- prints a product with π in its numerator with its coefficient as a fraction (`π÷4`, not `0.25×π`); π under a ÷ or
-  a root keeps the decimal (`0.5÷π`);
+- prints a number it makes as a fraction (CAS 019, below: `X^4÷4`, not `0.25×X^4`), and a number from a typed decimal
+  as a decimal where it ends (`0.5×X`);
+- prints a product with π in its numerator with its coefficient as a fraction (`π÷4`, also from a typed `0.25×π`); a
+  typed decimal under a ÷ or a root stays one (`0.5÷π`);
 - combines the logs of positive numbers in a sum: LN with LN and LOG with LOG, when their coefficients have one
   denominator, the coefficients' gcd outside (`2×LN(2)+2×LN(3)` is `2×LN(6)`), and LN(1÷m) is -LN(m). Coefficients
   with different denominators stay apart, and so do logs of letters: `LN(X)+LN(Y)` is not `LN(X×Y)`, which is
@@ -119,7 +121,7 @@ one place a ÷0 isn't UNDEFINED, until the next unit that touches solve.
 | `casim simplify "(2×X+2)×Y" RAD` | `2×Y×(X+1)` |
 | `casim simplify "0.1+0.2+1÷3" RAD` | `19÷30` |
 | `casim simplify "LN(EXP(X))+X^(1÷2)" RAD` | `X+SQRT(X)` |
-| `casim simplify "SIN(30)+COS(45)" DEG` | `0.5×SQRT(2)+0.5` |
+| `casim simplify "SIN(30)+COS(45)" DEG` | `SQRT(2)÷2+1÷2` |
 | `casim simplify "ATAN(1)+ACOS(-0.5)" RAD` | `11×π÷12` |
 | `casim simplify "LN(6)-LN(2)" RAD` | `LN(3)` |
 | `casim simplify "3×LN(2)-LN(4)" RAD` | `LN(2)` |
@@ -188,8 +190,8 @@ equation), TOO_LONG.
 
 | Command | Prints |
 |---|---|
-| `casim integrate "3×X^2+COS(2×X)" X RAD` | `0.5×SIN(2×X)+X^3` |
-| `casim integrate "1÷(2×X+1)" X RAD` | `0.5×LN(ABS(2×X+1))` |
+| `casim integrate "3×X^2+COS(2×X)" X RAD` | `SIN(2×X)÷2+X^3` |
+| `casim integrate "1÷(2×X+1)" X RAD` | `LN(ABS(2×X+1))÷2` |
 | `casim integrate "SIN(X)" X DEG` | `-180×COS(X)÷π` |
 | `casim integrate "EXP(X^2)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X=1" X RAD` | `BAD_ARG` |
@@ -203,7 +205,7 @@ prints, and the answer is the canonical form of their sum. It refuses (NOT_INTEG
 - a factor of degree 3 or more;
 - a fraction where something cancels at a hole, a removed value where what is left has a value (X^2÷X at 0): the
   reduced function's antiderivative would be defined where the integrand isn't. Where nothing removed is a hole, the
-  reduced function is integrated instead: (X^3+X^2+X+1)÷(X^2+1) is X+0.5×X^2, as X^2+1 is never 0;
+  reduced function is integrated instead: (X^3+X^2+X+1)÷(X^2+1) is X+X^2÷2, as X^2+1 is never 0;
 - an integrand that mixes the two (SIN(X)+1÷(X^2−1)), or holds another letter.
 
 It answers NO_ROOM only when partfrac itself runs out of room (or past int64), never for a refusal of the form.
@@ -211,18 +213,18 @@ It answers NO_ROOM only when partfrac itself runs out of room (or past int64), n
 | Command | Prints |
 |---|---|
 | `casim integrate "(5×X+1)÷(X^2+X-2)" X RAD` | `2×LN(ABS(X-1))+3×LN(ABS(X+2))` |
-| `casim integrate "1÷(1-X^4)" X RAD` | `-0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)` |
-| `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)` |
+| `casim integrate "1÷(1-X^4)" X RAD` | `-LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+ATAN(X)÷2` |
+| `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+1÷2)÷SQRT(3))÷SQRT(3)` |
 | `casim integrate "1÷(X^2+1)" X DEG` | `π×ATAN(X)÷180` |
 | `casim integrate "X^2÷X" X RAD` | `NOT_INTEGRABLE` |
-| `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+0.5×X^2` |
+| `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+X^2÷2` |
 | `casim integrate "1÷(X^2-2)" X RAD` | `NOT_INTEGRABLE` |
 
 When both refuse, integrate tries substitution and parts on the integrand's canonical form, term by term
 (work/017-substitution-and-parts.md). Each piece they need is integrated by the whole procedure (the table, the
 rational path, then these), at most four levels deep:
 - **Substitution:** u is a function in the integrand, its argument, or a power's base. When the integrand over u′ is a
-  function G of u alone, ∫G(U)dU is found and U is put back: X×EXP(X^2) is 0.5×EXP(X^2), LN(X)÷X is 0.5×LN(X)^2. When
+  function G of u alone, ∫G(U)dU is found and U is put back: X×EXP(X^2) is EXP(X^2)÷2, LN(X)÷X is LN(X)^2÷2. When
   u is a×X^k+b, X is written in U first, as X^3×SQRT(X^2+1) needs.
 - **Parts:** ∫u dv = u×v − ∫v du, with u the first factor in the order log, inverse function, algebraic,
   trigonometric, exponential. A polynomial against EXP, SIN, COS, SINH or COSH goes round until it is used up
@@ -243,7 +245,7 @@ by, unless it is never 0: EXP(A×X×Y) in Y and SIN(A×X)×COS(X) (A^2−1) are 
 
 The answer can depend on the arena. At 8,192 bytes the rational path, which needs 7,328 bytes whatever its input, has
 no room inside a substitution or a part. So ATAN(X)'s ∫v×u′ answers by substitution there and through the rational path
-at 65,536, both −0.5×LN(X^2+1)+X×ATAN(X). X×ATAN(X) needs the rational path for its ∫v×u′: it is NO_ROOM at 8,192 (a
+at 65,536, both −LN(X^2+1)÷2+X×ATAN(X). X×ATAN(X) needs the rational path for its ∫v×u′: it is NO_ROOM at 8,192 (a
 search that ran out says so, never NOT_INTEGRABLE) and answers at the calculator's 8,800.
 
 A substitution's LN is written as CAS 013 writes its own: the argument in whole coefficients with none in common and
@@ -276,16 +278,16 @@ half a walk.
 
 | Command | Prints |
 |---|---|
-| `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
-| `casim integrate "LN(X)÷X" X RAD` | `0.5×LN(X)^2` |
-| `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
+| `casim integrate "X×EXP(X^2)" X RAD` | `EXP(X^2)÷2` |
+| `casim integrate "LN(X)÷X" X RAD` | `LN(X)^2÷2` |
+| `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5` |
 | `casim integrate "X×SIN(X)" X RAD` | `SIN(X)-X×COS(X)` |
 | `casim integrate "LN(X)^2" X RAD` | `2×X-2×X×LN(X)+X×LN(X)^2` |
-| `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
-| `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
-| `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
+| `casim integrate "EXP(X)×SIN(X)" X RAD` | `EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2` |
+| `casim integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
+| `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
 | `casim integrate "EXP(ATAN(X))÷(3×X^2+3)" X RAD` | `EXP(ATAN(X))÷3` |
-| `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `0.5×ATAN(X)-90×X÷π+0.5×X^2×ATAN(X)` |
+| `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `ATAN(X)÷2-90×X÷π+X^2×ATAN(X)÷2` |
 | `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
 | `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
@@ -352,12 +354,12 @@ was typed and each answer in canonical form, without "+C". The steps are:
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
-| `casim steps integrate "X^2+SIN(2×X)" X RAD` | `SUM: ∫(X^2+SIN(2×X))dX = ∫(X^2)dX+∫(SIN(2×X))dX /   CHECK: d/dX(X^3÷3) = X^2 /   POWER: ∫(X^2)dX = X^3÷3 /   SIN: ∫(SIN(2×X))dX = ∫(SIN(U))dU÷2, U=2×X /   CHECK: d/dX(-0.5×COS(2×X)) = SIN(2×X) /   SIN: ∫(SIN(2×X))dX = -0.5×COS(2×X) / SUM: ∫(X^2+SIN(2×X))dX = -0.5×COS(2×X)+X^3÷3` |
+| `casim steps integrate "X^2+SIN(2×X)" X RAD` | `SUM: ∫(X^2+SIN(2×X))dX = ∫(X^2)dX+∫(SIN(2×X))dX /   CHECK: d/dX(X^3÷3) = X^2 /   POWER: ∫(X^2)dX = X^3÷3 /   SIN: ∫(SIN(2×X))dX = ∫(SIN(U))dU÷2, U=2×X /   CHECK: d/dX(-COS(2×X)÷2) = SIN(2×X) /   SIN: ∫(SIN(2×X))dX = -COS(2×X)÷2 / SUM: ∫(X^2+SIN(2×X))dX = -COS(2×X)÷2+X^3÷3` |
 | `casim steps integrate "3×COS(X)" X RAD` | `CONSTANT MULTIPLE: ∫(3×COS(X))dX = 3×∫(COS(X))dX /   COS: ∫(COS(X))dX = SIN(X) / CHECK: d/dX(3×SIN(X)) = 3×COS(X) / CONSTANT MULTIPLE: ∫(3×COS(X))dX = 3×SIN(X)` |
-| `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(0.5×LN(ABS(2×X+1))) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = 0.5×LN(ABS(2×X+1))` |
-| `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-0.5×X^2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-0.5×X^2+X^3÷3` |
+| `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(LN(ABS(2×X+1))÷2) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = LN(ABS(2×X+1))÷2` |
+| `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-X^2÷2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-X^2÷2+X^3÷3` |
 | `casim steps integrate "5-EXP(3×X)" X RAD` | `SUM: ∫(5-EXP(3×X))dX = ∫(5)dX-∫(EXP(3×X))dX /   CHECK: d/dX(5×X) = 5 /   CONSTANT: ∫(5)dX = 5×X /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 / SUM: ∫(5-EXP(3×X))dX = 5×X-EXP(3×X)÷3` |
-| `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 0.4×X^2.5 / CHECK: d/dX(-1.2×X^2.5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -1.2×X^2.5` |
+| `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 2×X^(5÷2)÷5 / CHECK: d/dX(-6×X^(5÷2)÷5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -6×X^(5÷2)÷5` |
 
 An integrand the table refuses but integrate answers as a rational function (CAS 013) walks through its partial
 fractions (work/013-rational-integrals.md §Steps; more in work/013-steps-examples.txt):
@@ -373,9 +375,9 @@ fractions (work/013-rational-integrals.md §Steps; more in work/013-steps-exampl
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
-| `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-0.5÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -0.5÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
-| `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(0.5×ATAN(0.5×X+0.5)) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = 0.5×ATAN(0.5×X+0.5) / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 0.5×LN(2×X+X^2+5)+ATAN(0.5×X+0.5)` |
-| `casim steps integrate '1÷(X^2+4)' X DEG` | `CHECK: d/dX(π×ATAN(0.5×X)÷360) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = π×ATAN(0.5×X)÷360` |
+| `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-1÷2÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -1÷2÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
+| `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(ATAN(X÷2+1÷2)÷2) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ATAN(X÷2+1÷2)÷2 / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = LN(2×X+X^2+5)÷2+ATAN(X÷2+1÷2)` |
+| `casim steps integrate '1÷(X^2+4)' X DEG` | `CHECK: d/dX(π×ATAN(X÷2)÷360) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = π×ATAN(X÷2)÷360` |
 | `casim --one-line steps integrate '4×X÷(X^4-1)' X RAD` | `FACTOR: X^4-1=(X+1)×(X-1)×(X^2+1) /   FORM: 4×X÷(X^4-1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 4×X=A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1) /     COVER-UP: A=1 /     COVER-UP: B=1 /     COEFFICIENTS: C=-2; D=0 /   ANSWER: 1÷(X+1)+1÷(X-1)-2×X÷(X^2+1) /     CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /     RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /       CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /       LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /     CONSTANT MULTIPLE: ∫(-2×X÷(X^2+1))dX = -LN(X^2+1) /   SUM: ∫(1÷(X+1)+1÷(X-1)-2×X÷(X^2+1))dX = LN(ABS(X-1))+LN(ABS(X+1))-LN(X^2+1) / PARTIAL FRACTIONS: ∫(4×X÷(X^4-1))dX = LN(ABS(X-1))+LN(ABS(X+1))-LN(X^2+1)` |
 
 `steps solve "<text>" X` pages solve's working (work/steps-solve.md). Each line at the left is the equation as it
@@ -527,11 +529,11 @@ don't answer even in 1 MiB with 1,024-byte buffers (X^3 inside, order 9 or 10).
 | Command | Prints |
 |---|---|
 | `casim taylor 'SIN(X)' X 0 7 RAD` | `X-X^3÷6+X^5÷120-X^7÷5040` |
-| `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-0.5×(X-1)^2+(X-1)^3÷3-0.25×(X-1)^4` |
-| `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `0.5-0.5×(X-π÷3)×SQRT(3)-0.25×(X-π÷3)^2+(X-π÷3)^3×SQRT(3)÷12` |
+| `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-(X-1)^2÷2+(X-1)^3÷3-(X-1)^4÷4` |
+| `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `1÷2-(X-π÷3)×SQRT(3)÷2-(X-π÷3)^2÷4+(X-π÷3)^3×SQRT(3)÷12` |
 | `casim taylor '1÷(1-X)' X -2 3 RAD` | `1÷3+(X+2)÷9+(X+2)^2÷27+(X+2)^3÷81` |
 | `casim taylor 'SIN(X)' X 0 3 DEG` | `X×π÷180-X^3×π^3÷34992000` |
-| `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+0.5×K^2×X^2+K^3×X^3÷6` |
+| `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+K^2×X^2÷2+K^3×X^3÷6` |
 | `casim taylor 'SIN(X)÷X' X 0 4 RAD` | `UNDEFINED` |
 | `casim taylor 'X÷X' X 0 2 RAD` | `UNDEFINED` |
 | `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `NO_ROOM` |
@@ -573,14 +575,14 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit '1÷X' X 0 '' RAD` | `UNDEFINED` |
 | `casim limit 'X×LN(X)' X 0 + RAD` | `0` |
 | `casim limit '(2×X^2+1)÷(3×X^2-X)' X ∞ '' RAD` | `2÷3` |
-| `casim limit 'SQRT(X^2+X)-X' X ∞ '' RAD` | `0.5` |
+| `casim limit 'SQRT(X^2+X)-X' X ∞ '' RAD` | `1÷2` |
 | `casim limit '(1+3÷X)^X' X ∞ '' RAD` | `EXP(3)` |
 | `casim limit 'ATAN(X)' X -∞ '' DEG` | `-90` |
 | `casim limit 'TAN(X)' X 'π÷2' - RAD` | `∞` |
 | `casim limit 'SIN(X)' X ∞ '' RAD` | `UNDEFINED` |
 | `casim limit 'SIN(X)÷X' X ∞ '' RAD` | `UNDECIDED` |
 | `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
-| `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `0.5` |
+| `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `1÷2` |
 
 ### sum: a sum in closed form, or exactly
 
@@ -607,20 +609,49 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 
 | Command | Prints |
 |---|---|
-| `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
-| `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
+| `casim sum "K" K 1 N RAD` | `N÷2+N^2÷2` |
+| `casim sum "K^2" K 1 N RAD` | `N÷6+N^2÷2+N^3÷3` |
 | `casim sum "K×2^K" K 1 N RAD` | `-2^(N+1)+N×2^(N+1)+2` |
 | `casim sum "(1÷2)^K" K 0 ∞ RAD` | `2` |
 | `casim sum "1÷(K×(K+1))" K 1 N RAD` | `-1÷(N+1)+1` |
 | `casim sum "1÷(K×(K+1))" K 1 ∞ RAD` | `1` |
 | `casim sum "K" K 1 100 RAD` | `5050` |
 | `casim sum "1÷K" K 1 10 RAD` | `7381÷2520` |
-| `casim sum "SIN(30×K)" K 1 3 DEG` | `0.5×SQRT(3)+1.5` |
+| `casim sum "SIN(30×K)" K 1 3 DEG` | `SQRT(3)÷2+3÷2` |
 | `casim sum "1÷K" K 1 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum "K" K 1 ∞ RAD` | `∞` |
 | `casim sum "(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
 | `casim sum "X^K" K 0 N RAD` | `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` |
 | `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
+
+### Fractions and →DEC (CAS 019)
+
+Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (work/019-fractions.md).
+- **A number casim makes prints as a fraction**, folded into its term: `X^4÷4`, `-X^2÷4+X^2×LN(X)÷2`, `SQRT(2)÷2`,
+  `X^(1÷2)`. A whole number prints as before. collect's groups fold the same way (`X^2÷3+(Y÷2+1÷4)×X`).
+- **A typed decimal stays a decimal.** A literal with a point or an exponent (`0.5`, `.5`, `2.`, `1E-12`) is marked,
+  and so is every number made from a marked one: CAS 002's rule prints it, a decimal where it ends and else a quotient
+  (`0.5÷3` is `1÷6`, `2×0.5` is `1`). A fraction typed as `1÷2` or `1.1.2` is not marked. So `∫(0.5×X+X^3)dX` is
+  `0.25×X^2+X^4÷4`: each number by its own rule.
+- **Where the mark is shared.** solve, factor, cancel, pdiv, pgcd, partfrac, the rational path of integrate and 018's
+  sums mix every coefficient of a polynomial, so a number they make is marked when any typed coefficient was (in
+  integrate's table, one typed term at a time). A sum made primitive shares its first coefficient's mark with every
+  term. Where two equal subtrees merge, a number deeper inside the kept one keeps its own form:
+  `SIN(0.5×X)+SIN(X÷2)` is `2×SIN(0.5×X)`. A marked 1, 0 or exponent 1 vanishes as before: `∫(1.0×X)dX` is `X^2÷2`.
+- **Unchanged:** solve's roots (`X=1÷2`), factor's content (`1÷4×(2×X-1)×(2×X+1)`) and partfrac's forms were already
+  fractions.
+- **→DEC**, the decimal one key away: `CASIM_PRINT_DECIMAL` OR'd into any call's angle (the CLI's `--decimal`) prints
+  every number by CAS 002's rule, the answer and its steps both, exactly as before this unit. It is exact: `X^6÷6`
+  stays a quotient.
+- **DECIMAL_FORM:** where the fractions don't fit (past cap, or the arena), casim_run answers in →DEC's form and says
+  so with status 14, so the screen can label it. Three Taylor rows at the calculator's 8,800 B do this.
+
+| Command | Prints |
+|---|---|
+| `casim integrate "X^3" X RAD` | `X^4÷4` |
+| `casim integrate "0.5×X+X^3" X RAD` | `0.25×X^2+X^4÷4` |
+| `casim simplify "0.5÷3" RAD` | `1÷6` |
+| `casim --decimal integrate "X^3" X RAD` | `0.25×X^4` |
 
 ## The statuses
 
@@ -640,6 +671,7 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
 | 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit". taylor: an SGN(0) it can't decide | "" |
 | 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |
+| 14 | DECIMAL_FORM | casim_run: the answer, in →DEC's form, because its fractions passed cap or the arena (CAS 019) | the answer |
 
 ## The bounds
 
@@ -649,10 +681,10 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 - **The arena.** The calculator gives Casimir 8,800 bytes (Michael, roadmap card cas-arena-8800; 8,192 before), and
   the visible examples are measured there. A larger arena answers more (the command line's default is 8,800; `--arena`
   changes it). At most 524,280 bytes of it are used.
-- **The depth guard.** Nesting past 44 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,328
+- **The depth guard.** Nesting past 44 levels is NO_ROOM, so the stack Casimir uses is bounded: at most 11,360
   bytes on the ESP32-S3, read with interrupts masked, plus an allowance of 384 for interrupts (two 192-byte frames;
   unmasked readings have exceeded masked ones by up to 272 bytes, 270 readings of 10 cases on the bench, for a reason
-  not yet found). A task of 12 KB holds both with 576 bytes to spare.
+  not yet found). A task of 12 KB holds both with 544 bytes to spare.
 - **Polynomials.** solve, factor, pdiv, pgcd, cancel and partfrac take degree ≤ 12 and coefficients ≤ 10^7 once the polynomial
   is cleared to integers.
 - **Numbers.** Exact rationals with numerator and denominator below 2^62. Past that, a number is kept as typed and

@@ -56,10 +56,10 @@ static void is(const char *t, int angle, const char *want)
     }
 }
 
-/* sin(nπ/12) for n = 0..23 in 002's form, by hand: "" where it is not exact (odd multiples of π/12) */
+/* sin(nπ/12) for n = 0..23 in 002's form (CAS 019: a fraction), by hand: "" where it is not exact (odd multiples of π/12) */
 static const char *const SINV[24] = {
-    "0", "", "0.5", "0.5×SQRT(2)", "0.5×SQRT(3)", "", "1", "", "0.5×SQRT(3)", "0.5×SQRT(2)", "0.5", "",
-    "0", "", "-0.5", "-0.5×SQRT(2)", "-0.5×SQRT(3)", "", "-1", "", "-0.5×SQRT(3)", "-0.5×SQRT(2)", "-0.5", ""};
+    "0", "", "1÷2", "SQRT(2)÷2", "SQRT(3)÷2", "", "1", "", "SQRT(3)÷2", "SQRT(2)÷2", "1÷2", "",
+    "0", "", "-1÷2", "-SQRT(2)÷2", "-SQRT(3)÷2", "", "-1", "", "-SQRT(3)÷2", "-SQRT(2)÷2", "-1÷2", ""};
 /* tan(nπ/12) for n = 0..11 (period 12); "" at the poles and odd multiples */
 static const char *const TANV[12] = {"0", "", "SQRT(3)÷3", "1", "SQRT(3)", "", "", "", "-SQRT(3)", "-1",
                                      "-SQRT(3)÷3", ""};
@@ -125,14 +125,14 @@ static void logs_and_powers(void)
     is("EXP(0)", CASIM_RAD, "1");
     is("EXP(2×LN(3))", CASIM_RAD, "9");
     is("EXP(LN(2)÷2)", CASIM_RAD, "SQRT(2)");
-    is("EXP(-LN(4))", CASIM_RAD, "0.25");
+    is("EXP(-LN(4))", CASIM_RAD, "1÷4");
     is("EXP(0.5×LN(8))", CASIM_RAD, "SQRT(8)");
     is("EXP(X×LN(2))", CASIM_RAD, "EXP(X×LN(2))");          /* var inside: as written (002's order, unchanged) */
     is("4^(3÷2)", CASIM_RAD, "8");
     is("0.25^1.5", CASIM_RAD, "0.125");
-    is("(27÷8)^(2÷3)", CASIM_RAD, "2.25");
+    is("(27÷8)^(2÷3)", CASIM_RAD, "9÷4");
     is("8^(1÷3)", CASIM_RAD, "2");
-    is("16^(-1÷4)", CASIM_RAD, "0.5");
+    is("16^(-1÷4)", CASIM_RAD, "1÷2");
     is("9^(-1.5)", CASIM_RAD, "1÷27");
     is("SQRT(0.25)", CASIM_RAD, "0.5");
     is("SQRT(8)", CASIM_RAD, "SQRT(8)");

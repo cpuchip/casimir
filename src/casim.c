@@ -125,6 +125,9 @@ typedef struct {
     bool starved;               /* the arena ran out (grab): integrate's walks keep NO_ROOM for it (review) */
     bool apart;                 /* something was left apart past 2^62 (numbers, or a run of like terms):
                                    until then no sum can merge once divided, and no term holds numbers */
+    uint8_t nm;                 /* CAS 019's bits: NM_DEC, every number prints by CAS 002's rule (→DEC, rule 5's
+                                   fallback; the angle's ANGLE_DEC carries it into nested calls); NM_PW, a number pw
+                                   read was marked (rule 3: one mark for the list); NM_FOLD, fold folded a marked one */
     int rand_id, seed_id;       /* their NAMES indexes */
     const char *s2;             /* subst's replacement text (its literals have id 1) */
     int sub_var, sub_count;     /* subst: the variable replaced, and how often */
@@ -429,6 +432,46 @@ static const rat *val(const ctx *c, ref r)
     return rt(c, nd(c, r)->a);
 }
 
+/* CAS 019 rule 2: a number read from a typed decimal (or made from one, rule 3) carries a mark, K_NUM's id, which
+   numbers don't otherwise use; set only when its node is made, so a shared node (small()'s, a compacted copy) is
+   never marked after the fact. compare ignores it (rat_cmp): 0.5 and 1÷2 are one number to every rule. */
+#define NUM_MARK 1
+#define NM_DEC 1
+#define NM_PW 2
+#define NM_FOLD 4
+
+/* CAS 019 rule 6: →DEC (and rule 5's fallback) rides in the angle every do_* takes and passes on (casim.h promises
+   no globals): start() takes it out as NM_DEC. */
+#define ANGLE_DEC CASIM_PRINT_DECIMAL
+
+static bool marked(const ctx *c, ref r)
+{
+    return r && r != SPARE && nd(c, r)->kind == K_NUM && nd(c, r)->id != 0;
+}
+
+/* v as a number node, marked when m */
+static ref numm(ctx *c, const rat *v, bool m)
+{
+    ref r = num(c, v);
+    if (m && r != SPARE) nd(c, r)->id = NUM_MARK;
+    return r;
+}
+
+/* CAS 019 rule 3: whether constant a (a number, or k×u) holds a marked number: a function's exact value from it is
+   made from it */
+static bool any_marked(const ctx *c, ref a)
+{
+    const node *x = nd(c, a);
+    if (x->kind == K_MUL) return marked(c, list(c, x->a)[0]);
+    return marked(c, a);
+}
+
+/* v, made from what pw read (rule 3: marked when anything in the list was) */
+static ref pnum(ctx *c, const rat *v)
+{
+    return numm(c, v, (c->nm & NM_PW) != 0);
+}
+
 static bool is_k(const ctx *c, ref r, int p, int q)
 {
     return is_num(c, r) && rat_is(val(c, r), p, q);
@@ -711,6 +754,14 @@ static rat term_coef(ctx *c, ref t)
     return k;
 }
 
+/* CAS 019 rule 3: whether a term's value in a sum (term_coef's) is marked */
+static __attribute__((noinline)) bool coef_mark(const ctx *c, ref t)
+{
+    const node *x = nd(c, t);
+    if (is_num(c, t)) return marked(c, t);
+    return x->kind == K_MUL && has_coef(c, list(c, x->a), x->n) && marked(c, list(c, x->a)[0]);
+}
+
 static int by_coef(ctx *c, ref a, ref b)
 {
     rat x = term_coef(c, a), y = term_coef(c, b);
@@ -778,6 +829,9 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
     while (first < m && !is_num(c, t[first])) first++;
     last = first;
     while (last < m && is_num(c, t[last])) last++;
+    c->nm &= (uint8_t)~NM_FOLD;                         /* CAS 019 rule 3: whether a number folded was marked */
+    for (int i = first; i < last; i++)
+        if (marked(c, t[i])) c->nm |= NM_FOLD;
     if (f == rat_add) ok = add_sorted(c, t + first, last - first, &acc);
     else
         for (int i = first; i < last && ok; i++) {
@@ -797,13 +851,13 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
         for (int i = first; i < last; i++) {
             rat a = *val(c, t[i]);
             if (a.p < 0) neg_ ^= 1, a.p = -a.p;
-            if (!rat_is(&a, 1, 1)) t[j++] = a.p == val(c, t[i])->p ? t[i] : num(c, &a);
+            if (!rat_is(&a, 1, 1)) t[j++] = a.p == val(c, t[i])->p ? t[i] : numm(c, &a, marked(c, t[i]));
         }
         sort(c, t + first, j - first, by);
         if (neg_ && j > first) {
             rat a = *val(c, t[first]);
             a.p = -a.p;
-            t[first] = num(c, &a);
+            t[first] = numm(c, &a, marked(c, t[first]));
         }
     }
     for (int i = last; i < m; i++) t[j++] = t[i];         /* literals, after the numbers */
@@ -812,14 +866,14 @@ static int fold(ctx *c, ref *t, int m, rat *v, bool (*f)(rat *, const rat *, con
 
 /* A coefficient k (not 0) times a monomial's factors f: one product node, or through mul() when numbers
    were kept apart in the monomial, so the coefficient joins them (second review). */
-static ref term_of(ctx *c, const rat *k, const ref *f, int nf)
+static ref term_of(ctx *c, const rat *k, bool km, const ref *f, int nf)
 {
     ref ml;
     bool nums = false;
     for (int q = 0; q < nf; q++) nums |= is_num(c, f[q]);
-    if (!nums) return mul_node(c, num(c, k), f, nf);
+    if (!nums) return mul_node(c, numm(c, k, km), f, nf);
     if (!(ml = grab(c, (size_t)(nf + 1) * sizeof(ref)))) return SPARE;
-    list(c, ml)[0] = num(c, k);
+    list(c, ml)[0] = numm(c, k, km);
     memcpy(list(c, ml) + 1, f, (size_t)nf * sizeof(ref));
     return mul(c, list(c, ml), nf + 1);
 }
@@ -870,7 +924,7 @@ static bool pow10_of(int64_t n, long *j)
 }
 
 /* f(q), q > 0, in its form: 0 for q = 1, j for LOG(10^j) (and 10^-j), -f(m) for q = 1÷m, else f(q) */
-static __attribute__((noinline)) ref log_of(ctx *c, int f, const rat *q)
+static __attribute__((noinline)) ref log_of(ctx *c, int f, const rat *q, bool lm)
 {
     rat m = *q;
     long j;
@@ -879,10 +933,10 @@ static __attribute__((noinline)) ref log_of(ctx *c, int f, const rat *q)
     if (rat_is(q, 1, 1)) return small(c, C_0);
     if (f == F_LOG && ((q->q == 1 && pow10_of(q->p, &j)) || (q->p == 1 && pow10_of(q->q, &j)))) {
         rat_int(&m, (int)(q->q == 1 ? j : -j));
-        return num(c, &m);
+        return numm(c, &m, lm);
     }
     if (q->p == 1) rat_int(&m, 1), m.p = q->q, neg_ = true;
-    r = mk(c, K_FN, num(c, &m), 0);
+    r = mk(c, K_FN, numm(c, &m, lm), 0);
     if (r == SPARE) return SPARE;
     nd(c, r)->id = (uint8_t)f;
     return neg_ ? mul_node(c, small(c, C_M1), &r, 1) : r;
@@ -897,6 +951,7 @@ static __attribute__((noinline)) bool combine_logs(ctx *c, ref *t, int *k)
             rat ki, ai, kj, aj, g, q, x;
             int n = 0, w = 0;
             ref r;
+            bool gm;
             if (log_term(c, t[i], &ki, &ai) != f) continue;
             rat_int(&g, 0);
             for (int j = i; j < *k; j++)
@@ -907,20 +962,23 @@ static __attribute__((noinline)) bool combine_logs(ctx *c, ref *t, int *k)
                 }
             if (n < 2) continue;
             rat_int(&q, 1);
+            gm = false;
             for (int j = i; j < *k; j++)
                 if (in_group(c, t[j], f, ki.q, &kj, &aj)) {
                     rat inv, e, p;
                     long wh;
+                    ref lf = nd(c, t[j])->kind == K_MUL ? list(c, nd(c, t[j])->a)[1] : t[j];
+                    gm |= coef_mark(c, t[j]) || marked(c, nd(c, lf)->a);    /* CAS 019 rule 3: the group's marks */
                     if (!rat_make(&inv, g.q, g.p) || !rat_mul(&e, &kj, &inv) || !rat_whole(&e, &wh) ||
                         !rat_pow(&p, &aj, wh) || !rat_mul(&q, &q, &p))
                         return false;
                 }
-            if ((r = log_of(c, f, &q)) == SPARE) return false;
+            if ((r = log_of(c, f, &q, gm)) == SPARE) return false;
             if (is_num(c, r)) {
                 if (!rat_mul(&x, val(c, r), &g)) return false;
-                r = num(c, &x);
+                r = numm(c, &x, gm);
             } else if (!rat_is(&g, 1, 1))
-                r = mul2(c, num(c, &g), r);
+                r = mul2(c, numm(c, &g, gm), r);
             for (int j = 0; j < *k; j++)
                 if (j < i || !in_group(c, t[j], f, ki.q, &kj, &aj)) t[w++] = t[j];
             if (!is_k(c, r, 0, 1)) t[w++] = r;
@@ -936,7 +994,7 @@ static ref add(ctx *c, const ref *in, int n)
     ref l, *t, il;
     rat sum;
     int m, k = 0, ni;
-    bool resort = false;
+    bool resort = false, sm = false;
     if (c->st != CASIM_OK) return SPARE;
     if ((m = flatten(c, in, n, K_ADD, &l)) < 0) return SPARE;
     t = list(c, l) + 1;
@@ -944,10 +1002,11 @@ static ref add(ctx *c, const ref *in, int n)
     rat_int(&sum, 0);
 again:
     m = fold(c, t, m, &sum, rat_add, by_mono);
+    sm |= (c->nm & NM_FOLD) != 0;
     for (int i = 0; i < m;) {
         int j = i + 1;
         rat s2;
-        bool ok = true;
+        bool ok = true, rm;
         const ref *f;
         int nf;
         if (!is_num(c, t[i]))
@@ -967,10 +1026,12 @@ again:
             continue;
         }
         f = mono(c, &t[i], &nf);
+        rm = false;                                         /* CAS 019 rule 3: the run's coefficients' marks */
+        for (int q = i; q < j; q++) rm |= coef_mark(c, t[q]);
         i = j;
         if (rat_is(&s2, 0, 1)) continue;
         for (int q = 0; q < nf; q++) resort |= is_num(c, f[q]);
-        t[k++] = term_of(c, &s2, f, nf);
+        t[k++] = term_of(c, &s2, rm, f, nf);
     }
     if (resort) {
         /* a run whose numbers stay apart: its coefficient joined them, so its monomial changed and it
@@ -985,7 +1046,7 @@ again:
         m = k, k = 0;
         goto again;
     }
-    if (!rat_is(&sum, 0, 1)) t[k++] = num(c, &sum);
+    if (!rat_is(&sum, 0, 1)) t[k++] = numm(c, &sum, sm);
     for (int i = 0; i < ni; i++) t[k++] = list(c, il)[i];   /* impure terms, in order, last */
     if (k == 0) return small(c, C_0);
     if (k == 1) return t[0];
@@ -1037,10 +1098,27 @@ static rat content(ctx *c, ref s)
     return k;
 }
 
+/* CAS 019 rule 3: a run of like factors' base, marked when any of theirs is (a number base: 0.5^X×(1÷2)^Y) */
+static __attribute__((noinline)) ref run_base(ctx *c, const ref *t, int n)
+{
+    ref b = base_of(c, t[0]);
+    for (int q = 1; q < n; q++)
+        if (is_num(c, b) && !marked(c, b) && marked(c, base_of(c, t[q]))) return numm(c, val(c, b), true);
+    return b;
+}
+
+/* CAS 019 rule 3: whether content k of sum s is its first term's marked coefficient (a sign alone is not) */
+static __attribute__((noinline)) bool content_mark(ctx *c, ref s, const rat *k)
+{
+    ref t0 = list(c, nd(c, s)->a)[0];
+    rat v = term_coef(c, t0);
+    return coef_mark(c, t0) && rat_cmp(k, &v) == 0;
+}
+
 /* The sum s with every term divided by k (k not 0); 0 when a quotient would not fit. Built through add():
    a run of like terms left apart because its sum did not fit may fit once divided, and a negative k
    reverses the order of value (delta review), so the result may merge, or not be a sum at all. */
-static ref sum_div(ctx *c, ref s, const rat *k)
+static ref sum_div(ctx *c, ref s, const rat *k, bool km)
 {
     int n = nd(c, s)->n;
     rat inv, q;
@@ -1050,7 +1128,7 @@ static ref sum_div(ctx *c, ref s, const rat *k)
         ref t = list(c, nd(c, s)->a)[i], r;
         if (is_num(c, t)) {
             if (!rat_mul(&q, val(c, t), &inv)) return 0;
-            r = num(c, &q);
+            r = numm(c, &q, km || marked(c, t));
         } else {
             int nf;
             const ref *f = mono(c, &t, &nf);
@@ -1059,11 +1137,30 @@ static ref sum_div(ctx *c, ref s, const rat *k)
             if (nd(c, t)->kind == K_MUL && has_coef(c, list(c, nd(c, t)->a), nd(c, t)->n))
                 ct = *val(c, list(c, nd(c, t)->a)[0]);
             if (!rat_mul(&q, &ct, &inv)) return 0;
-            r = term_of(c, &q, f, nf);              /* numbers apart in f: the sign joins them */
+            r = term_of(c, &q, km || coef_mark(c, t), f, nf);  /* numbers apart in f: the sign joins them */
         }
         list(c, l)[i] = r;
     }
     return c->apart ? add(c, list(c, l), n) : flat_node(c, K_ADD, l, n);   /* nothing apart: nothing merges */
+}
+
+/* mul's sum factor *f made primitive, its content multiplied into *cv: 0 when nothing changed, else 1, | 2 when the
+   content was marked (CAS 019 rule 3), | 4 when it merged or isn't primitive yet (the steps again); -1 out of room.
+   Out of line: its rationals stay off mul's recursive frame. */
+static __attribute__((noinline)) int prim_factor(ctx *c, ref *f, rat *cv)
+{
+    rat k, ck;
+    ref p;
+    bool km;
+    if (nd(c, *f)->kind != K_ADD) return 0;
+    k = content(c, *f);
+    if (rat_is(&k, 1, 1) || !rat_mul(&ck, cv, &k)) return 0;
+    km = content_mark(c, *f, &k);
+    if ((p = sum_div(c, *f, &k, km)) == 0) return 0;
+    if (p == SPARE) return -1;
+    *f = p, *cv = ck;
+    if (nd(c, p)->kind != K_ADD || (k = content(c, p), !rat_is(&k, 1, 1))) return 1 | (km ? 2 : 0) | 4;     /* it merged */
+    return 1 | (km ? 2 : 0);
 }
 
 /* A product (docs: flattened, coefficient first, factors sorted by base, like factors combined; a sum
@@ -1074,6 +1171,7 @@ static ref mul(ctx *c, const ref *in, int n)
     ref l, *t, co, reuse = 0, il = 0;
     rat cv;
     int m = 0, ni = 0;
+    bool cm = false;                    /* CAS 019 rule 3: cv's mark */
     if (c->st != CASIM_OK) return SPARE;
     rat_int(&cv, 1);
     for (int i = 0; i < n; i++) {
@@ -1088,21 +1186,19 @@ static ref mul(ctx *c, const ref *in, int n)
         if ((m = flatten(c, in, n, K_MUL, &l)) < 0) return SPARE;
         t = list(c, l) + 1;
         if (pass == 0) m = split_impure(c, t, m, &il, &ni);     /* impure factors: apart, in order */
-        if (!rat_is(&cv, 1, 1)) t[m++] = num(c, &cv), rat_int(&cv, 1);    /* the last pass's coefficient */
+        if (!rat_is(&cv, 1, 1)) t[m++] = numm(c, &cv, cm), rat_int(&cv, 1), cm = false;   /* the last pass's coefficient */
         for (int i = 0; i < m; i++)
             if (is_k(c, t[i], 0, 1))                                  /* 0×u is 0: but a draw stays */
                 return ni ? mul_node(c, small(c, C_0), list(c, il), ni) : small(c, C_0);
         m = fold(c, t, m, &cv, rat_mul, by_factor);
+        cm |= (c->nm & NM_FOLD) != 0;
         if (rat_is(&cv, 0, 1)) return ni ? mul_node(c, small(c, C_0), list(c, il), ni) : small(c, C_0);
         for (int i = 0; i < m; i++) {
             /* a sum as a factor: primitive, so 2×(X+1) and (2×X+2) are one product */
-            rat k = nd(c, t[i])->kind == K_ADD ? content(c, t[i]) : cv, ck;
-            ref p;
-            if (nd(c, t[i])->kind != K_ADD || rat_is(&k, 1, 1) || !rat_mul(&ck, &cv, &k)) continue;
-            if ((p = sum_div(c, t[i], &k)) == 0) continue;
-            if (p == SPARE) return SPARE;
-            t[i] = p, cv = ck;
-            if (nd(c, p)->kind != K_ADD || (k = content(c, p), !rat_is(&k, 1, 1))) again = true;   /* it merged */
+            int r = prim_factor(c, &t[i], &cv);
+            if (r < 0) return SPARE;
+            cm |= (r & 2) != 0;
+            again |= (r & 4) != 0;
         }
         sort(c, t, m, by_factor);
         for (int i = 0; i < m;) {
@@ -1114,11 +1210,12 @@ static ref mul(ctx *c, const ref *in, int n)
                 continue;
             }
             {
-                /* a run of like factors: one base, all the exponents added at once */
+                /* a run of like factors: one base, all the exponents added at once; a number base keeps the run's
+                   marks (CAS 019 rule 3: 0.5^X×(1÷2)^Y is 0.5^(X+Y)) */
                 ref el = grab(c, (size_t)(j - i) * sizeof(ref)), f;
                 if (!el) return SPARE;
                 for (int q = i; q < j; q++) list(c, el)[q - i] = exp_of(c, t[q]);
-                f = power(c, base_of(c, t[i]), add(c, list(c, el), j - i));
+                f = power(c, run_base(c, t + i, j - i), add(c, list(c, el), j - i));
                 i = j;
                 again = true;       /* a merge can make a number, a product, a power of another base, a
                                        sum not yet primitive: each needs the steps again */
@@ -1133,7 +1230,8 @@ static ref mul(ctx *c, const ref *in, int n)
         in = t;
         n = m;
     }
-    co = rat_is(&cv, 1, 1) ? small(c, C_1) : reuse == 0 || rat_cmp(&cv, val(c, reuse)) != 0 ? num(c, &cv) : reuse;
+    co = rat_is(&cv, 1, 1) ? small(c, C_1)
+       : reuse == 0 || rat_cmp(&cv, val(c, reuse)) != 0 || marked(c, reuse) != cm ? numm(c, &cv, cm) : reuse;
     if (ni) {
         /* the impure factors, in order, after the pure ones */
         ref fl = grab(c, (size_t)(m + ni) * sizeof(ref));
@@ -1182,6 +1280,25 @@ static bool int_root(int64_t n, long q, int64_t *r)
     return false;
 }
 
+/* CAS 019 rule 3, out of power's recursive frame: number p from base b and exponent e, marked when either is */
+static __attribute__((noinline)) ref pow_num(ctx *c, const rat *p, ref b, ref e)
+{
+    return numm(c, p, marked(c, b) || marked(c, e));
+}
+
+static ref power(ctx *c, ref b, ref e);
+
+/* (k×s)^n = k^n × s^n, s primitive (b a sum, n whole); 0 when it doesn't apply. Out of power's recursive frame. */
+static __attribute__((noinline)) ref power_sum(ctx *c, ref b, ref e, long n)
+{
+    rat k = content(c, b), kn;
+    ref p;
+    bool km = content_mark(c, b, &k) || marked(c, e);
+    if (!rat_is(&k, 1, 1) && rat_pow(&kn, &k, n) && (p = sum_div(c, b, &k, km)) != 0)
+        return mul2(c, numm(c, &kn, km), power(c, p, e));
+    return 0;
+}
+
 static ref power(ctx *c, ref b, ref e)
 {
     long k_ = 0;
@@ -1199,23 +1316,20 @@ static ref power(ctx *c, ref b, ref e)
             c->st = CASIM_UNDEFINED;            /* CAS 008 rule 5: an exact 0 in a denominator has no value */
             return SPARE;
         }
-        if (w && rat_pow(&p, v, k_)) return num(c, &p);
+        if (w && rat_pow(&p, v, k_)) return pow_num(c, &p, b, e);
         if (!w && is_num(c, e) && v->p > 0) {
             /* CAS 008 rule 1: a perfect rational power, (p/q)^(m/n) with p and q exact n-th powers */
             const rat *x = val(c, e);
             int64_t rp, rq;
             rat root;
             if (int_root(v->p, x->q, &rp) && int_root(v->q, x->q, &rq) && rat_make(&root, rp, rq) && rat_pow(&p, &root, x->p))
-                return num(c, &p);
+                return pow_num(c, &p, b, e);
         }
     }
     if (w && nd(c, b)->kind == K_POW) return power(c, nd(c, b)->a, mul2(c, nd(c, b)->b, e));
     if (w && nd(c, b)->kind == K_ADD) {
-        /* (k×s)^n = k^n × s^n, s primitive */
-        rat k = content(c, b), kn;
-        ref p;
-        if (!rat_is(&k, 1, 1) && rat_pow(&kn, &k, k_) && (p = sum_div(c, b, &k)) != 0)
-            return mul2(c, num(c, &kn), power(c, p, e));
+        ref p = power_sum(c, b, e, k_);
+        if (p) return p;
     }
     if (w && nd(c, b)->kind == K_MUL) {
         int nb = nd(c, b)->n;
@@ -1417,12 +1531,12 @@ static bool table_val(int f, long n, xval *v)
     return true;
 }
 
-static ref xval_tree(ctx *c, const xval *v)
+static ref xval_tree(ctx *c, const xval *v, bool m)
 {
     rat r;
     ref t;
     rat_make(&r, v->s * v->p, v->q);
-    t = num(c, &r);
+    t = numm(c, &r, m);
     if (v->k > 1 && v->p != 0) {
         rat kv;
         rat_int(&kv, v->k);
@@ -1483,11 +1597,11 @@ static ref exact_inverse(ctx *c, int f, ref a)
         rat r;
         if (!table_val(g, n, &t)) continue;
         if (t.p == 0 ? v.p != 0 : (t.s != v.s || t.p * v.q != v.p * t.q || t.k != v.k)) continue;
-        if (c->angle == CASIM_DEG) return rat_int(&r, 15 * n), num(c, &r);
-        if (c->angle == CASIM_GRAD) return rat_make(&r, 50 * n, 3), num(c, &r);
+        if (c->angle == CASIM_DEG) return rat_int(&r, 15 * n), numm(c, &r, any_marked(c, a));
+        if (c->angle == CASIM_GRAD) return rat_make(&r, 50 * n, 3), numm(c, &r, any_marked(c, a));
         if (n == 0) return small(c, C_0);
         rat_make(&r, n, 12);
-        return mul2(c, num(c, &r), leaf(c, K_PI, 0));
+        return mul2(c, numm(c, &r, any_marked(c, a)), leaf(c, K_PI, 0));
     }
     return 0;
 }
@@ -1505,7 +1619,7 @@ static ref fn(ctx *c, int f, ref a)
         if (x->kind == K_FN && x->id == F_EXP) return x->a;
         if (is_k(c, a, 1, 1)) return small(c, C_0);                 /* CAS 008 */
         if (is_k(c, a, 0, 1)) return c->st = CASIM_UNDEFINED, SPARE;     /* CAS 016 rule 1: a pole, as 1÷0 is */
-        if (is_num(c, a) && val(c, a)->p == 1 && val(c, a)->q > 1) return log_of(c, f, val(c, a));   /* -LN(m) */
+        if (is_num(c, a) && val(c, a)->p == 1 && val(c, a)->q > 1) return log_of(c, f, val(c, a), marked(c, a));   /* -LN(m) */
         break;
     case F_EXP:
         if (x->kind == K_FN && x->id == F_LN) return x->a;
@@ -1523,7 +1637,7 @@ static ref fn(ctx *c, int f, ref a)
         long n;
         xval v;
         if (!angle_n(c, a, &n)) break;
-        if (table_val(f, n, &v)) return xval_tree(c, &v);
+        if (table_val(f, n, &v)) return xval_tree(c, &v, any_marked(c, a));
         if (f == F_TAN && table_val(F_COS, n, &v) && v.p == 0)
             return c->st = CASIM_UNDEFINED, SPARE;                  /* CAS 016 rule 1: COS is 0 there, a pole */
         break;
@@ -1539,7 +1653,7 @@ static ref fn(ctx *c, int f, ref a)
         if (is_num(c, a) && val(c, a)->p > 0) {
             long j;
             const rat *v = val(c, a);
-            if ((v->q == 1 && pow10_of(v->p, &j)) || (v->p == 1 && v->q > 1)) return log_of(c, f, v);    /* j, -LOG(m) */
+            if ((v->q == 1 && pow10_of(v->p, &j)) || (v->p == 1 && v->q > 1)) return log_of(c, f, v, marked(c, a));    /* j, -LOG(m) */
         }
         break;
     case F_ALOG:
@@ -1561,7 +1675,7 @@ static ref fn(ctx *c, int f, ref a)
         if (is_num(c, a)) {
             rat v = *val(c, a);
             v.p = v.p < 0 ? -v.p : v.p;
-            return num(c, &v);
+            return numm(c, &v, marked(c, a));
         } else {
             int sg = const_sign(c, a);              /* CAS 009 rule 5: ABS of a constant whose sign is decided */
             if (sg) return sg > 0 ? a : neg(c, a);
@@ -1945,6 +2059,31 @@ static ref parse(ctx *c)
 
 /* ---- raw to canonical ---- */
 
+/* CAS 019 rule 2: a literal typed as a decimal, with one point or an exponent (0.5, .5, 2., 1E-12); a.b.c is a typed
+   fraction, and a literal without either is whole. */
+static bool lit_marked(const char *s, int n)
+{
+    int points = 0;
+    bool e = false;
+    for (int i = 0; i < n; i++) points += s[i] == '.', e |= s[i] == 'E';
+    return points == 1 || (points == 0 && e);
+}
+
+/* CAS 019 rule 3: whether text holds a literal typed as a decimal (lit_marked's, on each run of digits, points and
+   an exponent after a digit), for a path that reads no tree: one mark for what it makes */
+static __attribute__((noinline)) bool text_marked(const char *s)
+{
+    while (*s) {
+        if (digit(*s) || (*s == '.' && digit(s[1]))) {
+            const char *t = s;
+            while (digit(*s) || *s == '.' || (*s == 'E' && (digit(s[1]) || (s[1] == '-' && digit(s[2])))))
+                s += *s == 'E' && s[1] == '-' ? 2 : 1;
+            if (lit_marked(t, (int)(s - t))) return true;
+        } else s++;
+    }
+    return false;
+}
+
 /* The rational of the value the core reads for a literal: a decimal, or a fraction a.b.c as (a×c+b)/c;
    false (the literal is kept as typed) when it does not fit. Kept out of line: its buffer would otherwise
    sit in the recursion. */
@@ -2030,7 +2169,7 @@ static ref canon_(ctx *c, ref r)
     switch (x->kind) {
     case K_LIT: {
         rat v;
-        if (literal(&v, lit_text(c, x), x->n)) return num(c, &v);
+        if (literal(&v, lit_text(c, x), x->n)) return numm(c, &v, lit_marked(lit_text(c, x), x->n));
         return r;               /* kept as typed */
     }
     case K_NEG: {
@@ -2299,12 +2438,14 @@ static void put_int(out_t *w, int64_t v)
     put(w, buf, (size_t)i64_text(buf, v));
 }
 
-/* p/q as a decimal, when it terminates (q has no prime but 2 and 5) and its digits fit. */
-static bool decimal_of(const rat *v, abn *d)
+/* p/q as a decimal, when it terminates (q has no prime but 2 and 5) and its digits fit; but unless dec (a marked
+   number, or →DEC: CAS 019), only when it is whole. Out of line: its buffer stays off the printer's frames. */
+static __attribute__((noinline)) bool decimal_of(const rat *v, abn *d, bool dec)
 {
     char buf[48];
     int64_t q = v->q, m;
     int twos = 0, fives = 0, k, n;
+    if (!dec && q != 1) return false;
     while (q % 2 == 0) q /= 2, twos++;
     while (q % 5 == 0) q /= 5, fives++;
     if (q != 1) return false;
@@ -2320,18 +2461,41 @@ static bool decimal_of(const rat *v, abn *d)
     return abn_from_text(d, buf) == ABN_OK;
 }
 
-/* |v| as a decimal, or p÷q; returns the level it prints at (5, or 2 for a quotient). */
-static __attribute__((noinline)) int put_rat_abs(out_t *w, const rat *v)
+/* d, with a point after it when pt and it has none: CAS 019 rule 4, a marked whole number (2.) reads back marked.
+   casim_run takes such points out of what it returns. */
+static __attribute__((noinline)) void put_dec(out_t *w, const abn *d, bool pt)
+{
+    size_t n0 = w ? w->n : 0;
+    put_num(w, d);
+    if (pt && w && !w->full && !memchr(w->o + n0, '.', w->n - n0) && !memchr(w->o + n0, 'E', w->n - n0))
+        puts_(w, ".");
+}
+
+/* Whether number r prints by CAS 002's rule (a decimal when it terminates): marked, or →DEC (CAS 019 rule 2) */
+static bool dec_of(const ctx *c, ref r)
+{
+    return (c->nm & NM_DEC) || marked(c, r);
+}
+
+/* Whether number r carries its mark into casim's own text (rule 4): 2., or p÷q. with the point on q */
+static bool pt_of(const ctx *c, ref r)
+{
+    return !(c->nm & NM_DEC) && marked(c, r);
+}
+
+/* |v| as a decimal, or p÷q (p÷q. when pt); returns the level it prints at (5, or 2 for a quotient). */
+static __attribute__((noinline)) int put_rat_abs(out_t *w, const rat *v, bool dec, bool pt)
 {
     abn d;
     rat a = {v->p < 0 ? -v->p : v->p, v->q};
-    if (decimal_of(&a, &d)) {
-        put_num(w, &d);
+    if (decimal_of(&a, &d, dec)) {
+        put_dec(w, &d, pt);
         return 5;
     }
     put_int(w, a.p);
     puts_(w, DIVIDE);
     put_int(w, a.q);
+    if (pt) puts_(w, ".");
     return 2;
 }
 
@@ -2375,7 +2539,7 @@ static __attribute__((noinline)) void coef_parts(const ctx *c, ref f0, bool frac
     if (!f0) return;
     co = *val(c, f0);
     co.p = co.p < 0 ? -co.p : co.p;
-    if (!frac && decimal_of(&co, &d)) *top = !rat_is(&co, 1, 1);
+    if (!frac && decimal_of(&co, &d, dec_of(c, f0))) *top = !rat_is(&co, 1, 1);
     else *top = co.p != 1, *bottom = co.q != 1;
 }
 
@@ -2391,9 +2555,9 @@ static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bo
     neg_ = (co.p < 0) != flip;
     co.p = co.p < 0 ? -co.p : co.p;
     if (top && neg_) puts_(w, "-");
-    if (!frac && decimal_of(&co, &d)) {
+    if (!frac && decimal_of(&co, &d, f0 && dec_of(c, f0))) {
         if (!top || rat_is(&co, 1, 1)) return 0;
-        put_num(w, &d);
+        put_dec(w, &d, f0 && pt_of(c, f0));
         return 1;
     }
     if (top) {
@@ -2404,6 +2568,7 @@ static __attribute__((noinline)) int put_coef(const ctx *c, out_t *w, ref f0, bo
     if (co.q != 1) {
         puts_(w, DIVIDE);
         put_int(w, co.q);
+        if (f0 && pt_of(c, f0)) puts_(w, ".");
     }
     return 0;
 }
@@ -2429,10 +2594,10 @@ static __attribute__((noinline)) void put_exp(const ctx *c, out_t *w, ref x)
     rat e = *val(c, x);
     abn d;
     e.p = e.p < 0 ? -e.p : e.p;
-    if (decimal_of(&e, &d)) put_num(w, &d);
+    if (decimal_of(&e, &d, dec_of(c, x))) put_dec(w, &d, pt_of(c, x));
     else {
         puts_(w, "(");
-        put_rat_abs(w, &e);
+        put_rat_abs(w, &e, false, pt_of(c, x));
         puts_(w, ")");
     }
 }
@@ -2464,7 +2629,7 @@ static void put_factor(ctx *c, out_t *w, ref f, int min)
     ref b, x;
     if (is_num(c, f)) {
         /* a number kept apart (it would not fold): whole, so it reads back as the one number */
-        bool paren = num_negative(c, f) || put_rat_abs(NULL, val(c, f)) < 5;
+        bool paren = num_negative(c, f) || put_rat_abs(NULL, val(c, f), dec_of(c, f), false) < 5;
         if (paren) puts_(w, "(");
         put_signed(c, w, f, false);
         if (paren) puts_(w, ")");
@@ -2587,7 +2752,7 @@ static bool negative(ctx *c, ref t)
 static __attribute__((noinline)) void put_signed(const ctx *c, out_t *w, ref t, bool flip)
 {
     if (num_negative(c, t) != flip) puts_(w, "-");
-    put_rat_abs(w, val(c, t));
+    put_rat_abs(w, val(c, t), dec_of(c, t), pt_of(c, t));
 }
 
 static void print_term(ctx *c, out_t *w, ref t, bool flip)
@@ -2605,7 +2770,7 @@ static int level(ctx *c, ref r)
     case K_MUL:
     case K_POW: return product_level(c, r);
     case K_NUM: {
-        int l = put_rat_abs(NULL, val(c, r));
+        int l = put_rat_abs(NULL, val(c, r), dec_of(c, r), false);
         return num_negative(c, r) && l > 3 ? 3 : l;
     }
     case K_EQ: return 0;
@@ -2710,7 +2875,8 @@ static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_
     size_t cap = arena_cap > q - p ? arena_cap - (q - p) : 0;
     memset(c, 0, sizeof *c);
     c->s = eqn;
-    c->angle = angle;
+    c->angle = angle & ~ANGLE_DEC;
+    c->nm = (angle & ANGLE_DEC) ? NM_DEC : 0;
     c->mem = (unsigned char *)arena + (q - p);
     if (cap > 65535u * 8u) cap = 65535u * 8u;
     c->cap = c->top = cap & ~(size_t)7u;
@@ -2736,7 +2902,7 @@ static __attribute__((noinline)) casim_status do_derive(const char *eqn, int var
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.var = var;
@@ -2753,7 +2919,7 @@ static __attribute__((noinline)) casim_status do_simplify(const char *eqn, int a
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3060,8 +3226,9 @@ static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_
 static casim_status do_ssteps(const casim_req *rq, walk_t *W, out_t *w, void *arena, size_t arena_cap);
 static casim_status do_psteps(const casim_req *rq, walk_t *W, out_t *w, void *arena, size_t arena_cap);
 
-casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
-                        void *arena, size_t arena_cap)
+static inline __attribute__((always_inline)) casim_status step_(const casim_req *rq, int k, int flags,
+                                                                casim_step_info *info, char *out, size_t cap,
+                                                                void *arena, size_t arena_cap)
 {
     ctx c;
     ref n = SPARE, root;
@@ -3081,7 +3248,7 @@ casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *
         return do_psteps(rq, &W, &w, arena, arena_cap);
     }
     if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
-        rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
+        rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     start(&c, rq->eqn, rq->angle, arena, arena_cap);
@@ -3103,6 +3270,27 @@ casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *
     if (c.st == CASIM_OK && w.full) c.st = CASIM_TOO_LONG;
     if (c.st != CASIM_OK && cap) out[0] = '\0';
     return c.st;
+}
+
+/* CAS 019 rule 4: the points that carried a mark through casim's own texts (2., ÷3.) out of what a call returns: a
+   point after a digit and before no digit. A decimal casim prints has a digit after its point. */
+static casim_status unpoint(casim_status st, char *out, size_t cap)
+{
+    char *r = out, *w = out;
+    if (!cap) return st;
+    for (; *r; r++)
+        if (!(*r == '.' && r > out && digit(r[-1]) && !digit(r[1]))) *w++ = *r;
+    *w = '\0';
+    return st;
+}
+
+/* Show steps; CAS 019 rule 4's points out of the page. step_ is inline and the walks inside call casim_step, as
+   before 019, so a page's stack has one frame here, not a wrapper's beside step_'s (taking the points out twice is
+   taking them out once) */
+casim_status casim_step(const casim_req *rq, int k, int flags, casim_step_info *info, char *out, size_t cap,
+                        void *arena, size_t arena_cap)
+{
+    return unpoint(step_(rq, k, flags, info, out, cap, arena, arena_cap), out, cap);
 }
 
 /* Whether expand opens r (a sum): every sum, or with collect's variable, a sum that holds it. */
@@ -3510,6 +3698,23 @@ static void put_power(out_t *w, int var, long k)
     if (k < 0) puts_(w, ")");
 }
 
+/* c×var^k as one product, var^k its last factor, so a fraction folds as the product's own do: X÷4, 7×SGN(2)×X÷2
+   (CAS 019, abacus #8557 Q1: no k÷d×u form). Out of line: its list stays off put_cterm's frame. */
+static __attribute__((noinline)) ref cterm_product(ctx *c, ref co, int var, long k)
+{
+    const node *x = nd(c, co);
+    int n = x->kind == K_MUL ? x->n : 1;
+    ref l = grab(c, (size_t)(n + 1) * sizeof(ref)), e;
+    rat kr;
+    if (!l) return SPARE;
+    if (x->kind == K_MUL) memcpy(list(c, l), list(c, nd(c, co)->a), (size_t)n * sizeof(ref));
+    else list(c, l)[0] = co;
+    rat_int(&kr, k);
+    e = power(c, leaf(c, K_VAR, var), num(c, &kr));
+    list(c, l)[n] = e;
+    return flat_node(c, K_MUL, l, n + 1);
+}
+
 /* One c×var^k term of the collected form (#4264 point 5): first is whether it leads the output. */
 static void put_cterm(ctx *c, out_t *w, const cterm *t, int var, bool first)
 {
@@ -3521,6 +3726,10 @@ static void put_cterm(ctx *c, out_t *w, const cterm *t, int var, bool first)
         puts_(w, ")");
     } else if (t->k != 0 && (is_k(c, t->c, 1, 1) || is_k(c, t->c, -1, 1))) {
         put_power(w, var, t->k);
+        return;
+    } else if (t->k > 0 && !(c->nm & NM_DEC)) {
+        ref p = cterm_product(c, t->c, var, t->k);
+        if (p != SPARE) print_product(c, w, p, neg_);
         return;
     } else print_term(c, w, t->c, neg_);
     if (t->k != 0) {
@@ -3589,7 +3798,7 @@ static __attribute__((noinline)) casim_status do_expand(const char *eqn, int ang
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3608,7 +3817,7 @@ static __attribute__((noinline)) casim_status do_collect(const char *eqn, int va
     out_t w = {out, cap < SLOT ? cap : SLOT, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3636,7 +3845,7 @@ static __attribute__((noinline)) casim_status do_subst(const char *eqn, int var,
     int chars = 0;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3671,28 +3880,28 @@ static __attribute__((noinline)) casim_status do_subst(const char *eqn, int var,
 
 casim_status casim_derive(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    return do_derive(eqn, var, angle, out, cap, arena, arena_cap, false);
+    return unpoint(do_derive(eqn, var, angle, out, cap, arena, arena_cap, false), out, cap);
 }
 
 casim_status casim_simplify(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    return do_simplify(eqn, angle, out, cap, arena, arena_cap, false);
+    return unpoint(do_simplify(eqn, angle, out, cap, arena, arena_cap, false), out, cap);
 }
 
 casim_status casim_expand(const char *eqn, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    return do_expand(eqn, angle, out, cap, arena, arena_cap, false);
+    return unpoint(do_expand(eqn, angle, out, cap, arena, arena_cap, false), out, cap);
 }
 
 casim_status casim_collect(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap)
 {
-    return do_collect(eqn, var, angle, out, cap, arena, arena_cap, false);
+    return unpoint(do_collect(eqn, var, angle, out, cap, arena, arena_cap, false), out, cap);
 }
 
 casim_status casim_subst(const char *eqn, int var, const char *repl, int angle, char *out, size_t cap, void *arena,
                          size_t arena_cap)
 {
-    return do_subst(eqn, var, repl, angle, out, cap, arena, arena_cap, false, false);
+    return unpoint(do_subst(eqn, var, repl, angle, out, cap, arena, arena_cap, false, false), out, cap);
 }
 
 /* A model the core stamps (unit 031), or 0 (read as 35). */
@@ -3707,27 +3916,52 @@ const char *casim_version(void)
     return CASIM_VERSION;
 }
 
-casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap)
+/* each public op's body, unstripped: casim_run strips once (CAS 019 rule 4) */
+static casim_status solve_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                           size_t arena_cap);
+static casim_status integrate_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                               size_t arena_cap);
+static casim_status factor_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap);
+static casim_status defint_(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                            size_t cap, void *arena, size_t arena_cap);
+static casim_status pdiv_(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap);
+static casim_status pgcd_(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap);
+static casim_status cancel_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap);
+static casim_status partfrac_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                              size_t arena_cap);
+static casim_status taylor_(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
+                            size_t cap, void *arena, size_t arena_cap);
+static casim_status sum_(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                         size_t cap, void *arena, size_t arena_cap);
+static casim_status limit_(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
+                           size_t cap, void *arena, size_t arena_cap);
+
+static inline __attribute__((always_inline)) casim_status run_(const casim_req *rq, int angle, char *out, size_t cap,
+                                                               void *arena, size_t arena_cap)
 {
     bool rtl;
     if (cap) out[0] = '\0';
     if (!rq || !model_ok(rq->model)) return CASIM_BAD_ARG;
     rtl = rq->model == CASIM_MODEL_STU;
     switch (rq->op) {
-    case CASIM_DERIVE: return do_derive(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
-    case CASIM_SIMPLIFY: return do_simplify(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
-    case CASIM_EXPAND: return do_expand(rq->eqn, rq->angle, out, cap, arena, arena_cap, rtl);
-    case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rtl);
-    case CASIM_SOLVE: return casim_solve(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
-    case CASIM_INTEGRATE: return casim_integrate(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
-    case CASIM_FACTOR: return casim_factor(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
-    case CASIM_DEFINT: return casim_defint(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, rq->angle, out, cap, arena, arena_cap);
+    case CASIM_DERIVE: return do_derive(rq->eqn, rq->var, angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_SIMPLIFY: return do_simplify(rq->eqn, angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_EXPAND: return do_expand(rq->eqn, angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_COLLECT: return do_collect(rq->eqn, rq->var, angle, out, cap, arena, arena_cap, rtl);
+    case CASIM_SOLVE: return solve_(rq->eqn, rq->var, rq->model, angle, out, cap, arena, arena_cap);
+    case CASIM_INTEGRATE: return integrate_(rq->eqn, rq->var, rq->model, angle, out, cap, arena, arena_cap);
+    case CASIM_FACTOR: return factor_(rq->eqn, rq->var, rq->model, angle, out, cap, arena, arena_cap);
+    case CASIM_DEFINT: return defint_(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, angle, out, cap, arena, arena_cap);
     case CASIM_PDIV:
-        return casim_pdiv(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
+        return pdiv_(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, angle, out, cap, arena, arena_cap);
     case CASIM_PGCD:
-        return casim_pgcd(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, rq->angle, out, cap, arena, arena_cap);
-    case CASIM_CANCEL: return casim_cancel(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
-    case CASIM_PARTFRAC: return casim_partfrac(rq->eqn, rq->var, rq->model, rq->angle, out, cap, arena, arena_cap);
+        return pgcd_(rq->eqn, rq->var, rq->repl, rq->model, rq->repl_model, angle, out, cap, arena, arena_cap);
+    case CASIM_CANCEL: return cancel_(rq->eqn, rq->var, rq->model, angle, out, cap, arena, arena_cap);
+    case CASIM_PARTFRAC: return partfrac_(rq->eqn, rq->var, rq->model, angle, out, cap, arena, arena_cap);
     case CASIM_TAYLOR: {
         /* the order as text in repl2 (work/014 rule 1 (b): casim_req unchanged): a whole number, else BAD_ARG */
         int n = 0;
@@ -3738,19 +3972,36 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
             if (*p < '0' || *p > '9' || n > 99) return CASIM_BAD_ARG;
             n = n * 10 + (*p - '0');
         }
-        return casim_taylor(rq->eqn, rq->var, rq->repl, n, rq->model, rq->angle, out, cap, arena, arena_cap);
+        return taylor_(rq->eqn, rq->var, rq->repl, n, rq->model, angle, out, cap, arena, arena_cap);
     }
     case CASIM_SUM:
-        return casim_sum(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, rq->angle, out, cap, arena, arena_cap);
+        return sum_(rq->eqn, rq->var, rq->repl, rq->repl2, rq->model, angle, out, cap, arena, arena_cap);
     case CASIM_LIMIT:
-        return casim_limit(rq->eqn, rq->var, rq->repl, rq->repl2 ? rq->repl2 : "", rq->model, rq->angle, out, cap,
+        return limit_(rq->eqn, rq->var, rq->repl, rq->repl2 ? rq->repl2 : "", rq->model, angle, out, cap,
                            arena, arena_cap);
     case CASIM_SUBST:
         if (!model_ok(rq->repl_model)) return CASIM_BAD_ARG;
-        return do_subst(rq->eqn, rq->var, rq->repl, rq->angle, out, cap, arena, arena_cap, rtl,
+        return do_subst(rq->eqn, rq->var, rq->repl, angle, out, cap, arena, arena_cap, rtl,
                         rq->repl_model == CASIM_MODEL_STU);
     default: return CASIM_BAD_ARG;
     }
+}
+
+/* CAS 004's one call. CAS 019 rule 5: when fractions don't fit (TOO_LONG, NO_ROOM), the run again by CAS 002's rule
+   (→DEC's), an answer from it being DECIMAL_FORM, so the screen can say why. */
+casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap)
+{
+    casim_status st;
+    if (cap) out[0] = '\0';
+    if (!rq) return CASIM_BAD_ARG;
+    /* rule 5: a fraction form past cap or the arena answers again in decimals, flagged. run_ is inline at both calls,
+       so an op's stack has casim_run's one frame, 64 B on the S3 as before 019 (run_ out of line was 32 + 80; one
+       call in a loop, 96): 1,011 B of text for 32 B of every op's stack */
+    st = run_(rq, rq->angle, out, cap, arena, arena_cap);
+    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&
+        run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap) == CASIM_OK)
+        st = CASIM_DECIMAL_FORM;
+    return unpoint(st, out, cap);
 }
 
 /* ---- solve (unit CAS 005) ---- */
@@ -4337,8 +4588,12 @@ static void pw(ctx *c, ref r, int var, rat *out)
     switch (x->kind) {
     case K_LIT:
         if (!literal(&out[0], lit_text(c, x), x->n)) c->st = CASIM_NO_ROOM;       /* past 2^62 */
+        if (lit_marked(lit_text(c, x), x->n)) c->nm |= NM_PW;       /* CAS 019 rule 3: one mark for the list */
         break;
-    case K_NUM: out[0] = *val(c, r); break;
+    case K_NUM:
+        out[0] = *val(c, r);
+        if (marked(c, r)) c->nm |= NM_PW;
+        break;
     case K_VAR:
         if (x->id == var) rat_int(&out[1], 1);
         else c->st = CASIM_NOT_NUMERIC;                     /* another letter */
@@ -4484,7 +4739,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
     ipoly f;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     size_t mark;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
@@ -4519,12 +4774,18 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
 
 /* ---- the API: CAS 005 ---- */
 
-casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
-                         size_t arena_cap)
+static casim_status solve_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                           size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                         size_t arena_cap)
+{
+    return unpoint(solve_(eqn, var, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- show steps, 3: solve (work/steps-solve.md; design #6286, approved #6288) ----
@@ -4859,7 +5120,7 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
     ipoly f0;
     sstep_t S;
     if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
-        rq->angle > CASIM_GRAD)
+        (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     st = arena_cap < SLOT ? CASIM_NO_ROOM
@@ -4939,7 +5200,7 @@ static ref poly_tree(ctx *c, const rat *p, int var)
         if (p[k].p != 0) {
             rat e;
             rat_int(&e, k);
-            acc = add2(c, acc, mul2(c, num(c, &p[k]), power(c, x, num(c, &e))));
+            acc = add2(c, acc, mul2(c, pnum(c, &p[k]), power(c, x, num(c, &e))));
         }
     return acc;
 }
@@ -4954,7 +5215,7 @@ static ref integ_poly(ctx *c, const rat *p, int var)
             rat e, ck;
             rat_int(&e, k + 1);
             if (!rat_make(&ck, 1, k + 1) || !rat_mul(&ck, &ck, &p[k])) return not_integrable(c), SPARE;
-            acc = add2(c, acc, mul2(c, num(c, &ck), power(c, x, num(c, &e))));
+            acc = add2(c, acc, mul2(c, pnum(c, &ck), power(c, x, num(c, &e))));
         }
     return acc;
 }
@@ -5013,12 +5274,12 @@ static ref integ_poly_r(ctx *c, const rat *p, const rat *r, int var)
             rat_int(&e, k);
             if (!rat_add(&e, &e, r)) return not_integrable(c), SPARE;
             if (rat_is(&e, -1, 1)) {
-                acc = add2(c, acc, mul2(c, num(c, &p[k]), fn(c, F_LN, fn(c, F_ABS, x))));
+                acc = add2(c, acc, mul2(c, pnum(c, &p[k]), fn(c, F_LN, fn(c, F_ABS, x))));
                 continue;
             }
             if (!rat_add(&e, &e, &one) || !rat_make(&ck, e.q, e.p) || !rat_mul(&ck, &ck, &p[k]))
                 return not_integrable(c), SPARE;
-            acc = add2(c, acc, mul2(c, num(c, &ck), power(c, x, num(c, &e))));
+            acc = add2(c, acc, mul2(c, pnum(c, &ck), power(c, x, pnum(c, &e))));
         }
     return acc;
 }
@@ -5064,9 +5325,9 @@ static ref integ_linpow(ctx *c, ref u, const rat *lin, const rat *n)
 {
     rat np1, k;
     ref uc = canon(c, u);
-    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, num(c, &lin[1]), small(c, C_M1)));
+    if (rat_is(n, -1, 1)) return mul2(c, fn(c, F_LN, fn(c, F_ABS, uc)), power(c, pnum(c, &lin[1]), small(c, C_M1)));
     if (!rat_add(&np1, n, &(rat){1, 1}) || !rat_mul(&k, &np1, &lin[1])) return not_integrable(c), SPARE;
-    return mul2(c, power(c, uc, num(c, &np1)), power(c, num(c, &k), small(c, C_M1)));
+    return mul2(c, power(c, uc, pnum(c, &np1)), power(c, pnum(c, &k), small(c, C_M1)));
 }
 
 /* u's linear coefficients (a in lin[1], b in lin[0]); false unless u is aX + b with a != 0, as typed. */
@@ -5122,7 +5383,7 @@ static ref integ_factor(ctx *c, ref f, int s, int var)
         }
         if (s < 0 || !linear(c, u, var, &lin)) return not_integrable(c), SPARE;
         uc = canon(c, u);
-        a_inv = power(c, num(c, &lin[1]), small(c, C_M1));
+        a_inv = power(c, pnum(c, &lin[1]), small(c, C_M1));
         switch (id) {
         case F_EXP: r = fn(c, F_EXP, uc); break;
         case F_SINH: r = fn(c, F_COSH, uc); break;
@@ -5269,7 +5530,9 @@ static ref integ_checked(ctx *c, ref t, int var, int sign)
 {
     size_t mark = c->used;
     const rat *poly = NULL;
-    ref F = integ_term(c, t, var, &poly), f;
+    ref F, f;
+    c->nm &= (uint8_t)~NM_PW;           /* CAS 019 rule 3: the table's numbers, one mark a typed term */
+    F = integ_term(c, t, var, &poly);
     if (c->st != CASIM_OK) return SPARE;
     f = poly ? mul2(c, canon_const(c, t, var), poly_tree(c, poly, var)) : canon(c, t);
     if (sign < 0) F = neg(c, F), f = neg(c, f);                 /* the sign checked too (the review) */
@@ -5383,7 +5646,7 @@ static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int 
     ref n = SPARE, F = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -5472,8 +5735,8 @@ static __attribute__((noinline)) casim_status ir_parts(const char *eqn, int var,
     return st == CASIM_NOT_INTEGRABLE && r == CASIM_NO_ROOM ? r : st;
 }
 
-casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
-                             size_t arena_cap)
+static casim_status integrate_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                               size_t arena_cap)
 {
     casim_status st;
     if (cap) out[0] = '\0';
@@ -5482,6 +5745,12 @@ casim_status casim_integrate(const char *eqn, int var, int model, int angle, cha
     if (st == CASIM_NOT_INTEGRABLE) st = do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     /* CAS 017: when both refuse, substitution and parts */
     return st == CASIM_NOT_INTEGRABLE ? ir_parts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
+}
+
+casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                             size_t arena_cap)
+{
+    return unpoint(integrate_(eqn, var, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 
@@ -5898,7 +6167,7 @@ static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
     if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
-        rq->angle > CASIM_GRAD)
+        (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     start(&c, rq->eqn, rq->angle, arena, arena_cap);
@@ -6103,7 +6372,7 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     size_t ocap = cap < SLOT ? cap : SLOT;
     if (cap) out[0] = '\0';
     if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -6132,12 +6401,18 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);
 }
 
-casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
-                          size_t cap, void *arena, size_t arena_cap)
+static casim_status defint_(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                            size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_defint(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(defint_(eqn, var, lo, hi, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- factor (unit CAS 007) ----
@@ -6490,7 +6765,7 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
     long budget = FACTOR_BUDGET;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -6600,12 +6875,18 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
 
 /* ---- the API: CAS 007 ---- */
 
-casim_status casim_factor(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
-                          size_t arena_cap)
+static casim_status factor_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_factor(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_factor(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap)
+{
+    return unpoint(factor_(eqn, var, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- polynomial division, GCD and cancelling over Q (unit CAS 010) ---- */
@@ -6838,7 +7119,7 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
     CASIM_FRAME_PLANT
     if (cap) out[0] = '\0';
     if (!eqn || (op != CASIM_CANCEL && !repl)) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -6929,8 +7210,8 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
     return CASIM_OK;
 }
 
-casim_status casim_pdiv(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
-                        size_t cap, void *arena, size_t arena_cap)
+static casim_status pdiv_(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model) || !model_ok(repl_model)) return CASIM_BAD_ARG;
@@ -6938,8 +7219,14 @@ casim_status casim_pdiv(const char *eqn, int var, const char *repl, int model, i
                    repl_model == CASIM_MODEL_STU);
 }
 
-casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+casim_status casim_pdiv(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
                         size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(pdiv_(eqn, var, repl, model, repl_model, angle, out, cap, arena, arena_cap), out, cap);
+}
+
+static casim_status pgcd_(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model) || !model_ok(repl_model)) return CASIM_BAD_ARG;
@@ -6947,12 +7234,24 @@ casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, i
                    repl_model == CASIM_MODEL_STU);
 }
 
-casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
-                          size_t arena_cap)
+casim_status casim_pgcd(const char *eqn, int var, const char *repl, int model, int repl_model, int angle, char *out,
+                        size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(pgcd_(eqn, var, repl, model, repl_model, angle, out, cap, arena, arena_cap), out, cap);
+}
+
+static casim_status cancel_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_poly(CASIM_CANCEL, eqn, var, NULL, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU, false);
+}
+
+casim_status casim_cancel(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                          size_t arena_cap)
+{
+    return unpoint(cancel_(eqn, var, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- partial fractions over Q (unit CAS 012) ---- */
@@ -7409,7 +7708,7 @@ static __attribute__((noinline)) casim_status do_partfrac(const char *eqn, int v
     rat *co;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     if (arena_cap < skip + sizeof(pfkeep) + sizeof(pfwork) + 64) return out[0] = '\0', CASIM_NO_ROOM;
     room = (arena_cap - skip - sizeof(pfkeep)) & ~(size_t)7;
     K = (pfkeep *)(void *)(base + room);
@@ -7436,12 +7735,18 @@ static __attribute__((noinline)) casim_status do_partfrac(const char *eqn, int v
     return pf_work(K, var, angle, out, ocap, base, room);
 }
 
-casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
-                            size_t arena_cap)
+static casim_status partfrac_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                              size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_partfrac(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_partfrac(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
+                            size_t arena_cap)
+{
+    return unpoint(partfrac_(eqn, var, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- partfrac's steps (work/steps-partfrac.md) ----
@@ -7752,7 +8057,7 @@ static SS_KEEP_ARGS casim_status do_psteps(const casim_req *rq, walk_t *Pw, out_
     ref wr, pr;
     unsigned char *base;
     pstep_t S;
-    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG || rq->angle > CASIM_GRAD)
+    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     st = arena_cap < SLOT ? CASIM_NO_ROOM
@@ -7800,7 +8105,7 @@ static ref ir_rat(ctx *c, int64_t p, int64_t q)
 {
     rat r;
     if (!pf_rmake(&r, p, q)) return c->st = CASIM_NO_ROOM, SPARE;
-    return num(c, &r);
+    return pnum(c, &r);
 }
 
 /* ∫ num ÷ F^j dX, its antiderivative's tree; SPARE (status NOT_INTEGRABLE) for a form the table has not */
@@ -7830,7 +8135,7 @@ static __attribute__((noinline)) ref ir_term(ctx *c, const pffac *F, int j, cons
         root = r == 1 ? ir_rat(c, k, 1) : mul2(c, ir_rat(c, k, 1), power(c, ir_rat(c, r, 1), small(c, C_HALF)));
         g = mul2(c, mul2(c, small(c, C_2), power(c, root, small(c, C_M1))),
                  mul2(c, fn(c, F_ATAN, mul2(c, u, power(c, root, small(c, C_M1)))), angle_factor(c, false)));
-        return add2(c, mul2(c, num(c, &k1), fn(c, F_LN, ft)), mul2(c, num(c, &k2), g));
+        return add2(c, mul2(c, pnum(c, &k1), fn(c, F_LN, ft)), mul2(c, pnum(c, &k2), g));
     }
     if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
     return SPARE;
@@ -7895,6 +8200,7 @@ static __attribute__((noinline)) casim_status do_irational(const char *eqn, int 
     if (st == CASIM_NO_ROOM && ((pfkeep *)(void *)(base + room2))->ftext[0] != '\x01') return CASIM_NO_ROOM;
     if (st != CASIM_OK && st != CASIM_TOO_LONG) return CASIM_NOT_INTEGRABLE;
     start(&c, "1", angle, base, room2);
+    if (text_marked(eqn)) c.nm |= NM_PW;        /* CAS 019 rule 3: partfrac mixes the whole list */
     c.var = var;
     {
         /* partfrac's work area, compacted to what is needed: each part moved down (to below where it was) */
@@ -8739,7 +9045,7 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     out_t w = {out, ocap, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn || !point || n < 0 || n > TAYLOR_MAX) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */
@@ -8804,12 +9110,18 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     return w.full ? CASIM_TOO_LONG : CASIM_OK;
 }
 
-casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
-                          size_t cap, void *arena, size_t arena_cap)
+static casim_status taylor_(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
+                            size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_taylor(eqn, var, point, n, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_taylor(const char *eqn, int var, const char *point, int n, int model, int angle, char *out,
+                          size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(taylor_(eqn, var, point, n, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- integration by substitution and by parts (unit CAS 017) ----
@@ -8951,7 +9263,7 @@ static ref ib_rational(ctx *c, ib_t *B, ref t, int var)
         /* where partfrac can't start in the room left, the rational path's refusal is the room's for a rational u
            (abacus #8413: SIN(X)+1÷(3×X^2+2×X+8) at 8 KB), and only the form's for any other */
         if (c->top - c->used < ir_need(c->mem + c->used) && ib_ratfn(c, u, var)) st = CASIM_NO_ROOM;
-        else st = do_irational(buf, var, c->angle, ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
+        else st = do_irational(buf, var, c->angle | ((c->nm & NM_DEC) ? ANGLE_DEC : 0), ob, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl);
         if (st == CASIM_OK) {
             c->s = ob;
             F = ib_canon(c, parse(c));
@@ -9664,7 +9976,7 @@ static __attribute__((noinline)) void ib_choose(ctx *c, ib_t *B, ref t, int var)
     if (c->st == CASIM_OK || !ib_fail(c, mark)) return;
     if ((k = ib_const(c, t, var)) != 0 &&                /* the rational path, as ib_rational */
         (buf = ib_print(c, ib_canon(c, mul2(c, t, ib_inv(c, k))), 2 * IB_TEXT)) != NULL &&
-        do_irational(buf, var, c->angle, buf + IB_TEXT, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl) == CASIM_OK) {
+        do_irational(buf, var, c->angle | ((c->nm & NM_DEC) ? ANGLE_DEC : 0), buf + IB_TEXT, IB_TEXT, c->mem + c->used, c->top - c->used, c->rtl) == CASIM_OK) {
         c->top = top;
         B->how = IBH_CONST, B->r[0] = k;
         return;
@@ -10535,7 +10847,7 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
     out_t w = {out, ocap, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn || !point || side < -1 || side > 1) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     if (!strcmp(point, "\xe2\x88\x9e")) inf = 1;
     if (!strcmp(point, "-\xe2\x88\x9e")) inf = -1;
     if (inf && side) return CASIM_BAD_ARG;              /* rule 2: the side of ∞ is implied */
@@ -10588,8 +10900,8 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
     return r.k == L_UND ? CASIM_UNDECIDED : CASIM_UNDEFINED;
 }
 
-casim_status casim_limit(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
-                         size_t cap, void *arena, size_t arena_cap)
+static casim_status limit_(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
+                           size_t cap, void *arena, size_t arena_cap)
 {
     int s;
     if (cap) out[0] = '\0';
@@ -10597,6 +10909,12 @@ casim_status casim_limit(const char *eqn, int var, const char *point, const char
     s = !strcmp(side, "+") ? 1 : !strcmp(side, "-") ? -1 : !*side ? 0 : 2;
     if (s == 2) return CASIM_BAD_ARG;
     return do_limit(eqn, var, point, s, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_limit(const char *eqn, int var, const char *point, const char *side, int model, int angle, char *out,
+                         size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(limit_(eqn, var, point, side, model, angle, out, cap, arena, arena_cap), out, cap);
 }
 
 /* ---- sums (unit CAS 018, work/018-sums.md) ----
@@ -11388,7 +11706,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
     bool swung;
     if (cap) out[0] = '\0';
     if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || angle > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
     memset(&S, 0, sizeof S);
     S.var = var, S.eqn = eqn;
     S.inf = !strcmp(hi, "\xe2\x88\x9e");
@@ -11470,10 +11788,16 @@ static __attribute__((noinline)) casim_status do_sum(const char *eqn, int var, c
     return st == CASIM_OK || st == CASIM_NO_ROOM ? st : CASIM_TOO_LONG;
 }
 
-casim_status casim_sum(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
-                       size_t cap, void *arena, size_t arena_cap)
+static casim_status sum_(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                         size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
     return do_sum(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+}
+
+casim_status casim_sum(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
+                       size_t cap, void *arena, size_t arena_cap)
+{
+    return unpoint(sum_(eqn, var, lo, hi, model, angle, out, cap, arena, arena_cap), out, cap);
 }

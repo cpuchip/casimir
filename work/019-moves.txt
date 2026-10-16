@@ -1,0 +1,428 @@
+# CAS 019 (fractions): what moves, for abacus to route (#8557 Q3: soroban 048/056/057 and the display tests, tally,
+# tutor, primer). Every move is text only: each old answer and its new one are one value (scripts/typed-values.py over
+# the golden inputs with a typed decimal; the read-back by value over every moved golden part, as the prototype's).
+
+## The golden corpus: 1265 lines, each with its before and after in tests/golden/moved/cas-019.txt
+
+| op | no typed decimal | a typed decimal |
+|---|---|---|
+| cancel | 420 | 0 |
+| collect | 15 | 23 |
+| defint | 28 | 11 |
+| derive | 10 | 17 |
+| expand | 29 | 16 |
+| integrate | 162 | 25 |
+| limit | 60 | 0 |
+| pdiv | 143 | 0 |
+| simplify | 54 | 17 |
+| subst | 2 | 12 |
+| sum | 62 | 0 |
+| taylor | 159 | 0 |
+
+Statuses (rule 5), all taylor at 8,800 B, cap 65,536 (the same four at cap 192):
+- (1+X)^(1÷3) at 1÷2, order 6, GRAD: OK -> DECIMAL_FORM (today's text)
+- SIN(X) at 1÷2, order 5, GRAD: OK -> DECIMAL_FORM (today's text)
+- SQRT(1+X)×EXP(X) at 0, order 11, GRAD: OK -> DECIMAL_FORM (today's text)
+- EXP(K×X) at 1÷2, order 6, RAD: TOO_LONG -> OK (fractions are shorter)
+
+## Visible rows and test expectations, each old line then its new one
+
+### docs/language.md: 28 lines
+- | `casim simplify "SIN(30)+COS(45)" DEG` | `0.5×SQRT(2)+0.5` |
++ | `casim simplify "SIN(30)+COS(45)" DEG` | `SQRT(2)÷2+1÷2` |
+- | `casim integrate "3×X^2+COS(2×X)" X RAD` | `0.5×SIN(2×X)+X^3` |
++ | `casim integrate "3×X^2+COS(2×X)" X RAD` | `SIN(2×X)÷2+X^3` |
+- | `casim integrate "1÷(2×X+1)" X RAD` | `0.5×LN(ABS(2×X+1))` |
++ | `casim integrate "1÷(2×X+1)" X RAD` | `LN(ABS(2×X+1))÷2` |
+- | `casim integrate "1÷(1-X^4)" X RAD` | `-0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)` |
++ | `casim integrate "1÷(1-X^4)" X RAD` | `-LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+ATAN(X)÷2` |
+- | `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)` |
++ | `casim integrate "1÷(X^2+X+1)" X RAD` | `2×ATAN(2×(X+1÷2)÷SQRT(3))÷SQRT(3)` |
+- | `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+0.5×X^2` |
++ | `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+X^2÷2` |
+- | `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
++ | `casim integrate "X×EXP(X^2)" X RAD` | `EXP(X^2)÷2` |
+- | `casim integrate "LN(X)÷X" X RAD` | `0.5×LN(X)^2` |
++ | `casim integrate "LN(X)÷X" X RAD` | `LN(X)^2÷2` |
+- | `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
++ | `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5` |
+- | `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
++ | `casim integrate "EXP(X)×SIN(X)" X RAD` | `EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2` |
+- | `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `0.5×ATAN(X)-90×X÷π+0.5×X^2×ATAN(X)` |
++ | `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `ATAN(X)÷2-90×X÷π+X^2×ATAN(X)÷2` |
+- | `casim steps integrate "X^2+SIN(2×X)" X RAD` | `SUM: ∫(X^2+SIN(2×X))dX = ∫(X^2)dX+∫(SIN(2×X))dX /   CHECK: d/dX(X^3÷3) = X^2 /   POWER: ∫(X^2)dX = X^3÷3 /   SIN: ∫(SIN(2×X))dX = ∫(SIN(U))dU÷2, U=2×X /   CHECK: d/dX(-0.5×COS(2×X)) = SIN(2×X) /   SIN: ∫(SIN(2×X))dX = -0.5×COS(2×X) / SUM: ∫(X^2+SIN(2×X))dX = -0.5×COS(2×X)+X^3÷3` |
++ | `casim steps integrate "X^2+SIN(2×X)" X RAD` | `SUM: ∫(X^2+SIN(2×X))dX = ∫(X^2)dX+∫(SIN(2×X))dX /   CHECK: d/dX(X^3÷3) = X^2 /   POWER: ∫(X^2)dX = X^3÷3 /   SIN: ∫(SIN(2×X))dX = ∫(SIN(U))dU÷2, U=2×X /   CHECK: d/dX(-COS(2×X)÷2) = SIN(2×X) /   SIN: ∫(SIN(2×X))dX = -COS(2×X)÷2 / SUM: ∫(X^2+SIN(2×X))dX = -COS(2×X)÷2+X^3÷3` |
+- | `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(0.5×LN(ABS(2×X+1))) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = 0.5×LN(ABS(2×X+1))` |
++ | `casim steps integrate "1÷(2×X+1)" X RAD` | `RECIPROCAL: ∫(1÷(2×X+1))dX = ∫(1÷U)dU÷2, U=2×X+1 / CHECK: d/dX(LN(ABS(2×X+1))÷2) = 1÷(2×X+1) / RECIPROCAL: ∫(1÷(2×X+1))dX = LN(ABS(2×X+1))÷2` |
+- | `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-0.5×X^2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-0.5×X^2+X^3÷3` |
++ | `casim steps integrate "(X+1)×(X-2)" X RAD` | `POLYNOMIAL: ∫((X+1)×(X-2))dX = ∫(-X+X^2-2)dX / CHECK: d/dX(-2×X-X^2÷2+X^3÷3) = (X+1)×(X-2) / POLYNOMIAL: ∫((X+1)×(X-2))dX = -2×X-X^2÷2+X^3÷3` |
+- | `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 0.4×X^2.5 / CHECK: d/dX(-1.2×X^2.5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -1.2×X^2.5` |
++ | `casim steps integrate "(-3)×SQRT(X)^3" X RAD` | `CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -3×∫(SQRT(X)^3)dX /   POWER: ∫(SQRT(X)^3)dX = 2×X^(5÷2)÷5 / CHECK: d/dX(-6×X^(5÷2)÷5) = (-3)×SQRT(X)^3 / CONSTANT MULTIPLE: ∫((-3)×SQRT(X)^3)dX = -6×X^(5÷2)÷5` |
+- | `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-0.5÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -0.5÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
++ | `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-1÷2÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -1÷2÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
+- | `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(0.5×ATAN(0.5×X+0.5)) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = 0.5×ATAN(0.5×X+0.5) / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 0.5×LN(2×X+X^2+5)+ATAN(0.5×X+0.5)` |
++ | `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(ATAN(X÷2+1÷2)÷2) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ATAN(X÷2+1÷2)÷2 / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = LN(2×X+X^2+5)÷2+ATAN(X÷2+1÷2)` |
+- | `casim steps integrate '1÷(X^2+4)' X DEG` | `CHECK: d/dX(π×ATAN(0.5×X)÷360) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = π×ATAN(0.5×X)÷360` |
++ | `casim steps integrate '1÷(X^2+4)' X DEG` | `CHECK: d/dX(π×ATAN(X÷2)÷360) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = π×ATAN(X÷2)÷360` |
+- | `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-0.5×(X-1)^2+(X-1)^3÷3-0.25×(X-1)^4` |
++ | `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-(X-1)^2÷2+(X-1)^3÷3-(X-1)^4÷4` |
+- | `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `0.5-0.5×(X-π÷3)×SQRT(3)-0.25×(X-π÷3)^2+(X-π÷3)^3×SQRT(3)÷12` |
++ | `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `1÷2-(X-π÷3)×SQRT(3)÷2-(X-π÷3)^2÷4+(X-π÷3)^3×SQRT(3)÷12` |
+- | `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+0.5×K^2×X^2+K^3×X^3÷6` |
++ | `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+K^2×X^2÷2+K^3×X^3÷6` |
+- | `casim limit 'SQRT(X^2+X)-X' X ∞ '' RAD` | `0.5` |
++ | `casim limit 'SQRT(X^2+X)-X' X ∞ '' RAD` | `1÷2` |
+- | `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `0.5` |
++ | `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `1÷2` |
+- | `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
++ | `casim sum "K" K 1 N RAD` | `N÷2+N^2÷2` |
+- | `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
++ | `casim sum "K^2" K 1 N RAD` | `N÷6+N^2÷2+N^3÷3` |
+- | `casim sum "SIN(30×K)" K 1 3 DEG` | `0.5×SQRT(3)+1.5` |
++ | `casim sum "SIN(30×K)" K 1 3 DEG` | `SQRT(3)÷2+3÷2` |
+
+### tests/collect_test.c: 6 lines
+- if (strcmp(x, "X") == 0) *k = 1;
++ const char *end;                    /* after var^k: nothing, or (CAS 019) the coefficient's ÷ part: X÷4 */
+- if (*e) return false;
++ if (strcmp(x, "X") == 0 || strncmp(x, "X÷", 3) == 0) *k = 1, end = x + 1;
++ end = e + 1;
++ if (*e && strncmp(e, "÷", 2) != 0) return false;
++ end = e;
++ strcat(c, end);
+
+### tests/defint_test.c: 5 lines
+- is("EXP(2×X)", "0", "LN(2)", CASIM_RAD, "1.5");
++ is("EXP(2×X)", "0", "LN(2)", CASIM_RAD, "3÷2");
+- is("TAN(X)", "0", "π÷4", CASIM_RAD, "-LN(0.5×SQRT(2))");
++ is("TAN(X)", "0", "π÷4", CASIM_RAD, "-LN(SQRT(2)÷2)");
+- is("1÷(2×X+1)", "0", "1", CASIM_RAD, "0.5×LN(3)");
++ is("1÷(2×X+1)", "0", "1", CASIM_RAD, "LN(3)÷2");
+- is("1÷X^2", "1", "2", CASIM_RAD, "0.5");
++ is("1÷X^2", "1", "2", CASIM_RAD, "1÷2");
+- is("SIN(2×X)", "0", "π÷4", CASIM_RAD, "0.5");
++ is("SIN(2×X)", "0", "π÷4", CASIM_RAD, "1÷2");
+
+### tests/exact_test.c: 6 lines
+- /* sin(nπ/12) for n = 0..23 in 002's form, by hand: "" where it is not exact (odd multiples of π/12) */
++ /* sin(nπ/12) for n = 0..23 in 002's form (CAS 019: a fraction), by hand: "" where it is not exact (odd multiples of π/12) */
+- "0", "", "0.5", "0.5×SQRT(2)", "0.5×SQRT(3)", "", "1", "", "0.5×SQRT(3)", "0.5×SQRT(2)", "0.5", "",
++ "0", "", "1÷2", "SQRT(2)÷2", "SQRT(3)÷2", "", "1", "", "SQRT(3)÷2", "SQRT(2)÷2", "1÷2", "",
+- "0", "", "-0.5", "-0.5×SQRT(2)", "-0.5×SQRT(3)", "", "-1", "", "-0.5×SQRT(3)", "-0.5×SQRT(2)", "-0.5", ""};
++ "0", "", "-1÷2", "-SQRT(2)÷2", "-SQRT(3)÷2", "", "-1", "", "-SQRT(3)÷2", "-SQRT(2)÷2", "-1÷2", ""};
+- is("EXP(-LN(4))", CASIM_RAD, "0.25");
++ is("EXP(-LN(4))", CASIM_RAD, "1÷4");
+- is("(27÷8)^(2÷3)", CASIM_RAD, "2.25");
++ is("(27÷8)^(2÷3)", CASIM_RAD, "9÷4");
+- is("16^(-1÷4)", CASIM_RAD, "0.5");
++ is("16^(-1÷4)", CASIM_RAD, "1÷2");
+
+### tests/golden_check.c: 1 lines
+- "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM"};
++ "IMPROPER", "UNDECIDED", "NO_CLOSED_FORM", "DECIMAL_FORM"};
+
+### tests/integrate_test.c: 1 lines
+- is("X^3×SQRT(X^2+1)", CASIM_RAD, "(X^2+1)^2.5÷5-(X^2+1)^1.5÷3");          /* back-substitution */
++ is("X^3×SQRT(X^2+1)", CASIM_RAD, "(X^2+1)^(5÷2)÷5-(X^2+1)^(3÷2)÷3");          /* back-substitution */
+
+### tests/simplify_test.c: 7 lines
+- /* the third review: a 19-digit decimal the printer writes reads back as the same number */
++ /* the third review: a 19-digit decimal the printer writes reads back as the same number (CAS 019: made from a
+- is("531441÷262144×X", "2.027286529541015625×X");
++ typed decimal, 2^-18; from 531441÷262144 alone it is that fraction) */
+- is("531441÷262144+531441÷262144", "4.05457305908203125");
++ is("531441×0.000003814697265625×X", "2.027286529541015625×X");
+- is("X÷2", "0.5×X");
++ is("531441×0.000003814697265625+531441÷262144", "4.05457305908203125");
+- is("2^-2", "0.25");
++ is("531441÷262144×X", "531441×X÷262144");
++ is("X÷2", "X÷2");
++ is("2^-2", "1÷4");
+
+### tests/stamp_test.c: 5 lines
+- is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_STU, "0.001953125");   /* 2^-9 */
++ is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_STU, "1÷512");   /* 2^-9 */
+- is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_35, "0.015625");       /* (2^-3)^2 */
++ is(CASIM_SIMPLIFY, "2^-3^2", CASIM_MODEL_35, "1÷64");       /* (2^-3)^2 */
+- is(CASIM_SIMPLIFY, "2^-1^2", CASIM_MODEL_STU, "0.5");
++ is(CASIM_SIMPLIFY, "2^-1^2", CASIM_MODEL_STU, "1÷2");
+- is(CASIM_SIMPLIFY, "2^-2", CASIM_MODEL_STU, "0.25");
++ is(CASIM_SIMPLIFY, "2^-2", CASIM_MODEL_STU, "1÷4");
+- is(CASIM_SIMPLIFY, "2^-3×4", CASIM_MODEL_STU, "0.5");
++ is(CASIM_SIMPLIFY, "2^-3×4", CASIM_MODEL_STU, "1÷2");
+
+### work/006-examples.txt: 2 lines
+- I0022 | integrate | X×LN(X) | X | RAD | 35 | -0.25×X^2+0.5×X^2×LN(X)
++ I0022 | integrate | X×LN(X) | X | RAD | 35 | -X^2÷4+X^2×LN(X)÷2
+- I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | 0.5×EXP(X^2)
++ I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | EXP(X^2)÷2
+
+### work/008-examples.txt: 11 lines
+- E0001 | simplify | SIN(π÷6) | RAD | 35 | 0.5
++ E0001 | simplify | SIN(π÷6) | RAD | 35 | 1÷2
+- E0002 | simplify | COS(π÷4) | RAD | 35 | 0.5×SQRT(2)
++ E0002 | simplify | COS(π÷4) | RAD | 35 | SQRT(2)÷2
+- E0003 | simplify | SIN(π÷3) | RAD | 35 | 0.5×SQRT(3)
++ E0003 | simplify | SIN(π÷3) | RAD | 35 | SQRT(3)÷2
+- E0005 | simplify | COS(2×π÷3) | RAD | 35 | -0.5
++ E0005 | simplify | COS(2×π÷3) | RAD | 35 | -1÷2
+- E0006 | simplify | SIN(5×π÷4) | RAD | 35 | -0.5×SQRT(2)
++ E0006 | simplify | SIN(5×π÷4) | RAD | 35 | -SQRT(2)÷2
+- E0008 | simplify | SIN(-π÷6) | RAD | 35 | -0.5
++ E0008 | simplify | SIN(-π÷6) | RAD | 35 | -1÷2
+- E0012 | simplify | SIN(30) | DEG | 35 | 0.5
++ E0012 | simplify | SIN(30) | DEG | 35 | 1÷2
+- E0013 | simplify | COS(135) | DEG | 35 | -0.5×SQRT(2)
++ E0013 | simplify | COS(135) | DEG | 35 | -SQRT(2)÷2
+- E0016 | simplify | SIN(50) | GRAD | 35 | 0.5×SQRT(2)
++ E0016 | simplify | SIN(50) | GRAD | 35 | SQRT(2)÷2
+- E0017 | simplify | COS(100÷3) | GRAD | 35 | 0.5×SQRT(3)
++ E0017 | simplify | COS(100÷3) | GRAD | 35 | SQRT(3)÷2
+- E0030 | simplify | (27÷8)^(2÷3) | RAD | 35 | 2.25
++ E0030 | simplify | (27÷8)^(2÷3) | RAD | 35 | 9÷4
+
+### work/009-examples.txt: 2 lines
+- N0007 | defint | EXP(2×X) | 0 | LN(2) | RAD | 35 | 1.5
++ N0007 | defint | EXP(2×X) | 0 | LN(2) | RAD | 35 | 3÷2
+- N0011 | defint | TAN(X) | 0 | π÷4 | RAD | 35 | -LN(0.5×SQRT(2))
++ N0011 | defint | TAN(X) | 0 | π÷4 | RAD | 35 | -LN(SQRT(2)÷2)
+
+### work/010-examples.txt: 3 lines
+- P0003 | pdiv | X^2 | 2×X+1 | 35 | 0.5×X-0.25; 0.25
++ P0003 | pdiv | X^2 | 2×X+1 | 35 | X÷2-1÷4; 1÷4
+- P0005 | pdiv | X^2+2×X | 2 | 35 | X+0.5×X^2; 0
++ P0005 | pdiv | X^2+2×X | 2 | 35 | X+X^2÷2; 0
+- P0018 | cancel | (X^2-1)÷(2×X+2) | - | 35 | 0.5×X-0.5; X=-1
++ P0018 | cancel | (X^2-1)÷(2×X+2) | - | 35 | X÷2-1÷2; X=-1
+
+### work/013-examples.txt: 8 lines
+- J0002 | integrate | (X^2-3)÷(X^3-7×X+6) | X | RAD | 35 | 0.2×LN(ABS(X-2))+0.5×LN(ABS(X-1))+0.3×LN(ABS(X+3))
++ J0002 | integrate | (X^2-3)÷(X^3-7×X+6) | X | RAD | 35 | LN(ABS(X-2))÷5+LN(ABS(X-1))÷2+3×LN(ABS(X+3))÷10
+- J0004 | integrate | 1÷(1-X^4) | X | RAD | 35 | -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)
++ J0004 | integrate | 1÷(1-X^4) | X | RAD | 35 | -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+ATAN(X)÷2
+- J0005 | integrate | 1÷(X^2-1) | X | RAD | 35 | 0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))
++ J0005 | integrate | 1÷(X^2-1) | X | RAD | 35 | LN(ABS(X-1))÷2-LN(ABS(X+1))÷2
+- J0006 | integrate | (X^4+1)÷(X^3+1) | X | RAD | 35 | 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2
++ J0006 | integrate | (X^4+1)÷(X^3+1) | X | RAD | 35 | 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+X^2÷2
+- J0007 | integrate | 1÷(X^2+X+1) | X | RAD | 35 | 2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)
++ J0007 | integrate | 1÷(X^2+X+1) | X | RAD | 35 | 2×ATAN(2×(X+1÷2)÷SQRT(3))÷SQRT(3)
+- J0009 | integrate | X÷(X^2+1) | X | RAD | 35 | 0.5×LN(X^2+1)
++ J0009 | integrate | X÷(X^2+1) | X | RAD | 35 | LN(X^2+1)÷2
+- J0013 | integrate | 1÷(1-X^4) | X | GRAD | 35 | -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+π×ATAN(X)÷400
++ J0013 | integrate | 1÷(1-X^4) | X | GRAD | 35 | -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+π×ATAN(X)÷400
+- J0016 | integrate | SIN(X)+1÷(X^2-1) | X | RAD | 35 | 0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)
++ J0016 | integrate | SIN(X)+1÷(X^2-1) | X | RAD | 35 | LN(ABS(X-1))÷2-LN(ABS(X+1))÷2-COS(X)
+
+### work/013-steps-examples.txt: 9 lines
+- | `casim steps integrate '(X^2-3)÷(X^3-7×X+6)' X RAD` | `PARTIAL FRACTIONS: ∫((X^2-3)÷(X^3-7×X+6))dX = ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX /   FACTOR: X^3-7×X+6=(X+3)×(X-1)×(X-2) /   FORM: (X^2-3)÷(X^3-7×X+6)=A÷(X+3)+B÷(X-1)+C÷(X-2) /   CLEARED: X^2-3=A×(X-1)×(X-2)+B×(X+3)×(X-2)+C×(X+3)×(X-1) /     COVER-UP: X=-3: 6=20×A /     COVER-UP: A=3÷10 /     COVER-UP: X=1: -2=-4×B /     COVER-UP: B=1÷2 /     COVER-UP: X=2: 1=5×C /     COVER-UP: C=1÷5 /   ANSWER: 3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)) /   SUM: ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX = ∫(3÷(10×(X+3)))dX+∫(1÷(2×(X-1)))dX+∫(1÷(5×(X-2)))dX /     CONSTANT MULTIPLE: ∫(3÷(10×(X+3)))dX = 3÷10×∫(1÷(X+3))dX /       RECIPROCAL: ∫(1÷(X+3))dX = ∫(1÷U)dU, U=X+3 /       CHECK: d/dX(LN(ABS(X+3))) = 1÷(X+3) /       RECIPROCAL: ∫(1÷(X+3))dX = LN(ABS(X+3)) /     CONSTANT MULTIPLE: ∫(3÷(10×(X+3)))dX = 0.3×LN(ABS(X+3)) /     CONSTANT MULTIPLE: ∫(1÷(2×(X-1)))dX = 1÷2×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(1÷(2×(X-1)))dX = 0.5×LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(1÷(5×(X-2)))dX = 1÷5×∫(1÷(X-2))dX /       RECIPROCAL: ∫(1÷(X-2))dX = ∫(1÷U)dU, U=X-2 /       CHECK: d/dX(LN(ABS(X-2))) = 1÷(X-2) /       RECIPROCAL: ∫(1÷(X-2))dX = LN(ABS(X-2)) /     CONSTANT MULTIPLE: ∫(1÷(5×(X-2)))dX = 0.2×LN(ABS(X-2)) /   SUM: ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX = 0.2×LN(ABS(X-2))+0.5×LN(ABS(X-1))+0.3×LN(ABS(X+3)) / PARTIAL FRACTIONS: ∫((X^2-3)÷(X^3-7×X+6))dX = 0.2×LN(ABS(X-2))+0.5×LN(ABS(X-1))+0.3×LN(ABS(X+3))` |
++ | `casim steps integrate '(X^2-3)÷(X^3-7×X+6)' X RAD` | `PARTIAL FRACTIONS: ∫((X^2-3)÷(X^3-7×X+6))dX = ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX /   FACTOR: X^3-7×X+6=(X+3)×(X-1)×(X-2) /   FORM: (X^2-3)÷(X^3-7×X+6)=A÷(X+3)+B÷(X-1)+C÷(X-2) /   CLEARED: X^2-3=A×(X-1)×(X-2)+B×(X+3)×(X-2)+C×(X+3)×(X-1) /     COVER-UP: X=-3: 6=20×A /     COVER-UP: A=3÷10 /     COVER-UP: X=1: -2=-4×B /     COVER-UP: B=1÷2 /     COVER-UP: X=2: 1=5×C /     COVER-UP: C=1÷5 /   ANSWER: 3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)) /   SUM: ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX = ∫(3÷(10×(X+3)))dX+∫(1÷(2×(X-1)))dX+∫(1÷(5×(X-2)))dX /     CONSTANT MULTIPLE: ∫(3÷(10×(X+3)))dX = 3÷10×∫(1÷(X+3))dX /       RECIPROCAL: ∫(1÷(X+3))dX = ∫(1÷U)dU, U=X+3 /       CHECK: d/dX(LN(ABS(X+3))) = 1÷(X+3) /       RECIPROCAL: ∫(1÷(X+3))dX = LN(ABS(X+3)) /     CONSTANT MULTIPLE: ∫(3÷(10×(X+3)))dX = 3×LN(ABS(X+3))÷10 /     CONSTANT MULTIPLE: ∫(1÷(2×(X-1)))dX = 1÷2×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(1÷(2×(X-1)))dX = LN(ABS(X-1))÷2 /     CONSTANT MULTIPLE: ∫(1÷(5×(X-2)))dX = 1÷5×∫(1÷(X-2))dX /       RECIPROCAL: ∫(1÷(X-2))dX = ∫(1÷U)dU, U=X-2 /       CHECK: d/dX(LN(ABS(X-2))) = 1÷(X-2) /       RECIPROCAL: ∫(1÷(X-2))dX = LN(ABS(X-2)) /     CONSTANT MULTIPLE: ∫(1÷(5×(X-2)))dX = LN(ABS(X-2))÷5 /   SUM: ∫(3÷(10×(X+3))+1÷(2×(X-1))+1÷(5×(X-2)))dX = LN(ABS(X-2))÷5+LN(ABS(X-1))÷2+3×LN(ABS(X+3))÷10 / PARTIAL FRACTIONS: ∫((X^2-3)÷(X^3-7×X+6))dX = LN(ABS(X-2))÷5+LN(ABS(X-1))÷2+3×LN(ABS(X+3))÷10` |
+- | `casim steps integrate '1÷(1-X^4)' X RAD` | `PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX /   FACTOR: -X^4+1=-1×(X+1)×(X-1)×(X^2+1) /   FORM: 1÷(-X^4+1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 1=-1×(A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1)) /     COVER-UP: X=-1: 1=4×A /     COVER-UP: A=1÷4 /     COVER-UP: X=1: 1=-4×B /     COVER-UP: B=-1÷4 /     COEFFICIENTS: X^3: 0=-C /     COEFFICIENTS: X^2: -1÷2=-D /     COEFFICIENTS: X: 0=C /     COEFFICIENTS: X^0: 1÷2=D /     COEFFICIENTS: C=0; D=1÷2 /   ANSWER: 1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)) /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = ∫(1÷(4×(X+1)))dX-∫(1÷(4×(X-1)))dX+∫(1÷(2×(X^2+1)))dX /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 1÷4×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 0.25×LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -1÷4×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -0.25×LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = 1÷2×∫(1÷(X^2+1))dX /       CHECK: d/dX(ATAN(X)) = 1÷(X^2+1) /       ARCTANGENT: ∫(1÷(X^2+1))dX = ATAN(X) /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = 0.5×ATAN(X) /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X) / PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+0.5×ATAN(X)` |
++ | `casim steps integrate '1÷(1-X^4)' X RAD` | `PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX /   FACTOR: -X^4+1=-1×(X+1)×(X-1)×(X^2+1) /   FORM: 1÷(-X^4+1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 1=-1×(A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1)) /     COVER-UP: X=-1: 1=4×A /     COVER-UP: A=1÷4 /     COVER-UP: X=1: 1=-4×B /     COVER-UP: B=-1÷4 /     COEFFICIENTS: X^3: 0=-C /     COEFFICIENTS: X^2: -1÷2=-D /     COEFFICIENTS: X: 0=C /     COEFFICIENTS: X^0: 1÷2=D /     COEFFICIENTS: C=0; D=1÷2 /   ANSWER: 1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)) /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = ∫(1÷(4×(X+1)))dX-∫(1÷(4×(X-1)))dX+∫(1÷(2×(X^2+1)))dX /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 1÷4×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = LN(ABS(X+1))÷4 /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -1÷4×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -LN(ABS(X-1))÷4 /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = 1÷2×∫(1÷(X^2+1))dX /       CHECK: d/dX(ATAN(X)) = 1÷(X^2+1) /       ARCTANGENT: ∫(1÷(X^2+1))dX = ATAN(X) /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = ATAN(X)÷2 /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+ATAN(X)÷2 / PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+ATAN(X)÷2` |
+- | `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-0.5÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -0.5÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
++ | `casim steps integrate '(X^2+1)÷(X-1)^3' X RAD` | `PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX /   FACTOR: X^3-3×X^2+3×X-1=(X-1)^3 /   FORM: (X^2+1)÷(X^3-3×X^2+3×X-1)=A÷(X-1)+B÷(X-1)^2+C÷(X-1)^3 /   CLEARED: X^2+1=A×(X-1)^2+B×(X-1)+C /     COVER-UP: X=1: 2=C /     COVER-UP: C=2 /     COEFFICIENTS: X^2: 1=A /     COEFFICIENTS: X: 0=-2×A+B /     COEFFICIENTS: X^0: -1=A-B /     COEFFICIENTS: A=1; B=2 /   ANSWER: 1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = ∫(1÷(X-1))dX+∫(2÷(X-1)^2)dX+∫(2÷(X-1)^3)dX /     RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /     CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /     RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = 2×∫(1÷(X-1)^2)dX /       POWER: ∫(1÷((X-1)^2))dX = ∫(1÷U^2)dU, U=X-1 /       CHECK: d/dX(-1÷(X-1)) = 1÷(X-1)^2 /       POWER: ∫(1÷(X-1)^2)dX = -1÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^2)dX = -2÷(X-1) /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = 2×∫(1÷(X-1)^3)dX /       POWER: ∫(1÷((X-1)^3))dX = ∫(1÷U^3)dU, U=X-1 /       CHECK: d/dX(-1÷2÷(X-1)^2) = 1÷(X-1)^3 /       POWER: ∫(1÷(X-1)^3)dX = -1÷2÷(X-1)^2 /     CONSTANT MULTIPLE: ∫(2÷(X-1)^3)dX = -1÷(X-1)^2 /   SUM: ∫(1÷(X-1)+2÷(X-1)^2+2÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1) / PARTIAL FRACTIONS: ∫((X^2+1)÷(X-1)^3)dX = LN(ABS(X-1))-1÷(X-1)^2-2÷(X-1)` |
+- | `casim steps integrate '(X^4+1)÷(X^3+1)' X RAD` | `PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX /   POLYNOMIAL PART: (X^4+1)÷(X^3+1)=X+(-X+1)÷(X^3+1) /   FACTOR: X^3+1=(X+1)×(X^2-X+1) /   FORM: (-X+1)÷(X^3+1)=A÷(X+1)+(B×X+C)÷(X^2-X+1) /   CLEARED: -X+1=A×(X^2-X+1)+(B×X+C)×(X+1) /     COVER-UP: X=-1: 2=3×A /     COVER-UP: A=2÷3 /     COEFFICIENTS: X^2: -2÷3=B /     COEFFICIENTS: X: -1÷3=B+C /     COEFFICIENTS: X^0: 1÷3=C /     COEFFICIENTS: B=-2÷3; C=1÷3 /   ANSWER: X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)) /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = ∫(X)dX+∫(2÷(3×(X+1)))dX-∫((2×X-1)÷(3×(X^2-X+1)))dX /     CHECK: d/dX(0.5×X^2) = X /     POWER: ∫(X)dX = 0.5×X^2 /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2÷3×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2×LN(ABS(X+1))÷3 /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -1÷3×∫((2×X-1)÷(X^2-X+1))dX /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = ∫(1÷U)dU, U=X^2-X+1 /       CHECK: d/dX(LN(-X+X^2+1)) = (2×X-1)÷(X^2-X+1) /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = LN(-X+X^2+1) /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -LN(-X+X^2+1)÷3 /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2 / PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2` |
++ | `casim steps integrate '(X^4+1)÷(X^3+1)' X RAD` | `PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX /   POLYNOMIAL PART: (X^4+1)÷(X^3+1)=X+(-X+1)÷(X^3+1) /   FACTOR: X^3+1=(X+1)×(X^2-X+1) /   FORM: (-X+1)÷(X^3+1)=A÷(X+1)+(B×X+C)÷(X^2-X+1) /   CLEARED: -X+1=A×(X^2-X+1)+(B×X+C)×(X+1) /     COVER-UP: X=-1: 2=3×A /     COVER-UP: A=2÷3 /     COEFFICIENTS: X^2: -2÷3=B /     COEFFICIENTS: X: -1÷3=B+C /     COEFFICIENTS: X^0: 1÷3=C /     COEFFICIENTS: B=-2÷3; C=1÷3 /   ANSWER: X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)) /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = ∫(X)dX+∫(2÷(3×(X+1)))dX-∫((2×X-1)÷(3×(X^2-X+1)))dX /     CHECK: d/dX(X^2÷2) = X /     POWER: ∫(X)dX = X^2÷2 /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2÷3×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2×LN(ABS(X+1))÷3 /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -1÷3×∫((2×X-1)÷(X^2-X+1))dX /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = ∫(1÷U)dU, U=X^2-X+1 /       CHECK: d/dX(LN(-X+X^2+1)) = (2×X-1)÷(X^2-X+1) /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = LN(-X+X^2+1) /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -LN(-X+X^2+1)÷3 /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+X^2÷2 / PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+X^2÷2` |
+- | `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(0.5×ATAN(0.5×X+0.5)) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = 0.5×ATAN(0.5×X+0.5) / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 0.5×LN(2×X+X^2+5)+ATAN(0.5×X+0.5)` |
++ | `casim steps integrate '(X+3)÷(X^2+2×X+5)' X RAD` | `SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = 1÷2×∫((2×X+2)÷(X^2+2×X+5))dX+2×∫(1÷(X^2+2×X+5))dX /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = ∫(1÷U)dU, U=X^2+2×X+5 /   CHECK: d/dX(LN(2×X+X^2+5)) = (2×X+2)÷(X^2+2×X+5) /   LOG DERIVATIVE: ∫((2×X+2)÷(X^2+2×X+5))dX = LN(2×X+X^2+5) /   COMPLETE THE SQUARE: X^2+2×X+5=(X+1)^2+4 /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ∫(1÷(U^2+4))dU, U=X+1 /   CHECK: d/dX(ATAN(X÷2+1÷2)÷2) = 1÷(X^2+2×X+5) /   ARCTANGENT: ∫(1÷(X^2+2×X+5))dX = ATAN(X÷2+1÷2)÷2 / SPLIT: ∫((X+3)÷(X^2+2×X+5))dX = LN(2×X+X^2+5)÷2+ATAN(X÷2+1÷2)` |
+- | `casim steps integrate '1÷(X^2+X+1)' X RAD` | `COMPLETE THE SQUARE: X^2+X+1=(X+1÷2)^2+3÷4 / ARCTANGENT: ∫(1÷(X^2+X+1))dX = ∫(1÷(U^2+3÷4))dU, U=X+1÷2 / CHECK: d/dX(2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)) = 1÷(X^2+X+1) / ARCTANGENT: ∫(1÷(X^2+X+1))dX = 2×ATAN(2×(X+0.5)÷SQRT(3))÷SQRT(3)` |
++ | `casim steps integrate '1÷(X^2+X+1)' X RAD` | `COMPLETE THE SQUARE: X^2+X+1=(X+1÷2)^2+3÷4 / ARCTANGENT: ∫(1÷(X^2+X+1))dX = ∫(1÷(U^2+3÷4))dU, U=X+1÷2 / CHECK: d/dX(2×ATAN(2×(X+1÷2)÷SQRT(3))÷SQRT(3)) = 1÷(X^2+X+1) / ARCTANGENT: ∫(1÷(X^2+X+1))dX = 2×ATAN(2×(X+1÷2)÷SQRT(3))÷SQRT(3)` |
+- | `casim steps integrate '1÷(X^2+4)' X RAD` | `CHECK: d/dX(0.5×ATAN(0.5×X)) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = 0.5×ATAN(0.5×X)` |
++ | `casim steps integrate '1÷(X^2+4)' X RAD` | `CHECK: d/dX(ATAN(X÷2)÷2) = 1÷(X^2+4) / ARCTANGENT: ∫(1÷(X^2+4))dX = ATAN(X÷2)÷2` |
+- | `casim steps integrate '1÷(1-X^4)' X GRAD` | `PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX /   FACTOR: -X^4+1=-1×(X+1)×(X-1)×(X^2+1) /   FORM: 1÷(-X^4+1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 1=-1×(A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1)) /     COVER-UP: X=-1: 1=4×A /     COVER-UP: A=1÷4 /     COVER-UP: X=1: 1=-4×B /     COVER-UP: B=-1÷4 /     COEFFICIENTS: X^3: 0=-C /     COEFFICIENTS: X^2: -1÷2=-D /     COEFFICIENTS: X: 0=C /     COEFFICIENTS: X^0: 1÷2=D /     COEFFICIENTS: C=0; D=1÷2 /   ANSWER: 1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)) /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = ∫(1÷(4×(X+1)))dX-∫(1÷(4×(X-1)))dX+∫(1÷(2×(X^2+1)))dX /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 1÷4×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 0.25×LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -1÷4×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -0.25×LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = 1÷2×∫(1÷(X^2+1))dX /       CHECK: d/dX(π×ATAN(X)÷200) = 1÷(X^2+1) /       ARCTANGENT: ∫(1÷(X^2+1))dX = π×ATAN(X)÷200 /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = π×ATAN(X)÷400 /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+π×ATAN(X)÷400 / PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = -0.25×LN(ABS(X-1))+0.25×LN(ABS(X+1))+π×ATAN(X)÷400` |
++ | `casim steps integrate '1÷(1-X^4)' X GRAD` | `PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX /   FACTOR: -X^4+1=-1×(X+1)×(X-1)×(X^2+1) /   FORM: 1÷(-X^4+1)=A÷(X+1)+B÷(X-1)+(C×X+D)÷(X^2+1) /   CLEARED: 1=-1×(A×(X-1)×(X^2+1)+B×(X+1)×(X^2+1)+(C×X+D)×(X+1)×(X-1)) /     COVER-UP: X=-1: 1=4×A /     COVER-UP: A=1÷4 /     COVER-UP: X=1: 1=-4×B /     COVER-UP: B=-1÷4 /     COEFFICIENTS: X^3: 0=-C /     COEFFICIENTS: X^2: -1÷2=-D /     COEFFICIENTS: X: 0=C /     COEFFICIENTS: X^0: 1÷2=D /     COEFFICIENTS: C=0; D=1÷2 /   ANSWER: 1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)) /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = ∫(1÷(4×(X+1)))dX-∫(1÷(4×(X-1)))dX+∫(1÷(2×(X^2+1)))dX /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = 1÷4×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(1÷(4×(X+1)))dX = LN(ABS(X+1))÷4 /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -1÷4×∫(1÷(X-1))dX /       RECIPROCAL: ∫(1÷(X-1))dX = ∫(1÷U)dU, U=X-1 /       CHECK: d/dX(LN(ABS(X-1))) = 1÷(X-1) /       RECIPROCAL: ∫(1÷(X-1))dX = LN(ABS(X-1)) /     CONSTANT MULTIPLE: ∫(-1÷(4×(X-1)))dX = -LN(ABS(X-1))÷4 /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = 1÷2×∫(1÷(X^2+1))dX /       CHECK: d/dX(π×ATAN(X)÷200) = 1÷(X^2+1) /       ARCTANGENT: ∫(1÷(X^2+1))dX = π×ATAN(X)÷200 /     CONSTANT MULTIPLE: ∫(1÷(2×(X^2+1)))dX = π×ATAN(X)÷400 /   SUM: ∫(1÷(4×(X+1))-1÷(4×(X-1))+1÷(2×(X^2+1)))dX = -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+π×ATAN(X)÷400 / PARTIAL FRACTIONS: ∫(1÷(1-X^4))dX = -LN(ABS(X-1))÷4+LN(ABS(X+1))÷4+π×ATAN(X)÷400` |
+- | `casim --model STU steps integrate '(X^4+1)÷(X^3+1)' X RAD` | `PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX /   POLYNOMIAL PART: (X^4+1)÷(X^3+1)=X+(-X+1)÷(X^3+1) /   FACTOR: X^3+1=(X+1)×(X^2-X+1) /   FORM: (-X+1)÷(X^3+1)=A÷(X+1)+(B×X+C)÷(X^2-X+1) /   CLEARED: -X+1=A×(X^2-X+1)+(B×X+C)×(X+1) /     COVER-UP: X=-1: 2=3×A /     COVER-UP: A=2÷3 /     COEFFICIENTS: X^2: -2÷3=B /     COEFFICIENTS: X: -1÷3=B+C /     COEFFICIENTS: X^0: 1÷3=C /     COEFFICIENTS: B=-2÷3; C=1÷3 /   ANSWER: X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)) /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = ∫(X)dX+∫(2÷(3×(X+1)))dX-∫((2×X-1)÷(3×(X^2-X+1)))dX /     CHECK: d/dX(0.5×X^2) = X /     POWER: ∫(X)dX = 0.5×X^2 /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2÷3×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2×LN(ABS(X+1))÷3 /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -1÷3×∫((2×X-1)÷(X^2-X+1))dX /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = ∫(1÷U)dU, U=X^2-X+1 /       CHECK: d/dX(LN(-X+X^2+1)) = (2×X-1)÷(X^2-X+1) /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = LN(-X+X^2+1) /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -LN(-X+X^2+1)÷3 /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2 / PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+0.5×X^2` |
++ | `casim --model STU steps integrate '(X^4+1)÷(X^3+1)' X RAD` | `PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX /   POLYNOMIAL PART: (X^4+1)÷(X^3+1)=X+(-X+1)÷(X^3+1) /   FACTOR: X^3+1=(X+1)×(X^2-X+1) /   FORM: (-X+1)÷(X^3+1)=A÷(X+1)+(B×X+C)÷(X^2-X+1) /   CLEARED: -X+1=A×(X^2-X+1)+(B×X+C)×(X+1) /     COVER-UP: X=-1: 2=3×A /     COVER-UP: A=2÷3 /     COEFFICIENTS: X^2: -2÷3=B /     COEFFICIENTS: X: -1÷3=B+C /     COEFFICIENTS: X^0: 1÷3=C /     COEFFICIENTS: B=-2÷3; C=1÷3 /   ANSWER: X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)) /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = ∫(X)dX+∫(2÷(3×(X+1)))dX-∫((2×X-1)÷(3×(X^2-X+1)))dX /     CHECK: d/dX(X^2÷2) = X /     POWER: ∫(X)dX = X^2÷2 /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2÷3×∫(1÷(X+1))dX /       RECIPROCAL: ∫(1÷(X+1))dX = ∫(1÷U)dU, U=X+1 /       CHECK: d/dX(LN(ABS(X+1))) = 1÷(X+1) /       RECIPROCAL: ∫(1÷(X+1))dX = LN(ABS(X+1)) /     CONSTANT MULTIPLE: ∫(2÷(3×(X+1)))dX = 2×LN(ABS(X+1))÷3 /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -1÷3×∫((2×X-1)÷(X^2-X+1))dX /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = ∫(1÷U)dU, U=X^2-X+1 /       CHECK: d/dX(LN(-X+X^2+1)) = (2×X-1)÷(X^2-X+1) /       LOG DERIVATIVE: ∫((2×X-1)÷(X^2-X+1))dX = LN(-X+X^2+1) /     CONSTANT MULTIPLE: ∫(-(2×X-1)÷(3×(X^2-X+1)))dX = -LN(-X+X^2+1)÷3 /   SUM: ∫(X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1)))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+X^2÷2 / PARTIAL FRACTIONS: ∫((X^4+1)÷(X^3+1))dX = 2×LN(ABS(X+1))÷3-LN(-X+X^2+1)÷3+X^2÷2` |
+
+### work/014-examples.txt: 9 lines
+- T0002 | taylor | COS(X) | X | 0 | 8 | RAD | 35 | 1-0.5×X^2+X^4÷24-X^6÷720+X^8÷40320
++ T0002 | taylor | COS(X) | X | 0 | 8 | RAD | 35 | 1-X^2÷2+X^4÷24-X^6÷720+X^8÷40320
+- T0003 | taylor | EXP(X) | X | 0 | 5 | RAD | 35 | 1+X+0.5×X^2+X^3÷6+X^4÷24+X^5÷120
++ T0003 | taylor | EXP(X) | X | 0 | 5 | RAD | 35 | 1+X+X^2÷2+X^3÷6+X^4÷24+X^5÷120
+- T0004 | taylor | LN(1+X) | X | 0 | 5 | RAD | 35 | X-0.5×X^2+X^3÷3-0.25×X^4+0.2×X^5
++ T0004 | taylor | LN(1+X) | X | 0 | 5 | RAD | 35 | X-X^2÷2+X^3÷3-X^4÷4+X^5÷5
+- T0005 | taylor | ATAN(X) | X | 0 | 7 | RAD | 35 | X-X^3÷3+0.2×X^5-X^7÷7
++ T0005 | taylor | ATAN(X) | X | 0 | 7 | RAD | 35 | X-X^3÷3+X^5÷5-X^7÷7
+- T0007 | taylor | LN(X) | X | 1 | 4 | RAD | 35 | (X-1)-0.5×(X-1)^2+(X-1)^3÷3-0.25×(X-1)^4
++ T0007 | taylor | LN(X) | X | 1 | 4 | RAD | 35 | (X-1)-(X-1)^2÷2+(X-1)^3÷3-(X-1)^4÷4
+- T0008 | taylor | COS(X) | X | π÷3 | 3 | RAD | 35 | 0.5-0.5×(X-π÷3)×SQRT(3)-0.25×(X-π÷3)^2+(X-π÷3)^3×SQRT(3)÷12
++ T0008 | taylor | COS(X) | X | π÷3 | 3 | RAD | 35 | 1÷2-(X-π÷3)×SQRT(3)÷2-(X-π÷3)^2÷4+(X-π÷3)^3×SQRT(3)÷12
+- T0009 | taylor | EXP(X) | X | 1 | 3 | RAD | 35 | EXP(1)+EXP(1)×(X-1)+0.5×EXP(1)×(X-1)^2+EXP(1)×(X-1)^3÷6
++ T0009 | taylor | EXP(X) | X | 1 | 3 | RAD | 35 | EXP(1)+EXP(1)×(X-1)+EXP(1)×(X-1)^2÷2+EXP(1)×(X-1)^3÷6
+- T0011 | taylor | SQRT(1+X) | X | 0 | 4 | RAD | 35 | 1+0.5×X-0.125×X^2+0.0625×X^3-0.0390625×X^4
++ T0011 | taylor | SQRT(1+X) | X | 0 | 4 | RAD | 35 | 1+X÷2-X^2÷8+X^3÷16-5×X^4÷128
+- T0015 | taylor | EXP(K×X) | X | 0 | 3 | RAD | 35 | 1+K×X+0.5×K^2×X^2+K^3×X^3÷6
++ T0015 | taylor | EXP(K×X) | X | 0 | 3 | RAD | 35 | 1+K×X+K^2×X^2÷2+K^3×X^3÷6
+
+### work/015-examples.txt: 6 lines
+- L0003 | limit | (1-COS(X))÷X^2 | X | 0 | both | RAD | 35 | 0.5
++ L0003 | limit | (1-COS(X))÷X^2 | X | 0 | both | RAD | 35 | 1÷2
+- L0015 | limit | SQRT(X^2+X)-X | X | ∞ | both | RAD | 35 | 0.5
++ L0015 | limit | SQRT(X^2+X)-X | X | ∞ | both | RAD | 35 | 1÷2
+- L0037 | limit | (EXP(X)-1-X)÷X^2 | X | 0 | both | DEG | 35 | 0.5
++ L0037 | limit | (EXP(X)-1-X)÷X^2 | X | 0 | both | DEG | 35 | 1÷2
+- L0038 | limit | X-SQRT(X^2-3×X) | X | ∞ | both | RAD | 35 | 1.5
++ L0038 | limit | X-SQRT(X^2-3×X) | X | ∞ | both | RAD | 35 | 3÷2
+- L0039 | limit | (1÷X^2+1÷X^3)÷(2÷X^2) | X | -∞ | both | RAD | 35 | 0.5
++ L0039 | limit | (1÷X^2+1÷X^3)÷(2÷X^2) | X | -∞ | both | RAD | 35 | 1÷2
+- L0046 | limit | SQRT(X^2+X)-X+1 | X | ∞ | both | RAD | 35 | 1.5
++ L0046 | limit | SQRT(X^2+X)-X+1 | X | ∞ | both | RAD | 35 | 3÷2
+
+### work/016-examples.txt: 6 lines
+- | `casim limit "1÷LN(1+X)-1÷X" X 0 "" RAD` | `0.5` |
++ | `casim limit "1÷LN(1+X)-1÷X" X 0 "" RAD` | `1÷2` |
+- | `casim limit "1÷(EXP(X)-1)-1÷X" X 0 "" RAD` | `-0.5` |
++ | `casim limit "1÷(EXP(X)-1)-1÷X" X 0 "" RAD` | `-1÷2` |
+- | `casim limit "1÷(X-1)-2÷(X^2-1)" X 1 "" RAD` | `0.5` |
++ | `casim limit "1÷(X-1)-2÷(X^2-1)" X 1 "" RAD` | `1÷2` |
+- | `casim taylor "EXP(SIN(X))" X 0 7 RAD` | `1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90` |
++ | `casim taylor "EXP(SIN(X))" X 0 7 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90` |
+- | `casim --arena 16384 taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
++ | `casim --arena 16384 taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
+- | `casim taylor "ATANH(X)" X 0 5 RAD` | `X+X^3÷3+0.2×X^5` |
++ | `casim taylor "ATANH(X)" X 0 5 RAD` | `X+X^3÷3+X^5÷5` |
+
+### work/017-examples.txt: 31 lines
+- | `casim integrate "X×EXP(X^2)" X RAD` | `0.5×EXP(X^2)` |
++ | `casim integrate "X×EXP(X^2)" X RAD` | `EXP(X^2)÷2` |
+- | `casim integrate "X×SIN(X^2)" X RAD` | `-0.5×COS(X^2)` |
++ | `casim integrate "X×SIN(X^2)" X RAD` | `-COS(X^2)÷2` |
+- | `casim integrate "SIN(X)×COS(X)" X RAD` | `0.5×SIN(X)^2` |
++ | `casim integrate "SIN(X)×COS(X)" X RAD` | `SIN(X)^2÷2` |
+- | `casim integrate "COS(X)^3×SIN(X)" X RAD` | `-0.25×COS(X)^4` |
++ | `casim integrate "COS(X)^3×SIN(X)" X RAD` | `-COS(X)^4÷4` |
+- | `casim integrate "LN(X)÷X" X RAD` | `0.5×LN(X)^2` |
++ | `casim integrate "LN(X)÷X" X RAD` | `LN(X)^2÷2` |
+- | `casim integrate "X×SQRT(X^2+1)" X RAD` | `(X^2+1)^1.5÷3` |
++ | `casim integrate "X×SQRT(X^2+1)" X RAD` | `(X^2+1)^(3÷2)÷3` |
+- | `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
++ | `casim integrate "X^3×SQRT(X^2+1)" X RAD` | `-(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5` |
+- | `casim integrate "ATAN(X)÷(1+X^2)" X RAD` | `0.5×ATAN(X)^2` |
++ | `casim integrate "ATAN(X)÷(1+X^2)" X RAD` | `ATAN(X)^2÷2` |
+- | `casim integrate "X×LN(X)" X RAD` | `-0.25×X^2+0.5×X^2×LN(X)` |
++ | `casim integrate "X×LN(X)" X RAD` | `-X^2÷4+X^2×LN(X)÷2` |
+- | `casim integrate "X^3×LN(X)" X RAD` | `-0.0625×X^4+0.25×X^4×LN(X)` |
++ | `casim integrate "X^3×LN(X)" X RAD` | `-X^4÷16+X^4×LN(X)÷4` |
+- | `casim integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim --arena 65536 integrate "ATAN(X)" X RAD` | `-LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim integrate "EXP(X)×SIN(X)" X RAD` | `0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
++ | `casim integrate "EXP(X)×SIN(X)" X RAD` | `EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2` |
+- | `casim integrate "INV(X^2)+3÷X+0.5×X÷SQRT(X)" X RAD` | `3×LN(ABS(X))-1÷X+X^1.5÷3` |
++ | `casim integrate "INV(X^2)+3÷X+0.5×X÷SQRT(X)" X RAD` | `3×LN(ABS(X))-1÷X+X^(3÷2)÷3` |
+- | `casim integrate "A×X×EXP(X^2)" X RAD` | `0.5×A×EXP(X^2)` |
++ | `casim integrate "A×X×EXP(X^2)" X RAD` | `A×EXP(X^2)÷2` |
+- | `casim integrate "(X^3+X)÷(X^2+1)" X RAD` | `0.5×X^2` |
++ | `casim integrate "(X^3+X)÷(X^2+1)" X RAD` | `X^2÷2` |
+- | `casim integrate "(X^3+2×X)÷(X^2+2)" X RAD` | `0.5×X^2` |
++ | `casim integrate "(X^3+2×X)÷(X^2+2)" X RAD` | `X^2÷2` |
+- | `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+0.5×X^2` |
++ | `casim integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `X+X^2÷2` |
+- | `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
++ | `casim integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-27×LN(ABS(2×X+5))÷2` |
+- | `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
++ | `casim --arena 8192 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-27×LN(ABS(2×X+5))÷2` |
+- | `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-13.5×LN(ABS(2×X+5))` |
++ | `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-27×LN(ABS(2×X+5))÷2` |
+- | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-0.5×X+0.5×ATAN(X)+0.5×X^2×ATAN(X)` |
++ | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-X÷2+ATAN(X)÷2+X^2×ATAN(X)÷2` |
+- | `casim --arena 65536 integrate "SIN(X)+1÷(X^2-1)" X RAD` | `0.5×LN(ABS(X-1))-0.5×LN(ABS(X+1))-COS(X)` |
++ | `casim --arena 65536 integrate "SIN(X)+1÷(X^2-1)" X RAD` | `LN(ABS(X-1))÷2-LN(ABS(X+1))÷2-COS(X)` |
+- | `casim integrate "X×EXP(X^2)÷B" X RAD` | `0.5×EXP(X^2)÷B` |
++ | `casim integrate "X×EXP(X^2)÷B" X RAD` | `EXP(X^2)÷2÷B` |
+- | `casim integrate "TAN(X)×LN(ABS(COS(X)))" X RAD` | `-0.5×LN(ABS(COS(X)))^2` |
++ | `casim integrate "TAN(X)×LN(ABS(COS(X)))" X RAD` | `-LN(ABS(COS(X)))^2÷2` |
+- | `casim steps integrate "LN(X)÷X" X RAD` | `SUBSTITUTION: ∫(LN(X)÷X)dX = ∫(U)dU, U=LN(X) /   CHECK: d/dU(0.5×U^2) = U /   POWER: ∫(U)dU = 0.5×U^2 /   CHECK: d/dX(0.5×LN(X)^2) = LN(X)÷X / SUBSTITUTION: ∫(LN(X)÷X)dX = 0.5×LN(X)^2` |
++ | `casim steps integrate "LN(X)÷X" X RAD` | `SUBSTITUTION: ∫(LN(X)÷X)dX = ∫(U)dU, U=LN(X) /   CHECK: d/dU(U^2÷2) = U /   POWER: ∫(U)dU = U^2÷2 /   CHECK: d/dX(LN(X)^2÷2) = LN(X)÷X / SUBSTITUTION: ∫(LN(X)÷X)dX = LN(X)^2÷2` |
+- | `casim integrate "ATAN(X)^3÷(2×(X^2+1))" X RAD` | `0.125×ATAN(X)^4` |
++ | `casim integrate "ATAN(X)^3÷(2×(X^2+1))" X RAD` | `ATAN(X)^4÷8` |
+- | `casim --arena 65536 integrate "A×X÷(X^2+2×X+2)" X RAD` | `0.5×A×LN(2×X+X^2+2)-A×ATAN(X+1)` |
++ | `casim --arena 65536 integrate "A×X÷(X^2+2×X+2)" X RAD` | `A×LN(2×X+X^2+2)÷2-A×ATAN(X+1)` |
+- | `casim --arena 65536 integrate "X×ATAN(X)" X GRAD` | `0.5×ATAN(X)-100×X÷π+0.5×X^2×ATAN(X)` |
++ | `casim --arena 65536 integrate "X×ATAN(X)" X GRAD` | `ATAN(X)÷2-100×X÷π+X^2×ATAN(X)÷2` |
+- | `casim --arena 3000 integrate "3×ATAN(2×X)" X DEG` | `3×X×ATAN(2×X)-135×LN(X^2+0.25)÷π` |
++ | `casim --arena 3000 integrate "3×ATAN(2×X)" X DEG` | `3×X×ATAN(2×X)-135×LN(X^2+1÷4)÷π` |
+- | `casim --arena 1912 integrate "X×LN(X^2+1)" X RAD` | `-0.5×X^2+0.5×LN(X^2+1)×(X^2+1)` |
++ | `casim --arena 1912 integrate "X×LN(X^2+1)" X RAD` | `-X^2÷2+LN(X^2+1)×(X^2+1)÷2` |
+
+### work/017-steps-examples.txt: 14 lines
+- | `casim steps integrate "X×EXP(X^2)" X RAD` | `SUBSTITUTION: ∫(X×EXP(X^2))dX = ∫(0.5)dU, U=EXP(X^2) /   CHECK: d/dU(0.5×U) = 0.5 /   CONSTANT: ∫(0.5)dU = 0.5×U /   CHECK: d/dX(0.5×EXP(X^2)) = X×EXP(X^2) / SUBSTITUTION: ∫(X×EXP(X^2))dX = 0.5×EXP(X^2)` |
++ | `casim steps integrate "X×EXP(X^2)" X RAD` | `SUBSTITUTION: ∫(X×EXP(X^2))dX = ∫(1÷2)dU, U=EXP(X^2) /   CHECK: d/dU(U÷2) = 1÷2 /   CONSTANT: ∫(1÷2)dU = U÷2 /   CHECK: d/dX(EXP(X^2)÷2) = X×EXP(X^2) / SUBSTITUTION: ∫(X×EXP(X^2))dX = EXP(X^2)÷2` |
+- | `casim steps integrate "LN(X)÷X" X RAD` | `SUBSTITUTION: ∫(LN(X)÷X)dX = ∫(U)dU, U=LN(X) /   CHECK: d/dU(0.5×U^2) = U /   POWER: ∫(U)dU = 0.5×U^2 /   CHECK: d/dX(0.5×LN(X)^2) = LN(X)÷X / SUBSTITUTION: ∫(LN(X)÷X)dX = 0.5×LN(X)^2` |
++ | `casim steps integrate "LN(X)÷X" X RAD` | `SUBSTITUTION: ∫(LN(X)÷X)dX = ∫(U)dU, U=LN(X) /   CHECK: d/dU(U^2÷2) = U /   POWER: ∫(U)dU = U^2÷2 /   CHECK: d/dX(LN(X)^2÷2) = LN(X)÷X / SUBSTITUTION: ∫(LN(X)÷X)dX = LN(X)^2÷2` |
+- | `casim steps integrate "X^3×SQRT(X^2+1)" X RAD` | `SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = ∫(0.5×SQRT(U)×(U-1))dU, U=X^2+1 /   POLYNOMIAL: ∫(0.5×SQRT(U)×(U-1))dU = ∫(-0.5×SQRT(U)+0.5×U^1.5)dU /   CHECK: d/dU(-U^1.5÷3+0.2×U^2.5) = 0.5×SQRT(U)×(U-1) /   POLYNOMIAL: ∫(0.5×SQRT(U)×(U-1))dU = -U^1.5÷3+0.2×U^2.5 /   CHECK: d/dX(-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5) = X^3×SQRT(X^2+1) / SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = -(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
++ | `casim steps integrate "X^3×SQRT(X^2+1)" X RAD` | `SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = ∫(SQRT(U)×(U-1)÷2)dU, U=X^2+1 /   POLYNOMIAL: ∫(SQRT(U)×(U-1)÷2)dU = ∫(-SQRT(U)÷2+U^(3÷2)÷2)dU /   CHECK: d/dU(-U^(3÷2)÷3+U^(5÷2)÷5) = SQRT(U)×(U-1)÷2 /   POLYNOMIAL: ∫(SQRT(U)×(U-1)÷2)dU = -U^(3÷2)÷3+U^(5÷2)÷5 /   CHECK: d/dX(-(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5) = X^3×SQRT(X^2+1) / SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = -(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5` |
+- | `casim steps integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `COMMON FACTOR: ∫((8×X-7)×(2×X+5)÷(2×X+5)^2)dX = ∫(4×(X-0.875)÷(X+2.5))dX / PARTIAL FRACTIONS: ∫(4×(X-0.875)÷(X+2.5))dX = ∫(4-27÷(2×X+5))dX /   POLYNOMIAL PART: (4×X-7÷2)÷(X+5÷2)=4-27÷2÷(X+5÷2) /   FACTOR: X+5÷2=1÷2×(2×X+5) /   ANSWER: 4-27÷(2×X+5) /   SUM: ∫(4-27÷(2×X+5))dX = ∫(4)dX-∫(27÷(2×X+5))dX /     CHECK: d/dX(4×X) = 4 /     CONSTANT: ∫(4)dX = 4×X /     CONSTANT MULTIPLE: ∫(-27÷(2×X+5))dX = -27×∫(1÷(2×X+5))dX /       RECIPROCAL: ∫(1÷(2×X+5))dX = ∫(1÷U)dU÷2, U=2×X+5 /       CHECK: d/dX(0.5×LN(ABS(2×X+5))) = 1÷(2×X+5) /       RECIPROCAL: ∫(1÷(2×X+5))dX = 0.5×LN(ABS(2×X+5)) /     CONSTANT MULTIPLE: ∫(-27÷(2×X+5))dX = -13.5×LN(ABS(2×X+5)) /   SUM: ∫(4-27÷(2×X+5))dX = 4×X-13.5×LN(ABS(2×X+5)) / PARTIAL FRACTIONS: ∫((8×X-7)×(2×X+5)÷(2×X+5)^2)dX = 4×X-13.5×LN(ABS(2×X+5))` |
++ | `casim steps integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `COMMON FACTOR: ∫((8×X-7)×(2×X+5)÷(2×X+5)^2)dX = ∫(4×(X-7÷8)÷(X+5÷2))dX / PARTIAL FRACTIONS: ∫(4×(X-7÷8)÷(X+5÷2))dX = ∫(4-27÷(2×X+5))dX /   POLYNOMIAL PART: (4×X-7÷2)÷(X+5÷2)=4-27÷2÷(X+5÷2) /   FACTOR: X+5÷2=1÷2×(2×X+5) /   ANSWER: 4-27÷(2×X+5) /   SUM: ∫(4-27÷(2×X+5))dX = ∫(4)dX-∫(27÷(2×X+5))dX /     CHECK: d/dX(4×X) = 4 /     CONSTANT: ∫(4)dX = 4×X /     CONSTANT MULTIPLE: ∫(-27÷(2×X+5))dX = -27×∫(1÷(2×X+5))dX /       RECIPROCAL: ∫(1÷(2×X+5))dX = ∫(1÷U)dU÷2, U=2×X+5 /       CHECK: d/dX(LN(ABS(2×X+5))÷2) = 1÷(2×X+5) /       RECIPROCAL: ∫(1÷(2×X+5))dX = LN(ABS(2×X+5))÷2 /     CONSTANT MULTIPLE: ∫(-27÷(2×X+5))dX = -27×LN(ABS(2×X+5))÷2 /   SUM: ∫(4-27÷(2×X+5))dX = 4×X-27×LN(ABS(2×X+5))÷2 / PARTIAL FRACTIONS: ∫((8×X-7)×(2×X+5)÷(2×X+5)^2)dX = 4×X-27×LN(ABS(2×X+5))÷2` |
+- | `casim steps integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `COMMON FACTOR: ∫((X^3+X^2+X+1)÷(X^2+1))dX = ∫(X+1)dX / SUM: ∫(X+1)dX = ∫(X)dX+∫(1)dX /   CHECK: d/dX(0.5×X^2) = X /   POWER: ∫(X)dX = 0.5×X^2 /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X / SUM: ∫(X+1)dX = X+0.5×X^2 / COMMON FACTOR: ∫((X^3+X^2+X+1)÷(X^2+1))dX = X+0.5×X^2` |
++ | `casim steps integrate "(X^3+X^2+X+1)÷(X^2+1)" X RAD` | `COMMON FACTOR: ∫((X^3+X^2+X+1)÷(X^2+1))dX = ∫(X+1)dX / SUM: ∫(X+1)dX = ∫(X)dX+∫(1)dX /   CHECK: d/dX(X^2÷2) = X /   POWER: ∫(X)dX = X^2÷2 /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X / SUM: ∫(X+1)dX = X+X^2÷2 / COMMON FACTOR: ∫((X^3+X^2+X+1)÷(X^2+1))dX = X+X^2÷2` |
+- | `casim steps integrate "ATAN(X)" X RAD` | `BY PARTS: ∫(ATAN(X))dX = ATAN(X)×X-∫(X÷(X^2+1))dX, U=ATAN(X), V=∫(1)dX /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 1÷2×∫(2×X÷(X^2+1))dX /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = ∫(1÷U)dU, U=X^2+1 /     CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 0.5×LN(X^2+1) /   CHECK: d/dX(-0.5×LN(X^2+1)+X×ATAN(X)) = ATAN(X) / BY PARTS: ∫(ATAN(X))dX = -0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim steps integrate "ATAN(X)" X RAD` | `BY PARTS: ∫(ATAN(X))dX = ATAN(X)×X-∫(X÷(X^2+1))dX, U=ATAN(X), V=∫(1)dX /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 1÷2×∫(2×X÷(X^2+1))dX /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = ∫(1÷U)dU, U=X^2+1 /     CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = LN(X^2+1)÷2 /   CHECK: d/dX(-LN(X^2+1)÷2+X×ATAN(X)) = ATAN(X) / BY PARTS: ∫(ATAN(X))dX = -LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim --arena 65536 steps integrate "ATAN(X)" X RAD` | `BY PARTS: ∫(ATAN(X))dX = ATAN(X)×X-∫(X÷(X^2+1))dX, U=ATAN(X), V=∫(1)dX /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 1÷2×∫(2×X÷(X^2+1))dX /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = ∫(1÷U)dU, U=X^2+1 /     CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 0.5×LN(X^2+1) /   CHECK: d/dX(-0.5×LN(X^2+1)+X×ATAN(X)) = ATAN(X) / BY PARTS: ∫(ATAN(X))dX = -0.5×LN(X^2+1)+X×ATAN(X)` |
++ | `casim --arena 65536 steps integrate "ATAN(X)" X RAD` | `BY PARTS: ∫(ATAN(X))dX = ATAN(X)×X-∫(X÷(X^2+1))dX, U=ATAN(X), V=∫(1)dX /   CHECK: d/dX(X) = 1 /   CONSTANT: ∫(1)dX = X /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = 1÷2×∫(2×X÷(X^2+1))dX /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = ∫(1÷U)dU, U=X^2+1 /     CHECK: d/dX(LN(X^2+1)) = 2×X÷(X^2+1) /     LOG DERIVATIVE: ∫(2×X÷(X^2+1))dX = LN(X^2+1) /   CONSTANT MULTIPLE: ∫(X÷(X^2+1))dX = LN(X^2+1)÷2 /   CHECK: d/dX(-LN(X^2+1)÷2+X×ATAN(X)) = ATAN(X) / BY PARTS: ∫(ATAN(X))dX = -LN(X^2+1)÷2+X×ATAN(X)` |
+- | `casim steps integrate "EXP(X)×SIN(X)" X RAD` | `BY PARTS: ∫(EXP(X)×SIN(X))dX = SIN(X)×EXP(X)-∫(EXP(X)×COS(X))dX, U=SIN(X), V=∫(EXP(X))dX /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   BY PARTS: ∫(EXP(X)×COS(X))dX = COS(X)×EXP(X)+∫(EXP(X)×SIN(X))dX, U=COS(X), V=∫(EXP(X))dX /     CHECK: d/dX(EXP(X)) = EXP(X) /     EXP: ∫(EXP(X))dX = EXP(X) /   CYCLE: ∫(EXP(X)×SIN(X))dX = (SIN(X)×EXP(X)-COS(X)×EXP(X))÷2 /   CHECK: d/dX(0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)) = EXP(X)×SIN(X) / BY PARTS: ∫(EXP(X)×SIN(X))dX = 0.5×EXP(X)×SIN(X)-0.5×EXP(X)×COS(X)` |
++ | `casim steps integrate "EXP(X)×SIN(X)" X RAD` | `BY PARTS: ∫(EXP(X)×SIN(X))dX = SIN(X)×EXP(X)-∫(EXP(X)×COS(X))dX, U=SIN(X), V=∫(EXP(X))dX /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   BY PARTS: ∫(EXP(X)×COS(X))dX = COS(X)×EXP(X)+∫(EXP(X)×SIN(X))dX, U=COS(X), V=∫(EXP(X))dX /     CHECK: d/dX(EXP(X)) = EXP(X) /     EXP: ∫(EXP(X))dX = EXP(X) /   CYCLE: ∫(EXP(X)×SIN(X))dX = (SIN(X)×EXP(X)-COS(X)×EXP(X))÷2 /   CHECK: d/dX(EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2) = EXP(X)×SIN(X) / BY PARTS: ∫(EXP(X)×SIN(X))dX = EXP(X)×SIN(X)÷2-EXP(X)×COS(X)÷2` |
+- | `casim steps integrate "LN(ATAN(X))÷(5×X^2+5)" X RAD` | `SUBSTITUTION: ∫(LN(ATAN(X))÷(5×X^2+5))dX = ∫(0.2×LN(U))dU, U=ATAN(X) /   BY PARTS: ∫(0.2×LN(U))dU = LN(U)×0.2×U-∫(0.2)dU, V=LN(U), W=∫(0.2)dU /     CHECK: d/dU(0.2×U) = 0.2 /     CONSTANT: ∫(0.2)dU = 0.2×U /     CHECK: d/dU(0.2×U) = 0.2 /     CONSTANT: ∫(0.2)dU = 0.2×U /     CHECK: d/dU(-0.2×U+0.2×U×LN(U)) = 0.2×LN(U) /   BY PARTS: ∫(0.2×LN(U))dU = -0.2×U+0.2×U×LN(U) /   CHECK: d/dX(-0.2×ATAN(X)+0.2×LN(ATAN(X))×ATAN(X)) = LN(ATAN(X))÷(5×X^2+5) / SUBSTITUTION: ∫(LN(ATAN(X))÷(5×X^2+5))dX = -0.2×ATAN(X)+0.2×LN(ATAN(X))×ATAN(X)` |
++ | `casim steps integrate "LN(ATAN(X))÷(5×X^2+5)" X RAD` | `SUBSTITUTION: ∫(LN(ATAN(X))÷(5×X^2+5))dX = ∫(LN(U)÷5)dU, U=ATAN(X) /   BY PARTS: ∫(LN(U)÷5)dU = LN(U)×U÷5-∫(1÷5)dU, V=LN(U), W=∫(1÷5)dU /     CHECK: d/dU(U÷5) = 1÷5 /     CONSTANT: ∫(1÷5)dU = U÷5 /     CHECK: d/dU(U÷5) = 1÷5 /     CONSTANT: ∫(1÷5)dU = U÷5 /     CHECK: d/dU(-U÷5+U×LN(U)÷5) = LN(U)÷5 /   BY PARTS: ∫(LN(U)÷5)dU = -U÷5+U×LN(U)÷5 /   CHECK: d/dX(-ATAN(X)÷5+LN(ATAN(X))×ATAN(X)÷5) = LN(ATAN(X))÷(5×X^2+5) / SUBSTITUTION: ∫(LN(ATAN(X))÷(5×X^2+5))dX = -ATAN(X)÷5+LN(ATAN(X))×ATAN(X)÷5` |
+- | `casim --model STU steps integrate "X^3×SQRT(X^2+1)" X RAD` | `SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = ∫(0.5×SQRT(U)×(U-1))dU, U=X^2+1 /   POLYNOMIAL: ∫(0.5×SQRT(U)×(U-1))dU = ∫(-0.5×SQRT(U)+0.5×U^1.5)dU /   CHECK: d/dU(-U^1.5÷3+0.2×U^2.5) = 0.5×SQRT(U)×(U-1) /   POLYNOMIAL: ∫(0.5×SQRT(U)×(U-1))dU = -U^1.5÷3+0.2×U^2.5 /   CHECK: d/dX(-(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5) = X^3×SQRT(X^2+1) / SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = -(X^2+1)^1.5÷3+0.2×(X^2+1)^2.5` |
++ | `casim --model STU steps integrate "X^3×SQRT(X^2+1)" X RAD` | `SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = ∫(SQRT(U)×(U-1)÷2)dU, U=X^2+1 /   POLYNOMIAL: ∫(SQRT(U)×(U-1)÷2)dU = ∫(-SQRT(U)÷2+U^(3÷2)÷2)dU /   CHECK: d/dU(-U^(3÷2)÷3+U^(5÷2)÷5) = SQRT(U)×(U-1)÷2 /   POLYNOMIAL: ∫(SQRT(U)×(U-1)÷2)dU = -U^(3÷2)÷3+U^(5÷2)÷5 /   CHECK: d/dX(-(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5) = X^3×SQRT(X^2+1) / SUBSTITUTION: ∫(X^3×SQRT(X^2+1))dX = -(X^2+1)^(3÷2)÷3+(X^2+1)^(5÷2)÷5` |
+- | `casim steps integrate "EXP(3×X)×SIN(X)" X RAD` | `BY PARTS: ∫(EXP(3×X)×SIN(X))dX = SIN(X)×EXP(3×X)÷3-∫(EXP(3×X)×COS(X)÷3)dX, U=SIN(X), V=∫(EXP(3×X))dX /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 /   BY PARTS: ∫(EXP(3×X)×COS(X)÷3)dX = COS(X)×EXP(3×X)÷9+1÷9×∫(EXP(3×X)×SIN(X))dX, U=COS(X), V=∫(EXP(3×X)÷3)dX /     CONSTANT MULTIPLE: ∫(EXP(3×X)÷3)dX = 1÷3×∫(EXP(3×X))dX /       EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /       EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 /     CHECK: d/dX(EXP(3×X)÷9) = EXP(3×X)÷3 /     CONSTANT MULTIPLE: ∫(EXP(3×X)÷3)dX = EXP(3×X)÷9 /   CYCLE: ∫(EXP(3×X)×SIN(X))dX = (SIN(X)×EXP(3×X)÷3-COS(X)×EXP(3×X)÷9)÷(10÷9) /   CHECK: d/dX(0.3×EXP(3×X)×SIN(X)-0.1×EXP(3×X)×COS(X)) = EXP(3×X)×SIN(X) / BY PARTS: ∫(EXP(3×X)×SIN(X))dX = 0.3×EXP(3×X)×SIN(X)-0.1×EXP(3×X)×COS(X)` |
++ | `casim steps integrate "EXP(3×X)×SIN(X)" X RAD` | `BY PARTS: ∫(EXP(3×X)×SIN(X))dX = SIN(X)×EXP(3×X)÷3-∫(EXP(3×X)×COS(X)÷3)dX, U=SIN(X), V=∫(EXP(3×X))dX /   EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /   CHECK: d/dX(EXP(3×X)÷3) = EXP(3×X) /   EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 /   BY PARTS: ∫(EXP(3×X)×COS(X)÷3)dX = COS(X)×EXP(3×X)÷9+1÷9×∫(EXP(3×X)×SIN(X))dX, U=COS(X), V=∫(EXP(3×X)÷3)dX /     CONSTANT MULTIPLE: ∫(EXP(3×X)÷3)dX = 1÷3×∫(EXP(3×X))dX /       EXP: ∫(EXP(3×X))dX = ∫(EXP(U))dU÷3, U=3×X /       EXP: ∫(EXP(3×X))dX = EXP(3×X)÷3 /     CHECK: d/dX(EXP(3×X)÷9) = EXP(3×X)÷3 /     CONSTANT MULTIPLE: ∫(EXP(3×X)÷3)dX = EXP(3×X)÷9 /   CYCLE: ∫(EXP(3×X)×SIN(X))dX = (SIN(X)×EXP(3×X)÷3-COS(X)×EXP(3×X)÷9)÷(10÷9) /   CHECK: d/dX(3×EXP(3×X)×SIN(X)÷10-EXP(3×X)×COS(X)÷10) = EXP(3×X)×SIN(X) / BY PARTS: ∫(EXP(3×X)×SIN(X))dX = 3×EXP(3×X)×SIN(X)÷10-EXP(3×X)×COS(X)÷10` |
+- | `casim --arena 65536 --cap 192 steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `ANSWER: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27` |
++ | `casim --arena 65536 --cap 192 steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `ANSWER: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+3×X^2÷4+5×X^3÷4-3÷8)÷9-2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷9-10×EXP(-3×X)×(X+1÷5)÷27` |
+- | `casim --arena 65536 --cap 192 --one-line steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /   CHECK: d/dX(-4×EXP(-3×X)÷9) = 4×EXP((-3)×X)÷3 /   CONSTANT MULTIPLE: ∫(4×EXP((-3)×X)÷3)dX = -4×EXP(-3×X)÷9 /       EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /     CHECK: d/dX(2×EXP(-3×X)÷9) = (-2)×EXP((-3)×X)÷3 /     CONSTANT MULTIPLE: ∫((-2)×EXP((-3)×X)÷3)dX = 2×EXP(-3×X)÷9 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(-10×EXP(-3×X)÷27) = 10×EXP((-3)×X)÷9 /       CONSTANT MULTIPLE: ∫(10×EXP((-3)×X)÷9)dX = -10×EXP(-3×X)÷27 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(10×EXP(-3×X)÷81) = (-10)×EXP((-3)×X)÷27 /       CONSTANT MULTIPLE: ∫((-10)×EXP((-3)×X)÷27)dX = 10×EXP(-3×X)÷81 /       CHECK: d/dX(-10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+0.2)÷27) = 10×EXP(-3×X)×(X+0.2)÷9 /     BY PARTS: ∫(10×EXP(-3×X)×(X+0.2)÷9)dX = -10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+0.2)÷27 /     CHECK: d/dX(10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9+10×EXP(-3×X)×(X+0.2)÷27) = -2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷3 /   BY PARTS: ∫(-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷3)dX = 10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9+10×EXP(-3×X)×(X+0.2)÷27 /   CHECK: d/dX(-10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27) = (5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X) / BY PARTS: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+0.75×X^2+1.25×X^3-0.375)÷9-2×EXP(-3×X)×(X+2.5×X^2+2÷3)÷9-10×EXP(-3×X)×(X+0.2)÷27` |
++ | `casim --arena 65536 --cap 192 --one-line steps integrate "(5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X)" X RAD` | `EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /   CHECK: d/dX(-4×EXP(-3×X)÷9) = 4×EXP((-3)×X)÷3 /   CONSTANT MULTIPLE: ∫(4×EXP((-3)×X)÷3)dX = -4×EXP(-3×X)÷9 /       EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /     CHECK: d/dX(2×EXP(-3×X)÷9) = (-2)×EXP((-3)×X)÷3 /     CONSTANT MULTIPLE: ∫((-2)×EXP((-3)×X)÷3)dX = 2×EXP(-3×X)÷9 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(-10×EXP(-3×X)÷27) = 10×EXP((-3)×X)÷9 /       CONSTANT MULTIPLE: ∫(10×EXP((-3)×X)÷9)dX = -10×EXP(-3×X)÷27 /         EXP: ∫(EXP((-3)×X))dX = -EXP(-3×X)÷3 /       CHECK: d/dX(10×EXP(-3×X)÷81) = (-10)×EXP((-3)×X)÷27 /       CONSTANT MULTIPLE: ∫((-10)×EXP((-3)×X)÷27)dX = 10×EXP(-3×X)÷81 /       CHECK: d/dX(-10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+1÷5)÷27) = 10×EXP(-3×X)×(X+1÷5)÷9 /     BY PARTS: ∫(10×EXP(-3×X)×(X+1÷5)÷9)dX = -10×EXP(-3×X)÷81-10×EXP(-3×X)×(X+1÷5)÷27 /     CHECK: d/dX(10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷9+10×EXP(-3×X)×(X+1÷5)÷27) = -2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷3 /   BY PARTS: ∫(-2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷3)dX = 10×EXP(-3×X)÷81+2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷9+10×EXP(-3×X)×(X+1÷5)÷27 /   CHECK: d/dX(-10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+3×X^2÷4+5×X^3÷4-3÷8)÷9-2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷9-10×EXP(-3×X)×(X+1÷5)÷27) = (5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X) / BY PARTS: ∫((5×X^3÷3+X^2+4×X÷3-1÷2)×EXP(-3×X))dX = -10×EXP(-3×X)÷81-4×EXP(-3×X)×(X+3×X^2÷4+5×X^3÷4-3÷8)÷9-2×EXP(-3×X)×(X+5×X^2÷2+2÷3)÷9-10×EXP(-3×X)×(X+1÷5)÷27` |
+- | `casim --arena 65536 --cap 60 steps integrate "LN(X)+ATAN(X)" X RAD` | `TOO_LONG` |
++ | `casim --arena 65536 --cap 60 steps integrate "LN(X)+ATAN(X)" X RAD` | `SUM: ∫(LN(X)+ATAN(X))dX = ∫(LN(X))dX+∫(ATAN(X))dX /   BY PARTS: ∫(LN(X))dX = LN(X)×X-∫(1)dX, U=LN(X), V=∫(1)dX /     CHECK: d/dX(X) = 1 /     CONSTANT: ∫(1)dX = X /     CHECK: d/dX(X) = 1 /     CONSTANT: ∫(1)dX = X /     CHECK: d/dX(-X+X×LN(X)) = LN(X) /   BY PARTS: ∫(LN(X))dX = -X+X×LN(X) /   ANSWER: ∫(ATAN(X))dX = -LN(X^2+1)÷2+X×ATAN(X) / SUM: ∫(LN(X)+ATAN(X))dX = -X-LN(X^2+1)÷2+X×LN(X)+X×ATAN(X)` |
+
+### work/018-examples.txt: 23 lines
+- | `casim sum "K" K 1 N RAD` | `0.5×N+0.5×N^2` |
++ | `casim sum "K" K 1 N RAD` | `N÷2+N^2÷2` |
+- | `casim sum "K^2" K 1 N RAD` | `N÷6+0.5×N^2+N^3÷3` |
++ | `casim sum "K^2" K 1 N RAD` | `N÷6+N^2÷2+N^3÷3` |
+- | `casim sum "K^3" K 1 N RAD` | `0.25×N^2+0.5×N^3+0.25×N^4` |
++ | `casim sum "K^3" K 1 N RAD` | `N^2÷4+N^3÷2+N^4÷4` |
+- | `casim --arena 65536 sum "K^12" K 1 N RAD` | `-691×N÷2730+5×N^3÷3-3.3×N^5+22×N^7÷7-11×N^9÷6+N^11+0.5×N^12+N^13÷13` |
++ | `casim --arena 65536 sum "K^12" K 1 N RAD` | `-691×N÷2730+5×N^3÷3-33×N^5÷10+22×N^7÷7-11×N^9÷6+N^11+N^12÷2+N^13÷13` |
+- | `casim sum "1÷(K^2-1)" K 2 N RAD` | `-0.5÷N-0.5÷(N+1)+0.75` |
++ | `casim sum "1÷(K^2-1)" K 2 N RAD` | `-1÷2÷N-1÷2÷(N+1)+3÷4` |
+- | `casim sum "1÷(K^2-1)" K 2 ∞ RAD` | `0.75` |
++ | `casim sum "1÷(K^2-1)" K 2 ∞ RAD` | `3÷4` |
+- | `casim sum "1÷(K×(K+2))" K 1 ∞ RAD` | `0.75` |
++ | `casim sum "1÷(K×(K+2))" K 1 ∞ RAD` | `3÷4` |
+- | `casim sum "1÷(K×(K+1)×(K+2))" K 1 ∞ RAD` | `0.25` |
++ | `casim sum "1÷(K×(K+1)×(K+2))" K 1 ∞ RAD` | `1÷4` |
+- | `casim sum "1÷((2×K-1)×(2×K+1))" K 1 ∞ RAD` | `0.5` |
++ | `casim sum "1÷((2×K-1)×(2×K+1))" K 1 ∞ RAD` | `1÷2` |
+- | `casim sum "(K^3+K^2+1)÷(K×(K+1))" K 1 N RAD` | `0.5×N+0.5×N^2-1÷(N+1)+1` |
++ | `casim sum "(K^3+K^2+1)÷(K×(K+1))" K 1 N RAD` | `N÷2+N^2÷2-1÷(N+1)+1` |
+- | `casim sum "K" K M N RAD` | `0.5×M+0.5×N-0.5×M^2+0.5×N^2` |
++ | `casim sum "K" K M N RAD` | `M÷2+N÷2-M^2÷2+N^2÷2` |
+- | `casim sum "K×X^K" K 1 N RAD` | `N×X^(N+1)÷(X-1)-X÷(X-1)+X^(N+1)÷(X-1)+0.5×X^(N+2)÷(X-0.5×X^2-0.5)-0.5×X^2÷(X-0.5×X^2-0.5); X≠1` |
++ | `casim sum "K×X^K" K 1 N RAD` | `N×X^(N+1)÷(X-1)-X÷(X-1)+X^(N+1)÷(X-1)+X^(N+2)÷2÷(X-X^2÷2-1÷2)-X^2÷2÷(X-X^2÷2-1÷2); X≠1` |
+- | `casim sum "(2×X)^K" K 0 N RAD` | `-0.5÷(X-0.5)+0.5×(2×X)^(N+1)÷(X-0.5); X≠0.5` |
++ | `casim sum "(2×X)^K" K 0 N RAD` | `-1÷2÷(X-1÷2)+(2×X)^(N+1)÷2÷(X-1÷2); X≠1÷2` |
+- | `casim sum "(-2×X^2)^K" K 0 N RAD` | `0.5÷(X^2+0.5)-0.5×(-2×X^2)^(N+1)÷(X^2+0.5)` |
++ | `casim sum "(-2×X^2)^K" K 0 N RAD` | `1÷2÷(X^2+1÷2)-(-2×X^2)^(N+1)÷2÷(X^2+1÷2)` |
+- | `casim sum "K÷(K^3+3×K^2+2×K)" K 1 N RAD` | `-1÷(N+2)+0.5` |
++ | `casim sum "K÷(K^3+3×K^2+2×K)" K 1 N RAD` | `-1÷(N+2)+1÷2` |
+- | `casim sum "SIN(30×K)" K 1 3 DEG` | `0.5×SQRT(3)+1.5` |
++ | `casim sum "SIN(30×K)" K 1 3 DEG` | `SQRT(3)÷2+3÷2` |
+- | `casim sum "K×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-0.5×X÷(X-0.5×X^2-0.5); ABS(X)<1` |
++ | `casim sum "K×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-X÷2÷(X-X^2÷2-1÷2); ABS(X)<1` |
+- | `casim sum "K^2×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-1.5×X÷(X-0.5×X^2-0.5)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1` |
++ | `casim sum "K^2×X^(K-1)" K 1 ∞ RAD` | `-1÷(X-1)-3×X÷2÷(X-X^2÷2-1÷2)-2×X^2÷3÷(X-X^2+X^3÷3-1÷3); ABS(X)<1` |
+- | `casim sum "K×X^(K-1)" K 1 N RAD` | `-1÷(X-1)+N×X^N÷(X-1)-0.5×X÷(X-0.5×X^2-0.5)+X^N÷(X-1)+0.5×X^(N+1)÷(X-0.5×X^2-0.5); X≠1` |
++ | `casim sum "K×X^(K-1)" K 1 N RAD` | `-1÷(X-1)+N×X^N÷(X-1)-X÷2÷(X-X^2÷2-1÷2)+X^N÷(X-1)+X^(N+1)÷2÷(X-X^2÷2-1÷2); X≠1` |
+- | `casim sum "K×X^(K-2)" K 1 N RAD` | `1÷(X-X^2)-0.5÷(X-0.5×X^2-0.5)+N×X^(N-1)÷(X-1)+0.5×X^N÷(X-0.5×X^2-0.5)+X^(N-1)÷(X-1); X≠0; X≠1` |
++ | `casim sum "K×X^(K-2)" K 1 N RAD` | `1÷(X-X^2)-1÷2÷(X-X^2÷2-1÷2)+N×X^(N-1)÷(X-1)+X^N÷2÷(X-X^2÷2-1÷2)+X^(N-1)÷(X-1); X≠0; X≠1` |
+- | `casim sum "(16+10×K^3+39×K^2+48×K)÷(K^6+4×K^2+6×K^5+12×K^3+13×K^4)" K 1 ∞ RAD` | `4.25` |
++ | `casim sum "(16+10×K^3+39×K^2+48×K)÷(K^6+4×K^2+6×K^5+12×K^3+13×K^4)" K 1 ∞ RAD` | `17÷4` |
+- | `casim --arena 65536 sum "(384+3×K^6+38×K^5+219×K^4+712×K^3+1280×K+1328×K^2)÷(2×K^8+30×K^7+178×K^6+192×K^2+530×K^5+640×K^3+828×K^4)" K 1 N RAD` | `-2÷(N+1)^2+2÷3÷(N+2)^2-2÷(N+2)+2÷3÷(N+3)^2+0.5÷(N+3)+2÷3÷(N+4)^2+551÷216` |
++ | `casim --arena 65536 sum "(384+3×K^6+38×K^5+219×K^4+712×K^3+1280×K+1328×K^2)÷(2×K^8+30×K^7+178×K^6+192×K^2+530×K^5+640×K^3+828×K^4)" K 1 N RAD` | `-2÷(N+1)^2+2÷3÷(N+2)^2-2÷(N+2)+2÷3÷(N+3)^2+1÷2÷(N+3)+2÷3÷(N+4)^2+551÷216` |
+- | `casim sum "K^(-2)+1÷(2×K)+1÷(2×(4+K))-1÷(2+K)-4÷(2+K)^2+3÷(4+K)^2" K 1 ∞ RAD` | `1.1875` |
++ | `casim sum "K^(-2)+1÷(2×K)+1÷(2×(4+K))-1÷(2+K)-4÷(2+K)^2+3÷(4+K)^2" K 1 ∞ RAD` | `19÷16` |
