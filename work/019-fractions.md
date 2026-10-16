@@ -317,3 +317,33 @@ than 2 and 5. Michael's ruling keeps one exception: a number the user typed as a
 - **The device:** no existing frame moves except decimal_of and the printer leaves that take the mark, each named.
   The S3 bench passes with its rows re-recorded from the new golden, and the gate is unchanged.
 - **Size:** about a day of host work plus the re-record. Stop and report at twice that.
+
+### Accepted (abacus, 2026-10-16), at 2ba7217
+
+Built from a clean clone, `make check` green (502 checks, 329 value checks).
+
+**The hidden set** (abacus's h019, 459 cases, written from this doc's rules and judged with no casim run: exact values by
+Python's fractions, the form read off the text). Families: integrate and derive of d×X^n with d typed as a decimal and
+the same with d typed as p÷q; d×X+X^m (a typed term beside a made one); Taylor at 0.5, 0.25, 1.5 and 0.2 typed as
+decimals and as p÷q; subst; the a.b.c entry and E notation; and --decimal. A marked coefficient must print as a decimal
+exactly when it terminates and isn't whole; an unmarked one never shows a point. **0 failures.** The judge was first
+checked on synthetic answers: all correct ones passed, and three plants (a marked fraction, an unmarked decimal, a wrong
+value) each failed for the right reason.
+
+**Against 4f24e3e, every older hidden set at 8,192, 8,800 and 65,536 B, row by row:**
+- About 9,000 answers change their text; every one has the same value (both texts evaluated at seeded points to 50
+  digits, condition rows compared by relation and value), and no answer to an input without a typed decimal holds a point.
+- →DEC (--decimal) over all 3,000 rational integrals: byte for byte 4f24e3e's.
+- Seven inputs that were TOO_LONG now answer, because their fractions are shorter (K00123, K00140, K00513; T0582, T0799,
+  T1472; S1872), each judged right by its unit's own judge.
+- The other status changes are rule 5's fallback printing exactly 4f24e3e's text under DECIMAL_FORM. After the review,
+  no fallback without a decimal point is labeled, and when both runs fail the fallback's status stands: the 10 h017 rows
+  that had moved from NOT_INTEGRABLE to NO_ROOM at 7b878ab are back to NOT_INTEGRABLE.
+- **Held at 7b878ab, fixed at 2ba7217:** DECIMAL_FORM on 8 answers with no decimal point, and the fraction run's status
+  reported when both runs failed.
+- The firmware's margins (the 048 integrals' least arena) are a4dd723's, with the I22 row at its 4f24e3e figure.
+
+**Named, not held:** the gate's worst rises 32 B to 11,360 of 12,288 (attributed by the frame table to put_signed and
+decimal_of, not isolated by measurement). The fraction run needs more room than →DEC where a derivative carries a
+fractional power (ASIN, SQRT), shown by casim's control in "After the review". S3 text 221,017. The mutants (334) and the
+device bench are casim's report.
