@@ -102,7 +102,7 @@ cas.solve("X^2-2=0");                        // {status: "OK", out: "SOLVED: X=-
 cas.defint("1÷X", "-1", "1");                // {status: "IMPROPER", out: ""}
 ```
 
-wasm/casim.mjs documents the options (var, angle, model, arena, cap). examples/web/index.html is a page that uses it.
+wasm/casim.mjs documents the options (var, angle, model, arena, cap, decimal). examples/web/index.html is a page that uses it.
 Serve the repository's root (`python3 -m http.server`) and open /examples/web/. casim.wasm is 2.08 MB (1.84 MB
 gzipped), most of it the decimal library's tables.
 
