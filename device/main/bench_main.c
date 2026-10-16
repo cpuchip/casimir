@@ -19,7 +19,7 @@
 #include "cases.h"
 
 #define REPS 15
-#define ARENA_MAX 32768
+#define ARENA_MAX 32768        /* the arena's size; cases run with bench_arena of it (scripts/device_cases.py) */
 #define CASES_MAX 1536          /* more than case_count (checked in app_main): 838 at CAS 012, 1,065 at CAS 016, 1,290 at 018's fix */
 #define OUT_MAX 16384
 #define STACK 65536
@@ -70,7 +70,7 @@ static casim_status run(const bench_case *k, size_t arena_cap)
 static casim_status page(const bench_case *k, int at, casim_step_info *info)
 {
     casim_req rq = {(casim_op)k->op, k->expr, k->model, k->var, k->repl, k->model, k->angle, k->repl2};
-    return casim_step(&rq, at, 0, info, out, OUT_MAX, arena, ARENA_MAX);
+    return casim_step(&rq, at, 0, info, out, OUT_MAX, arena, bench_arena);
 }
 
 typedef struct {
@@ -89,7 +89,7 @@ static void worker(void *arg)
     job *j = arg;
     if (j->delay) esp_rom_delay_us(j->delay);
     if (j->masked) portDISABLE_INTERRUPTS();
-    if (j->k) run(j->k, ARENA_MAX);
+    if (j->k) run(j->k, bench_arena);
     if (j->masked) portENABLE_INTERRUPTS();
     j->free = (unsigned)uxTaskGetStackHighWaterMark(NULL);
     xTaskNotifyGive(j->parent);
@@ -135,12 +135,12 @@ static void run_cases(void)
     for (int i = 0; i < case_count; i++) {
         const bench_case *k = &cases[i];
         int64_t t[REPS];
-        size_t lo = 0, hi = ARENA_MAX;
-        casim_status st = run(k, ARENA_MAX);
+        size_t lo = 0, hi = bench_arena;
+        casim_status st = run(k, bench_arena);
         res[i].ok = (int)st == k->status && ((st != CASIM_OK && st != CASIM_PARTIAL && st != CASIM_DECIMAL_FORM) || strcmp(out, k->want) == 0);
         for (int r = 0; r < REPS; r++) {
             int64_t t0 = esp_timer_get_time();
-            run(k, ARENA_MAX);
+            run(k, bench_arena);
             t[r] = esp_timer_get_time() - t0;
         }
         qsort(t, REPS, sizeof t[0], cmp64);
@@ -251,7 +251,8 @@ static void bench_task(void *arg)
     run_irq();
     for (;;) {
         int pass = 1;
-        printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS);
+        printf("BENCH BEGIN casim on ESP32-S3 at %d MHz, %d reps, arena %u\n", CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ, REPS,
+               bench_arena);
         printf("%-26s %2s %5s %8s %8s %6s %6s %5s %s\n", "case", "op", "chars", "us_min", "us_med", "arena", "stack",
                "out", "host");   /* out: the text's bytes, or -status */
         for (int i = 0; i < case_count; i++) {

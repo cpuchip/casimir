@@ -3,6 +3,8 @@
 #
 #   PORT=/dev/ttyACM0 scripts/device.sh    (or the port as the first argument)
 #   scripts/device.sh --build               build only, no chip (CI: the ESP-IDF component builds)
+#   CASIM_BENCH_ARENA=12288 scripts/device.sh ...   host and chip both at that arena (default: the host 65,536,
+#                                           the chip 32,768; scripts/device_cases.py)
 #
 # The report is printed and kept in build/device-s3.log; exit 0 on DEVICE PASS (every derivative on
 # the chip equals the host's). The toolchain is the pinned image's; the port goes into the container

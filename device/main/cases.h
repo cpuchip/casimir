@@ -19,5 +19,6 @@ typedef struct {
 
 extern const bench_case cases[];
 extern const int case_count;
+extern const unsigned bench_arena;    /* the arena every case runs with: CASIM_BENCH_ARENA, else 32,768 */
 
 #endif

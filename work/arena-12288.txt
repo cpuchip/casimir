@@ -1,0 +1,36 @@
+# The arena at 12,288 B (Michael: "bump the CAS memory up"; abacus #8786), measured at casimir 2ba7217 (CAS 019's
+# build) for the firmware's repin.
+#
+# The device (XIAO S3, CASIM_BENCH_ARENA=12288 scripts/device.sh: host and chip both at 12,288): DEVICE PASS. The gate
+# is the one at 32,768: worst masked 11,360 (STU chain X^ 44 d) + interrupts 384 = 11,744 of 12,288, 544 left (floor
+# 256); the deepest page 10,944. The depth guard (44) bounds the stack, not the arena. 279 walks paged (281 at 32,768).
+#
+# The host: the golden's 489 rows that are NO_ROOM at 8,800, run at 12,288 (same cap). 466 stay NO_ROOM; 23 move, and
+# each gives what the same input gives at 65,536. The 6 that answer were each checked here outside casim: the sum
+# against exact sums for N = 1..29, both integrals differentiated numerically against the integrand (the first in DEG,
+# the second in Y), the taylor by its error over x^6 settling to a constant, the limit by evaluation near 0, and solve's
+# root by hand. The others move to a refusal that 65,536 gives too.
+# op	cap	input	point or bounds	at 12,288
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+simplify	192	X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X^X	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+solve	192	X^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1^1-2	\N \N	OK SOLVED: X=2
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))))	\N \N	TOO_LONG
+integrate	65536	((ASIN((7)-(1E3)))×((SQRT(3))+((X)×(X))))+((((0.5)+(-4))÷(SQ(-4)))×(ATAN((3)-(X))))	\N \N	OK -0.65625×ATAN(X-3)-0.21875×X×ATAN(-X+3)+ASIN(-993)×(X^3+3×X×SQRT(3))÷3-19.6875×LN(-6×X+X^2+10)÷π
+integrate	65536	((((Y)-(7))÷((1E3)-(2)))÷(((2)÷(3))-(Y)))÷((X)^(-4))	\N \N	OK -X^4×Y÷998+19×X^4×LN(ABS(3×Y-2))÷2994
+integrate	192	(X+A)÷(X^2-1)	\N \N	NOT_INTEGRABLE
+integrate	65536	(X+A)÷(X^2-1)	\N \N	NOT_INTEGRABLE
+taylor	65536	(COS(X))÷(2+X^2)	0 5	OK 1÷2-X^2÷2+13×X^4÷48
+taylor	65536	(COS(X)^2)÷(2+X^2)	-2 3	TOO_LONG
+taylor	65536	(SQRT(1+X))÷(2+X^2)	1 7	TOO_LONG
+limit	65536	1÷X^2-1÷SIN(X)^2	0 	OK -1÷3
+limit	192	1÷X^2-1÷SIN(X)^2	0 	OK -1÷3
+limit	192	1÷X^2-1÷SIN(X)^2	0 	OK -1÷3
+integrate	192	(X^2-1)÷(X-1)×EXP(X)	\N \N	NOT_INTEGRABLE
+integrate	65536	(X^2-1)÷(X-1)×EXP(X)	\N \N	NOT_INTEGRABLE
+sum	192	K^12	1 N	OK -691×N÷2730+5×N^3÷3-33×N^5÷10+22×N^7÷7-11×N^9÷6+N^11+N^12÷2+N^13÷13
