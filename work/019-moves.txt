@@ -426,3 +426,17 @@ Statuses (rule 5), all taylor at 8,800 B, cap 65,536 (the same four at cap 192):
 + | `casim --arena 65536 sum "(384+3×K^6+38×K^5+219×K^4+712×K^3+1280×K+1328×K^2)÷(2×K^8+30×K^7+178×K^6+192×K^2+530×K^5+640×K^3+828×K^4)" K 1 N RAD` | `-2÷(N+1)^2+2÷3÷(N+2)^2-2÷(N+2)+2÷3÷(N+3)^2+1÷2÷(N+3)+2÷3÷(N+4)^2+551÷216` |
 - | `casim sum "K^(-2)+1÷(2×K)+1÷(2×(4+K))-1÷(2+K)-4÷(2+K)^2+3÷(4+K)^2" K 1 ∞ RAD` | `1.1875` |
 + | `casim sum "K^(-2)+1÷(2×K)+1÷(2×(4+K))-1÷(2+K)-4÷(2+K)^2+3÷(4+K)^2" K 1 ∞ RAD` | `19÷16` |
+
+## After the unit: factor's content as k×u÷d (abacus #8758)
+
+The golden's 6 factor lines are appended to tests/golden/moved/cas-019.txt. Visible rows and test expectations:
+
+### work/007-examples.txt: 2 lines
+- F0010 | factor | X^2÷2-1÷2 | X | 35 | 1÷2×(X-1)×(X+1)
++ F0010 | factor | X^2÷2-1÷2 | X | 35 | (X-1)×(X+1)÷2
+- F0018 | factor | 0.5×X^2-2 | X | 35 | 1÷2×(X-2)×(X+2)
++ F0018 | factor | 0.5×X^2-2 | X | 35 | (X-2)×(X+2)÷2
+
+### tests/factor_test.c: 1 line
+-     is("X^2÷2-1÷2", "1÷2×(X-1)×(X+1)");
++     is("X^2÷2-1÷2", "(X-1)×(X+1)÷2");

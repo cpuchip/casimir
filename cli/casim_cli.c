@@ -25,7 +25,8 @@
  *   --arena N                        the arena in bytes (default 8800, the calculator's: Michael, cas-arena-8800)
  *   --min-arena                      also print the smallest arena that gives the same result
  *   --decimal                        every number by CAS 002's rule, the calculator's →DEC (CAS 019 rule 6); an
- *                                    answer printed so because its fractions didn't fit is "DECIMAL_FORM", then it
+ *                                    answer printed so because its fractions didn't fit, holding a decimal, is
+ *                                    "DECIMAL_FORM", then it
  *   --cap N                          out's size in bytes, its NUL included (default 65536): 192 is
  *                                    the calculator's equation slot, which derive and simplify keep as
  *                                    the caller's cap (CAS 004, soroban #4831)

@@ -638,13 +638,18 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
   integrate's table, one typed term at a time). A sum made primitive shares its first coefficient's mark with every
   term. Where two equal subtrees merge, a number deeper inside the kept one keeps its own form:
   `SIN(0.5×X)+SIN(X÷2)` is `2×SIN(0.5×X)`. A marked 1, 0 or exponent 1 vanishes as before: `∫(1.0×X)dX` is `X^2÷2`.
-- **Unchanged:** solve's roots (`X=1÷2`), factor's content (`1÷4×(2×X-1)×(2×X+1)`) and partfrac's forms were already
-  fractions.
+- **Unchanged:** solve's roots (`X=1÷2`) and partfrac's forms were already fractions.
+- **factor's content** takes rule 1's k×u÷d (abacus #8758): `X^2-1÷4` is `(2×X-1)×(2×X+1)÷4`, and
+  `-3×X^2÷4+3÷4` is `-3×(X-1)×(X+1)÷4`. →DEC keeps the old `1÷4×(2×X-1)×(2×X+1)`.
 - **→DEC**, the decimal one key away: `CASIM_PRINT_DECIMAL` OR'd into any call's angle (the CLI's `--decimal`) prints
   every number by CAS 002's rule, the answer and its steps both, exactly as before this unit. It is exact: `X^6÷6`
   stays a quotient.
 - **DECIMAL_FORM:** where the fractions don't fit (past cap, or the arena), casim_run answers in →DEC's form and says
-  so with status 14, so the screen can label it. Three Taylor rows at the calculator's 8,800 B do this.
+  so with status 14, so the screen can label it. Three Taylor rows at the calculator's 8,800 B do this. An answer
+  from that run with no decimal in it (no point, no E) is the text fractions would print, so it is OK: taylor's
+  re-read texts can need more room as fractions, ASIN's derivatives carrying `(5÷2)` where →DEC's carry `2.5`. When
+  that run fails too, its status is the answer's (abacus #8764): it is the path from before fractions, so a search
+  that finished says NOT_INTEGRABLE, not NO_ROOM.
 
 | Command | Prints |
 |---|---|
@@ -671,7 +676,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
 | 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit". taylor: an SGN(0) it can't decide | "" |
 | 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |
-| 14 | DECIMAL_FORM | casim_run: the answer, in →DEC's form, because its fractions passed cap or the arena (CAS 019) | the answer |
+| 14 | DECIMAL_FORM | casim_run: the answer, in →DEC's form, because its fractions passed cap or the arena, and it holds a decimal (CAS 019) | the answer |
 
 ## The bounds
 

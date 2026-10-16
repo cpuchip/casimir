@@ -61,7 +61,9 @@ typedef enum {
                                    function of var, a letter in a ratio), and the bounds aren't integers at most 64
                                    apart; out is "" */
     CASIM_DECIMAL_FORM          /* CAS 019 rule 5: an answer, printed by CAS 002's rule (as →DEC), because its
-                                   fractions passed cap or the arena (casim_run only); out holds it */
+                                   fractions passed cap or the arena, and holding a decimal (casim_run only; with
+                                   none it is OK, and when that run fails too its status is the answer's); out
+                                   holds it */
 } casim_status;
 
 /* The angle modes, numbered as the core's ab_angle (AB_ANGLE_DEG, _RAD, _GRAD). */

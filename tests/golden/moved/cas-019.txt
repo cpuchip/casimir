@@ -3834,3 +3834,23 @@ taylor	35	23	1	35	65536	65536	ATANH(X)	0	5
 taylor	35	23	1	35	8800	192	ATANH(X)	0	5
   before	OK	X+X^3÷3+0.2×X^5
   after	OK	X+X^3÷3+X^5÷5
+
+## factor, its content as k×u÷d (abacus #8758, after the unit): 6
+factor	35	23	1	35	65536	65536	X^2÷2-1÷2	\N	\N
+  before	OK	1÷2×(X-1)×(X+1)
+  after	OK	(X-1)×(X+1)÷2
+factor	35	23	1	35	8800	192	X^2÷2-1÷2	\N	\N
+  before	OK	1÷2×(X-1)×(X+1)
+  after	OK	(X-1)×(X+1)÷2
+factor	35	23	1	35	65536	65536	0.5×X^2-2	\N	\N
+  before	OK	1÷2×(X-2)×(X+2)
+  after	OK	(X-2)×(X+2)÷2
+factor	35	23	1	35	8800	192	0.5×X^2-2	\N	\N
+  before	OK	1÷2×(X-2)×(X+2)
+  after	OK	(X-2)×(X+2)÷2
+factor	35	23	1	35	8800	65536	X^2÷2-1÷2	\N	\N
+  before	OK	1÷2×(X-1)×(X+1)
+  after	OK	(X-1)×(X+1)÷2
+factor	35	23	1	35	8800	65536	0.5×X^2-2	\N	\N
+  before	OK	1÷2×(X-2)×(X+2)
+  after	OK	(X-2)×(X+2)÷2

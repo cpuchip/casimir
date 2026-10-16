@@ -3987,21 +3987,31 @@ static inline __attribute__((always_inline)) casim_status run_(const casim_req *
     }
 }
 
+/* Whether an answer's text holds a decimal: a point, or a digit's E (1E-15) */
+static __attribute__((noinline)) bool has_decimal(const char *s)
+{
+    for (const char *t = s; *t; t++)
+        if (*t == '.' || (*t == 'E' && t > s && digit(t[-1]))) return true;
+    return false;
+}
+
 /* CAS 004's one call. CAS 019 rule 5: when fractions don't fit (TOO_LONG, NO_ROOM), the run again by CAS 002's rule
-   (→DEC's), an answer from it being DECIMAL_FORM, so the screen can say why. */
+   (→DEC's). Its status is the answer's (abacus #8764: it is 4f24e3e's path, and a search that finished says so), and
+   an answer from it that holds a decimal is DECIMAL_FORM, so the screen can say why; one with none is the text
+   fractions would print, OK. */
 casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, size_t arena_cap)
 {
     casim_status st;
+    bool fell = false;
     if (cap) out[0] = '\0';
     if (!rq) return CASIM_BAD_ARG;
-    /* rule 5: a fraction form past cap or the arena answers again in decimals, flagged. run_ is inline at both calls,
-       so an op's stack has casim_run's one frame, 64 B on the S3 as before 019 (run_ out of line was 32 + 80; one
-       call in a loop, 96): 1,011 B of text for 32 B of every op's stack */
+    /* run_ is inline at both calls, so an op's stack has casim_run's one frame, 64 B on the S3 as before 019 (run_
+       out of line was 32 + 80; one call in a loop, 96): 1,011 B of text for 32 B of every op's stack */
     st = run_(rq, rq->angle, out, cap, arena, arena_cap);
-    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&
-        run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap) == CASIM_OK)
-        st = CASIM_DECIMAL_FORM;
-    return unpoint(st, out, cap);
+    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC))
+        fell = true, st = run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap);
+    st = unpoint(st, out, cap);
+    return fell && st == CASIM_OK && cap && has_decimal(out) ? CASIM_DECIMAL_FORM : st;
 }
 
 /* ---- solve (unit CAS 005) ---- */
@@ -6705,11 +6715,12 @@ static __attribute__((noinline)) ref ipoly_tree(ctx *c, const ipoly *p, int var)
     return poly_tree(c, r, var);
 }
 
-/* content p/q as text: an integer or p÷q (the example's 1÷2), never a decimal */
-static __attribute__((noinline)) void put_content(out_t *w, const rat *v)
+/* content p/q as text, never a decimal: part 1 its p, 2 its ÷q (none for q = 1), 3 both (an integer or the
+   example's 1÷2) */
+static __attribute__((noinline)) void put_content(out_t *w, const rat *v, int part)
 {
-    put_int(w, v->p);
-    if (v->q != 1) puts_(w, DIVIDE), put_int(w, v->q);
+    if (part & 1) put_int(w, v->p);
+    if ((part & 2) && v->q != 1) puts_(w, DIVIDE), put_int(w, v->q);
 }
 
 /* Item i split by the search into irreducible factors, its first piece in its place and the rest appended: 0
@@ -6786,7 +6797,7 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
     if (c.st != CASIM_OK || !clear(&c, co, &f)) return finish(&c, SPARE, out, ocap);
     c.used = mark;
     if (f.n <= 0) {
-        put_content(&o, &co[0]);        /* a constant: itself */
+        put_content(&o, &co[0], 3);     /* a constant: itself */
         if (o.full) c.st = CASIM_TOO_LONG;
         return c.st == CASIM_OK ? CASIM_OK : finish(&c, SPARE, out, ocap);
     }
@@ -6852,17 +6863,20 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
             }
             it[j] = t, list(&c, tl)[j] = tt;
         }
-        if (rat_is(&content, -1, 1)) puts_(&o, "-1");
-        else if (!rat_is(&content, 1, 1)) put_content(&o, &content);
+        /* a content p÷q prints as rule 1's k×u÷d (CAS 019, abacus #8758): p before the factors, ÷q after them;
+           →DEC keeps CAS 007's p÷q×u */
+        bool kud = content.q != 1 && !(c.nm & NM_DEC);
+        if (kud ? content.p != 1 : !rat_is(&content, 1, 1)) put_content(&o, &content, kud ? 1 : 3);
         for (int i = 0; i < items; i++) {
             ref t = list(&c, tl)[i];
-            bool paren = nd(&c, t)->kind == K_ADD && (items > 1 || it[i].mult > 1 || o.n > 0);
+            bool paren = nd(&c, t)->kind == K_ADD && (items > 1 || it[i].mult > 1 || o.n > 0 || kud);
             if (o.n > 0) puts_(&o, TIMES);
             if (paren) puts_(&o, "(");
             print(&c, &o, t);
             if (paren) puts_(&o, ")");
             if (it[i].mult > 1) puts_(&o, "^"), put_int(&o, it[i].mult);
         }
+        if (kud) put_content(&o, &content, 2);
     }
     if (o.full) c.st = CASIM_TOO_LONG;
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);

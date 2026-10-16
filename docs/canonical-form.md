@@ -407,11 +407,12 @@ TOO_LONG past 191 bytes, whatever cap is.
 read as typed by CAS 005's walk with the same refusals (NOT_POLYNOMIAL, NOT_NUMERIC, NO_ROOM past degree 12 or
 past |coefficient| 10^7 once cleared). An equation is BAD_ARG.
 
-**The text:** the rational content first when it is not 1 (`2×…`, `1÷2×…`, never a decimal; `-1×…` for a
-negative leading coefficient), then each irreducible factor once, primitive, with integers and a positive
+**The text:** the rational content p÷q, when it is not 1, as k×u÷d (CAS 019, abacus #8758): p first when it is not 1
+(`2×…`, `-1×…` for a negative leading coefficient), never a decimal, and `÷q` after the last factor
+(`(X-1)×(X+1)÷2`); →DEC keeps CAS 007's `1÷2×…`. Then each irreducible factor once, primitive, with integers and a positive
 leading coefficient, in 002's canonical form, `^k` for a multiplicity above 1. Factors run in ascending degree,
 ties in 002's order of the factor (the order 002's own product would give them). A sum is parenthesised when it
-stands among other items or carries ^k; a polynomial that does not factor prints as itself, cleared, with its
+stands among other items, carries ^k or comes before a ÷q; a polynomial that does not factor prints as itself, cleared, with its
 content; a constant prints as itself. TOO_LONG past 191 bytes.
 
 **How the factors are found:**

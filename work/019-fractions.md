@@ -178,6 +178,35 @@ than 2 and 5. Michael's ruling keeps one exception: a number the user typed as a
   slowest, a subst that ends TOO_LONG, 309 → 617 ms; an integrate that ends TOO_LONG, 164 → 329 ms. No bench row
   ends DECIMAL_FORM (the three golden ones are taylor in GRAD, not bench rows).
 
+## After the review (abacus #8758, #8764; measured over 7b878ab)
+
+- **factor's content as k×u÷d** (#8758 (a), for the same reason Q1 folded collect): p before the factors, ÷q after
+  them, a lone sum parenthesised before ÷q: `X^2-1÷4` is `(2×X-1)×(2×X+1)÷4`. -1 keeps CAS 007's `-1×…÷4` (no bare
+  unary minus before ^ under 33 and 35). →DEC keeps `1÷4×…`, byte for byte (decimal-golden 10,788, 0 failed). Golden:
+  factor's 6 lines, appended to tests/golden/moved/cas-019.txt; F0010, F0018 and one factor_test line (019-moves.txt).
+  S3 text +235 B (220,892); do_factor 528 → 544, not on the gate's path. put_int inlines at each call, so all three
+  prints go through put_content's part argument (one call apiece was +297 B; a rewrite with the divisor swapped in was
+  larger again on the host).
+- **Rule 5, amended (#8764):**
+  - a fallback answer with no decimal in it (no point, no digit's E) is the text fractions would print: OK, not
+    DECIMAL_FORM (abacus's 8 rows, among them T1367's -X-X^2-23×X^3÷24 and S1225's -920÷4563);
+  - when both runs fail, the fallback's status is the answer's: it is 4f24e3e's path, and a search that finished says
+    NOT_INTEGRABLE, not NO_ROOM (10 h017 rows, and taylor rows that said TOO_LONG).
+  - +125 B of S3 text: has_decimal, a 32 B leaf called after both runs; casim_run 64 and casim_step 240 unchanged, the
+    gate untouched. Golden: nothing moves; 019-examples gains a row for each (the third reached at 4,096 B).
+- **Why fractions need more room for the same text** (abacus's question): taylor re-reads its derivatives' texts,
+  and ASIN's carry `(5÷2)` where →DEC's carry `2.5`: a quotient node and two numbers where →DEC has one number.
+  Control: taylor of 55 products of ten functions, at 0, 1÷2 and 1÷3, orders 3–6, over 39 arenas from 1,200 to
+  8,800 B. Each of the 34 fallbacks with no point involves ASIN or SQRT, and none of the 36 pairs without a
+  fractional power gives one.
+- **Route-dependent forms** (#8758 (b), accepted): whether X^2-c factors over Q decides it. ∫X÷(X^2-0.5)dX takes the
+  log of the quadratic, ∫X÷(X^2-1.0÷9)dX takes partfrac's path. The pair is a named row in 019-examples.
+- **Mutants: 334.** factor-content-kud-under-dec, -sum-bare and -divisor-dropped, and fallback-flags-no-decimal,
+  -e-not-decimal and -first-status are new; the six fallback and factor mutants that held the old text re-anchored.
+  All 12 caught (peak 1.42 GiB). fallback-any-status survived the first run: with the fallback's status returned, a
+  rerun on any refusal is equivalent except on PARTIAL, which carries an answer, so a PARTIAL factor with content 1÷2
+  is a row now, and catches it.
+
 ## What moves (measured, fractions everywhere, over 4f24e3e)
 
 - **Golden:** 2,255 of 10,788 lines.

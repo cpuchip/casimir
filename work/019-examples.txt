@@ -74,6 +74,14 @@
 | `casim --arena 8800 --cap 192 taylor "(SQRT(1+X))×(EXP(X))" X 0 11 GRAD` | `DECIMAL_FORM / 1+1.5×X+0.875×X^2+17×X^3÷48+0.0859375×X^4+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400` |
 | `casim --arena 8800 --cap 192 taylor "EXP(K×X)" X "1÷2" 6 RAD` | `EXP(K÷2)+K×EXP(K÷2)×(X-1÷2)+K^2×EXP(K÷2)×(X-1÷2)^2÷2+K^3×EXP(K÷2)×(X-1÷2)^3÷6+K^4×EXP(K÷2)×(X-1÷2)^4÷24+K^5×EXP(K÷2)×(X-1÷2)^5÷120+K^6×EXP(K÷2)×(X-1÷2)^6÷720` |
 
+# - Rule 5 as amended (abacus #8764): a fallback answer with no decimal in it is the text fractions would print, OK
+#   (ASIN's derivatives carry (5÷2) where →DEC's carry 2.5, so taylor's re-read texts take more room as fractions);
+#   when both runs fail, the fallback's status, 4f24e3e's, is the answer's; an E is a decimal (1E-15)
+| `casim --arena 8600 --cap 192 taylor "SIN(X)×ASIN(X)" X 0 5 RAD` | `X^2` |
+| `casim --arena 4096 --cap 192 integrate "(0.5)÷((((7)÷(-4))^(SQ(0.5)))×((ABS(7))+((X)^(π))))" X RAD` | `NOT_INTEGRABLE` |
+| `casim --arena 4096 --cap 192 taylor "SQRT(1+X)×SIN(X)" X "π÷6" 7 RAD` | `TOO_LONG` |
+| `casim --cap 16 simplify "X÷10^15" RAD` | `DECIMAL_FORM / 1E-15×X` |
+
 # - Rule 6: →DEC (--decimal), every number by CAS 002's rule, steps too
 | `casim --decimal integrate "X^3" X RAD` | `0.25×X^4` |
 | `casim --decimal integrate "X^5" X RAD` | `X^6÷6` |
@@ -81,10 +89,24 @@
 | `casim --decimal pdiv "X^2+1" X "2×X+1" RAD` | `0.5×X-0.25; 1.25` |
 | `casim --decimal steps integrate "X^3" X RAD` | `CHECK: d/dX(0.25×X^4) = X^3 / POWER: ∫(X^3)dX = 0.25×X^4` |
 
-# - Unchanged: solve prints a÷b, factor its content as p÷q, partfrac its own forms
+# - Unchanged: solve prints a÷b, partfrac its own forms
 | `casim solve "2×X-1.0=0" X RAD` | `SOLVED: X=1÷2` |
-| `casim factor "X^2-0.25" X RAD` | `1÷4×(2×X-1)×(2×X+1)` |
 | `casim partfrac "(0.5×X+1)÷(X^2+3×X+2)" X RAD` | `1÷(2×(X+1)); X=-2` |
+
+# - factor's content as rule 1's k×u÷d (abacus #8758): p before the factors, ÷q after them, never a decimal; →DEC
+#   keeps CAS 007's p÷q×u; PARTIAL's answer too, which only rule 5's two statuses send to the fallback
+| `casim factor "X^2-0.25" X RAD` | `(2×X-1)×(2×X+1)÷4` |
+| `casim factor "-3×X^2÷4+3÷4" X RAD` | `-3×(X-1)×(X+1)÷4` |
+| `casim factor "X÷4+1÷4" X RAD` | `(X+1)÷4` |
+| `casim factor "X^3÷6-X÷6" X RAD` | `X×(X-1)×(X+1)÷6` |
+| `casim --decimal factor "X^2-0.25" X RAD` | `1÷4×(2×X-1)×(2×X+1)` |
+| `casim --decimal factor "-X^2÷4+1÷4" X RAD` | `-1÷4×(X-1)×(X+1)` |
+| `casim factor "(69120×X^12-883584×X^11+3675072×X^10-4777824×X^9-2178000×X^8+7710864×X^7-2213952×X^6-2071296×X^5+775920×X^4+114000×X^3-36000×X^2-2)÷4" X RAD` | `PARTIAL (-18000×X^2+57000×X^3+387960×X^4-1035648×X^5-1106976×X^6+3855432×X^7-1089000×X^8-2388912×X^9+1837536×X^10-441792×X^11+34560×X^12-1)÷2` |
+
+# - A typed term's route decides its form (abacus #8758 (b)): X^2-0.5 doesn't factor over Q, so its integral is a
+#   log of the quadratic and the ½ comes from the derivative; X^2-1÷9 does, so partfrac's path takes the list's mark
+| `casim integrate "X÷(X^2-0.5)" X RAD` | `LN(ABS(2×X^2-1))÷2` |
+| `casim integrate "X÷(X^2-1.0÷9)" X RAD` | `0.5×LN(ABS(3×X-1))+0.5×LN(ABS(3×X+1))` |
 
 # - Catchers (the mutant run): a typed number's mark through the exact trig table, a number base's run, and the
 #   whole and the quotient read back by the rational path; and CAS 017's measured sum answer, which its row 54 no

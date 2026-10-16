@@ -99,6 +99,7 @@ fold	192
 frac_cmp	8
 grab	48
 has_coef	8
+has_decimal	8
 horner	8
 i64_abn	96
 i64_text	48
@@ -280,7 +281,7 @@ put	32
 put.part.0	32
 put_coef	128
 put_collected	144
-put_content	64
+put_content	80
 put_dec	48
 put_dvar	64
 put_exp	112

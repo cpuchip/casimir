@@ -74,7 +74,7 @@ static void exact(void)
     is("(X^3-2)×(X^3+X+1)", "(X+X^3+1)×(X^3-2)");
     /* the content: first, then the primitive factors with positive leading coefficients */
     is("2×X^2-2", "2×(X-1)×(X+1)");
-    is("X^2÷2-1÷2", "1÷2×(X-1)×(X+1)");
+    is("X^2÷2-1÷2", "(X-1)×(X+1)÷2");
     is("-X^2+1", "-1×(X-1)×(X+1)");
     is("-2×X^2+8", "-2×(X-2)×(X+2)");
     is("3×X^2-6", "3×(X^2-2)");

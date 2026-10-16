@@ -147,8 +147,8 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 328 deliberate faults, each of which the tests
-  must catch; `make test` catches all 328. After the arena move to 8,800 B, two faults survived, one in the run of
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 334 deliberate faults, each of which the tests
+  must catch; `make test` catches all 334. After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
   new arena, and both are caught again. Each mutant's copy

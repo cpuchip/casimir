@@ -155,10 +155,22 @@ MUTANTS = {
         ("src/casim.c", "            if (it[i].mult > 1) puts_(&o, \"^\"), put_int(&o, it[i].mult);", "            (void)0;"),
     ],
     "factor-content-lost": [
-        ("src/casim.c", "        else if (!rat_is(&content, 1, 1)) put_content(&o, &content);", "        (void)put_content;"),
+        ("src/casim.c", "!rat_is(&content, 1, 1)) put_content(&o, &content, kud ? 1 : 3);",
+         "!rat_is(&content, 1, 1)) (void)put_content;"),
     ],
     "factor-content-sign-flipped": [
-        ("src/casim.c", "        if (rat_is(&content, -1, 1)) puts_(&o, \"-1\");", "        if (content.p < 0) content.p = -content.p;\n        if (rat_is(&content, -1, 1)) puts_(&o, \"-1\");"),
+        ("src/casim.c", "        bool kud = content.q != 1 && !(c.nm & NM_DEC);",
+         "        if (content.p < 0) content.p = -content.p;\n        bool kud = content.q != 1 && !(c.nm & NM_DEC);"),
+    ],
+    # CAS 019's k×u÷d content (abacus #8758): →DEC keeps p÷q×u, a lone sum is parenthesised before ÷q, and q is printed
+    "factor-content-kud-under-dec": [
+        ("src/casim.c", "        bool kud = content.q != 1 && !(c.nm & NM_DEC);", "        bool kud = content.q != 1;"),
+    ],
+    "factor-content-sum-bare": [
+        ("src/casim.c", "(items > 1 || it[i].mult > 1 || o.n > 0 || kud);", "(items > 1 || it[i].mult > 1 || o.n > 0);"),
+    ],
+    "factor-content-divisor-dropped": [
+        ("src/casim.c", "        if (kud) put_content(&o, &content, 2);", "        (void)kud;"),
     ],
     "factor-check-skipped-wrong-factor": [
         ("src/casim.c", "    return same;\n}", "    return same || 1;\n}"),
@@ -981,16 +993,23 @@ MUTANTS = {
     "mark-point-whole": [("src/casim.c", "!memchr(w->o + n0, 'E', w->n - n0))\n        puts_(w, \".\");", "!memchr(w->o + n0, 'E', w->n - n0) && 0)\n        puts_(w, \".\");")],
     "print-ignores-mark": [("src/casim.c", "    return (c->nm & NM_DEC) || marked(c, r);", "    return (void)r, (c->nm & NM_DEC) != 0;")],
     "print-all-decimal": [("src/casim.c", "    return (c->nm & NM_DEC) || marked(c, r);", "    return true || marked(c, r);")],
-    "unpoint-skipped": [("src/casim.c", "        st = CASIM_DECIMAL_FORM;\n    return unpoint(st, out, cap);", "        st = CASIM_DECIMAL_FORM;\n    return st;")],
+    "unpoint-skipped": [("src/casim.c", "    st = unpoint(st, out, cap);\n    return fell", "    return fell")],
     # (dec-not-nested, the nested rational path called without →DEC's bit, survives: its text is read back as a tree,
     # so the bit changes only the text's length against IB_TEXT, and no rational part the by-parts path integrates
     # comes near 384 B (1,600 random EXP/SIN/X×EXP plus p÷q cases, and degree-6 ones it refuses). The bit stays, so a
     # →DEC walk's inner text is the old printer's; the mutant is equivalent on everything reached.)
-    "fallback-unflagged": [("src/casim.c", "        st = CASIM_DECIMAL_FORM;\n    return unpoint(st, out, cap);", "        st = CASIM_OK;\n    return unpoint(st, out, cap);")],
-    "fallback-skipped": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&",
-                          "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) && 0 &&")],
-    "fallback-any-status": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) &&",
-                             "    if (!(rq->angle & ANGLE_DEC) &&")],
+    "fallback-unflagged": [("src/casim.c", "    return fell && st == CASIM_OK && cap && has_decimal(out) ? CASIM_DECIMAL_FORM : st;",
+                            "    return (void)has_decimal, (void)fell, st;")],
+    "fallback-skipped": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC))",
+                          "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC) && 0)")],
+    "fallback-any-status": [("src/casim.c", "    if ((st == CASIM_TOO_LONG || st == CASIM_NO_ROOM) && !(rq->angle & ANGLE_DEC))",
+                             "    if (st != CASIM_OK && !(rq->angle & ANGLE_DEC))")],
+    # rule 5 as amended (abacus #8764): a fallback answer with no decimal is OK; both failing, the fallback's status
+    "fallback-flags-no-decimal": [("src/casim.c", "cap && has_decimal(out) ? CASIM_DECIMAL_FORM", "cap && (has_decimal(out) || 1) ? CASIM_DECIMAL_FORM")],
+    "fallback-e-not-decimal": [("src/casim.c", "        if (*t == '.' || (*t == 'E' && t > s && digit(t[-1]))) return true;",
+                                "        if (*t == '.') return true;")],
+    "fallback-first-status": [("src/casim.c", "        fell = true, st = run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap);",
+                               "        fell = run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap) == CASIM_OK, st = fell ? CASIM_OK : st;")],
     "collect-fold-off": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0 && !(c->nm & NM_DEC) && 0) {")],
     "collect-fold-under-dec": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0) {")],
     "mark-cache-poisoned": [("src/casim.c", "    ref r = num(c, v);\n    if (m && r != SPARE) nd(c, r)->id = NUM_MARK;",
