@@ -358,6 +358,23 @@ def all_cases():
             ("ser (1÷X-SIN(1÷X))×X -∞", "((1÷X)-SIN((1÷X)))×(X)", "DEG", "limit", "-∞|"),
             ("ser SIN(K×(1÷X))×(2×X+1)", "SIN(K×(1÷X))×(2×X+1)", "RAD", "limit", "-∞|")]:
         rows.append((name, expr, "X", angle, op, repl, "35"))
+    # CAS 022: signs decided by value. The deepest constants the bound sizes (21-deep nests at 0: taylor_hole's 8 levels
+    # refuse them; a deep constant under limit's walk), and the census rows (work/022-signs.md)
+    Z, Z1 = "(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)", "(SIN(1)^2+COS(1)^2-1)"
+    for name, expr, angle, op, repl in [
+            ("sign LN(2+ nest 21 to 0", "LN(2+" * 21 + "X" + ")" * 21, "RAD", "taylor", "0|0"),
+            ("sign SQRT(1+ nest 21 to 0", "SQRT(1+" * 21 + "X" + ")" * 21, "RAD", "taylor", "0|0"),
+            ("sign LN(2+ nest 21 to 2", "LN(2+" * 21 + "X" + ")" * 21, "RAD", "taylor", "0|2"),
+            ("sign (LN(2+ nest 21+X)÷X", "(" + "LN(2+" * 21 + "1" + ")" * 21 + "+X)÷X", "RAD", "limit", "0|+"),
+            ("sign (Z+X)÷X", "(" + Z + "+X)÷X", "RAD", "limit", "0|"),
+            ("sign (Z+X^2)÷X^2 0+", "(" + Z + "+X^2)÷X^2", "RAD", "limit", "0|+"),
+            ("sign Z×ABS(X)÷X", Z + "×ABS(X)÷X", "RAD", "limit", "0|"),
+            ("sign TAN(SIN)-SIN(TAN)+Z1×X^3", "(TAN(SIN(X))-SIN(TAN(X))+" + Z1 + "×X^3)÷X^7", "RAD", "limit", "0|"),
+            ("sign 1÷(Z+X) to 1", "1÷(" + Z + "+X)", "RAD", "taylor", "0|1"),
+            ("sign ABS(Z+X) to 1", "ABS(" + Z + "+X)", "RAD", "taylor", "0|1"),
+            ("sign TAN(Z+π÷2+X) to 1", "TAN(" + Z + "+π÷2+X)", "RAD", "taylor", "0|1"),
+            ("sign 1÷(EXP(-20000)+X) to 1", "1÷(EXP(-20000)+X)", "RAD", "taylor", "0|1")]:
+        rows.append((name, expr, "X", angle, op, repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
