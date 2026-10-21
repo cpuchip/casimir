@@ -334,6 +334,30 @@ def all_cases():
             ("l (1+2÷X)^(3×X)", "(1+2÷X)^(3×X)", "∞", ""), ("l SQRT(X^2+5×X)-X", "SQRT(X^2+5×X)-X", "∞", ""),
             ("l 1÷SIN(X)^3 both", "1÷SIN(X)^3", "0", ""), ("l X^X at 0+", "X^X", "0", "+")]:
         rows.append((name, expr, "X", "RAD", "limit", point + "|" + side, "35"))
+    # CAS 021: the series route, where the derivatives and the walk refuse: the unit's debt list, the two sides, ±∞, a
+    # π-power row that stays NO_ROOM (TAN in DEG), and the series' deepest walks (SQRT(1+ nested 20 reaches 43 levels with
+    # the bound's 8 under it)
+    for name, expr, angle, op, repl in [
+            ("ser EXP(SIN(X)) to 12", "EXP(SIN(X))", "RAD", "taylor", "0|12"),
+            ("ser SIN(COS(X)) to 10", "SIN(COS(X))", "RAD", "taylor", "0|10"),
+            ("ser TAN(X) to 11 DEG", "TAN(X)", "DEG", "taylor", "0|11"),
+            ("ser SQRT(1+X)÷(2+X^2) to 11", "(SQRT(1+X))÷(2+X^2)", "RAD", "taylor", "0|11"),
+            ("ser LN(1+X)×TAN(X) to 9", "(LN(1+X))×(TAN(X))", "RAD", "taylor", "0|9"),
+            ("ser EXP(K×X)÷(2+X^2) DEG", "(EXP(K×X))÷(2+X^2)", "DEG", "taylor", "0|7"),
+            ("ser ABS(X)^3 to 2", "ABS(X)^3", "RAD", "taylor", "0|2"),
+            ("ser ABS(ATAN(X))^2 to 2", "ABS(ATAN(X))^2", "RAD", "taylor", "0|2"),
+            ("ser SQRT(X^2) to 1", "SQRT(X^2)", "RAD", "taylor", "0|1"),
+            ("ser K×ABS(X) to 1", "K×ABS(X)", "RAD", "taylor", "0|1"),
+            ("ser ASIN(COS(X)) to 2", "ASIN(COS(X))", "RAD", "taylor", "0|2"),
+            ("ser SIN nest 40 to 3", "SIN(" * 40 + "X" + ")" * 40, "RAD", "taylor", "0|3"),
+            ("ser ATAN nest 30 to 3", "ATAN(" * 30 + "X" + ")" * 30, "RAD", "taylor", "0|3"),
+            ("ser LN(1+ nest 20 to 2", "LN(1+" * 20 + "X" + ")" * 20, "RAD", "taylor", "0|2"),
+            ("ser SQRT(1+ nest 20 to 2", "SQRT(1+" * 20 + "X" + ")" * 20, "RAD", "taylor", "0|2"),
+            ("ser 1÷X^2-1÷SIN(X)^2", "1÷X^2-1÷SIN(X)^2", "RAD", "limit", "0|"),
+            ("ser TAN(X)-1÷COS(X) π÷2-", "TAN(X)-1÷COS(X)", "RAD", "limit", "π÷2|-"),
+            ("ser (1÷X-SIN(1÷X))×X -∞", "((1÷X)-SIN((1÷X)))×(X)", "DEG", "limit", "-∞|"),
+            ("ser SIN(K×(1÷X))×(2×X+1)", "SIN(K×(1÷X))×(2×X+1)", "RAD", "limit", "-∞|")]:
+        rows.append((name, expr, "X", angle, op, repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

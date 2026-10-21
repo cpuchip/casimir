@@ -3,9 +3,9 @@
 limit's walk refuse, so with it compiled out (build/golden_check-ser0, CASIM_SER=0) the golden corpus must be exactly
 what it was before the unit: every line byte for byte, and each line tests/golden/moved/cas-021.txt lists with its
 before. The same for →DEC's file (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL OR'd into the angle), whose moves are
-the list's second section. Each listed line must have moved from NO_ROOM or UNDECIDED (or a DECIMAL_FORM whose exact
-run was NO_ROOM), and its after must be the file's. The check's control: the corpus with one moved line left at its
-after must fail.
+the list's second section; its third lists the unit's new inputs the route answers. Each listed line must have moved
+from NO_ROOM or UNDECIDED (or a DECIMAL_FORM whose exact run was NO_ROOM), and its after must be the file's. The
+check's control: the corpus with one moved line left at its after must fail.
     scripts/series-golden.py"""
 import os
 import subprocess
@@ -20,11 +20,11 @@ PRINT_DECIMAL = 16      # casim.h's CASIM_PRINT_DECIMAL
 
 
 def moved():
-    """the list's two sections (the corpus's, then →DEC's): inputs (the first ten fields) -> (before, after), each
-    [status, text]"""
+    """the list's sections (the corpus's moves, →DEC's, the new inputs): inputs (the first ten fields) -> (before,
+    after), each [status, text]"""
     sections, lines = [{}], []
     for ln in open(MOVED, encoding="utf-8").read().split("\n"):
-        if ln.startswith("# Under →DEC"):
+        if ln.startswith("# Under →DEC") or ln.startswith("# New inputs"):
             sections.append({})
         elif ln and not ln.startswith("#"):
             lines.append((len(sections) - 1, ln))
@@ -78,7 +78,8 @@ def before(path, mv, bit, name):
 
 
 def main():
-    corpus_mv, dec_mv = moved()
+    moved_mv, dec_mv, new_mv = moved()
+    corpus_mv = {**moved_mv, **new_mv}
     bad, out, first, last = before(os.path.join(GOLDEN, "corpus.txt"), corpus_mv, 0, "corpus")
     dbad, _, _, dlast = before(os.path.join(GOLDEN, "decimal.txt"), dec_mv, PRINT_DECIMAL, "decimal")
     bad += dbad
@@ -89,8 +90,9 @@ def main():
     if not cfailed:
         bad += 1
         print("FAIL scripts/series-golden.py: its control passed (a series answer with the route compiled out)")
-    print(f"series boundary: {len(corpus_mv)} moved inputs in the corpus and {len(dec_mv)} under →DEC, each from "
-          f"{', '.join(FROM)}; with the route compiled out, the corpus: {last}; →DEC's: {dlast}; the control refused\n"
+    print(f"series boundary: {len(moved_mv)} moved inputs and {len(new_mv)} new in the corpus, {len(dec_mv)} under "
+          f"→DEC, each from {', '.join(FROM)}; with the route compiled out, the corpus: {last}; →DEC's: {dlast}; the "
+          f"control refused\n"
           f"checks: {len(corpus_mv) + len(dec_mv) + 3} failed: {bad}")
     sys.exit(1 if bad else 0)
 

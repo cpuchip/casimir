@@ -9354,10 +9354,6 @@ static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d
             abn k = mode_scale(c->angle, true);
             if (!s_m(&tb, &tb, &k) || abn_mul(&tv, &tv, &k) != ABN_OK || !s_b(&tb, &tv, S_U)) { st = CV_NO; break; }
         }
-        if (x->id == F_SGN) {                           /* decided only away from 0 */
-            st = s_lt(&tb, &tv, 2) ? CV_OK : CV_NO;
-            break;
-        }
         if (!s_dsize(c, x->id, &tv, &tb, v, &D) || !s_m(b, &D, &tb) || abn_add(b, b, b) != ABN_OK) {
             st = CV_NO;
             break;
@@ -9503,16 +9499,11 @@ static __attribute__((noinline)) ref s_fn(sw *s, int id, ref U)
     }
     if (!w) return 0;
     switch (id) {
-    case F_ABS:
-    case F_SGN: {
+    case F_ABS: {                       /* (SGN is refused in taylor's and limit's text, as derive refuses it) */
         int sg;
-        if (s_zero(c, U)) {
-            if (id == F_ABS) return U;
-            return s->fail = true, 0;
-        }
+        if (s_zero(c, U)) return U;
         if (!(sg = s_sign(s, s_cs(c, U)[0]))) return s->fail = true, 0;
         s->sided = true;
-        if (id == F_SGN) return s_const(s, small(c, sg > 0 ? C_1 : C_M1));
         return sg > 0 ? U : s_scale(s, U, small(c, C_M1));
     }
     case F_SIN:

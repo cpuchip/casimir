@@ -57,6 +57,31 @@ static int agree(int angle, const char *point, int n, const char *a, const char 
     return 1;
 }
 
+/* rows the corpus can't hold (its answers are today's routes'): what the route alone must give, the truth or a refusal
+   (UNDECIDED, NO_ROOM); "" is a refusal only, the rule's give-up, and "=" the truth only (the route must answer: the
+   precision's retries). Z is 0 exactly, by an identity, with terms near 10^25: rule 8's zero test must not take it, or
+   Z×10^30, for a number. */
+#define Z "(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)"
+#define N42(s) "((((((((((((((((((((((((((((((((((((((((((" s
+#define P42 "+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)" \
+            "+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)"
+static const struct {
+    casim_op op;
+    const char *eqn, *point, *n_or_side, *want;
+} ROWS[] = {
+    {CASIM_LIMIT, "(1÷X^2-1÷SIN(X)^2)+(" Z "×10^20)÷X", "0", "", "-1÷3"},
+    {CASIM_LIMIT, "(1÷X^2-1÷SIN(X)^2)+(" Z "×10^20)÷X^2", "0", "+", "-1÷3"},
+    {CASIM_LIMIT, "(1÷X^2-1÷SIN(X)^2)+(" Z "×10^30)÷X", "0", "", "-1÷3"},
+    {CASIM_TAYLOR, "ABS(" Z "×10^30+X)×EXP(SIN(X))", "0", "9", "UNDEFINED"},
+    {CASIM_TAYLOR, "1÷(" Z "×10^20+X)", "0", "1", "UNDEFINED"},    /* a divisor's leading coefficient undecided */
+    {CASIM_LIMIT, "SQRT(X)", "0", "+", "0"},                      /* t^(1÷2): Puiseux, no series */
+    {CASIM_LIMIT, "(-2-X)^(1÷3)", "0", "", ""},                   /* a fractional power of a negative base */
+    {CASIM_TAYLOR, N42("X÷X") P42, "0", "1", "UNDEFINED"},        /* rule 7 ran out (the depth guard): no series */
+    {CASIM_LIMIT, "(1÷X^2-1÷SIN(X)^2)×K×ABS(X)÷X", "0", "", ""},  /* the sides -K÷3 and K÷3: apart unless K is 0 */
+    {CASIM_TAYLOR, "EXP(SIN(X)-X+X^3÷6-X^5÷120+X^7÷5040)", "0", "1", "=1"},       /* 4 terms cancel: P = 4 is short */
+    {CASIM_LIMIT, "(EXP(X)-1-X-X^2÷2-X^3÷6-X^4÷24-X^5÷120-X^6÷720-X^7÷5040)÷X^8", "0", "", "=1÷40320"},
+};
+
 int main(void)
 {
     static const char *const STATUSES[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
@@ -117,6 +142,17 @@ int main(void)
         value[lim] += a == 1;
     }
     fclose(f);
+    for (size_t i = 0; i < sizeof ROWS / sizeof ROWS[0]; i++) {
+        casim_req rq = {ROWS[i].op, ROWS[i].eqn, CASIM_MODEL_35, 'X' - 'A', ROWS[i].point, CASIM_MODEL_35, CASIM_RAD,
+                        ROWS[i].n_or_side};
+        int st = (int)casim_run(&rq, out, sizeof out, arena, 65536);
+        const char *want = ROWS[i].want + (*ROWS[i].want == '=');
+        int refused = *ROWS[i].want != '=' && (st == CASIM_UNDECIDED || st == CASIM_NO_ROOM);
+        CHECK(refused || (!strcmp(want, "UNDEFINED") ? st == CASIM_UNDEFINED
+                                                     : *want && st == CASIM_OK && !strcmp(out, want)),
+              "%s at %s %s: %s %s, the truth %s or a refusal", rq.eqn, rq.repl, rq.repl2, STATUSES[st], out,
+              ROWS[i].want);
+    }
     printf("series forced: taylor %ld lines, %ld the same text, %ld equal in value, %ld answered only by the route, "
            "%ld refused by it; limit %ld lines, %ld, %ld, %ld, %ld\n",
            lines[0], text[0], value[0], only[0], refused[0], lines[1], text[1], value[1], only[1], refused[1]);
