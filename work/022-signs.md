@@ -1,8 +1,8 @@
 # CAS work unit 022: signs decided by value
 
-**From:** casim · **To:** abacus · **Status:** draft, revised after abacus's review (#9424: question 1 strict, question 2
-in order (a) then (b), question 3 traced and IN, #9425); measured on throwaway prototypes. h022's hash comes before the
-build.
+**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), for abacus's run of h022 (frozen at
+#9430: sha256 a32c0774…a31d, 722 rows). The draft was revised after abacus's review (#9424: question 1 strict, question 2
+in order (a) then (b), question 3 traced and IN, #9425) and measured on throwaway prototypes before the build.
 casim writes the unit; abacus writes h022 and the Accepted section.
 - **Why now:** abacus's ruling #9388: after CAS 021, a small unit that puts 021's zero test (rule 8's carried error
   bound) into today's routes, so the test exists once. Its premise, my 021 doc's "const_sign, the test today's routes
@@ -165,6 +165,91 @@ traced by reading only (no golden row reaches them with a residue): 1.5–2.5 KB
    still over, depth 8 at taylor_hole alone, its moves listed (rule 4). The mask isn't raised: 0.84 → 4.03 s on 021's
    accepted row is a regression for a defect only contrived inputs reach. (a)'s measurement is next.
 3. **The range rows:** traced into family 2, so IN (rule 2's last item, variant B); h022 carries them as TODAY rows.
+
+## As built (where the code differs from the rules, or settles what they left open)
+
+- **const_sign keeps its two answers**, a decided sign or 0 for "not decided" (rule 2's sums correction above), and is
+  rule 8's test: a number decides itself, any other constant only past 8 times its bound. Its 13 callers read it as
+  before.
+- **lm_sgn** is strict (rule 1): 0 only by form or as a number; a rounded 0 is "no sign here" (2).
+- **taylor_hole** refuses (UNDECIDED) three ways: SGN's or TAN's argument not 0 by form and not decided; a letter-free
+  part with no value computed (CV_NO: past the range); a part with a value not past its bound, sized 8 levels deep
+  (rule 4). **taylor_zero** refuses on a letter-free constant not 0 by form and not decided.
+- **The sides** (do_limit): letter-free sides whose forms differ are one value when their difference is 0 by form or as
+  numbers, undecided (UNDECIDED) when its sign is, and no limit when it's decided; with a letter, no limit as before.
+- **cv_status** maps ABN_OVERFLOW and ABN_UNDERFLOW to CV_NO.
+- **Rule 8's walk** forms each value from its parts (const_val's sum or product in its order, const_pow, and cv_fn,
+  const_val's function step now shared by both), and its power bound follows const_pow's path: whole and half powers
+  by squaring (2 bits(p) + 6 roundings), any other by exp(e ln a) as before. The walk is linear; its values are
+  const_val's, bit for bit (CASIM_VCHECK, below).
+- **10^-32 isn't kept in ctx.** The prototype held it there to compute it once, and the gate grew by those 16 B on every
+  operation's stack (11,360 → 11,376). Under rule 4 (b) the deep rows refuse fast without it, so s_b computes it per use
+  as at b282bbe.
+- **any_letter** asks "a letter anywhere?" in one walk, where the sites asked contains() 26 times.
+- **One mutant is left out as unreachable**, run and surviving: taylor_zero's undecided test removed. taylor_hole's SGN
+  test refuses first on every path to it, and the corner path's const_sign refuses after it. A search of 60 taylor rows
+  (20 ABS shapes of Z, orders 1 to 3) found no row where the two differ. The guard stays.
+- **Two of CAS 021's mutants needed new rows**, because the core now refuses first on the rows that caught them.
+  ser-divisor-undecided (the series route dividing by a leading coefficient whose sign isn't decided): its row,
+  1÷(Z×10^20+X), refuses with or without the test. taylor X÷(Z+X) at 0 to 1 catches it: b282bbe printed X÷Z there (Z
+  is exactly 0; the truth is 1), the build's core refuses, the route then runs, and its divisor test is what keeps it
+  from printing the same (work/022-examples.txt, and a series_test row for the route alone). ser-zero-plain-value's text,
+  s_sign as const_sign, became a change of depth alone once const_sign was rule 8, and corpus 10883, its catch, now
+  refuses either way; it's rewritten to put CAS 009's 1E-20 test, its meaning at 021, in s_sign.
+
+## Measured (the build, over b282bbe's library)
+
+- **S3 text: 234,474 B, +1,175 over 233,299** (the draft estimated 1.5–2.5 KB), from the per-function sections:
+
+  | Piece | B |
+  |---|---|
+  | const_val's function step moved into cv_fn, shared with the walk | -1,028 + 777 = -251 |
+  | const_pow out of line (the walk calls it too) | +434 |
+  | s_eval (each value from its parts, the power bound by const_pow's path) | +300 |
+  | any_letter | +246 |
+  | do_limit (the sides, rule 3) | +168 |
+  | taylor_hole and taylor_zero (the refusals) | +87, +52 |
+  | switch tables, const_sign, lm_sgn, and functions the compiler moved | +139 |
+
+  That leaves 27,670 of decision 80's 262,144 for the ratio shift, the condition rows' unit and v1.0's margin.
+- **S3 frames:** const_sign 80→64, lm_sgn 48→64, taylor_hole 64→80, s_eval 176→192; new any_letter 32 (a level),
+  cv_fn 64; casim_run 64, casim_step 240, do_taylor 336, do_limit 240 and const_val 64 unchanged. Host (the frame table,
+  re-recorded): const_sign 96→80, lm_sgn 64→112, s_eval 272→288, taylor_hole 128→144, do_limit 320→336.
+- **The device (XIAO S3, host and chip at 12,288 B, the shipping 2,000 ms interrupt mask):** DEVICE PASS, 1,334 cases,
+  0 different. The gate is unchanged: worst 11,360 masked (STU chain X^ 44 d) + 384 = 11,744 of 12,288 (the interrupt
+  excess, I0030's, 336 B, inside the 384). Rows (b282bbe → the build; stack B, median ms of 15):
+
+  | Row | b282bbe | build |
+  |---|---|---|
+  | taylor LN(2+ nested 21 at 0, order 0 | OK, 5,184, 564.6 | UNDECIDED, 4,384, 26.6 |
+  | taylor SQRT(1+ nested 21 at 0, order 0 | OK, 5,376, 383.6 | UNDECIDED, 4,384, 18.2 |
+  | taylor LN(2+ nested 21 at 0, order 2 | NO_ROOM, 5,184, 1,144.4 | UNDECIDED, 4,384, 26.5 |
+  | taylor SQRT(1+ nested 20 at 0, order 2 (CAS 021's row) | NO_ROOM, 5,168, 843.7 | UNDECIDED, 4,240, 17.4 |
+  | limit (Z+X)÷X at 0 | UNDEFINED, 2,176, 42.4 | UNDECIDED, 2,464, 147.4 |
+  | limit (Z+X^2)÷X^2 at 0+ | ∞, 2,176, 23.2 | UNDECIDED, 2,464, 75.9 |
+  | limit Z×ABS(X)÷X at 0 | UNDEFINED, 2,240, 29.1 | UNDECIDED, 2,784, 34.1 |
+  | limit (TAN(SIN(X))-SIN(TAN(X))+Z1×X^3)÷X^7 at 0 | ∞, 2,240, 93.8 | UNDECIDED, 2,496, 248.0 |
+  | taylor 1÷(Z+X) to 1 | an answer, 2,096, 42.4 | UNDECIDED, 2,736, 22.0 |
+  | taylor ABS(Z+X) to 1 | an answer, 2,096, 33.8 | UNDECIDED, 2,544, 95.9 |
+  | taylor TAN(Z+π÷2+X) to 1 | an answer, 2,144, 34.2 | UNDECIDED, 2,608, 18.9 |
+
+  (b282bbe's column is the base's run of the same rows, 15:14Z, under the same mask.) Every row is under 0.25 s; the deep nests refuse in 30 ms where
+  they took up to 1.1 s.
+- **The golden:** 6 corpus lines and 4 under →DEC move, all to UNDECIDED (tests/golden/moved/cas-022.txt; with their
+  befores put back both files hash to b282bbe's, scripts/signs-golden.py, with a control). Complex 0 different. CAS 021's
+  route-off boundary (series-golden.py) holds with those lines at their after. The doc examples run 675 rows both ways
+  (1,360 checks), and again through the value check.
+- **The values are the same values** (rule 5, CASIM_VCHECK): over the corpus (10,822), →DEC (10,788), complex (10,299
+  and 523 solve lines) and the doc examples, 0 lines fail. The control, a sum's value off by a relative 10^-33, fails
+  110 corpus lines on the check build while the plain golden passes all 10,822.
+- **Tests:** make check green (23 runs, adding signs-golden.py and the four value-check runs); make test green, 20
+  tests, 118,421 checks, clang clean.
+- **Mutants: 379 of 379 caught.** 12 are new (sign-: lmsgn-exact, strict-reverted, const-1e20, hole-value,
+  hole-depth-deep, hole-form, range-notreal, range-decides, sides-form, sides-letters, value-drift, fold-abs-undecided);
+  sign-zero-form is left out (As built). The full run, 4 shards from 17:13Z to 19:56Z, caught 377, the summed RSS
+  peaking at 1,074,692 KiB with nothing written to /tmp or /dev/shm; CAS 021's ser-divisor-undecided and
+  ser-zero-plain-value survived (As built). With their rows, both are caught (20:03–20:06Z, peak 276,464 KiB), and the
+  new series_test row alone fails on ser-divisor-undecided.
 
 ## Out of scope
 
