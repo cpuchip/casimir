@@ -4,8 +4,10 @@ coefficient is rational: X, small integers, +, -, ×, ÷, integer powers, EXP, S
 with u(0) = 1. The truth is exact power-series arithmetic over Fractions (truncated products, quotients and the series
 of each function), the method opposite casim's repeated derivatives. casim's answer is read back exactly at n + 1
 rational points, so equal values there are equal polynomials. Also checked: rule 6's spelling (ascending powers, no zero
-term, no coefficient written as 1), and the judge refuses its planted faults.
-    scripts/taylor-values.py [N] [SEED]     (default 300 expressions, seed 20261013)"""
+term, no coefficient written as 1), and the judge refuses its planted faults. Each case runs at the calculator's 8,800 B
+and 12,288 B (CAS 021's NO_ROOM orders) and at 65,536 B. With --forced, the same cases go to CAS 021's series route
+alone (build/casim-ser2), the route's own oracle; the examples' texts are the plain run's.
+    scripts/taylor-values.py [--forced] [N] [SEED]     (default 300 expressions, seed 20261013)"""
 import os
 import random
 import re
@@ -14,7 +16,8 @@ import sys
 from fractions import Fraction as F
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CLI = os.path.join(ROOT, "build", "casim")
+FORCED = "--forced" in sys.argv
+CLI = os.path.join(ROOT, "build", "casim-ser2" if FORCED else "casim")
 
 
 # ---- truncated power series over Fractions, to order N ----
@@ -306,41 +309,49 @@ def main():
         if not wrong(out, truth):
             print(f"FAIL scripts/taylor-values.py: its judge accepts {out}")
             sys.exit(1)
-    n_cases = int(sys.argv[1]) if len(sys.argv) > 1 else 300
-    rnd = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 20261013)
+    args = [a for a in sys.argv[1:] if a != "--forced"]
+    n_cases = int(args[0]) if args else 300
+    rnd = random.Random(int(args[1]) if len(args) > 1 else 20261013)
     judged = failed = soft = 0
     cases = []
     for _ in range(n_cases):
         n = rnd.randint(1, 10)
         text, s = gen(rnd, n)
         cases.append((text, s, n))
-    # each at the calculator's 8,800 B arena (384 B text buffers) and at 65,536 B (1,024 B ones, CAS 016 rule 4)
+    # each at the calculator's 8,800 B arena (384 B text buffers), at 12,288 B, and at 65,536 B (1,024 B ones, CAS 016
+    # rule 4)
     big = {"judged": 0, "soft": 0}
-    for (text, s, n), arena in [(c, a) for a in (8800, 65536) for c in cases]:
+    mid = {"judged": 0, "soft": 0}
+    for (text, s, n), arena in [(c, a) for a in (8800, 12288, 65536) for c in cases]:
         rc, out = taylor(text, n, arena=arena)
+        tally = big if arena == 65536 else mid if arena == 12288 else None
         if rc != 0:
             if out in ("NO_ROOM", "TOO_LONG"):
                 soft += arena == 8800
-                big["soft"] += arena != 8800
+                if tally:
+                    tally["soft"] += 1
                 continue
             failed += 1
             print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n} (arena {arena}): {out}")
             continue
         judged += arena == 8800
-        big["judged"] += arena != 8800
+        if tally:
+            tally["judged"] += 1
         w = wrong(out, s)
         if w:
             failed += 1
             print(f"FAIL scripts/taylor-values.py: taylor {text} X 0 {n} (arena {arena}): {out}\n  {w}")
-    rows, exact, efailed = check_examples()
+    rows, exact, efailed = check_examples() if not FORCED else (0, 0, 0)
     ccases, canswered, cfailed = check_corners()
     efailed += cfailed
-    print(f"taylor values: {judged} of {n_cases} seeded expressions judged exactly at 0 ({soft} NO_ROOM or TOO_LONG), "
+    print(f"taylor values{' (the series route alone)' if FORCED else ''}: {judged} of {n_cases} seeded expressions "
+          f"judged exactly at 0 ({soft} NO_ROOM or TOO_LONG), {mid['judged']} at 12,288 B ({mid['soft']}), "
           f"and {big['judged']} at 65,536 B with 1,024 B buffers ({big['soft']}); "
           f"the judge refused its {len(planted)} planted answers; work/014-examples.txt: {rows} rows as printed, "
           f"{exact} of them exactly by their series; ABS's corners: {ccases} cases of X^j×ABS(X)^m, {canswered} "
-          f"answered exactly, the rest UNDEFINED where true or UNDECIDED\nchecks: {judged + big['judged'] + rows + ccases} failed: {failed + efailed}")
-    sys.exit(1 if failed or efailed or rows == 0 else 0)
+          f"answered exactly, the rest UNDEFINED where true or UNDECIDED\n"
+          f"checks: {judged + mid['judged'] + big['judged'] + rows + ccases} failed: {failed + efailed}")
+    sys.exit(1 if failed or efailed or (rows == 0 and not FORCED) else 0)
 
 
 if __name__ == "__main__":

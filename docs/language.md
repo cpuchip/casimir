@@ -511,14 +511,24 @@ K×ABS(X) depends on whether K is 0; and ABS(X)-SQRT(X^2), which is 0, has a sec
 it. In the same way a 0÷0 that appears only in a derivative's formula says that formula can't tell, and is UNDECIDED:
 X×SQRT(X^2)'s derivative holds X^2×(X^2)^(-1÷2) at 0, where the true f'(0) is 0. A c÷0 with c not 0 is proof:
 X^(3÷2) to order 2 (0.75×X^(-1÷2) at 0) is UNDEFINED, and so is any hole in the typed text (X÷X). UNDECIDED is sound but
-can be less than the truth: SQRT(X^2) to order 1 is UNDECIDED, though it is ABS(X) and has no first derivative at 0, and
-ABS(X)^3 or ABS(ATAN(X))^2 to order 2 are UNDECIDED, though they have one. A later unit composes power series term by
-term instead of taking derivatives, and these are on its list.
+can be less than the truth, and where the derivatives can't tell, the series route below often can.
 
 Each derivative is larger than the last, and nested functions grow fastest. In the calculator's 8,800-byte arena (and
-at 8,192), TAN, ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12; EXP(SIN(X)) stops after order 7 and SIN(COS(X))
-after 6, and past that the answer is NO_ROOM. A long answer is TOO_LONG first: COS(X) about π÷3 carries SQRT(3) in
-every other term.
+at 8,192), TAN, ASIN, LN(COS(X)), 1÷(1+X^2) and EXP(X^2) reach order 12 by derivatives; EXP(SIN(X)) stops after order 7
+and SIN(COS(X)) after 6. A long answer is TOO_LONG first: COS(X) about π÷3 carries SQRT(3) in every other term.
+
+**The series route (CAS 021, work/021-series.md).** Where the derivatives refuse (NO_ROOM or UNDECIDED, never another
+status), taylor composes power series instead: the text at X = A + t as t^v × (c_0 + c_1×t + …), each c_i a canonical
+constant, built part by part (sums and products term by term, a power by J. C. P. Miller's recurrence, SIN, COS, EXP and
+the hyperbolic functions by their pairs' recurrences, LN and the inverse functions by integrating their derivatives).
+ABS and SGN take the sign of their argument's leading coefficient, so ABS(X)^2 to order 2 is X^2, and where they read a
+sign the text is made again from below (X = A - t): sides that differ by a decided amount at an order to N are
+UNDEFINED (SQRT(X^2) to order 1). A leading coefficient whose sign it must know (a divisor, a radical, ABS) is decided
+only when its value is past 8 times a bound on its error, carried beside it; otherwise the derivatives' status stands
+(K×ABS(X) stays UNDECIDED). The typed text's holes are decided first, as before (SIN(X)÷X at 0 is UNDEFINED, not 1). An
+answer reached both ways is the same polynomial, though not always printed the same way. EXP(SIN(X)) answers to order 12
+in the calculator's arena; what the series route can't reach (a fractional power of t, a logarithm's t^-1, a constant it
+can't decide) keeps the derivatives' NO_ROOM or UNDECIDED.
 
 Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
 1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
@@ -545,10 +555,12 @@ don't answer even in 1 MiB with 1,024-byte buffers (X^3 inside, order 9 or 10).
 | `casim taylor 'EXP(K×X)' X 0 3 RAD` | `1+K×X+K^2×X^2÷2+K^3×X^3÷6` |
 | `casim taylor 'SIN(X)÷X' X 0 4 RAD` | `UNDEFINED` |
 | `casim taylor 'X÷X' X 0 2 RAD` | `UNDEFINED` |
-| `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `NO_ROOM` |
+| `casim taylor 'EXP(SIN(X))' X 0 8 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760` |
 | `casim taylor 'X×ABS(X)' X 0 1 RAD` | `0` |
 | `casim taylor 'X×ABS(X)' X 0 2 RAD` | `UNDEFINED` |
-| `casim taylor 'ABS(X)^2' X 0 2 RAD` | `UNDECIDED` |
+| `casim taylor 'ABS(X)^2' X 0 2 RAD` | `X^2` |
+| `casim taylor 'SQRT(X^2)' X 0 1 RAD` | `UNDEFINED` |
+| `casim taylor 'K×ABS(X)' X 0 1 RAD` | `UNDECIDED` |
 
 ### limit: a limit at a point or at ±∞
 
@@ -568,6 +580,12 @@ EXP(E×LN(B)); at ∞ a polynomial by its leading term; an ∞-∞ with a square
 ∞-∞ that neither term dominates over one denominator (CAS 016: 1÷X-1÷SIN(X) is (SIN(X)-X)÷(X×SIN(X)), then
 L'Hôpital, which there keeps the numerator and denominator apart). The side near A comes
 from the first derivative that isn't 0 there, so 1÷X at 0 is ∞ from above, -∞ from below, and has no two-sided limit.
+
+Where the walk refuses (NO_ROOM or UNDECIDED), limit takes taylor's series route (CAS 021) on each side asked: the text
+at X = A ± t as t^v × (c_0 + c_1×t + …), whose limit is 0 for v above 0, c_0 for v = 0, and ∞ or -∞ by c_0's decided
+sign for v below 0; at ∞ and -∞ the text at X = ±1÷t. Two sides must agree, as the walk's must. So 1÷X^2-1÷SIN(X)^2 at
+0 is -1÷3 in the calculator's arena, where L'Hôpital runs out of room. It has no asymptotic scales: X^13÷EXP(X) and
+LN(X)÷X at ∞ are the walk's, and SIN(X)÷X at ∞ stays UNDECIDED.
 
 Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
 SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). UNDECIDED means the walk
@@ -683,7 +701,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
 | 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "" |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
-| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered); never "no limit". taylor: an SGN(0) it can't decide | "" |
+| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered), nor the series route; never "no limit". taylor: an SGN(0) it can't decide, nor the series route a sign | "" |
 | 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |
 | 14 | DECIMAL_FORM | casim_run: the answer, in →DEC's form, because its fractions passed cap or the arena, and it holds a decimal (CAS 019) | the answer |
 

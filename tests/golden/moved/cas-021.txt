@@ -1,0 +1,248 @@
+# The golden lines CAS 021 (series: work/021-series.md) moved. Each line's inputs, then its status and answer before
+# (CAS 020's faae625) and after. Every other line is byte-identical, and with the series route compiled out
+# (CASIM_SER=0) every line is faae625's, these included (scripts/series-golden.py, in make check). Rule 1: a line moves
+# only from NO_ROOM or UNDECIDED, or from a DECIMAL_FORM whose exact run was NO_ROOM. 44 corpus lines moved (some
+# inputs appear more than once in the corpus; each is listed once): taylor 26 NO_ROOM to OK, 3 NO_ROOM to TOO_LONG,
+# 9 UNDECIDED to OK, 1 DECIMAL_FORM to OK; limit 4 NO_ROOM to OK, 1 UNDECIDED to OK.
+taylor	35	23	2	35	8800	65536	(SQRT(1+X))×(EXP(X))	0	11
+  before	DECIMAL_FORM	1+1.5×X+0.875×X^2+17×X^3÷48+0.0859375×X^4+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400
+  after	OK	1+3×X÷2+7×X^2÷8+17×X^3÷48+11×X^4÷128+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400
+taylor	33	23	0	33	8800	65536	(1÷(1-X))÷(2+X^2)	1÷2	7
+  before	NO_ROOM	
+  after	OK	8÷9+112×(X-1÷2)÷81+1856×(X-1÷2)^2÷729+35200×(X-1÷2)^3÷6561+632192×(X-1÷2)^4÷59049+11320576×(X-1÷2)^5÷531441+204056576×(X-1÷2)^6÷4782969+3673993216×(X-1÷2)^7÷43046721
+taylor	33	23	2	33	8800	65536	(1÷(2+X))×(TAN(X))	0	5
+  before	NO_ROOM	
+  after	OK	X×π÷400-X^2×π÷800+X^3×(π+π^3÷30000)÷1600-X^4×(π+π^3÷30000)÷3200+X^5×(π+π^3÷30000+π^5÷750000000)÷6400
+taylor	35	23	0	35	8800	65536	(1÷(2+X))÷(2+X^2)	0	10
+  before	NO_ROOM	
+  after	OK	1÷4-X÷8-X^2÷16+X^3÷32+3×X^4÷64-3×X^5÷128-5×X^6÷256+5×X^7÷512+11×X^8÷1024-11×X^9÷2048-21×X^10÷4096
+taylor	35	23	0	35	8800	65536	(ATAN(X))×(X×EXP(X))	0	7
+  before	NO_ROOM	
+  after	OK	180×X^2÷π+180×X^3÷π+30×X^4÷π-30×X^5÷π+27×X^6÷2÷π+55×X^7÷2÷π
+taylor	33	23	0	33	8800	65536	(ATAN(X))×(X×EXP(X))	0	12
+  before	NO_ROOM	
+  after	OK	180×X^2÷π+180×X^3÷π+30×X^4÷π-30×X^5÷π+27×X^6÷2÷π+55×X^7÷2÷π-279×X^8÷28÷π-565×X^9÷28÷π+5755×X^10÷672÷π+161309×X^11÷10080÷π-1638031×X^12÷221760÷π
+taylor	1	23	1	1	8800	65536	(COS(X))÷(2+X^2)	0	5
+  before	NO_ROOM	
+  after	OK	1÷2-X^2÷2+13×X^4÷48
+taylor	1	23	0	1	8800	65536	(COS(X)^2)÷(2+X^2)	-2	3
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	33	23	0	33	8800	65536	(EXP(K×X))÷(2+X^2)	0	7
+  before	NO_ROOM	
+  after	OK	1÷2+K×X÷2+X^2×(K^2-1)÷4-X^3×(K-K^3÷3)÷4-X^4×(K^2-K^4÷6-1)÷8+X^5×(K-K^3÷3+K^5÷30)÷8+X^6×(K^2-K^4÷6+K^6÷90-1)÷16-X^7×(K-K^3÷3+K^5÷30-K^7÷630)÷16
+taylor	1	23	1	1	8800	65536	(EXP(X))÷(2+X^2)	0	6
+  before	NO_ROOM	
+  after	OK	1÷2+X÷2-X^3÷6+X^4÷48+7×X^5÷80-7×X^6÷720
+taylor	33	23	1	33	8800	65536	(EXP(X))÷(2+X^2)	0	12
+  before	NO_ROOM	
+  after	OK	1÷2+X÷2-X^3÷6+X^4÷48+7×X^5÷80-7×X^6÷720-11×X^7÷252+131×X^8÷26880+2263×X^9÷103680-4421×X^10÷1814400-48403×X^11÷4435200+33347×X^12÷27371520
+taylor	1	23	1	1	8800	65536	(LN(1+X))×(TAN(X))	0	9
+  before	NO_ROOM	
+  after	OK	X^2-X^3÷2+2×X^4÷3-5×X^5÷12+4×X^6÷9-19×X^7÷60+97×X^8÷315-607×X^9÷2520
+taylor	1	23	1	1	8800	65536	(LN(1+X))×(X×EXP(X))	0	11
+  before	NO_ROOM	
+  after	OK	X^2+X^3÷2+X^4÷3+3×X^6÷40-7×X^7÷144+23×X^8÷504-29×X^9÷720+629×X^10÷17280-120287×X^11÷3628800
+taylor	1	23	1	1	8800	65536	(LN(1+X))÷(2+X^2)	1÷2	7
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	33	23	1	33	8800	65536	(SIN(3×X))×((1+X)^(1÷3))	0	10
+  before	NO_ROOM	
+  after	OK	3×X+X^2-29×X^3÷6-71×X^4÷54+7781×X^5÷3240+4741×X^6÷9720-666443×X^7÷1224720-361691×X^8÷3674160+6811297×X^9÷88179840+17537257×X^10÷2380855680
+taylor	35	23	1	35	8800	65536	(SIN(X))÷(2+X^2)	0	8
+  before	NO_ROOM	
+  after	OK	X÷2-X^3÷3+41×X^5÷240-431×X^7÷5040
+taylor	35	23	0	35	8800	65536	(SQRT(1+X))÷(2+X^2)	1	7
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	35	23	1	35	8800	65536	(TAN(X))×(1÷(1-X))	0	6
+  before	NO_ROOM	
+  after	OK	X+X^2+4×X^3÷3+4×X^4÷3+22×X^5÷15+22×X^6÷15
+taylor	1	23	1	1	8800	65536	(TAN(X))×(SQRT(1+X))	0	11
+  before	NO_ROOM	
+  after	OK	X+X^2÷2+5×X^3÷24+11×X^4÷48+101×X^5÷1920+147×X^6÷1280+1217×X^7÷322560+39059×X^8÷645120-132881×X^9÷13271040+1272125×X^10÷37158912-504824387×X^11÷40874803200
+taylor	33	23	1	33	8800	65536	(TAN(X))÷(2+X^2)	0	6
+  before	NO_ROOM	
+  after	OK	X÷2-X^3÷12+13×X^5÷120
+taylor	1	23	2	1	8800	65536	(X×EXP(X))÷(2+X^2)	0	5
+  before	NO_ROOM	
+  after	OK	X÷2+X^2÷2-X^4÷6+X^5÷48
+taylor	35	23	1	35	8800	192	EXP(SIN(X))	0	8
+  before	NO_ROOM	
+  after	OK	1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
+taylor	35	23	1	35	8800	65536	EXP(SIN(X))	0	8
+  before	NO_ROOM	
+  after	OK	1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
+taylor	35	23	1	35	8800	65536	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	8800	192	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	16383	65536	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	1	23	1	1	65536	65536	(SQRT(1+X))÷(2+X^2)	0	11
+  before	NO_ROOM	
+  after	OK	1÷2+X÷4-5×X^2÷16-3×X^3÷32+35×X^4÷256+31×X^5÷512-161×X^6÷2048-91×X^7÷4096+2147×X^8÷65536+2171×X^9÷131072-11019×X^10÷524288-4485×X^11÷1048576
+taylor	35	23	1	35	8800	65536	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	192	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	65536	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	8800	192	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	8800	65536	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	192	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	65536	65536	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	65536	65536	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	65536	65536	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+limit	35	23	0	35	8800	65536	((1÷X)-SIN((1÷X)))×(X)	-∞	
+  before	NO_ROOM	
+  after	OK	-π÷180+1
+limit	35	23	1	35	8800	65536	1÷X^2-1÷SIN(X)^2	0	
+  before	NO_ROOM	
+  after	OK	-1÷3
+limit	35	23	1	35	8800	192	1÷X^2-1÷SIN(X)^2	0	
+  before	NO_ROOM	
+  after	OK	-1÷3
+limit	35	23	1	35	8800	65536	(SIN(K×(1÷X)))×(2×X+1)	-∞	
+  before	UNDECIDED	
+  after	OK	2×K
+
+# Under →DEC (CASIM_PRINT_DECIMAL OR'd into the angle; tests/golden/decimal.txt, CAS 019 rule 6) the same inputs moved
+# 43 lines (39 inputs): taylor 25 NO_ROOM to OK, 4 NO_ROOM to TOO_LONG, 9 UNDECIDED to OK; limit 4 NO_ROOM to OK,
+# 1 UNDECIDED to OK. The DECIMAL_FORM line above was already OK there, with its decimals, and didn't move. Each line's
+# inputs as decimal.txt keeps them (the bit not in the angle), then its status and answer before and after.
+taylor	33	23	0	33	8800	65536	(1÷(1-X))÷(2+X^2)	1÷2	7
+  before	NO_ROOM	
+  after	OK	8÷9+112×(X-0.5)÷81+1856×(X-0.5)^2÷729+35200×(X-0.5)^3÷6561+632192×(X-0.5)^4÷59049+11320576×(X-0.5)^5÷531441+204056576×(X-0.5)^6÷4782969+3673993216×(X-0.5)^7÷43046721
+taylor	33	23	2	33	8800	65536	(1÷(2+X))×(TAN(X))	0	5
+  before	NO_ROOM	
+  after	OK	X×π÷400-X^2×π÷800+0.000625×X^3×(π+π^3÷30000)-0.0003125×X^4×(π+π^3÷30000)+0.00015625×X^5×(π+π^3÷30000+π^5÷750000000)
+taylor	35	23	0	35	8800	65536	(1÷(2+X))÷(2+X^2)	0	10
+  before	NO_ROOM	
+  after	OK	0.25-0.125×X-0.0625×X^2+0.03125×X^3+0.046875×X^4-0.0234375×X^5-0.01953125×X^6+0.009765625×X^7+0.0107421875×X^8-0.00537109375×X^9-0.005126953125×X^10
+taylor	35	23	0	35	8800	65536	(ATAN(X))×(X×EXP(X))	0	7
+  before	NO_ROOM	
+  after	OK	180×X^2÷π+180×X^3÷π+30×X^4÷π-30×X^5÷π+13.5×X^6÷π+27.5×X^7÷π
+taylor	33	23	0	33	8800	65536	(ATAN(X))×(X×EXP(X))	0	12
+  before	NO_ROOM	
+  after	OK	180×X^2÷π+180×X^3÷π+30×X^4÷π-30×X^5÷π+13.5×X^6÷π+27.5×X^7÷π-279×X^8÷28÷π-565×X^9÷28÷π+5755×X^10÷672÷π+161309×X^11÷10080÷π-1638031×X^12÷221760÷π
+taylor	1	23	1	1	8800	65536	(COS(X))÷(2+X^2)	0	5
+  before	NO_ROOM	
+  after	OK	0.5-0.5×X^2+13×X^4÷48
+taylor	1	23	0	1	8800	65536	(COS(X)^2)÷(2+X^2)	-2	3
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	33	23	0	33	8800	65536	(EXP(K×X))÷(2+X^2)	0	7
+  before	NO_ROOM	
+  after	OK	0.5+0.5×K×X+0.25×X^2×(K^2-1)-0.25×X^3×(K-K^3÷3)-0.125×X^4×(K^2-K^4÷6-1)+0.125×X^5×(K-K^3÷3+K^5÷30)+0.0625×X^6×(K^2-K^4÷6+K^6÷90-1)-0.0625×X^7×(K-K^3÷3+K^5÷30-K^7÷630)
+taylor	1	23	1	1	8800	65536	(EXP(X))÷(2+X^2)	0	6
+  before	NO_ROOM	
+  after	OK	0.5+0.5×X-X^3÷6+X^4÷48+0.0875×X^5-7×X^6÷720
+taylor	33	23	1	33	8800	65536	(EXP(X))÷(2+X^2)	0	12
+  before	NO_ROOM	
+  after	OK	0.5+0.5×X-X^3÷6+X^4÷48+0.0875×X^5-7×X^6÷720-11×X^7÷252+131×X^8÷26880+2263×X^9÷103680-4421×X^10÷1814400-48403×X^11÷4435200+33347×X^12÷27371520
+taylor	1	23	1	1	8800	65536	(LN(1+X))×(TAN(X))	0	9
+  before	NO_ROOM	
+  after	OK	X^2-0.5×X^3+2×X^4÷3-5×X^5÷12+4×X^6÷9-19×X^7÷60+97×X^8÷315-607×X^9÷2520
+taylor	1	23	1	1	8800	65536	(LN(1+X))×(X×EXP(X))	0	11
+  before	NO_ROOM	
+  after	OK	X^2+0.5×X^3+X^4÷3+0.075×X^6-7×X^7÷144+23×X^8÷504-29×X^9÷720+629×X^10÷17280-120287×X^11÷3628800
+taylor	1	23	1	1	8800	65536	(LN(1+X))÷(2+X^2)	1÷2	7
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	33	23	1	33	8800	65536	(SIN(3×X))×((1+X)^(1÷3))	0	10
+  before	NO_ROOM	
+  after	OK	3×X+X^2-29×X^3÷6-71×X^4÷54+7781×X^5÷3240+4741×X^6÷9720-666443×X^7÷1224720-361691×X^8÷3674160+6811297×X^9÷88179840+17537257×X^10÷2380855680
+taylor	35	23	1	35	8800	65536	(SIN(X))÷(2+X^2)	0	8
+  before	NO_ROOM	
+  after	OK	0.5×X-X^3÷3+41×X^5÷240-431×X^7÷5040
+taylor	35	23	0	35	8800	65536	(SQRT(1+X))÷(2+X^2)	1	7
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	35	23	1	35	8800	65536	(TAN(X))×(1÷(1-X))	0	6
+  before	NO_ROOM	
+  after	OK	X+X^2+4×X^3÷3+4×X^4÷3+22×X^5÷15+22×X^6÷15
+taylor	1	23	1	1	8800	65536	(TAN(X))×(SQRT(1+X))	0	11
+  before	NO_ROOM	
+  after	OK	X+0.5×X^2+5×X^3÷24+11×X^4÷48+101×X^5÷1920+0.11484375×X^6+1217×X^7÷322560+39059×X^8÷645120-132881×X^9÷13271040+1272125×X^10÷37158912-504824387×X^11÷40874803200
+taylor	33	23	1	33	8800	65536	(TAN(X))÷(2+X^2)	0	6
+  before	NO_ROOM	
+  after	OK	0.5×X-X^3÷12+13×X^5÷120
+taylor	1	23	2	1	8800	65536	(X×EXP(X))÷(2+X^2)	0	5
+  before	NO_ROOM	
+  after	OK	0.5×X+0.5×X^2-X^4÷6+X^5÷48
+taylor	35	23	1	35	8800	192	EXP(SIN(X))	0	8
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
+taylor	35	23	1	35	8800	65536	EXP(SIN(X))	0	8
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
+taylor	35	23	1	35	8800	65536	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	8800	192	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	35	23	1	35	16383	65536	EXP(SIN(X))	0	9
+  before	NO_ROOM	
+  after	OK	1+X+0.5×X^2-0.125×X^4-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670
+taylor	1	23	1	1	65536	65536	(SQRT(1+X))÷(2+X^2)	0	11
+  before	NO_ROOM	
+  after	TOO_LONG	
+taylor	35	23	1	35	8800	65536	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	192	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	65536	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	8800	192	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	8800	65536	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	8800	192	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	65536	65536	ABS(X)-SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+taylor	35	23	1	35	65536	65536	ABS(X)^2	0	2
+  before	UNDECIDED	
+  after	OK	X^2
+taylor	35	23	1	35	65536	65536	X×SQRT(X^2)	0	1
+  before	UNDECIDED	
+  after	OK	0
+limit	35	23	0	35	8800	65536	((1÷X)-SIN((1÷X)))×(X)	-∞	
+  before	NO_ROOM	
+  after	OK	-π÷180+1
+limit	35	23	1	35	8800	65536	1÷X^2-1÷SIN(X)^2	0	
+  before	NO_ROOM	
+  after	OK	-1÷3
+limit	35	23	1	35	8800	192	1÷X^2-1÷SIN(X)^2	0	
+  before	NO_ROOM	
+  after	OK	-1÷3
+limit	35	23	1	35	8800	65536	(SIN(K×(1÷X)))×(2×X+1)	-∞	
+  before	UNDECIDED	
+  after	OK	2×K

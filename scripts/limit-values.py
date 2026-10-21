@@ -10,7 +10,9 @@ values: (1+p÷X)^(q×X) is EXP(p×q), SQRT(a^2×X^2+b×X+c)-a×X is b÷(2a) (and
 casim's answer is read back in Decimal at 60 digits and must equal the truth to 45, so a rounded answer fails; its
 statuses must be the truth's, except UNDECIDED, which is allowed anywhere and counted (rule 5). The judge refuses its
 planted answers first.
-    scripts/limit-values.py [N] [SEED]     (default 300 cases, seed 20261013)"""
+With --forced, the same cases go to CAS 021's series route alone (build/casim-ser2), the route's own oracle; the
+examples' texts are the plain run's.
+    scripts/limit-values.py [--forced] [N] [SEED]     (default 300 cases, seed 20261013)"""
 import decimal
 import importlib.util
 import os
@@ -22,7 +24,8 @@ from decimal import Decimal as D
 from fractions import Fraction as F
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CLI = os.path.join(ROOT, "build", "casim")
+FORCED = "--forced" in sys.argv
+CLI = os.path.join(ROOT, "build", "casim-ser2" if FORCED else "casim")
 INF, NINF, NONE = "∞", "-∞", "UNDEFINED"
 
 _spec = importlib.util.spec_from_file_location("tv", os.path.join(ROOT, "scripts", "taylor-values.py"))
@@ -292,8 +295,9 @@ def main():
         if wrong(out, truth):                          # and accepts the right ones
             print(f"FAIL scripts/limit-values.py: its judge refuses {out}")
             sys.exit(1)
-    n_cases = int(sys.argv[1]) if len(sys.argv) > 1 else 300
-    rnd = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 20261013)
+    args = [a for a in sys.argv[1:] if a != "--forced"]
+    n_cases = int(args[0]) if args else 300
+    rnd = random.Random(int(args[1]) if len(args) > 1 else 20261013)
     judged = failed = undecided = soft = unknown = 0
     kinds = {}
     for _ in range(n_cases):
@@ -316,13 +320,14 @@ def main():
         if w:
             failed += 1
             print(f"FAIL scripts/limit-values.py: limit {text} X {point} '{s}': {out}\n  {w}")
-    rows, efailed = check_examples()
+    rows, efailed = check_examples() if not FORCED else (0, 0)
     tally = ", ".join(f"{v} {k}" for k, v in sorted(kinds.items()))
-    print(f"limit values: {judged} of {n_cases} seeded cases judged ({tally}); "
+    print(f"limit values{' (the series route alone)' if FORCED else ''}: "
+          f"{judged} of {n_cases} seeded cases judged ({tally}); "
           f"{undecided} UNDECIDED, {soft} NO_ROOM or TOO_LONG, {unknown} past the series' order; the judge refused its "
           f"{len(planted)} planted answers; work/015-examples.txt: {rows} rows as printed\n"
           f"checks: {judged + rows} failed: {failed + efailed}")
-    sys.exit(1 if failed or efailed or rows == 0 else 0)
+    sys.exit(1 if failed or efailed or (rows == 0 and not FORCED) else 0)
 
 
 if __name__ == "__main__":

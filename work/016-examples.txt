@@ -20,6 +20,9 @@
 #   ATANH of 0 are 0, COSH(0) and ALOG(0) are 1, ACOSH(1) is 0 (ACOSH(0) has a complex value and is kept), so a pole
 #   behind them is seen. A pole in any term decides solve and factor, whichever term comes first; X÷0 stays NOT_NUMERIC.
 # - Rule 4: EXP(SIN(X)) to 9 needs the 1,024 B buffer, which an arena of 16,384 B or more has and 16,383 hasn't.
+# - Since CAS 021 (work/021-series.md), six rows here answer where the derivatives refuse, by the series route: ABS(X)^2
+#   to 2 is X^2, ABS(X)-SQRT(X^2) and X×SQRT(X^2) to 1 are 0, 1÷X^2-1÷SIN(X)^2 at 0 is -1÷3 at 8,800 B, and EXP(SIN(X))
+#   to 9 answers in any arena. The rules above are the derivatives', which still run first; K×ABS(X) stays UNDECIDED.
 
 | `casim simplify "TAN(π÷2)" RAD` | `UNDEFINED` |
 | `casim simplify "TAN(-π÷2)" RAD` | `UNDEFINED` |
@@ -72,7 +75,7 @@
 | `casim taylor "ABS(X^3)" X 0 3 RAD` | `UNDEFINED` |
 | `casim taylor "ABS(SIN(X))" X 0 1 RAD` | `UNDEFINED` |
 | `casim taylor "ABS(X)+ABS(X-1)" X 0 1 RAD` | `UNDEFINED` |
-| `casim taylor "ABS(X)^2" X 0 2 RAD` | `UNDECIDED` |
+| `casim taylor "ABS(X)^2" X 0 2 RAD` | `X^2` |
 | `casim taylor "K×ABS(X)" X 0 1 RAD` | `UNDECIDED` |
 | `casim taylor "X×ABS(X)" X 1 2 RAD` | `1+2×(X-1)+(X-1)^2` |
 | `casim taylor "SIN(X)×ABS(X)" X 0 1 RAD` | `0` |
@@ -86,15 +89,15 @@
 | `casim limit "1÷X-1÷SIN(X)" X 0 + DEG` | `-∞` |
 | `casim limit "1÷X-1÷X^2" X 0 "" RAD` | `-∞` |
 | `casim limit "(1-COS(2×X))^2÷X^4" X 0 "" RAD` | `4` |
-| `casim limit "1÷X^2-1÷SIN(X)^2" X 0 "" RAD` | `NO_ROOM` |
+| `casim limit "1÷X^2-1÷SIN(X)^2" X 0 "" RAD` | `-1÷3` |
 | `casim --arena 65536 limit "1÷X^2-1÷SIN(X)^2" X 0 "" RAD` | `-1÷3` |
 | `casim taylor "EXP(SIN(X))" X 0 7 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90` |
-| `casim taylor "EXP(SIN(X))" X 0 9 RAD` | `NO_ROOM` |
-| `casim --arena 16383 taylor "EXP(SIN(X))" X 0 9 RAD` | `NO_ROOM` |
+| `casim taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
+| `casim --arena 16383 taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
 | `casim --arena 16384 taylor "EXP(SIN(X))" X 0 9 RAD` | `1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760+X^9÷5670` |
 | `casim steps derive "(SIN(π))^(X+1)" X RAD` | `EXPONENTIAL: d/dX(0^(X+1)) = 0×d/dX(X+1) /   SUM: d/dX(X+1) = d/dX(X)+d/dX(1) /     VARIABLE: d/dX(X) = 1 /     CONSTANT: d/dX(1) = 0 /   SUM: d/dX(X+1) = 1 / EXPONENTIAL: d/dX(0^(X+1)) = 0` |
-| `casim taylor "ABS(X)-SQRT(X^2)" X 0 1 RAD` | `UNDECIDED` |
-| `casim taylor "X×SQRT(X^2)" X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor "ABS(X)-SQRT(X^2)" X 0 1 RAD` | `0` |
+| `casim taylor "X×SQRT(X^2)" X 0 1 RAD` | `0` |
 | `casim taylor "(X^2)^(3÷2)" X 0 1 RAD` | `0` |
 | `casim taylor "X^(3÷2)" X 0 2 RAD` | `UNDEFINED` |
 | `casim simplify "SINH(0)" RAD` | `0` |

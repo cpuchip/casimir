@@ -10,6 +10,7 @@
 # - T0030-T0036 (a review's findings): LN(X) at 0 and X×LN(X) at 0 have no value (rule 7, though 0×LN(0) folds to 0);
 #   LN at -1 is outside its domain; ABS(X) at 1 is X there, and at 0 its first derivative has no value (its corner);
 #   X! is refused as derive refuses it; SIN(X)^3 about 1 keeps its coefficient's own ^2 (c_1 = 3×SIN(1)^2×COS(1)).
+# - T0021 was NO_ROOM (its eighth derivative outgrows the arena) until CAS 021, whose series route answers it.
 
 T0001 | taylor | SIN(X) | X | 0 | 7 | RAD | 35 | X-X^3÷6+X^5÷120-X^7÷5040
 T0002 | taylor | COS(X) | X | 0 | 8 | RAD | 35 | 1-X^2÷2+X^4÷24-X^6÷720+X^8÷40320
@@ -31,7 +32,7 @@ T0017 | taylor | 1÷(1-X) | X | -2 | 3 | RAD | 35 | 1÷3+(X+2)÷9+(X+2)^2÷27+(X
 T0018 | taylor | SIN(X) | X | 0 | 5 | GRAD | 35 | X×π÷200-X^3×π^3÷48000000+X^5×π^5÷38400000000000
 T0019 | taylor | LN(X) | X | 0 | 3 | RAD | 35 | UNDEFINED
 T0020 | taylor | SIN(X)÷X | X | 0 | 4 | RAD | 35 | UNDEFINED
-T0021 | taylor | EXP(SIN(X)) | X | 0 | 8 | RAD | 35 | NO_ROOM
+T0021 | taylor | EXP(SIN(X)) | X | 0 | 8 | RAD | 35 | 1+X+X^2÷2-X^4÷8-X^5÷15-X^6÷240+X^7÷90+31×X^8÷5760
 T0022 | taylor | COS(X) | X | π÷3 | 12 | RAD | 35 | TOO_LONG
 T0023 | taylor | LN(X) | X | A | 3 | RAD | 35 | BAD_ARG
 T0024 | taylor | SIN(X) | X | 0 | 13 | RAD | 35 | BAD_ARG

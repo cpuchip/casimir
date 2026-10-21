@@ -37,12 +37,13 @@ CORE_LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 all: $(LIB) build/casim build/hello build/golden_check
 
 check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check build/pfcheck_check build/ircheck_check \
-       build/ibcheck_check build/smcheck_check check-abn
+       build/ibcheck_check build/smcheck_check check-abn build/casim-ser0 build/casim-ser2 build/golden_check-ser0
 	scripts/run-tests.sh build/gcdprimes_check build/pfcheck_check build/ircheck_check build/ibcheck_check \
 	    build/smcheck_check
 	scripts/frame-table.py
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
+	scripts/series-golden.py
 	scripts/decimal-golden.py
 	scripts/complex-golden.py
 	scripts/typed-values.py
@@ -54,7 +55,10 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/partfrac-values.py
 	scripts/psteps-values.py
 	scripts/taylor-values.py
+	scripts/taylor-values.py --forced
 	scripts/limit-values.py
+	scripts/limit-values.py --forced
+	scripts/abs-sides.py
 	scripts/integrate-values.py
 	scripts/sum-values.py
 	@test "$$(scripts/ci-test.sh --ref)" = "$(CORE_PIN)" || { \
@@ -117,6 +121,18 @@ build/ibcheck_check: tests/ibcheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_
 build/smcheck_check: tests/smcheck_check.c $(CASIM_SRC) $(CASIM_HDRS) build/abn_intel.o
 	$(CC) $(CFLAGS) -I$(ABN) -Isrc -Itests -o $@ $< build/abn_intel.o build/intel/libbid.a -lm
 
+# CAS 021's series route compiled out (CASIM_SER=0: the boundary, today's routes alone) and alone (2: the route's
+# own oracle, forced on every taylor and limit), each a command line of its own (work/021-series.md)
+build/casim-ser0.o build/casim-ser2.o: build/casim-ser%.o: $(CASIM_SRC) $(CASIM_HDRS)
+	@mkdir -p build
+	$(CC) $(CFLAGS) $(FRAME) -DCASIM_SER=$* -I$(ABN) -c -o $@ $<
+
+build/casim-ser0 build/casim-ser2: build/casim-ser%: cli/casim_cli.c src/casim.h build/casim-ser%.o build/abn_intel.o
+	$(CC) $(CFLAGS) -Isrc -o $@ $< build/casim-ser$*.o build/abn_intel.o build/intel/libbid.a -lm
+
+build/golden_check-ser0: tests/golden_check.c src/casim.h build/casim-ser0.o build/abn_intel.o
+	$(CC) $(CFLAGS) -Isrc -o $@ $< build/casim-ser0.o build/abn_intel.o build/intel/libbid.a -lm
+
 # No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.
 build/symbols.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/symbol_control.c scripts/symbol-check.sh
 	scripts/symbol-check.sh
@@ -166,6 +182,10 @@ build/libcore.a: build/core/.pin
 
 build/%_test: tests/%_test.c tests/check.h tests/coreeval.h $(CASIM_SRC) src/casim.h build/libcore.a
 	$(CC) $(CFLAGS) -I$(CB)/core -Isrc -Itests -o $@ $< $(CASIM_SRC) $(CORE_LIBS)
+
+# CAS 021's series route alone (CASIM_SER=2) on every taylor and limit line of the golden corpus, judged by the core
+build/series_test: tests/series_test.c tests/check.h tests/coreeval.h $(CASIM_SRC) src/casim.h build/libcore.a
+	$(CC) $(CFLAGS) -DCASIM_SER=2 -I$(CB)/core -Isrc -Itests -o $@ $< $(CASIM_SRC) $(CORE_LIBS)
 
 # ---- elsewhere ----
 

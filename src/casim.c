@@ -9089,6 +9089,566 @@ static __attribute__((noinline)) casim_status taylor_corner(ctx *c, ref f, int v
     return lone && g ? CASIM_UNDEFINED : CASIM_UNDECIDED;
 }
 
+/* ---- series (unit CAS 021, work/021-series.md) ----
+   Where taylor's derivatives or limit's walk refuse (NO_ROOM, UNDECIDED), f as a truncated power series at a, in t > 0
+   with X = a + side·t: t^v × Σ_{i<n} c_i t^i, known to the order v + n - 1 (rule 2). Each c_i is a canonical constant.
+   A series is a K_ADD-shaped node canon never sees, so compact() copies it whole: id is v + 128 (S_ZERO: exactly 0),
+   n the count, a the list, and b = 1 marks it exact (a polynomial: nothing past the n known). */
+#ifndef CASIM_SER
+#define CASIM_SER 1             /* the tests build 0 (compiled out: the boundary) and 2 (the route alone: its oracle) */
+#endif
+#define S_ZERO 255
+#define S_PH 27                 /* the placeholder letter: an inverse function's derivative is walked in it */
+
+typedef struct {
+    ctx *c;
+    ref a, phs;                 /* the point; the placeholder's series */
+    int side, P;                /* X = a + side·t; the relative precision */
+    bool sided, fail, shrt;     /* a sign was read (the other side is needed); the series can't be made; with shrt,
+                                   only because too few terms are known (more precision may do) */
+} sw;
+
+static int s_v(const ctx *c, ref r) { return (int)nd(c, r)->id - 128; }
+static int s_n(const ctx *c, ref r) { return nd(c, r)->n; }
+static ref *s_cs(const ctx *c, ref r) { return list(c, nd(c, r)->a); }
+static bool s_zero(const ctx *c, ref r) { return nd(c, r)->id == S_ZERO; }
+static bool s_exact(const ctx *c, ref r) { return s_zero(c, r) || nd(c, r)->b == 1; }
+static int s_prec(const ctx *c, ref r) { return s_exact(c, r) ? 127 : s_v(c, r) + s_n(c, r); }
+
+/* canon through CAS 017's out-of-line caller, so canon stays inlined in every other (rule 7: a copy of its own would be
+   a frame on every level of its recursion) */
+static ref ib_canon(ctx *c, ref r);
+
+/* one coefficient's work given back: v kept, everything made since mark freed */
+static __attribute__((noinline)) ref s_keep(ctx *c, size_t mark, ref v)
+{
+    return c->used - mark > 128 ? compact(c, mark, v) : v;
+}
+
+/* the i-th coefficient (relative): 0 past an exact series' end */
+static ref s_ci(const ctx *c, ref r, int i)
+{
+    return i >= 0 && i < s_n(c, r) ? s_cs(c, r)[i] : c->small[C_0];
+}
+
+/* the coefficient of t^k (absolute): 0 outside the known ones */
+static ref s_at(sw *s, ref x, int k)
+{
+    int i = k - s_v(s->c, x);
+    return !s_zero(s->c, x) && i >= 0 && i < s_n(s->c, x) ? s_cs(s->c, x)[i] : small(s->c, C_0);
+}
+
+static __attribute__((noinline)) ref s_new(sw *s, int v, int n)
+{
+    ctx *c = s->c;
+    ref r, l;
+    small(c, C_0);
+    r = mk(c, K_ADD, 0, 0), l = n > 0 ? grab(c, (size_t)n * sizeof(ref)) : 0;
+    if (c->st != CASIM_OK) return 0;
+    if (v < -100 || v > 100 || n > 200) return s->fail = true, 0;
+    nd(c, r)->id = (uint8_t)(v + 128);
+    nd(c, r)->n = (uint16_t)n;
+    nd(c, r)->a = l;
+    for (int i = 0; i < n; i++) s_cs(c, r)[i] = small(c, C_0);
+    return r;
+}
+
+/* the leading literal zeros taken off (rule 8: the only way v rises): all of an exact series zero is S_ZERO */
+static __attribute__((noinline)) ref s_norm(sw *s, ref r)
+{
+    ctx *c = s->c;
+    int k = 0, n;
+    if (!r || s_zero(c, r)) return r;
+    n = s_n(c, r);
+    while (k < n && is_k(c, s_cs(c, r)[k], 0, 1)) k++;
+    if (k == n && nd(c, r)->b == 1) {
+        nd(c, r)->id = S_ZERO, nd(c, r)->n = 0;
+        return r;
+    }
+    if (k) {
+        memmove(s_cs(c, r), s_cs(c, r) + k, (size_t)(n - k) * sizeof(ref));
+        nd(c, r)->n = (uint16_t)(n - k);
+        nd(c, r)->id = (uint8_t)(nd(c, r)->id + k);
+    }
+    return r;
+}
+
+static __attribute__((noinline)) ref s_const(sw *s, ref k)
+{
+    ref r = s_new(s, 0, 1);
+    if (!r) return 0;
+    s_cs(s->c, r)[0] = k;
+    nd(s->c, r)->b = 1;
+    return s_norm(s, r);
+}
+
+static __attribute__((noinline)) ref s_scale(sw *s, ref x, ref k)
+{
+    ctx *c = s->c;
+    ref r;
+    if (!x || s_zero(c, x)) return x;
+    r = s_new(s, s_v(c, x), s_n(c, x));
+    if (r) nd(c, r)->b = nd(c, x)->b;
+    for (int i = 0; r && i < s_n(c, x); i++) {
+        size_t m = c->used;
+        s_cs(c, r)[i] = s_keep(c, m, ib_canon(c, mul2(c, k, s_cs(c, x)[i])));
+    }
+    return s_norm(s, r);
+}
+
+static __attribute__((noinline)) ref s_add(sw *s, ref x, ref y)
+{
+    ctx *c = s->c;
+    int p, v, n;
+    bool ex;
+    ref r;
+    if (!x || !y) return 0;
+    if (s_zero(c, x)) return y;
+    if (s_zero(c, y)) return x;
+    ex = s_exact(c, x) && s_exact(c, y);
+    v = s_v(c, x) < s_v(c, y) ? s_v(c, x) : s_v(c, y);
+    if (ex) p = s_v(c, x) + s_n(c, x) > s_v(c, y) + s_n(c, y) ? s_v(c, x) + s_n(c, x) : s_v(c, y) + s_n(c, y);
+    else p = s_prec(c, x) < s_prec(c, y) ? s_prec(c, x) : s_prec(c, y);
+    n = p - v;
+    if (n <= 0) return s_new(s, p, 0);
+    r = s_new(s, v, n);
+    if (r) nd(c, r)->b = ex;
+    for (int i = 0; r && i < n; i++) {
+        size_t m = c->used;
+        ref a = ib_canon(c, add2(c, s_ci(c, x, v + i - s_v(c, x)), s_ci(c, y, v + i - s_v(c, y))));
+        s_cs(c, r)[i] = s_keep(c, m, a);
+    }
+    return s_norm(s, r);
+}
+
+static __attribute__((noinline)) ref s_mul(sw *s, ref x, ref y)
+{
+    ctx *c = s->c;
+    int n;
+    bool ex;
+    ref r;
+    if (!x || !y) return 0;
+    if (s_zero(c, x)) return x;
+    if (s_zero(c, y)) return y;
+    ex = s_exact(c, x) && s_exact(c, y);
+    if (ex) n = s_n(c, x) + s_n(c, y) - 1;
+    else if (s_exact(c, x)) n = s_n(c, y);
+    else if (s_exact(c, y)) n = s_n(c, x);
+    else n = s_n(c, x) < s_n(c, y) ? s_n(c, x) : s_n(c, y);
+    r = s_new(s, s_v(c, x) + s_v(c, y), n);
+    if (r) nd(c, r)->b = ex;
+    for (int k = 0; r && k < n; k++) {
+        size_t m = c->used;
+        ref acc = small(c, C_0);
+        for (int i = 0; i <= k; i++) acc = add2(c, acc, mul2(c, s_ci(c, x, i), s_ci(c, y, k - i)));
+        s_cs(c, r)[k] = s_keep(c, m, ib_canon(c, acc));
+    }
+    return s_norm(s, r);
+}
+
+/* rule 8: a constant's value v with a bound b on |v's error|. v is const_val's (the value used everywhere); b carries
+   every rounding (S_U: 1E-32 of the magnitude rounded, 20 times decimal128's half unit) and the inputs' bounds through
+   each operation: a sum adds them, a product scales each by the other factor, a function by its derivative's size
+   (doubled, and refused near a singularity, so the derivative's size holds across the interval) */
+#define S_U (-32)
+static bool s_b(abn *b, const abn *x, int e10)          /* b += |x| × 10^e10 */
+{
+    abn t = abn_abs(x), p;
+    return abn_pow10(&p, e10) == ABN_OK && abn_mul(&t, &t, &p) == ABN_OK && abn_add(b, b, &t) == ABN_OK;
+}
+
+static bool s_m(abn *o, const abn *x, const abn *y)     /* o = |x| × |y| */
+{
+    abn a = abn_abs(x), d = abn_abs(y);
+    return abn_mul(o, &a, &d) == ABN_OK;
+}
+
+static bool s_lt(const abn *x, const abn *y, int k)    /* |x| × k < |y| */
+{
+    abn a = abn_abs(x), d = abn_abs(y), m = abn_from_int(k);
+    return abn_mul(&a, &a, &m) == ABN_OK && abn_cmp(&a, &d) < 0;
+}
+
+/* the derivative's size D for function f at its argument t (bound tb, value v), or false near a singularity */
+static __attribute__((noinline)) bool s_dsize(ctx *c, int f, const abn *t, const abn *tb, const abn *v, abn *D)
+{
+    abn one = abn_from_int(1), w, q;
+    switch (f) {
+    case F_SIN: case F_COS: case F_TANH: case F_ASINH: case F_ABS: *D = one; break;
+    case F_ATAN: *D = mode_scale(c->angle, false); *D = abn_abs(D); break;
+    case F_TAN:                                         /* 1 + TAN^2 */
+        if (!s_m(&w, v, v) || abn_add(D, &w, &one) != ABN_OK || !s_lt(tb, &one, 0) || !s_m(&q, D, tb) ||
+            !s_lt(&q, &one, 10))
+            return false;
+        break;
+    case F_EXP: case F_ALOG: case F_SINH: case F_COSH:
+        if (!s_lt(tb, &one, 2)) return false;           /* e^tb within 1 + 2 tb */
+        w = abn_abs(v);
+        if (abn_add(D, &w, &one) != ABN_OK) return false;
+        if (f == F_ALOG && (q = abn_from_int(3), abn_mul(D, D, &q)) != ABN_OK) return false;
+        break;
+    case F_LN: case F_LOG:                              /* 1 ÷ t, t well away from 0 */
+        if (!s_lt(tb, t, 4) || abn_div(D, &one, t) != ABN_OK) return false;
+        *D = abn_abs(D);
+        break;
+    case F_ASIN: case F_ACOS: case F_ACOSH: case F_ATANH:
+        if (!s_m(&w, t, t)) return false;               /* the distance: |1 - t^2| */
+        if (abn_sub(&w, &one, &w) != ABN_OK) return false;
+        w = abn_abs(&w);
+        if (!s_lt(tb, &w, 8)) return false;
+        if (f != F_ATANH && abn_sqrt(&w, &w) != ABN_OK) return false;
+        if (abn_div(D, &one, &w) != ABN_OK) return false;
+        if (f == F_ASIN || f == F_ACOS) q = mode_scale(c->angle, false), q = abn_abs(&q), abn_mul(D, D, &q);
+        break;
+    default: return false;
+    }
+    return true;
+}
+
+#define S_EVAL_DEPTH 8          /* the bound's walk: a constant nested deeper is undecided (176 B a level on the S3) */
+static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d)
+{
+    const node *x = nd(c, r);
+    abn tv, tb, w, q;
+    int st = const_val(c, r, v);
+    *b = abn_from_int(0);
+    if (st != CV_OK) return st;
+    if (d >= S_EVAL_DEPTH) return CV_NO;
+    if (!enter(c)) return CV_NO;
+    switch (x->kind) {
+    case K_NUM: case K_PI: st = s_b(b, v, S_U) ? CV_OK : CV_NO; break;
+    case K_ADD: case K_MUL:
+        w = abn_from_int(x->kind == K_MUL);
+        for (int i = 0; i < x->n && st == CV_OK; i++) {
+            if ((st = s_eval(c, list(c, x->a)[i], &tv, &tb, d + 1)) != CV_OK) break;
+            if (x->kind == K_ADD) {
+                if (abn_add(b, b, &tb) != ABN_OK || abn_add(&w, &w, &tv) != ABN_OK) st = CV_NO;
+            } else {                                    /* |w|·tb + |tv|·b + b·tb */
+                abn p1, p2, p3;
+                if (!s_m(&p1, &w, &tb) || !s_m(&p2, &tv, b) || !s_m(&p3, b, &tb) || abn_add(b, &p1, &p2) != ABN_OK ||
+                    abn_add(b, b, &p3) != ABN_OK || abn_mul(&w, &w, &tv) != ABN_OK)
+                    st = CV_NO;
+            }
+            if (st == CV_OK && !s_b(b, &w, S_U)) st = CV_NO;
+        }
+        break;
+    case K_POW: {                                       /* |v| × (2 |e| rel + U (130 + |e ln|a||)), |e| rel < 1/2 */
+        abn e, rel, L;
+        if (!is_num(c, x->b) || (st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK) { st = CV_NO; break; }
+        if (abn_is_zero(&tv) || !rat_abn(val(c, x->b), &e) || abn_div(&rel, &tb, &tv) != ABN_OK) { st = CV_NO; break; }
+        e = abn_abs(&e), rel = abn_abs(&rel), w = abn_abs(&tv);
+        if (!s_m(&q, &e, &rel) || abn_ln(&L, &w) != ABN_OK || !s_m(&L, &L, &e)) { st = CV_NO; break; }
+        w = abn_from_int(1);
+        if (!s_lt(&q, &w, 2)) { st = CV_NO; break; }    /* |e| rel < 1/2 */
+        w = abn_from_int(130);
+        if (abn_add(&L, &L, &w) != ABN_OK) { st = CV_NO; break; }
+        *b = abn_from_int(0);
+        if (!s_b(b, &L, S_U) || abn_add(&q, &q, &q) != ABN_OK || abn_add(b, b, &q) != ABN_OK || !s_m(b, b, v))
+            st = CV_NO;
+        break;
+    }
+    case K_FN: {
+        abn D;
+        if ((st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK) break;
+        if (x->id == F_SIN || x->id == F_COS || x->id == F_TAN) {          /* the argument in radians */
+            abn k = mode_scale(c->angle, true);
+            if (!s_m(&tb, &tb, &k) || abn_mul(&tv, &tv, &k) != ABN_OK || !s_b(&tb, &tv, S_U)) { st = CV_NO; break; }
+        }
+        if (x->id == F_SGN) {                           /* decided only away from 0 */
+            st = s_lt(&tb, &tv, 2) ? CV_OK : CV_NO;
+            break;
+        }
+        if (!s_dsize(c, x->id, &tv, &tb, v, &D) || !s_m(b, &D, &tb) || abn_add(b, b, b) != ABN_OK) {
+            st = CV_NO;
+            break;
+        }
+        w = abn_abs(v), q = abn_abs(&tv);               /* its own rounding: U (1 + |v| + |t|) */
+        if (abn_add(&w, &w, &q) != ABN_OK || (q = abn_from_int(1), abn_add(&w, &w, &q)) != ABN_OK || !s_b(b, &w, S_U))
+            st = CV_NO;
+        break;
+    }
+    default: st = CV_NO;
+    }
+    c->depth--;
+    return st;
+}
+
+/* a constant's sign: 1 or -1 when decided, 0 when not. A number decides itself; any other constant only when its
+   value is past 8 times its error bound (s_eval) */
+static __attribute__((noinline)) int s_sign(sw *s, ref k)
+{
+    ctx *c = s->c;
+    abn v, b;
+    if (is_num(c, k)) return val(c, k)->p > 0 ? 1 : val(c, k)->p < 0 ? -1 : 0;
+    if (s_eval(c, k, &v, &b, 0) != CV_OK || !s_lt(&b, &v, 8)) return 0;
+    return abn_is_negative(&v) ? -1 : 1;
+}
+
+/* x^e for a rational e: J. C. P. Miller's recurrence, P_k = Σ_{j=1..k} ((e+1)j - k) c_j P_{k-j} ÷ (k c_0) */
+static __attribute__((noinline)) ref s_pow(sw *s, ref x, ref e)
+{
+    ctx *c = s->c;
+    const rat *al = val(c, e);
+    int v, n, sg;
+    ref r, inv;
+    if (!x) return 0;
+    if (s_zero(c, x)) return al->p > 0 ? x : (s->fail = true, (ref)0);
+    if (s_n(c, x) == 0) return s->shrt = s->fail = true, 0;
+    n = s_exact(c, x) ? s->P : s_n(c, x);
+    sg = s_sign(s, s_cs(c, x)[0]);
+    if (al->q != 1) {                                   /* a fractional power: a positive base on this side */
+        s->sided = true;
+        if (sg <= 0) return s->fail = true, 0;
+    } else if (al->p < 0 && sg == 0 && !is_num(c, s_cs(c, x)[0])) return s->fail = true, 0;
+    if (((long long)s_v(c, x) * al->p) % al->q) return s->fail = true, 0;    /* t^(v·e): not a whole power */
+    v = (int)((long long)s_v(c, x) * al->p / al->q);
+    if (al->q == 1 && al->p > 0 && al->p <= 16) {       /* a whole power: products, no division ((K×X)^2) */
+        r = x;
+        for (long i = 1; i < al->p && r; i++) r = s_mul(s, r, x);
+        return r;
+    }
+    r = s_new(s, v, n);
+    if (!r) return 0;
+    s_cs(c, r)[0] = ib_canon(c, power(c, s_cs(c, x)[0], e));
+    inv = ib_canon(c, power(c, s_cs(c, x)[0], small(c, C_M1)));
+    for (int k = 1; k < n && c->st == CASIM_OK; k++) {
+        size_t m = c->used;
+        ref acc = small(c, C_0);
+        for (int j = 1; j <= k; j++) {
+            rat f, t1;
+            if (!rat_add(&t1, al, &(rat){1, 1}) || !rat_mul(&f, &t1, &(rat){j, 1}) || !rat_add(&f, &f, &(rat){-k, 1}))
+                return s->fail = true, 0;
+            acc = add2(c, acc, mul3(c, num(c, &f), s_ci(c, x, j), s_cs(c, r)[k - j]));
+        }
+        s_cs(c, r)[k] = s_keep(c, m, ib_canon(c, mul3(c, acc, inv, num(c, &(rat){1, k}))));
+    }
+    return s_norm(s, r);
+}
+
+/* S, C for w(0) = 0: S' = w'·C, C' = g·w'·S (g = -1: SIN and COS; 1: SINH and COSH), by the coefficients */
+static __attribute__((noinline)) bool s_pair(sw *s, ref w, int g, ref *S, ref *C)
+{
+    ctx *c = s->c;
+    int N = s_prec(c, w);
+    if (s_zero(c, w)) {
+        *S = s_const(s, small(c, C_0));
+        *C = s_const(s, small(c, C_1));
+        return *S && *C;
+    }
+    if (s_v(c, w) < 1) return s->fail = true, false;
+    if (N > s_v(c, w) + s->P + 2) N = s_v(c, w) + s->P + 2;
+    *S = s_new(s, 0, N);
+    *C = s_new(s, 0, N);
+    if (!*S || !*C) return false;
+    s_cs(c, *C)[0] = small(c, C_1);
+    for (int k = 1; k < N && c->st == CASIM_OK; k++)
+        for (int half = 0; half < 2; half++) {          /* S_k from C's coefficients, then C_k from S's */
+            size_t m = c->used;
+            ref acc = small(c, C_0), *from = s_cs(c, half ? *S : *C);
+            for (int j = 1; j <= k; j++)
+                acc = add2(c, acc, mul3(c, num(c, &(rat){j, k}), s_at(s, w, j), from[k - j]));
+            if (half && g < 0) acc = neg(c, acc);
+            s_cs(c, half ? *C : *S)[k] = s_keep(c, m, ib_canon(c, acc));
+        }
+    *S = s_norm(s, *S);
+    *C = s_norm(s, *C);
+    return true;
+}
+
+/* x' (by t) when up, ∫x when not: v below 0 can't (a t^-1 integrand is a logarithm: rule 3) */
+static __attribute__((noinline)) ref s_dint(sw *s, ref x, bool up)
+{
+    ctx *c = s->c;
+    int v, n, d;
+    ref r;
+    if (s_zero(c, x)) return x;
+    v = s_v(c, x), n = s_n(c, x);
+    if (v < 0) return s->fail = true, 0;
+    d = up && v == 0;                   /* the constant goes */
+    r = s_new(s, up ? v - !d : v + 1, n - d > 0 ? n - d : 0);
+    if (r) nd(c, r)->b = nd(c, x)->b;
+    for (int i = d; r && i < n; i++)
+        s_cs(c, r)[i - d] = ib_canon(c, mul2(c, num(c, &(rat){up ? v + i : 1, up ? 1 : v + i + 1}), s_cs(c, x)[i]));
+    return s_norm(s, r);
+}
+
+/* f(u0), a function at a constant: 0 when it has no value (LN(0)) or, with domain, no sure one */
+static __attribute__((noinline)) ref s_fval(sw *s, int id, ref u0, bool domain)
+{
+    ctx *c = s->c;
+    abn t;
+    ref r = ib_canon(c, fn(c, id, u0));
+    if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK, s->fail = true;
+    if (s->fail || c->st != CASIM_OK) return 0;
+    if (domain && const_val(c, r, &t) != CV_OK) return s->fail = true, 0;
+    return r;
+}
+
+static ref ser(sw *s, ref r);
+
+/* f(u) from u's series: the pairs' recurrences for SIN, COS, TAN, EXP, ALOG and the hyperbolic ones; the rest (LN,
+   LOG, the inverse functions) as f(u0) + ∫ f'(u)·u', f'(u) derive's own, walked with u's series in the placeholder */
+static __attribute__((noinline)) ref s_fn(sw *s, int id, ref U)
+{
+    ctx *c = s->c;
+    ref u0, w, S, C, k0, k1, y, g, G;
+    if (!U) return 0;
+    if (s_zero(c, U)) u0 = small(c, C_0), w = U;
+    else if (s_n(c, U) == 0) return s->shrt = s->fail = true, 0;
+    else if (s_v(c, U) < 0) return s->fail = true, 0;
+    else if (s_v(c, U) > 0) u0 = small(c, C_0), w = U;
+    else {
+        u0 = s_cs(c, U)[0];
+        w = s_add(s, U, s_const(s, ib_canon(c, neg(c, u0))));
+    }
+    if (!w) return 0;
+    switch (id) {
+    case F_ABS:
+    case F_SGN: {
+        int sg;
+        if (s_zero(c, U)) {
+            if (id == F_ABS) return U;
+            return s->fail = true, 0;
+        }
+        if (!(sg = s_sign(s, s_cs(c, U)[0]))) return s->fail = true, 0;
+        s->sided = true;
+        if (id == F_SGN) return s_const(s, small(c, sg > 0 ? C_1 : C_M1));
+        return sg > 0 ? U : s_scale(s, U, small(c, C_M1));
+    }
+    case F_SIN:
+    case F_COS:
+    case F_TAN:
+        if (!s_pair(s, s_scale(s, w, ib_canon(c, angle_factor(c, false))), -1, &S, &C)) return 0;
+        k0 = s_fval(s, F_SIN, u0, false), k1 = s_fval(s, F_COS, u0, false);
+        if (!k0 || !k1) return 0;
+        y = s_add(s, s_scale(s, C, k0), s_scale(s, S, k1));                     /* SIN(u0 + w) */
+        if (id == F_SIN) return y;
+        g = s_add(s, s_scale(s, C, k1), s_scale(s, S, ib_canon(c, neg(c, k0))));  /* COS(u0 + w) */
+        return id == F_COS ? g : s_mul(s, y, s_pow(s, g, small(c, C_M1)));
+    case F_SINH:
+    case F_COSH:
+    case F_TANH:
+        if (!s_pair(s, w, 1, &S, &C)) return 0;
+        k0 = s_fval(s, F_SINH, u0, false), k1 = s_fval(s, F_COSH, u0, false);
+        if (!k0 || !k1) return 0;
+        y = s_add(s, s_scale(s, C, k0), s_scale(s, S, k1));
+        if (id == F_SINH) return y;
+        g = s_add(s, s_scale(s, C, k1), s_scale(s, S, k0));
+        return id == F_COSH ? g : s_mul(s, y, s_pow(s, g, small(c, C_M1)));
+    case F_EXP:
+    case F_ALOG:
+        if (id == F_ALOG) w = s_scale(s, w, ib_canon(c, fn(c, F_LN, small(c, C_10))));
+        if (!s_pair(s, w, 1, &S, &C)) return 0;
+        k0 = s_fval(s, id, u0, false);
+        return k0 ? s_scale(s, s_add(s, C, S), k0) : 0;
+    case F_LN: case F_LOG: case F_ASIN: case F_ACOS: case F_ATAN: case F_ASINH: case F_ACOSH: case F_ATANH: {
+        int var = c->var;
+        k0 = s_fval(s, id, u0, true);
+        if (!k0) return 0;
+        c->var = S_PH;                  /* f'(u), derive's own, with u the placeholder */
+        g = ib_canon(c, deriv(c, fn(c, id, leaf(c, K_VAR, S_PH))));
+        c->var = var;
+        s->phs = U;
+        G = ser(s, g);
+        s->phs = 0;
+        return s_add(s, s_const(s, k0), s_dint(s, s_mul(s, G, s_dint(s, U, true)), false));
+    }
+    }
+    return s->fail = true, 0;
+}
+
+static ref ser_(sw *s, ref r)
+{
+    ctx *c = s->c;
+    const node *x = nd(c, r);
+    ref acc;
+    if (x->kind == K_VAR && x->id == S_PH) return s->phs;
+    if (!contains(c, r, c->var) && !contains(c, r, S_PH)) return s_const(s, r);
+    switch (x->kind) {
+    case K_VAR: {
+        ref v = s_new(s, 0, 2);
+        if (!v) return 0;
+        nd(c, v)->b = 1;
+        s_cs(c, v)[0] = s->a;
+        s_cs(c, v)[1] = small(c, s->side > 0 ? C_1 : C_M1);
+        return s_norm(s, v);
+    }
+    case K_ADD:
+    case K_MUL:
+        acc = ser(s, list(c, x->a)[0]);
+        for (int i = 1; i < nd(c, r)->n && acc; i++) {
+            ref y = ser(s, list(c, nd(c, r)->a)[i]);
+            acc = nd(c, r)->kind == K_ADD ? s_add(s, acc, y) : s_mul(s, acc, y);
+        }
+        return acc;
+    case K_POW:
+        if (contains(c, x->b, c->var) || !is_num(c, x->b)) return s->fail = true, 0;
+        return s_pow(s, ser(s, x->a), x->b);
+    case K_FN: return s_fn(s, x->id, ser(s, x->a));
+    }
+    return s->fail = true, 0;
+}
+
+/* r's series, its work compacted when it returns (rule 2); 0 when the route can't make it */
+static ref ser(sw *s, ref r)
+{
+    ctx *c = s->c;
+    size_t mark = c->used;
+    ref v;
+    if (s->fail || c->st != CASIM_OK || !enter(c)) return 0;
+    v = ser_(s, r);
+    if (v && !s->fail && c->st == CASIM_OK && v >= (ref)(mark / 8u)) v = compact(c, mark, v);
+    c->depth--;
+    return s->fail || c->st != CASIM_OK ? 0 : v;
+}
+
+/* a side's series for taylor: 1 when it is known past order n, 0 when more precision may do, -1 when the route can't
+   (rule 1: a result of order below 0 is a pole at a) */
+static int s_use(sw *s, ref R, int n)
+{
+    if (s->c->st != CASIM_OK) return -1;
+    if (!R) return s->shrt ? 0 : -1;
+    if (!s_zero(s->c, R) && s_v(s->c, R) < 0) return -1;
+    return s_prec(s->c, R) > n;
+}
+
+/* taylor's series route (rules 2, 4 and 6), after the derivatives' refusal (c->st, NO_ROOM or UNDECIDED): the text's
+   terms to order n into w as the derivatives print them, OK; UNDEFINED where the two sides differ at an order to n by a
+   decided amount; the refusal when it can't tell */
+static __attribute__((noinline)) casim_status taylor_ser(ctx *c, ref a, ref xa, int n, out_t *w)
+{
+    casim_status was = c->st;
+    bool at0 = is_k(c, a, 0, 1);
+    size_t base;
+    ref f;
+    c->st = CASIM_OK;
+    f = ib_canon(c, parse(c));          /* the text again (rule 7 has checked it): the derivatives took f's place */
+    base = c->used;
+    for (int P = n + 3; P <= n + 11; P += 4) {
+        sw s = {c, a, 0, 1, P, false, false, false};
+        ref R = ser(&s, f), L = 0;
+        int u = s_use(&s, R, n);
+        if (u > 0 && s.sided) {         /* rule 4: f(a - t) = Σ (-1)^k c_k t^k where f has its Taylor terms */
+            s.side = -1, s.fail = s.shrt = false;
+            L = ser(&s, f);
+            u = s_use(&s, L, n);
+        }
+        if (u < 0) break;
+        if (u == 0) {
+            taylor_drop(c, base);
+            continue;
+        }
+        for (int k = 0; L && k <= n; k++) {
+            ref d = ib_canon(c, add2(c, s_at(&s, R, k), k % 2 ? s_at(&s, L, k) : neg(c, s_at(&s, L, k))));
+            if (c->st != CASIM_OK) return was;
+            if (!is_k(c, d, 0, 1)) return s_sign(&s, d) ? CASIM_UNDEFINED : was;
+        }
+        for (int k = 0; k <= n && c->st == CASIM_OK && !w->full; k++) taylor_term(c, w, s_at(&s, R, k), xa, k, at0);
+        return c->st == CASIM_OK ? CASIM_OK : was;
+    }
+    return was;
+}
+
 static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var, const char *point, int n, int angle,
                                                         char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
 {
@@ -9129,11 +9689,15 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
        back to base, and it is read again (a canonical form prints exactly), so a step holds one derivative and its
        work; c.s is the buffer the current tree was read from (a K_LIT keeps its text there), so they alternate */
     tt = arena_cap >= TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;
-    if (c.top < c.used + 2 * tt + 64) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+    base = c.used;
+    if (c.top < c.used + 2 * tt + 64) {         /* no room for the buffers: NO_ROOM, which CAS 021's route may answer */
+        if (!ocap) return c.st = CASIM_NO_ROOM, finish(&c, SPARE, out, ocap);
+        c.st = CASIM_NO_ROOM, tt = 0;
+    }
     c.top -= 2 * tt;
     tb = (char *)c.mem + c.top;
-    base = c.used;
     c.opaque = c.own_text = true;               /* from here the parser reads only the derivatives casim printed */
+    if (CASIM_SER == 2 && c.st == CASIM_OK) c.st = CASIM_UNDECIDED;     /* the tests' build: the series route alone */
     for (int k = 0; k <= n && c.st == CASIM_OK; k++) {
         ref v;
         rat inv;
@@ -9153,8 +9717,8 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
             print(&c, &tw, canon(&c, deriv(&c, f)));
             if (c.st != CASIM_OK) break;
             if (tw.full) {
-                if (ocap) out[0] = '\0';
-                return c.st = CASIM_NO_ROOM;
+                c.st = CASIM_NO_ROOM;
+                break;
             }
             taylor_drop(&c, base);
             c.s = buf;
@@ -9162,6 +9726,12 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
         }
     }
     c.s = eqn;
+    if (CASIM_SER && ocap && (c.st == CASIM_NO_ROOM || c.st == CASIM_UNDECIDED)) {
+        c.top += 2 * tt, c.opaque = c.own_text = false;     /* CAS 021 rule 1: the series route, only where this */
+        taylor_drop(&c, base);                               /* one refused */
+        w.n = 0, w.full = false;
+        c.st = taylor_ser(&c, a, xa, n, &w);
+    }
     if (c.st == CASIM_OK && !w.full && w.n == 0) puts_(&w, "0");
     if ((c.st != CASIM_OK || w.full) && ocap) out[0] = '\0';
     if (c.st != CASIM_OK) return c.st;
@@ -9217,8 +9787,8 @@ static __attribute__((noinline)) void ib_rec(ib_t *B, int how, int at, ref a, re
     B->how = how, B->r[at] = a, B->r[at + 1] = b, B->r[at + 2] = c;
 }
 
-/* canon, called once: the section's calls through this one leave gcc's inlining of canon elsewhere as it was (an
-   out-of-line canon appeared when they called it directly) */
+/* canon, called once: the section's calls through this one (and CAS 021's series route's) leave gcc's inlining of canon
+   elsewhere as it was (an out-of-line canon appeared when they called it directly) */
 static __attribute__((noinline)) ref ib_canon(ctx *c, ref r)
 {
     return canon(c, r);
@@ -10892,6 +11462,51 @@ static lv lm_walk(ctx *c, ref f, lwalk *L)
     return r;
 }
 
+/* CAS 021 rule 4: f's limit at a on one side (X = a + side·t) from its series: v > 0 is 0, v = 0 is c_0, v < 0 is
+   ±∞ by c_0's decided sign; L_UND when the series can't tell */
+static __attribute__((noinline)) lv limit_side(ctx *c, ref f, ref a, int side)
+{
+    size_t base = c->used;
+    for (int P = 4; P <= 16 && c->st == CASIM_OK; P += 6) {
+        sw s = {c, a, 0, side, P, false, false, false};
+        ref R = ser(&s, f);
+        int sg;
+        if (R && (s_zero(c, R) || (s_n(c, R) > 0 && s_v(c, R) > 0))) return lm(L_FIN, small(c, C_0));
+        if (R && s_n(c, R) > 0) {
+            if (s_v(c, R) == 0) return lm(L_FIN, s_cs(c, R)[0]);
+            if ((sg = s_sign(&s, s_cs(c, R)[0])) != 0) return lm(sg > 0 ? L_PINF : L_NINF, 0);
+            break;
+        }
+        if (c->st != CASIM_OK || (s.fail && !s.shrt)) break;
+        taylor_drop(c, base);           /* too few terms known: more */
+    }
+    if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
+    return lm(L_UND, 0);
+}
+
+/* CAS 021: limit's series route, at a from the side asked (both when 0), or at ±∞ as f(1÷X) at 0 from above (rule 5;
+   do_limit has made f(-X) for -∞). Both sides must agree, as the walk's must; L_UND when the series can't tell */
+static __attribute__((noinline)) lv limit_ser(ctx *c, ref f, ref a, int side, bool inf)
+{
+    lv up, dn;
+    if (inf) {
+        c->sub_var = c->var, c->sub_val = power(c, leaf(c, K_VAR, c->var), small(c, C_M1));
+        f = ib_canon(c, check_rewrite(c, f));
+        c->sub_val = 0, c->sub_var = -1;
+        a = small(c, C_0), side = 1;
+    }
+    up = side >= 0 ? limit_side(c, f, a, 1) : lm(L_UND, 0);
+    dn = side <= 0 ? limit_side(c, f, a, -1) : up;
+    if (side) return side > 0 ? up : dn;
+    if (up.k == L_UND || dn.k == L_UND) return lm(L_UND, 0);
+    if (up.k != dn.k) return lm(L_NONE, 0);
+    if (up.k == L_FIN && cmp(c, ib_canon(c, up.v), ib_canon(c, dn.v)) != 0) {
+        sw z = {c, a, 0, 1, 4, false, false, false};
+        return s_sign(&z, ib_canon(c, add2(c, up.v, neg(c, dn.v)))) ? lm(L_NONE, 0) : lm(L_UND, 0);
+    }
+    return up;
+}
+
 static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var, const char *point, int side, int angle,
                                                        char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
 {
@@ -10900,7 +11515,7 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
     abn av;
     lv r;
     lwalk L = {var, side, 0, 0};
-    size_t ocap = cap < SLOT ? cap : SLOT;
+    size_t ocap = cap < SLOT ? cap : SLOT, base;
     int chars = 0, inf = 0;
     out_t w = {out, ocap, 0, false};
     if (cap) out[0] = '\0';
@@ -10929,6 +11544,7 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
         if (c.st == CASIM_UNDEFINED) c.st = CASIM_BAD_ARG;     /* a point with no value (1÷0): UNDEFINED is "no limit" */
     }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    base = c.used;
     if (L.a && !side) {
         /* both sides: f's value where it has one, else each one-sided limit, which must agree */
         ref v;
@@ -10947,6 +11563,14 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
             else r = up;
         }
     } else r = lm_walk(&c, f, &L);
+    if (CASIM_SER == 2 && c.st == CASIM_OK) r = lm(L_UND, 0);       /* the tests' build: the series route alone */
+    if (CASIM_SER && ocap && (c.st == CASIM_NO_ROOM || (c.st == CASIM_OK && r.k == L_UND))) {
+        casim_status was = c.st;        /* CAS 021 rule 1: the series route, only where the walk refused */
+        c.st = CASIM_OK;
+        taylor_drop(&c, base);
+        r = limit_ser(&c, f, L.a, side, inf);
+        if (c.st != CASIM_OK || r.k == L_UND) c.st = was, r = lm(L_UND, 0);
+    }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
     if (r.k == L_FIN) return finish(&c, canon(&c, r.v), out, ocap);
     if (r.k == L_PINF || r.k == L_NINF) {
