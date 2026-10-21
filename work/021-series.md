@@ -193,16 +193,20 @@ casim writes the unit; abacus writes h021 and the Accepted section.
 
 ## Found in today's routes (while answering B; not this unit's change unless ruled)
 
-const_sign, the test today's routes use, decides nonzero when |v| > 1E-20, absolutely. A constant whose terms pass
-about 10^20 keeps rounding digits above that, so an identity zero is taken for a number. Z = 10^25×SIN(1)^2 +
-10^25×COS(1)^2 - 10^25 is exactly 0, and at faae625:
+~~const_sign, the test today's routes use, decides nonzero when |v| > 1E-20, absolutely. A constant whose terms pass
+about 10^20 keeps rounding digits above that, so an identity zero is taken for a number.~~ **Corrected after the build
+(a traced prototype, #9408):** three tests, not const_sign alone, take a rounded identity zero for a number. limit's
+lm_sgn tests the rounded value for exactly 0; taylor_hole's value test finds no pole where 1÷Z has a value; const_sign
+(nonzero past an absolute 1E-20) decides only the ABS row. Z = 10^25×SIN(1)^2 + 10^25×COS(1)^2 - 10^25 is exactly 0
+(its rounded value is 2E-9), and at faae625:
 - limit (Z+X)÷X at 0 is UNDEFINED, and (Z+X^2)÷X^2 at 0+ is ∞. Both are 1.
 - taylor 1÷(Z+X) at 0 to order 1 is -1÷(10^25-…)-X÷(10^25-…)^2, and ABS(Z+X) to order 1 is Z+X. Both are UNDEFINED
   (a pole, and ABS(X)'s corner).
-- With 10^10 or 10^15 in place of 10^25, limit gives 1. With 10^20, it gives UNDEFINED.
+- With 10^10 or 10^15 in place of 10^25, limit gives 1. With 10^20, it gives UNDEFINED. (The rounded Z is exactly 0 at
+  10^10 and 10^15, and 2E-14 at 10^20: the 1 is the rounding's luck, not a tolerance.)
 
-These are wrong answers in accepted code (CAS 014–016), not refusals. Fixing const_sign with rule 8's test would move
-today's answers, which crosses this unit's boundary. **Ruled (#9388):** it becomes its own small unit after 021,
+These are wrong answers in accepted code (CAS 014–016), not refusals. Fixing ~~const_sign~~ these tests with rule 8's
+test would move today's answers, which crosses this unit's boundary. **Ruled (#9388):** it becomes its own small unit after 021,
 reusing 021's decider, so the zero test exists once. Its golden moves get listed, and abacus writes its hidden rows
 from these four and the 10^k sweep. abacus puts it to Michael as a known issue: only contrived inputs reach it, but
 it's a wrong answer, not a refusal.
