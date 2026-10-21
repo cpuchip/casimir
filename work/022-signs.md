@@ -282,7 +282,30 @@ section above stands as it was at db19065.
   on that text at b282bbe. Making it UNDECIDED would mean sm_term refusing a letter-free base of undecided sign itself,
   rather than handing the term on; that is a change in the sums and is left for abacus to rule.
 
+## After acceptance: lm_quot's division (#9481, ruled #9482)
+
+Found while drafting the letter unit, after 022 was accepted at db19065. lm_quot, one of family 1's callers, divided a
+finite numerator by a finite denominator whose lm_sgn was 2 ("no sign here"): `if (sd != 0) { if (ln.k == L_FIN)
+return ln.v ÷ ld.v`. For a letter that is the generic answer the letter unit gives a row; for a letter-free residue it
+is a wrong answer, and rule 1 should have refused it. The census counted lm_sgn's sites and changed lm_sgn, but didn't
+check how each caller reads 2.
+
+- limit X÷(Z×X+X^2) at 0: db19065 printed 1÷Z (as -1÷(10^25-SIN(1)^2×10^25-COS(1)^2×10^25)); b282bbe UNDEFINED (right:
+  it is 1÷X); the truth is no limit. A regression; b282bbe's path to UNDEFINED wasn't traced.
+- limit SIN(X)÷SIN(Z×X) at 0: db19065 and b282bbe printed 1÷Z; the function has no value anywhere.
+
+The fix: lm_quot refuses (UNDECIDED) when the denominator's sign is 2 and it holds no letter. Both rows refuse; golden 0
+moves (corpus, →DEC, complex, doc examples). The other callers that read 2 as "not 0" are lm_lead's sum and the ∞
+leading-term quotient; at ∞ the walk refuses first (lm_prod refuses an infinite term with an undecided factor), on every
+probe row, so they are left. The rest refuse on 2 already (a symbolic negative power, (Z+X)^(-SQRT(2)), is UNDECIDED).
+Rows and controls in work/022-examples.txt; mutant sign-quot-residue (the line removed). abacus runs h022b (quotient
+shapes across h022's constants) and h022 again on it.
+
 ## Out of scope
+
+- **(abacus #9482, the follow-up list)** canon factors a constant 1÷Z out of the typed input (SIN(X)÷(Z×X),
+  (EXP(X)-1)÷(Z×X), SQRT(X^2+1)÷(Z×X) at ∞), and the walk carries it as it is: 1÷Z printed, nothing decided. Ruling (1)'s
+  class, with the 1÷c^K sums.
 
 - **(abacus #9474, traced; the follow-up list)** A finite sum's terms are summed as written: sum 1÷c^K, K = 1 to 3,
   with c exactly 0, prints the three terms, which divide by c (b282bbe the same). The path is do_sum_, sm_read (the

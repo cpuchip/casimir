@@ -1113,6 +1113,8 @@ MUTANTS = {
                           "        if (x->kind == K_ADD) { abn k1, o1 = abn_from_int(1); abn_pow10(&k1, -33), abn_add(&k1, &k1, &o1), abn_mul(v, v, &k1); }")],
     "sign-fold-abs-undecided": [("src/casim.c", "            if (sg) return sg > 0 ? a : neg(c, a);",
                                  "            if (!sg && !any_letter(c, a)) sg = 1;\n            if (sg) return sg > 0 ? a : neg(c, a);")],
+    # 022's follow-up (abacus #9481/#9482): lm_quot divides by a residue again (L'Hôpital's 1÷Z)
+    "sign-quot-residue": [("src/casim.c", "            if (sd == 2 && !any_letter(c, ld.v)) return lm(L_UND, 0);  /* CAS 022: a residue isn't a divisor */\n", "")],
 }
 
 

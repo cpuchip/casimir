@@ -15,6 +15,15 @@
 | `casim --arena 12288 limit '(TAN(SIN(X))-SIN(TAN(X))+(SIN(1)^2+COS(1)^2-1)×X^3)÷X^7' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '(SIN(1)+X)÷X' X 0 + RAD` | `∞` |
 
+# - Rule 1 at lm_quot (after acceptance, #9481): L'Hôpital leaves the residue as the divisor. db19065 printed 1÷Z for
+#   both; the first is 1÷X (no limit), the second has no value anywhere. The last two are controls
+| Command | Prints |
+|---|---|
+| `casim limit 'X÷((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×X+X^2)' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit 'SIN(X)÷(SIN((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×X))' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit 'X÷(2×X+X^2)' X 0 '' RAD` | `1÷2` |
+| `casim limit 'X÷(SIN(1)×X+X^2)' X 0 '' RAD` | `1÷SIN(1)` |
+
 # - Rule 1, taylor (taylor_hole, taylor_zero): a pole, a corner, TAN's pole, decided only past the bound. The second row's
 #   truth is 1 (X÷X); b282bbe printed X÷Z, a division by Z. Refused, the series route then runs, and its own divisor
 #   test (CAS 021) is what keeps it from printing the same: this row is that test's catch since the core refuses first

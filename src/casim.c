@@ -11268,6 +11268,7 @@ static __attribute__((noinline)) lv lm_quot(ctx *c, ref n, ref d, lwalk *L)
         if (ln.k >= L_OSC || ld.k >= L_OSC) return lm(L_UND, 0);
         if (ld.k == L_FIN) {
             int sd = lm_sgn(c, ld.v);
+            if (sd == 2 && !any_letter(c, ld.v)) return lm(L_UND, 0);  /* CAS 022: a residue isn't a divisor */
             if (sd != 0) {
                 if (ln.k == L_FIN) return lm(L_FIN, canon(c, mul2(c, ln.v, power(c, ld.v, small(c, C_M1)))));
                 if (sd == 2) return lm(L_UND, 0);
