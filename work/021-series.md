@@ -1,8 +1,9 @@
 # CAS work unit 021: series
 
-**From:** casim · **To:** abacus · **Status:** draft, revised after abacus's review (#9386: the four questions
-ruled, gaps A–F filled below, in rules 1, 3, 4 and 8, Cost and the oracle; A and C–F accepted in #9388, and rule
-8 rewritten after it). For h021, frozen before the build.
+**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), for abacus's run of h021
+(frozen at #9394: h021.tsv 345 rows, habs2.tsv 750). The draft was revised after abacus's review (#9386: the four
+questions ruled, gaps A–F filled in rules 1, 3, 4 and 8, Cost and the oracle; A and C–F accepted in #9388, and rule 8
+rewritten after it).
 casim writes the unit; abacus writes h021 and the Accepted section.
 - **Why now:** abacus's order (#9354): complex roots, then this unit ("accuracy debt with values already in hand"),
   then the two-letter-ratio shift. CAS 016 named its debt (docs/language.md, "a later unit composes power series"):
@@ -206,6 +207,14 @@ reusing 021's decider, so the zero test exists once. Its golden moves get listed
 from these four and the 10^k sweep. abacus puts it to Michael as a known issue: only contrived inputs reach it, but
 it's a wrong answer, not a refusal.
 
+**A second, found by the build's own rows (the same family).** Today's limit walk compares the two one-sided limits by
+their canonical form, and any difference is "no limit". K×ABS(X)÷X at 0 is K from above and -K from below, so faae625
+answers UNDEFINED; with K = 0 the limit is 0. So do (K-1)×ABS(X)÷X, K^2×ABS(X)÷X and SQRT(K)×ABS(X)÷X at 0, and
+K×ABS(X-1)÷(X-1) at 1. The series route alone says UNDECIDED on each (rule 4's disagreement needs 2×K's sign decided,
+and rule 8 doesn't decide a letter). It's an answer in accepted code (CAS 015), so not this unit's to move; the
+follow-up unit's decider could test the sides' difference too. The fixed row (1÷X^2-1÷SIN(X)^2)×K×ABS(X)÷X, which
+the walk refuses and the route answers UNDECIDED, keeps the route's own test honest (tests/series_test.c).
+
 ## Cost (estimate, before the build)
 
 - **About 10–11 KB of S3 text, stop at 12 KB.** That's the prototype's 13.6 KB (rule 8's bound included) minus two
@@ -257,6 +266,121 @@ it's a wrong answer, not a refusal.
   - in taylor, a divisor of order above 0 answered, and a result of order below 0 answered (rule 1);
   - the series route run after rule 7's own check ran out of room (rule 1).
 - **The device bench:** DEVICE PASS with the gate unchanged, and series rows in the taylor and limit families.
+
+## As built (where the code differs from the reviewed text, or settles what it left open)
+
+- **The merges.** The route runs inside do_taylor and do_limit, after today's route, with no second parse of the
+  point or rule 7:
+  - **taylor:** do_taylor's derivative loop overwrites f with each derivative, so on a refusal taylor_ser reads the
+    typed text again (parse and canon; rule 7 has already passed it) and works on top of the point and X - A. Keeping
+    the canonical f live across the loop instead moved do_taylor's host frame 448 → 480; reading it again, 448 → 464.
+    The text buffers go back to the arena first (c.top), and a NO_ROOM because the buffers don't fit goes to the route
+    like any other (with no buffers taken).
+  - **limit:** limit_ser works on do_limit's canonical f (at -∞ already f(-X)), from the arena mark taken after the
+    point; ±∞ is one substitution, X → 1÷X, at 0 from above.
+  - A caller's cap of 0 keeps today's status (finish's TOO_LONG): the route needs somewhere to print.
+- **derive's walk in place of its table:** s_fn sets the variable to the placeholder letter and calls deriv() on
+  f(placeholder), so LN, LOG and the six inverses take derive's own formulas (angle factor, radicands). s_fn is
+  1,320 B on the S3 against the prototype's 2,262.
+- **canon through ib_canon:** the route's canon calls go through CAS 017's out-of-line ib_canon (a copy of my own was
+  folded into it by gcc, and its frame-table entry vanished), so no out-of-line canon appears.
+- **SGN is out of the route.** taylor's and limit's text refuse SGN (NOT_DIFFERENTIABLE, as derive does), and no tree
+  the route builds holds one (s_fn walks deriv only for LN, LOG and the inverses), so the SGN branches in s_fn and
+  s_eval could never run. Rule 3's "ABS(u) and SGN(u)" is ABS(u) alone.
+- **CASIM_SER**, a compile-time setting with no runtime switch: 1 as built, 0 compiles the route out (the boundary),
+  2 runs it alone (its own oracle). Nothing in the library reads the environment, and the build has no data or bss.
+- **Two of the doc's mutants are left out as unreachable**, each run against the checks below and surviving:
+  - taylor's "a result of order below 0": rule 7 has valued every typed part at A, so a pole at A is a typed hole, and
+    v only rises by literal zeros; the guard stays;
+  - "a t^-1 integrand integrated": f(u0) has a value (s_fval), u's order is 0 or more, and f' has a pole only at a
+    branch point (ASIN's ±1), where the integrand's order is v_w÷2 - 1, 0 or more for v_w of 2 or more (v_w = 1 is
+    Puiseux and gives up first); the guard stays.
+
+## Measured (the build, over faae625's library)
+
+- **S3 text: 233,299 B, +11,224 over 222,075** (10.96 KiB of the 12 KiB stop, 1,064 B under it), from the per-function
+  sections (text, literals and tables) of the same compile as the size table:
+
+  | Piece | B | In it |
+  |---|---|---|
+  | the series core | 4,851 | s_pow 1,154, s_pair 765, ser 699, s_add 444, s_mul 432, s_dint 339, s_new 256, s_scale 218, s_norm 180, the rest under 100 |
+  | **rule 8's bound** (the zero test) | **2,908** | s_eval 1,612, s_dsize 881, s_sign 122, s_lt 118, s_b 98, s_m 77 |
+  | s_fn on derive's walk | 1,320 | the prototype's, with derive's table inlined: 2,262 |
+  | the taylor driver, merged | 970 | taylor_ser 648, do_taylor +322 |
+  | the limit driver, merged | 1,105 | limit_ser 490, limit_side 231, do_limit +384 |
+  | functions the compiler moved | +70 | sm_q +61, chain -24, 57 others by 1 to 16 |
+
+  That leaves 28,845 of decision 80's 262,144 for the ratio shift and v1.0's margin.
+- **S3 frames:** casim_run 64 and casim_step 240 are unchanged, and there is no out-of-line canon; casim_taylor,
+  casim_limit and limit_ stay 48. do_taylor 304 → 336 and do_limit 208 → 240 (the route's call and the arena mark).
+  chain 64 → 48: moved by gcc's inlining, as on the prototype; a reach for small() through one wrapper didn't hold it.
+  It is smaller, and the gate's worst didn't move. New: ser 48 a level, s_eval 176 (8 levels at most), s_pow 176,
+  s_pair 128, s_dsize 112, limit_side 80, s_mul 80, s_fn 64, limit_ser 64, s_add 64. On the host, do_taylor 448 → 464
+  and do_limit 304 → 320 (the frame table re-recorded).
+- **The device (XIAO S3, both host and chip at 12,288 B):** DEVICE PASS, 1,322 cases, 0 different from the host. The
+  gate is unchanged: worst 11,360 masked (STU chain X^ 44 d) + 384 for interrupts = 11,744 of 12,288, 544 left. The
+  series rows' stacks peak at 5,168 B (SQRT(1+ nested 20, the bound 8 deep under 43 levels of the walk).
+- **Device times** (median of 15, casim_run as the calculator calls it). "Today" is the same 19 rows on the same chip
+  with the route compiled out (CASIM_SER=0), DEVICE PASS too:
+
+  | Row | today ms | today | build ms | build |
+  |---|---|---|---|---|
+  | EXP(SIN(X)) to 12 | 71.4 | NO_ROOM | 51.1 | OK |
+  | SIN(COS(X)) to 10 | 70.9 | NO_ROOM | 47.7 | OK |
+  | TAN(X) to 11, DEG | 167.1 | NO_ROOM | 207.3 | NO_ROOM |
+  | (SQRT(1+X))÷(2+X^2) to 11 | 98.6 | NO_ROOM | 70.4 | OK |
+  | (LN(1+X))×(TAN(X)) to 9 | 105.5 | NO_ROOM | 68.7 | OK |
+  | (EXP(K×X))÷(2+X^2) to 7, DEG | 85.2 | NO_ROOM | 50.0 | OK |
+  | ABS(X)^3 to 2 | 6.1 | UNDECIDED | 7.2 | OK |
+  | ABS(ATAN(X))^2 to 2 | 9.2 | UNDECIDED | 14.3 | OK |
+  | SQRT(X^2) to 1 | 2.9 | UNDECIDED | 4.3 | UNDEFINED |
+  | K×ABS(X) to 1 | 2.5 | UNDECIDED | 4.0 | UNDECIDED |
+  | ASIN(COS(X)) to 2 | 5.5 | UNDECIDED | 18.0 | UNDEFINED |
+  | SIN nested 40, to 3 | 45.3 | NO_ROOM | 108.6 | OK |
+  | ATAN nested 30, to 3 | 20.9 | NO_ROOM | 82.3 | OK |
+  | LN(1+ nested 20, to 2 | 35.7 | NO_ROOM | 74.7 | OK |
+  | SQRT(1+ nested 20, to 2 | 687.3 | NO_ROOM | 843.7 | NO_ROOM |
+  | limit 1÷X^2-1÷SIN(X)^2 at 0 | 59.3 | OK | 57.1 | OK |
+  | limit TAN(X)-1÷COS(X) at π÷2- | 279.5 | NO_ROOM | 138.6 | OK |
+  | limit ((1÷X)-SIN((1÷X)))×(X) at -∞, DEG | 98.3 | NO_ROOM | 49.5 | OK |
+  | limit SIN(K×(1÷X))×(2×X+1) at -∞ | 6.6 | UNDECIDED | 9.5 | OK |
+
+  - A NO_ROOM today costs two runs: casim_run runs the request again in →DEC form when the exact run fails (CAS 019
+    rule 5). Where the series route answers, that second run never happens, so most NO_ROOM rows answer faster than
+    they used to fail. The host shows the same through casim_run: EXP(SIN(X)) to 12 is 0.218 ms OK against 0.261 ms
+    NO_ROOM (casim_taylor alone, without the fallback: 0.215 against 0.125).
+  - Where both routes refuse, the fallback runs the series route too: SQRT(1+ nested 20 is the slowest series row,
+    843.7 ms (today 687.3), and the bench's second slowest case after factor's "f budget spent" (853.6 ms). (Its walk
+    decides a leading coefficient's sign by the bound at each of its 20 levels; how the 843.7 ms splits wasn't
+    measured.)
+  - The answered rows take 4 to 139 ms. 1÷X^2-1÷SIN(X)^2 answers on today's walk at 12,288 B (its least arena is
+    9,424 B; the build answers from 1,544 B).
+- **The golden corpus:** the moves listed in tests/golden/moved/cas-021.txt, byte for byte the prototype's (44 lines,
+  and 43 under →DEC), and 34 new lines from the bench's series rows, 26 of them the route's. Each of the route's 39
+  distinct answers there (moved or new) was checked outside the route: 21 are the derivative route's text exactly given
+  524,280 B; 6 match exact Fraction series
+  term for term ((1÷(2+X))÷(2+X^2) to 10 in DEG, (EXP(X))÷(2+X^2) to 12, (TAN(X))×(SQRT(1+X)) to 11,
+  (SQRT(1+X))÷(2+X^2) to 11 at both budgets, (ATAN(X))×(X×EXP(X)) to 12 in DEG over its 180÷π); the ABS and SQRT rows,
+  the three nests and the four limits by hand or closed form. The route's two new UNDEFINED lines are ABS's corner:
+  SQRT(X^2) is ABS(X), with no first derivative at 0, and ASIN(COS(X)) is π÷2-ABS(X) near 0 (its order 2 includes 1).
+- **Tests:**
+  - make check: series-golden.py (the corpus and →DEC with the route compiled out, byte for byte, with a control),
+    taylor-values.py plain and --forced (300 of 300 exact at 8,800, 12,288 and 65,536 B; faae625: 242 at 8,800),
+    limit-values.py plain and --forced (298 judged, 0 wrong; the route alone 252, 0 wrong, the rest UNDECIDED: the
+    asymptotic families out of scope), abs-sides.py (854 values and 316 UNDEFINED at each arena, 0 wrong, 0 UNDECIDED;
+    its control sees 138), doc-examples.py (645 rows, each again with the route compiled out: every row prints its
+    answer both ways but the 10 tests/golden/moved/cas-021-examples.txt lists with their NO_ROOM, UNDECIDED or
+    DECIMAL_FORM; added for the two mutants below).
+  - make test: 20 tests, 118,420 checks. series_test (the route alone on every taylor and limit golden line, judged by
+    the core): taylor 317 the same text and 17 equal in value, limit 382 and 2, 0 differ; and its 11 fixed rows.
+- **Mutants:** 367 of 367 caught, the 19 ser-* new (the doc's list but the two left out above). The full run (4 shards,
+  2.5 h) caught 363, left two ser-* unrun at shard 0's timeout, and didn't catch two old ones: CAS 016's
+  limit-sides-share-arena and CAS 019's fallback-flags-no-decimal. Each makes today's route refuse a row it answered,
+  016's limit (1-COS(2×X))^2÷X^4 and 019's SIN(X)×ASIN(X) at 8,600 B, and the series route answers that row with the
+  same text, so only the route-off build shows them; their rows were checked only through the shipped build.
+  doc-examples.py now runs every row with the route compiled out too, and the rerun of those four caught all four
+  (the two old ones on their own rows). Peak summed RSS 876,856 KiB (the rerun 460,280), clang containers 58.91 MiB,
+  tmpfs 0 (sampled through the rerun; the full run's, checked after it).
 
 ## Ruled by abacus (#9386)
 
