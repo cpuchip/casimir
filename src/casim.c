@@ -11921,9 +11921,13 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
         if (c.st != CASIM_OK || r.k == L_UND) c.st = was, r = lm(L_UND, 0);
     }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
-    if (r.k == L_FIN && L.lt) {                                     /* CAS 023 site 6: the answer's own */
+    if (L.lt && r.k != L_UND) {
+        /* CAS 023 site 6, the answer's own conditions, and site 7, f's constant factors' (1÷K in SIN(K×X)÷(K×X)):
+           the series route divides by them without a note (the walk's went with its arena), and its answer may
+           cancel them (2÷3 for 1÷X^2-1÷SIN(X)^2+SIN(K×X)÷(K×X) in the calculator's arena) */
         cdwalk W = {&L.C, var, 0, false};
-        cd_walk(&c, canon(&c, r.v), &W);
+        if (r.k == L_FIN) cd_walk(&c, canon(&c, r.v), &W);
+        cd_walk(&c, f, &W);
     }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
     if (L.C.n && r.k != L_UND) {

@@ -1125,7 +1125,8 @@ MUTANTS = {
                           "                    (void)0;")],
     "cond-site5-continuity": [("src/casim.c", "    if (ok && L->lt) lm_at_cd(c, f, L);                 /* CAS 023 site 5 */",
                                "    if (0) lm_at_cd(c, f, L);")],
-    "cond-site6-answer": [("src/casim.c", "        cd_walk(&c, canon(&c, r.v), &W);", "        (void)W;")],
+    "cond-site6-answer": [("src/casim.c", "        if (r.k == L_FIN) cd_walk(&c, canon(&c, r.v), &W);", "        (void)0;")],
+    "cond-site7-f": [("src/casim.c", "        cd_walk(&c, f, &W);\n    }", "        (void)0;\n    }")],
     "cond-divisor": [("src/casim.c", "    if (kind == K_BDIV) u = nd(c, r)->b;", "    if (0) u = nd(c, r)->b;")],
     "cond-corner": [("src/casim.c", "    else if (f_ && (id == F_INV || id == F_TAN || (W->corner && (id == F_ABS || id == F_SGN)))) u = nd(c, r)->a;",
                      "    else if (f_ && (id == F_INV || id == F_TAN)) u = nd(c, r)->a;")],
@@ -1144,15 +1145,15 @@ MUTANTS = {
     # rule 4, the implication: the same expression's > not kept; a > row not leaving out its ≠ (abacus #9493 (4))
     "cond-gt-not-kept": [("src/casim.c", "            if (op == '>') S->op[i] = '>';", "            (void)0;")],
     "cond-gt-says-not-ne": [("src/casim.c", "        if (said) continue;", "        (void)said;")],
-    # rule 2: rows only with a letter (abacus #9493 (4)), never on a refusal; the series route's answer without the walk's
+    # rule 2: rows only with a letter (abacus #9493 (4)), never on a refusal. Left out, run and surviving: lm_combine's give-back
+    # of an abandoned attempt's notes (a letter limit reaches lm_combine only through an ∞-∞ of known signs, which letters
+    # make unknown) and the series route's reset of the walk's notes (they point into the arena the route reuses, and
+    # site 7 notes what the route divides by); 48 rows aimed at both, at two arenas, route on and off, 192 runs: 0 differ
     "cond-letter-free-walk": [("src/casim.c", "    if (c.st == CASIM_OK && !w.full && raw_letter(&c, raw, var)) {",
                                "    if (c.st == CASIM_OK && !w.full && raw) {")],
     "cond-letter-free-row": [("src/casim.c", "    if (c->st != CASIM_OK || contains(c, e, var) || !any_letter(c, e)) return;",
                               "    if (c->st != CASIM_OK || contains(c, e, var)) return;")],
     "cond-rows-on-refusal": [("src/casim.c", "    if (L.C.n && r.k != L_UND) {", "    if (L.C.n) {")],
-    "cond-combine-keeps": [("src/casim.c", "    while (L->C.n && (size_t)L->C.e[L->C.n - 1] * 8u >= mark) L->C.n--;     /* CAS 023: an abandoned attempt's */",
-                            "    (void)0;")],
-    "cond-series-keeps": [("src/casim.c", "        L.C.n = 0;                      /* CAS 023: the walk's conditions went with it */", "        (void)0;")],
     # rule 6, the sums: the refusal off, and applied to i^K and to a number base
     "cond-sums-off": [("src/casim.c", "            if (!is_num(c, base) && !any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;",
                        "            (void)0;")],

@@ -3,7 +3,9 @@
 # (CAS 022 rule 5). Each printed answer was checked against the truth before it was written here.
 
 # - Rule 2, limit: L'Hôpital divides by K (site 2), lm_quot by a letter's value (site 1), the sides apart (site 4),
-#   f's value at the point (site 5, one-sided too), the answer's own denominator (site 6)
+#   f's value at the point (site 5, one-sided too), the answer's own denominator (site 6). (K×SIN(X)÷X)÷(K+X) is site 1
+#   alone (K÷K is 1); in the calculator's arena the walk runs out on 1÷X^2-1÷SIN(X)^2, the series route answers, and
+#   f's own constant factor 1÷K gives the row (site 7: the route divides by it without a note)
 | Command | Prints |
 |---|---|
 | `casim limit 'SIN(K×X)÷(K×X)' X 0 '' RAD` | `1; K≠0` |
@@ -13,6 +15,8 @@
 | `casim limit 'SIN(X)÷((K-1)×X)' X 0 '' RAD` | `1÷(K-1); K≠1` |
 | `casim limit 'SQRT(X^2+1)÷(K×X)' X ∞ '' RAD` | `1÷K; K≠0` |
 | `casim limit '(X-SIN(X))÷SIN(K×X)' X 0 '' DEG` | `-(π-180)÷K÷π; K≠0` |
+| `casim limit '(K×SIN(X)÷X)÷(K+X)' X 0 '' RAD` | `1; K≠0` |
+| `casim --arena 12288 limit '(1÷X^2-1÷SIN(X)^2)+SIN(K×X)÷(K×X)' X 0 '' RAD` | `2÷3; K≠0` |
 
 # - Rule 4, domains: LN's and a root's argument > 0, solved for the letter
 | Command | Prints |
@@ -44,6 +48,7 @@
 | `casim taylor 'LN(K+X)÷(K^2+X)' X 0 0 RAD` | `LN(K)÷K^2; K>0` |
 | `casim taylor 'LN(2+X)+1÷(K+X)' X 0 0 RAD` | `LN(2)+1÷K; K≠0` |
 | `casim limit 'SIN(K×X)÷(K×X)+K÷X' X 0 + RAD` | `UNDECIDED` |
+| `casim limit '(1-COS(K×X))÷(K×X^3)' X 0 + RAD` | `UNDECIDED` |
 
 # - Controls: answers right for every K carry no row; letter-free answers are 022's
 | Command | Prints |

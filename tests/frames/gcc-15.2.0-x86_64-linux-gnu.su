@@ -84,7 +84,7 @@ do_integrate	224
 do_iparts	272
 do_irational	400
 do_irsteps.isra	560
-do_limit	416
+do_limit	432
 do_partfrac	272
 do_poly	352
 do_psteps	336
