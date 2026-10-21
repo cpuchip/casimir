@@ -32,7 +32,8 @@ K or refuse.
    valued as K÷K, which canon makes 1 (it is -1 at K = 0). It needs each divisor's value there ≠ 0. The prototype first
    recorded this only at do_limit's top and missed the one-sided rows; it is recorded in lm_at's caller in the walk now.
 6. **The answer's own denominators.** canon factors a letter constant out of the typed input (SIN(X)÷(K×X) is
-   (1÷K)×SIN(X)÷X, SQRT(X^2+1)÷(K×X) at ∞ likewise) and the walk carries it: the answer 1÷K needs K≠0.
+   (1÷K)×SIN(X)÷X, SQRT(X^2+1)÷(K×X) at ∞ likewise) and the walk ~~carries it~~ (or, for the second, the series route)
+   carries it: the answer 1÷K needs K≠0.
 
 **Taylor (rule 7's letter cases).** Rule 7 values every part of the typed f at the point. Where a part's value holds a
 letter, today it is skipped, and the answer assumes it:
@@ -43,8 +44,10 @@ letter, today it is skipped, and the answer assumes it:
 
 Not sites: the refusals stay refusals (limit (K+X)÷X at 0 is UNDECIDED: ∞ or -∞ by K's sign, and a sign isn't a
 condition this unit states, as CAS 018 rule 4b's item 7 says for Σ A×K). The series route (021) runs only after a
-refusal, and its divisor test refuses a letter leading coefficient (s_sign of a letter is 0); no probe row reached an
-answer from it.
+refusal, and its divisor test refuses a letter leading coefficient (s_sign of a letter is 0); ~~no probe row reached an
+answer from it~~ (struck at the build: limit SQRT(X^2+1)÷(K×X) at ∞ is the route's answer, 1÷K, a constant canon
+factored out of the typed text; the walk refuses ∞ times a letter. Its row is site 6's, from the answer, which serves
+either path; the walk's notes are cleared when the route runs).
 
 ## Rules (proposed)
 

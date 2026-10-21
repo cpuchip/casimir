@@ -1,0 +1,56 @@
+# The golden lines CAS 023 (conditions shown under limit and taylor answers: work/023-conditions.md) moved. Each
+# line's inputs, then its status and answer before (CAS 022's follow-up, fc46c8b) and after. Putting every before back
+# gives fc46c8b's files byte for byte (their sha256 below), and every after is its before with condition rows after
+# "; " (scripts/conditions-golden.py, in make check). The 8 are letter limits over SIN(K×X), each gaining K≠0 (rule 2's
+# sites 1 and 2: L'Hôpital divides by K); under →DEC the same 8 inputs.
+# fc46c8b corpus.txt sha256 5704280da1d338010a6c07efc516b8f5ad0b77010d6e38ec170667b2ccca9213
+# fc46c8b decimal.txt sha256 1ed287cb53a806502acf27bd6a5cc5b00c9f09adedee325a2d8e51945cbb7568
+limit	35	23	0	35	8800	65536	(X-SIN(X))÷(SIN(K×X))	0	
+  before	OK	-(π-180)÷K÷π
+  after	OK	-(π-180)÷K÷π; K≠0
+limit	35	23	1	35	8800	65536	(EXP(X)-1)÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	8800	65536	(X^3+X)÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	65536	65536	(X-SIN(X))÷(SIN(K×X))	0	
+  before	OK	0
+  after	OK	0; K≠0
+limit	35	23	1	35	8800	65536	(1-COS(X))÷(SIN(K×X))	0	-
+  before	OK	0
+  after	OK	0; K≠0
+limit	33	23	0	33	65536	65536	(SQRT(1+X)-1)÷(SIN(K×X))	0	+
+  before	OK	90÷K÷π
+  after	OK	90÷K÷π; K≠0
+limit	35	23	2	35	8800	65536	(SIN(X))÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	8800	65536	(X-SIN(X))÷(SIN(K×X))	0	-
+  before	OK	0
+  after	OK	0; K≠0
+# Under →DEC (decimal.txt):
+limit	35	23	0	35	8800	65536	(X-SIN(X))÷(SIN(K×X))	0	
+  before	OK	-(π-180)÷K÷π
+  after	OK	-(π-180)÷K÷π; K≠0
+limit	35	23	1	35	8800	65536	(EXP(X)-1)÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	8800	65536	(X^3+X)÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	65536	65536	(X-SIN(X))÷(SIN(K×X))	0	
+  before	OK	0
+  after	OK	0; K≠0
+limit	35	23	1	35	8800	65536	(1-COS(X))÷(SIN(K×X))	0	-
+  before	OK	0
+  after	OK	0; K≠0
+limit	33	23	0	33	65536	65536	(SQRT(1+X)-1)÷(SIN(K×X))	0	+
+  before	OK	90÷K÷π
+  after	OK	90÷K÷π; K≠0
+limit	35	23	2	35	8800	65536	(SIN(X))÷(SIN(K×X))	0	
+  before	OK	1÷K
+  after	OK	1÷K; K≠0
+limit	35	23	1	35	8800	65536	(X-SIN(X))÷(SIN(K×X))	0	-
+  before	OK	0
+  after	OK	0; K≠0

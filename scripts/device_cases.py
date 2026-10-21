@@ -27,13 +27,14 @@ def main(path):
     for name, expr, var, angle, op, repl, model in measure.all_cases():
         args = measure.cli_args(expr, var, angle, op, repl, model)
         p = subprocess.run([measure.CLI, "--arena", arena or "65536"] + args, stdout=subprocess.PIPE, text=True)
-        first = p.stdout.strip().split("\n")[0].split(" ")[0] if p.stdout.strip() else ""
+        first = p.stdout.strip().split("\n")[0].split(" ")[0].rstrip(";") if p.stdout.strip() else ""   # UNDEFINED; K≠0
         status = 0 if p.returncode == 0 else STATUS.get(first)
         if status is None:
             print(f"skipped {name}: {p.stdout.strip()}")
             continue
         want = (p.stdout.rstrip("\n") if status == 0 else p.stdout.rstrip("\n")[8:] if status == 9   # PARTIAL: its text
-                else p.stdout.rstrip("\n").split("\n", 1)[1] if status == 14 else "")                 # DECIMAL_FORM's answer
+                else p.stdout.rstrip("\n").split("\n", 1)[1] if status == 14                          # DECIMAL_FORM's answer
+                else p.stdout.rstrip("\n")[11:] if status == 10 else "")      # UNDEFINED's rows (CAS 023), after "; "
         if len(want.encode()) >= 16000:
             print(f"skipped {name}: its {len(want.encode())}-byte text exceeds the bench's buffer")
             continue

@@ -539,6 +539,17 @@ past decimal128's range (EXP(-20000)) is no value computed, so it decides nothin
 part sizes a constant 8 levels deep, so a deeper one (LN(2+LN(2+…)) nested 21 times, at 0) is UNDECIDED. A fold that
 only rewrites (ABS and SGN of a constant) keeps the function when the sign isn't decided.
 
+**Conditions (CAS 023, work/023-conditions.md).** Other letters are constants, and an answer that holds only where a
+letter expression isn't 0 is given with that condition as a row after "; ", as sum prints its rows: taylor 1÷(K+X) at
+0 is `1÷K-X÷K^2; K≠0`. LN's, LOG's and SQRT's argument and a fractional power's base must be above 0 (`K>0`, which
+says K≠0 too). A row is solved for its letter where that is plain (`K≠1`; `K≠-1; K≠1` for K^2-1; `K<1` for LN(1-K+X);
+none for K^2+1, never 0), and otherwise written as canon prints it (`COS(K)≠0` for TAN's pole). taylor's rows come from
+the typed text at A, as its rule 7 reads it: a divisor, ABS's and SGN's corner, TAN's pole, LN's, LOG's and SQRT's
+argument. limit's come from its walk: each division by a letter's value, the two sides apart (UNDEFINED with its rows),
+and the answer's own denominators. A sign isn't a condition: an answer that flips with a letter's sign (X^K at 0+,
+EXP(K×X) at ∞) stays UNDECIDED. The text is read as canon reads it, before any decision: SIN(K×X)÷SIN(K×X) is 1, so its
+limit at 0 is 1, with no row. More than 8 rows is NO_ROOM, and an answer with its rows past 191 bytes TOO_LONG.
+
 Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
 1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
 calculator. EXP(SIN(X))'s eighth derivative is 416 bytes as text, so it reaches order 9 in a 16,384-byte arena and not
@@ -557,6 +568,8 @@ don't answer even in 1 MiB with 1,024-byte buffers (X^3 inside, order 9 or 10).
 | Command | Prints |
 |---|---|
 | `casim taylor 'SIN(X)' X 0 7 RAD` | `X-X^3÷6+X^5÷120-X^7÷5040` |
+| `casim taylor '1÷(K+X)' X 0 1 RAD` | `1÷K-X÷K^2; K≠0` |
+| `casim taylor 'LN(K+X)' X 0 1 RAD` | `LN(K)+X÷K; K>0` |
 | `casim taylor 'LN(X)' X 1 4 RAD` | `(X-1)-(X-1)^2÷2+(X-1)^3÷3-(X-1)^4÷4` |
 | `casim taylor 'COS(X)' X 'π÷3' 3 RAD` | `1÷2-(X-π÷3)×SQRT(3)÷2-(X-π÷3)^2÷4+(X-π÷3)^3×SQRT(3)÷12` |
 | `casim taylor '1÷(1-X)' X -2 3 RAD` | `1÷3+(X+2)÷9+(X+2)^2÷27+(X+2)^3÷81` |
@@ -602,7 +615,8 @@ the walk's orders, leading terms and quotients, and the two sides' agreement, re
 bound can't decide.
 
 Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
-SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). UNDECIDED means the walk
+SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). With a letter it can be
+proven only for some values: then out holds the condition rows (K×ABS(X)÷X at 0 is `UNDEFINED; K≠0`, CAS 023). UNDECIDED means the walk
 couldn't decide: more than 12 L'Hôpital steps, an ∞-∞ the rewrites don't resolve, a damped oscillation (SIN(X)÷X at ∞
 is 0, but by the squeeze theorem, which the walk doesn't have), or a form it doesn't cover. NOT_DIFFERENTIABLE: a name
 derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a letter in A, a side other than `+`, `-` and
@@ -625,6 +639,8 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
+| `casim limit 'SIN(K×X)÷(K×X)' X 0 '' RAD` | `1; K≠0` |
+| `casim limit 'K×ABS(X)÷X' X 0 '' RAD` | `UNDEFINED; K≠0` |
 | `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `1÷2` |
 
 ### sum: a sum in closed form, or exactly
@@ -639,7 +655,9 @@ is expanded, with the telescoped fractions kept as they are.
 
 To ∞, |B| < 1 converges and a telescoping class always does; Σ 1÷(K×(K+1)) from 1 is 1. A sum that grows is `∞` or
 `-∞`, as limit prints them; UNDEFINED where the partial sums swing ((-1)^K, (-2)^K), as limit's "no limit"; UNDECIDED
-on a tie (2^K+(-2)^K) or a sign it can't tell (A×K). UNDEFINED also for a pole in the range: Σ 1÷(K×(K+1)) from 0, and
+on a tie (2^K+(-2)^K) or a sign it can't tell (A×K), and for a constant ratio whose sign isn't decided (CAS 023: 1 plus
+an identity scaled to 10^30, 1+10^30×SIN(1)^2+10^30×COS(1)^2-10^30, is 1.0002 against a bound of 2).
+UNDEFINED also for a pole in the range: Σ 1÷(K×(K+1)) from 0, and
 Σ 1÷(K-5) from 1 to N, which has a value for N < 5 but not for any N past it.
 
 A letter in the ratio (Σ X^K) is answered with its condition, as rows after the answer, as CANCEL prints the values
@@ -705,7 +723,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 
 | Value | Status | Means | out holds |
 |---|---|---|---|
-| 0 | OK | the answer | the answer |
+| 0 | OK | the answer | the answer, with its condition rows after "; " (sum, taylor, limit) |
 | 1 | SYNTAX | the text cannot be read | the character offset of the first error |
 | 2 | NOT_DIFFERENTIABLE | derive met a name it cannot differentiate (or subst would copy a draw) | the name |
 | 3 | TOO_LONG | the answer does not fit: past cap, or past 191 bytes where the operation has that bound | "" |
@@ -715,7 +733,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 | 7 | NOT_NUMERIC | the same: a coefficient that is not an exact rational | "" |
 | 8 | NOT_INTEGRABLE | integrate and defint: not a form in the table, or the check did not close | "" |
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
-| 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "" |
+| 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "", or limit's condition rows (CAS 023) |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
 | 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered), nor the series route; never "no limit". taylor: an SGN(0) it can't decide, nor the series route a sign. taylor, limit and sum: a constant whose sign or zero the error bound can't decide, or whose value is past the range (CAS 022) | "" |
 | 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |

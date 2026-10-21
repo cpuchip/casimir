@@ -1115,6 +1115,51 @@ MUTANTS = {
                                  "            if (!sg && !any_letter(c, a)) sg = 1;\n            if (sg) return sg > 0 ? a : neg(c, a);")],
     # 022's follow-up (abacus #9481/#9482): lm_quot divides by a residue again (L'Hôpital's 1÷Z)
     "sign-quot-residue": [("src/casim.c", "            if (sd == 2 && !any_letter(c, ld.v)) return lm(L_UND, 0);  /* CAS 022: a residue isn't a divisor */\n", "")],
+    # CAS 023 (work/023-conditions.md): each site's row not noted (site 3, the ∞ leading terms, isn't reached: the walk
+    # refuses ∞ times a letter first, so its mutant is left out)
+    "cond-site1-quot": [("src/casim.c", "                    if (sd == 2) lm_note(c, L, ld.v, '!');           /* CAS 023 site 1 */",
+                         "                    (void)0;")],
+    "cond-site2-lhopital": [("src/casim.c", "            if (c->st == CASIM_OK && L->lt) {                 /* CAS 023 site 2: d' over the line */",
+                             "            if (0) {")],
+    "cond-site4-sides": [("src/casim.c", "                    lm_note(&c, &L, add2(&c, up.v, ib_neg(&c, dn.v)), '!');   /* CAS 023 site 4: the sides apart */",
+                          "                    (void)0;")],
+    "cond-site5-continuity": [("src/casim.c", "    if (ok && L->lt) lm_at_cd(c, f, L);                 /* CAS 023 site 5 */",
+                               "    if (0) lm_at_cd(c, f, L);")],
+    "cond-site6-answer": [("src/casim.c", "        cd_walk(&c, canon(&c, r.v), &W);", "        (void)W;")],
+    "cond-divisor": [("src/casim.c", "    if (kind == K_BDIV) u = nd(c, r)->b;", "    if (0) u = nd(c, r)->b;")],
+    "cond-corner": [("src/casim.c", "    else if (f_ && (id == F_INV || id == F_TAN || (W->corner && (id == F_ABS || id == F_SGN)))) u = nd(c, r)->a;",
+                     "    else if (f_ && (id == F_INV || id == F_TAN)) u = nd(c, r)->a;")],
+    "cond-tan-not-cos": [("src/casim.c", "    if (f_ && id == F_TAN) u = fn(c, F_COS, u);", "    (void)0;")],
+    "cond-domain-as-ne": [("src/casim.c", "    else if (f_ && (id == F_LN || id == F_LOG || id == F_SQRT)) u = nd(c, r)->a, op = '>';",
+                           "    else if (f_ && (id == F_LN || id == F_LOG || id == F_SQRT)) u = nd(c, r)->a;")],
+    "cond-root-as-ne": [("src/casim.c", "            u = nd(c, r)->a, op = val(c, e)->q != 1 ? '>' : '!';", "            u = nd(c, r)->a, op = '!';")],
+    # rule 3, the rows written
+    "cond-product-unsplit": [("src/casim.c", "        for (int i = 0; i < nd(c, e)->n; i++) cd_ne(c, rows, n, list(c, nd(c, e)->a)[i]);",
+                              "        sm_row(c, rows, n, e, '!', small(c, C_0), 26);")],
+    "cond-unsolved": [("src/casim.c", "    if (!cd_mono(c, e, &k, &L, &m, &c0)) {\n        sm_row(c, rows, n, e, '!', small(c, C_0), 26);",
+                       "    if (1) {\n        sm_row(c, rows, n, e, '!', small(c, C_0), 26);")],
+    "cond-root-sign": [("src/casim.c", "    if (m % 2) sm_row(c, rows, n, leaf(c, K_VAR, L), '!', t.p < 0 ? ib_canon(c, ib_neg(c, u)) : u, L);",
+                        "    if (m % 2) sm_row(c, rows, n, leaf(c, K_VAR, L), '!', t.p < 0 ? u : ib_canon(c, ib_neg(c, u)), L);")],
+    "cond-square-gt": [("src/casim.c", "        if (k.p > 0 && t.p == 0) {", "        if (0) {")],
+    # rule 4, the implication: the same expression's > not kept; a > row not leaving out its ≠ (abacus #9493 (4))
+    "cond-gt-not-kept": [("src/casim.c", "            if (op == '>') S->op[i] = '>';", "            (void)0;")],
+    "cond-gt-says-not-ne": [("src/casim.c", "        if (said) continue;", "        (void)said;")],
+    # rule 2: rows only with a letter (abacus #9493 (4)), never on a refusal; the series route's answer without the walk's
+    "cond-letter-free-walk": [("src/casim.c", "    if (c.st == CASIM_OK && !w.full && raw_letter(&c, raw, var)) {",
+                               "    if (c.st == CASIM_OK && !w.full && raw) {")],
+    "cond-letter-free-row": [("src/casim.c", "    if (c->st != CASIM_OK || contains(c, e, var) || !any_letter(c, e)) return;",
+                              "    if (c->st != CASIM_OK || contains(c, e, var)) return;")],
+    "cond-rows-on-refusal": [("src/casim.c", "    if (L.C.n && r.k != L_UND) {", "    if (L.C.n) {")],
+    "cond-combine-keeps": [("src/casim.c", "    while (L->C.n && (size_t)L->C.e[L->C.n - 1] * 8u >= mark) L->C.n--;     /* CAS 023: an abandoned attempt's */",
+                            "    (void)0;")],
+    "cond-series-keeps": [("src/casim.c", "        L.C.n = 0;                      /* CAS 023: the walk's conditions went with it */", "        (void)0;")],
+    # rule 6, the sums: the refusal off, and applied to i^K and to a number base
+    "cond-sums-off": [("src/casim.c", "            if (!is_num(c, base) && !any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;",
+                       "            (void)0;")],
+    "cond-sums-i": [("src/casim.c", "            if (!is_num(c, base) && !any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;",
+                     "            if (!is_num(c, base) && !any_letter(c, base)) c->st = CASIM_UNDECIDED;")],
+    "cond-sums-number": [("src/casim.c", "            if (!is_num(c, base) && !any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;",
+                          "            if (!any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;")],
 }
 
 

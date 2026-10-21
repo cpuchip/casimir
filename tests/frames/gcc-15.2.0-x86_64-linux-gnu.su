@@ -39,6 +39,14 @@ casim_subst	64
 casim_sum	80
 casim_taylor	80
 casim_version	8
+cd_at	64
+cd_mono	16
+cd_ne	192
+cd_note	80
+cd_print	336
+cd_root	80
+cd_roots	80
+cd_walk	48
 centroid	144
 chain	112
 check_rewrite.part.0	112
@@ -76,7 +84,7 @@ do_integrate	224
 do_iparts	272
 do_irational	400
 do_irsteps.isra	560
-do_limit	336
+do_limit	416
 do_partfrac	272
 do_poly	352
 do_psteps	336
@@ -85,8 +93,8 @@ do_solve	400
 do_ssteps	496
 do_subst	240
 do_sum	160
-do_sum_	816
-do_taylor	464
+do_sum_	800
+do_taylor	512
 edge_tol	112
 emit	8
 esym	32
@@ -108,7 +116,6 @@ horner	8
 i64_abn	96
 i64_text	48
 ib	240
-ib_at	32
 ib_bad	48
 ib_body.constprop	192
 ib_cands	64
@@ -204,12 +211,14 @@ lin_term.isra	48
 linear	16
 literal	336
 lm_at	80
+lm_at_cd	48
 lm_combine	112
 lm_dominant	128
 lm_func	112
 lm_inf_minus_inf	128
 lm_lead	16
 lm_lead_in	192
+lm_note	8
 lm_prod	160
 lm_quot	160
 lm_root	8
@@ -319,6 +328,7 @@ rat_mul	16
 rat_pow	96
 rational_root	240
 raw_has_var	48
+raw_letter.part.0	48
 raw_print.isra	64
 raw_side	32
 rdeg	8
@@ -329,6 +339,7 @@ reduce_to	48
 removed_rows	288
 repeated_factors	464
 root_after	80
+rows_put	80
 rule_of	32
 run_base	8
 s_add	128

@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     case CASIM_NOT_NUMERIC: printf("NOT_NUMERIC\n"); break;
     case CASIM_NOT_INTEGRABLE: printf("NOT_INTEGRABLE\n"); break;
     case CASIM_PARTIAL: printf("PARTIAL %s\n", out); break;
-    case CASIM_UNDEFINED: printf("UNDEFINED\n"); break;
+    case CASIM_UNDEFINED: printf("UNDEFINED%s%s\n", *out ? "; " : "", out); break;     /* CAS 023: its rows */
     case CASIM_IMPROPER: printf("IMPROPER\n"); break;
     case CASIM_UNDECIDED: printf("UNDECIDED\n"); break;
     case CASIM_NO_CLOSED_FORM: printf("NO_CLOSED_FORM\n"); break;

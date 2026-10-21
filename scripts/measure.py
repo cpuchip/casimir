@@ -375,6 +375,19 @@ def all_cases():
             ("sign TAN(Z+π÷2+X) to 1", "TAN(" + Z + "+π÷2+X)", "RAD", "taylor", "0|1"),
             ("sign 1÷(EXP(-20000)+X) to 1", "1÷(EXP(-20000)+X)", "RAD", "taylor", "0|1")]:
         rows.append((name, expr, "X", angle, op, repl, "35"))
+    # CAS 023: conditions shown under the answer. The deepest letter inputs that still answer: taylor's typed-f walk
+    # down a 40-deep chain to 1÷(K+X), and limit's walk down 36 SINs to L'Hôpital's K (work/023-conditions.md,
+    # abacus #9493's condition 3); UNDEFINED with its rows, a pole's and a domain's rows, and rule 6's sums
+    Z30 = "(10^30×SIN(1)^2+10^30×COS(1)^2-10^30)"
+    for name, expr, var, op, repl in [
+            ("cond (1÷(K+X)+X) chain 40 to 0", "(" * 40 + "1÷(K+X)" + "+X)" * 40, "X", "taylor", "0|0"),
+            ("cond SIN nest 36 of SIN(K×X)÷(K×X)", "SIN(" * 36 + "SIN(K×X)÷(K×X)" + ")" * 36, "X", "limit", "0|"),
+            ("cond K×ABS(X)÷X", "K×ABS(X)÷X", "X", "limit", "0|"),
+            ("cond (K^2-1)×ABS(X)÷X", "(K^2-1)×ABS(X)÷X", "X", "limit", "0|"),
+            ("cond TAN(K+X) to 1", "TAN(K+X)", "X", "taylor", "0|1"),
+            ("cond LN(K+X) to 1", "LN(K+X)", "X", "taylor", "0|1"),
+            ("cond (1+Z30)^K", "(1+" + Z30 + ")^K", "K", "sum", "0|N")]:
+        rows.append((name, expr, var, "RAD", op, repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

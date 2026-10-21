@@ -2,7 +2,8 @@
 # prints with the series route compiled out (CASIM_SER=0, build/casim-ser0). Every other row prints its doc answer both
 # ways (scripts/doc-examples.py, in make check), so a fault in today's routes stays seen where the series route would
 # answer in its place. Rule 1: a row moves only from NO_ROOM or UNDECIDED, or from a DECIMAL_FORM whose exact run was
-# NO_ROOM. 10 rows: language.md's three series examples, six of 016's, one of 019's.
+# NO_ROOM. 11 rows: language.md's three series examples, six of 016's, one of 019's, and one of CAS 023's (its 1÷K is
+# the route's, from a constant canon factored out of the typed text; the walk refuses ∞ times a letter).
 docs/language.md	taylor 'EXP(SIN(X))' X 0 8 RAD
   off	NO_ROOM
 docs/language.md	taylor 'ABS(X)^2' X 0 2 RAD
@@ -23,3 +24,5 @@ work/016-examples.txt	taylor "X×SQRT(X^2)" X 0 1 RAD
   off	UNDECIDED
 work/019-examples.txt	--arena 8800 --cap 192 taylor "(SQRT(1+X))×(EXP(X))" X 0 11 GRAD
   off	DECIMAL_FORM / 1+1.5×X+0.875×X^2+17×X^3÷48+0.0859375×X^4+107×X^5÷3840-89×X^6÷46080+1123×X^7÷215040-39551×X^8÷10321920+88853×X^9÷26542080-3584467×X^10÷1238630400+207686657×X^11÷81749606400
+work/023-examples.txt	limit 'SQRT(X^2+1)÷(K×X)' X ∞ '' RAD
+  off	UNDECIDED

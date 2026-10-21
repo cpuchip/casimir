@@ -1,0 +1,73 @@
+# CAS 023's examples (work/023-conditions.md): conditions shown under limit and taylor answers. Each row is run by
+# scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the value check's build
+# (CAS 022 rule 5). Each printed answer was checked against the truth before it was written here.
+
+# - Rule 2, limit: L'Hôpital divides by K (site 2), lm_quot by a letter's value (site 1), the sides apart (site 4),
+#   f's value at the point (site 5, one-sided too), the answer's own denominator (site 6)
+| Command | Prints |
+|---|---|
+| `casim limit 'SIN(K×X)÷(K×X)' X 0 '' RAD` | `1; K≠0` |
+| `casim limit 'X÷(K×X+X^2)' X 0 '' RAD` | `1÷K; K≠0` |
+| `casim limit '(K^2-1)×ABS(X)÷X' X 0 '' RAD` | `UNDEFINED; K≠-1; K≠1` |
+| `casim limit '(K+X)÷(K-X)' X 0 + RAD` | `1; K≠0` |
+| `casim limit 'SIN(X)÷((K-1)×X)' X 0 '' RAD` | `1÷(K-1); K≠1` |
+| `casim limit 'SQRT(X^2+1)÷(K×X)' X ∞ '' RAD` | `1÷K; K≠0` |
+| `casim limit '(X-SIN(X))÷SIN(K×X)' X 0 '' DEG` | `-(π-180)÷K÷π; K≠0` |
+
+# - Rule 4, domains: LN's and a root's argument > 0, solved for the letter
+| Command | Prints |
+|---|---|
+| `casim limit 'LN(K+X)' X 0 '' RAD` | `LN(K); K>0` |
+| `casim limit 'LN(K+SIN(X)÷X)' X 0 '' RAD` | `LN(K+1); K>-1` |
+
+# - Rule 2, taylor: rule 7's letter cases over the typed f at the point (a divisor, the corner, TAN's pole, a domain).
+#   K×X÷K is K≠0 because the typed f is 0÷0 at K = 0 (rule 7 reads it as typed); 1÷(K^2+1+X) has no row (never 0)
+| Command | Prints |
+|---|---|
+| `casim taylor '1÷(K+X)' X 0 1 RAD` | `1÷K-X÷K^2; K≠0` |
+| `casim taylor 'ABS(K+X)' X 0 1 RAD` | `ABS(K)+X×SGN(K); K≠0` |
+| `casim taylor 'TAN(K+X)' X 0 1 RAD` | `TAN(K)+X÷COS(K)^2; COS(K)≠0` |
+| `casim taylor 'LN(K+X)' X 0 1 RAD` | `LN(K)+X÷K; K>0` |
+| `casim taylor 'SQRT(K^2+X)' X 0 1 RAD` | `SQRT(K^2)+X÷2÷SQRT(K^2); K≠0` |
+| `casim taylor 'LN(1-K+X)' X 0 1 RAD` | `LN(-K+1)-X÷(K-1); K<1` |
+| `casim taylor '(K+X)^(1÷3)' X 0 1 RAD` | `K^(1÷3)+X÷3÷K^(2÷3); K>0` |
+| `casim taylor 'K×X÷K' X 0 1 RAD` | `X; K≠0` |
+| `casim taylor '1÷(X-K)' X 1 1 RAD` | `-1÷(K-1)-(X-1)÷(K-1)^2; K≠1` |
+| `casim taylor '1÷(K+X)+1÷(L+X)' X 0 0 RAD` | `1÷K+1÷L; K≠0; L≠0` |
+| `casim taylor '1÷(K^2+1+X)' X 0 1 RAD` | `1÷(K^2+1)-X÷(K^2+1)^2` |
+
+# - Rule 4's implication: one expression noted ≠ 0 and > 0 is one row, > (LN(K+X)÷(K+X)); K^2≠0's K≠0 beside LN's K>0 is
+#   left out (said); a letter-free part makes no row (LN(2+X)); a refusal prints none, though the walk noted K≠0 first
+| Command | Prints |
+|---|---|
+| `casim taylor 'LN(K+X)÷(K+X)' X 0 1 RAD` | `LN(K)÷K+X×(1÷K^2-LN(K)÷K^2); K>0` |
+| `casim taylor 'LN(K+X)÷(K^2+X)' X 0 0 RAD` | `LN(K)÷K^2; K>0` |
+| `casim taylor 'LN(2+X)+1÷(K+X)' X 0 0 RAD` | `LN(2)+1÷K; K≠0` |
+| `casim limit 'SIN(K×X)÷(K×X)+K÷X' X 0 + RAD` | `UNDECIDED` |
+
+# - Controls: answers right for every K carry no row; letter-free answers are 022's
+| Command | Prints |
+|---|---|
+| `casim limit 'SIN(K×X)÷X' X 0 '' RAD` | `K` |
+| `casim limit 'COS(K×X)' X 0 '' RAD` | `1` |
+| `casim limit 'ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
+| `casim taylor 'EXP(K×X)' X 0 2 RAD` | `1+K×X+K^2×X^2÷2` |
+
+# - Ruled #9493: an answer that flips with K's sign refuses (condition 1); canon's reading of the typed input carries no
+#   row (question 3: SIN(K×X)÷SIN(K×X) is read as 1); past the sums' 8 rows, NO_ROOM
+| Command | Prints |
+|---|---|
+| `casim limit 'X^K' X 0 + RAD` | `UNDECIDED` |
+| `casim limit 'EXP(K×X)' X ∞ '' RAD` | `UNDECIDED` |
+| `casim limit 'K^X' X ∞ '' RAD` | `UNDECIDED` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1` |
+| `casim taylor '1÷((K-1)×(K-2)×(K-3)×(K-4)×(K-5)×(K-6)×(K-7)×(K-8)×(K-9)+X)' X 0 0 RAD` | `NO_ROOM` |
+
+# - Rule 6, the sums (abacus #9480): a real constant ratio whose sign isn't decided refuses (UNDECIDED, where partfrac's
+#   64-bit reading said NO_ROOM); a number's and i's are unchanged
+| Command | Prints |
+|---|---|
+| `casim sum '(1+(10^30×SIN(1)^2+10^30×COS(1)^2-10^30))^K' K 0 N RAD` | `UNDECIDED` |
+| `casim sum '(1-(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×10^40)^K' K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum 'i^K' K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum '0^(K+1)' K 0 N RAD` | `NO_CLOSED_FORM` |

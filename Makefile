@@ -46,6 +46,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/golden-control.sh
 	scripts/series-golden.py
 	scripts/signs-golden.py
+	scripts/conditions-golden.py
 	build/golden_check-vcheck tests/golden/corpus.txt
 	scripts/decimal-golden.py build/golden_check-vcheck
 	scripts/complex-golden.py build/golden_check-vcheck
@@ -55,6 +56,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/typed-values.py
 	scripts/doc-examples.py
 	scripts/log-values.py
+	scripts/letter-values.py
 	scripts/step-values.py
 	scripts/istep-values.py
 	scripts/ssteps-values.py
