@@ -34,13 +34,16 @@
 |---|---|
 | `casim sum 'K×(1+10^25×(SIN(1)^2+COS(1)^2-1))^K' K 0 N RAD` | `NO_CLOSED_FORM` |
 
-# - Rule 3: the two sides; letter-free sides whose difference isn't decided refuse; with a letter, as before (#9413)
+# - Rule 3: the two sides; letter-free sides whose difference isn't decided refuse; with a letter, as before (#9413).
+#   The last two have sides S and 1, S = SIN(1)^2+COS(1)^2 (exactly 1): b282bbe said UNDEFINED, the truth is 1
 | Command | Prints |
 |---|---|
 | `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit 'ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
 | `casim limit 'K×ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
 | `casim limit '(SIN(1)^2+COS(1)^2-1)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '(SIN(1)^2+COS(1)^2)×(1+ABS(X)÷X)÷2+(1-ABS(X)÷X)÷2' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25+1)×(1+ABS(X)÷X)+(1-ABS(X)÷X)' X 0 '' RAD` | `UNDECIDED` |
 
 # - Rule 2, the folds: ABS of a constant whose sign isn't decided keeps the function (exact either way)
 | Command | Prints |

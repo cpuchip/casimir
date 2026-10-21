@@ -1095,8 +1095,8 @@ MUTANTS = {
                               "(cv == CV_OK && (s_eval(c, u, &x, &b, S_DEEP) != CV_OK")],
     "sign-hole-form": [("src/casim.c", "            if (!h && !any_letter(c, u) && !const_sign(c, u)) c->st = CASIM_UNDECIDED;",
                         "            (void)0;")],
-    "sign-zero-form": [("src/casim.c", "    if (!z && c->st == CASIM_OK && !any_letter(c, u) && !const_sign(c, u))\n        c->st = CASIM_UNDECIDED;",
-                        "    (void)0;")],
+    # (taylor_zero's undecided test is left out, as unreachable: taylor_hole's SGN test refuses first, and the corner
+    # path's const_sign refuses after it; work/022-signs.md "As built". Its guard stays.)
     "sign-range-notreal": [("src/casim.c", "           st == ABN_OVERFLOW || st == ABN_UNDERFLOW ? CV_NO : CV_NOTREAL;",
                             "           CV_NOTREAL;")],
     "sign-range-decides": [("src/casim.c", "            if (cv == CV_NO || (cv == CV_OK && (s_eval(c, u, &x, &b, 0)",
