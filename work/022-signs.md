@@ -251,7 +251,41 @@ traced by reading only (no golden row reaches them with a residue): 1.5–2.5 KB
   ser-zero-plain-value survived (As built). With their rows, both are caught (20:03–20:06Z, peak 276,464 KiB), and the
   new series_test row alone fails on ser-divisor-undecided.
 
+## After abacus's run (#9474)
+
+abacus ran h022 and the older sets on db19065 (#9468) and asked for two traces, one move and one row. The Measured
+section above stands as it was at db19065.
+
+- **A move this doc missed (abacus's find):** rule 1 decides the draft's own control, c = SIN(1)^2+COS(1)^2-1+10^-20.
+  At const_sign its value is 1E-20 against a bound of 5.1E-31, so it is positive. b282bbe's 1E-20 test refused it, since
+  |v| was not past 1E-20. taylor ABS(c+X) to 1 and ABS(c+X^2) to 2: b282bbe printed ABS(c)+X×SGN(c) (and X^2×SGN(c));
+  the build prints c+X (c+X^2). Both are right, and the build's is simpler. abacus measured the same constant gaining
+  answers on h022's V0651–V0656 (TOO_LONG, NO_CLOSED_FORM or UNDECIDED became an answer), all judged right. A control row
+  is in work/022-examples.txt.
+- **Strict's row where reverting it is wrong:** the rows that catch sign-strict-reverted (limit (c+X)÷X at 0 for Z1 and
+  the 10^10 and 10^15 identities, and the sides row) pin UNDECIDED, where the reverted build's answer is in fact right,
+  because those constants are exactly 0. New row: limit ((SIN(1)^2+COS(1)^2-1+10^-40)+X)÷X at 0. The constant is
+  10^-40, and its value rounds to exactly 0. The truth is no limit (UNDEFINED); b282bbe prints 1, the build UNDECIDED,
+  strict reverted 1. abacus's suggested (EXP(1)+10^-40)-EXP(1) cancels by form to the number 10^-40, which decides
+  itself (UNDEFINED in all three builds), so the row adds 10^-40 to an identity whose value rounds to exactly 1 instead.
+- **Why the sums with c's terms at 10^30 and past refuse NO_ROOM, not UNDECIDED** (abacus's Z30, Z40, Z25×10^20,
+  Z25×10^40; (1+c)^K to N and to ∞, (1-c)^K to ∞): it isn't rule 8's walk running out. Traced under gdb on a debug
+  build of db19065, all 12 forms end in partfrac's NO_ROOM, passed through by do_sum_. The path, followed step by step
+  for Z30: sums rule 3's sm_term asks const_sign for the base B = 1+c. Its value is 1.0002 against a bound of 2.05 (the
+  10^30-scale terms leave about four digits), so the sign isn't decided (ABS(1+c) keeps its ABS, for Z40 too), and
+  sm_term's guard for a constant base of undecided sign (the 0^(K+1) case) refuses the shape. sm_split then files the
+  term with the rational ones, and rule 5 hands (B^K)÷(1) to partfrac. Reading it as a polynomial (pw_power), partfrac
+  raises the rational 10 to the 30th, which overflows 64 bits: NO_ROOM, CAS 012's past-2^62 rule. partfrac does the same
+  on that text at b282bbe. Making it UNDECIDED would mean sm_term refusing a letter-free base of undecided sign itself,
+  rather than handing the term on; that is a change in the sums and is left for abacus to rule.
+
 ## Out of scope
+
+- **(abacus #9474, traced; the follow-up list)** A finite sum's terms are summed as written: sum 1÷c^K, K = 1 to 3,
+  with c exactly 0, prints the three terms, which divide by c (b282bbe the same). The path is do_sum_, sm_read (the
+  bounds) and sm_direct (K's values put in). Under gdb no census site, no const_val, no s_eval and no decimal arithmetic
+  at all runs in that command, so no sign or zero is decided there. It's the same as simplify printing 1÷c: an expression
+  rewritten, never asked whether it is defined.
 
 The letter rows (ruled #9428: their own unit, after this one). The series route's own decisions (CAS 021): its bound's walk becomes linear under
 rule 5, with the same values, so they don't change. The two-letter-ratio shift.

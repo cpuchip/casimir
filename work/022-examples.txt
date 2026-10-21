@@ -2,7 +2,8 @@
 # the series route compiled out (CAS 021) and through the value check's build (rule 5).
 # Z = 10^25×SIN(1)^2+10^25×COS(1)^2-10^25 is exactly 0 (it rounds to 2E-9); Z1 = SIN(1)^2+COS(1)^2-1 is exactly 0.
 
-# - Rule 1, limit (lm_sgn): a constant's sign only past its bound; strict, so a value that rounds to exactly 0 decides nothing
+# - Rule 1, limit (lm_sgn): a constant's sign only past its bound; strict, so a value that rounds to exactly 0 decides nothing.
+#   The sixth row's constant is 10^-40, not 0 (it rounds to exactly 0): its truth is no limit, and b282bbe printed 1
 | Command | Prints |
 |---|---|
 | `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
@@ -10,6 +11,7 @@
 | `casim limit '((10^10×SIN(1)^2+10^10×COS(1)^2-10^10)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '((10^15×SIN(1)^2+10^15×COS(1)^2-10^15)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '((SIN(1)^2+COS(1)^2-1)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((SIN(1)^2+COS(1)^2-1+10^-40)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim --arena 12288 limit '(TAN(SIN(X))-SIN(TAN(X))+(SIN(1)^2+COS(1)^2-1)×X^3)÷X^7' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '(SIN(1)+X)÷X' X 0 + RAD` | `∞` |
 
@@ -24,6 +26,7 @@
 | `casim taylor 'TAN((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+π÷2+X)' X 0 1 RAD` | `UNDECIDED` |
 | `casim taylor '1÷(SIN(1)+X)' X 0 1 RAD` | `1÷SIN(1)-X÷SIN(1)^2` |
 | `casim taylor 'ABS(X+1)' X 0 2 RAD` | `1+X` |
+| `casim taylor 'ABS((SIN(1)^2+COS(1)^2-1+10^-20)+X)' X 0 1 RAD` | `SIN(1)^2+COS(1)^2+1÷10^20-1+X` |
 
 # - Rule 2: past decimal128's range is no value computed, which decides nothing
 | Command | Prints |
