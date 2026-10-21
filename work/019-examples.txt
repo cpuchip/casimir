@@ -78,6 +78,7 @@
 # - Rule 5 as amended (abacus #8764): a fallback answer with no decimal in it is the text fractions would print, OK
 #   (ASIN's derivatives carry (5÷2) where →DEC's carry 2.5, so taylor's re-read texts take more room as fractions);
 #   when both runs fail, the fallback's status, 4f24e3e's, is the answer's; an E is a decimal (1E-15)
+#   (since CAS 021 the first is the series route's answer, so the fallback's is checked with the route compiled out)
 | `casim --arena 8600 --cap 192 taylor "SIN(X)×ASIN(X)" X 0 5 RAD` | `X^2` |
 | `casim --arena 4096 --cap 192 integrate "(0.5)÷((((7)÷(-4))^(SQ(0.5)))×((ABS(7))+((X)^(π))))" X RAD` | `NOT_INTEGRABLE` |
 | `casim --arena 4096 --cap 192 taylor "SQRT(1+X)×SIN(X)" X "π÷6" 7 RAD` | `TOO_LONG` |
