@@ -41,3 +41,9 @@
 | `casim limit 'ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
 | `casim limit 'K×ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
 | `casim limit '(SIN(1)^2+COS(1)^2-1)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
+
+# - Rule 2, the folds: ABS of a constant whose sign isn't decided keeps the function (exact either way)
+| Command | Prints |
+|---|---|
+| `casim simplify 'ABS((10^25×SIN(1)^2+10^25×COS(1)^2-10^25))' RAD` | `ABS(-10^25+SIN(1)^2×10^25+COS(1)^2×10^25)` |
+| `casim simplify 'ABS(SIN(1)-1)' RAD` | `-SIN(1)+1` |
