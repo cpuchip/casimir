@@ -266,8 +266,11 @@ section above stands as it was at db19065.
   the 10^10 and 10^15 identities, and the sides row) pin UNDECIDED, where the reverted build's answer is in fact right,
   because those constants are exactly 0. New row: limit ((SIN(1)^2+COS(1)^2-1+10^-40)+X)÷X at 0. The constant is
   10^-40, and its value rounds to exactly 0. The truth is no limit (UNDEFINED); b282bbe prints 1, the build UNDECIDED,
-  strict reverted 1. abacus's suggested (EXP(1)+10^-40)-EXP(1) cancels by form to the number 10^-40, which decides
-  itself (UNDEFINED in all three builds), so the row adds 10^-40 to an identity whose value rounds to exactly 1 instead.
+  strict reverted 1. abacus's suggested (EXP(1)+10^-40)-EXP(1) cancels by form to ~~the number 10^-40, which decides
+  itself~~ 10^-40, whose value decides it (lm_sgn sees 1E-40 against a bound of 9.8E-71; corrected the same hour: it isn't
+  a number there, as lm_sgn reached its walk) (UNDEFINED in all three builds), so the row ~~adds 10^-40 to an identity
+  whose value rounds to exactly 1 instead~~ puts 10^-40 into Z1's identity instead, where the rounding loses it: lm_sgn
+  sees the value exactly 0, against a bound of 5.1E-31 (measured; "rounds to exactly 1" was not).
 - **Why the sums with c's terms at 10^30 and past refuse NO_ROOM, not UNDECIDED** (abacus's Z30, Z40, Z25×10^20,
   Z25×10^40; (1+c)^K to N and to ∞, (1-c)^K to ∞): it isn't rule 8's walk running out. Traced under gdb on a debug
   build of db19065, all 12 forms end in partfrac's NO_ROOM, passed through by do_sum_. The path, followed step by step
