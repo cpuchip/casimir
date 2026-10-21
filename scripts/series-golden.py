@@ -5,7 +5,8 @@ what it was before the unit: every line byte for byte, and each line tests/golde
 before. The same for →DEC's file (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL OR'd into the angle), whose moves are
 the list's second section; its third lists the unit's new inputs the route answers. Each listed line must have moved
 from NO_ROOM or UNDECIDED (or a DECIMAL_FORM whose exact run was NO_ROOM), and its after must be the file's. The
-check's control: the corpus with one moved line left at its after must fail.
+check's control: the corpus with one moved line left at its after must fail. A later unit's moves in today's routes
+(CAS 022's, moved/cas-022.txt, checked by scripts/signs-golden.py) stand at their after here, as the files have them.
     scripts/series-golden.py"""
 import os
 import subprocess

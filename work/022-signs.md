@@ -54,8 +54,12 @@ as a hole. limit on the same constants already refuses (UNDECIDED).
      (rule 3) refuse;
    - the sums (CAS 018): sm_keeps and sm_term already take an undecided base as "not a positive constant" and fall to
      their routes' own refusals; sm_groups (a leading coefficient, B's sign) and B-1 (rule 4b's "decidably nonzero")
-     refuse; sm_cmpabs and sm_row read const_sign's 0 as "equal" today, so const_sign gets a third answer, undecided,
-     distinct from 0, and those two refuse on it. No golden row reaches the sums' sites with a residue; h022 will.
+     refuse. ~~sm_cmpabs and sm_row read const_sign's 0 as "equal" today, so const_sign gets a third answer~~ (corrected
+     at the build, by reading them: sm_cmpabs already returns 2 for equal by form and 0 for undecided, and sm_row only
+     orders the condition rows for printing), so const_sign keeps its two answers, a decided sign or 0 for not decided,
+     and every caller keeps its reading. No golden row reaches the sums' sites with a residue; h022 will, and so does
+     work/022-examples.txt's K×(1+10^25×Z1)^K (B-1 undecided: NO_CLOSED_FORM, where b282bbe went on to a closed form for
+     B ≠ 1 and ran out at TOO_LONG).
    - a range status (ABN_OVERFLOW, ABN_UNDERFLOW) is no value computed (CV_NO), not "not real"; at a decision on a
      letter-free part, no value refuses (taylor_hole), as measured in #9425 (variant B).
 3. **The sides (family 5).** Two finite one-sided limits whose forms differ: if both are letter-free and their

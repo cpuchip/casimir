@@ -1,0 +1,43 @@
+# CAS 022's examples (work/022-signs.md): signs decided by value. Each row is run by scripts/doc-examples.py, and again with
+# the series route compiled out (CAS 021) and through the value check's build (rule 5).
+# Z = 10^25×SIN(1)^2+10^25×COS(1)^2-10^25 is exactly 0 (it rounds to 2E-9); Z1 = SIN(1)^2+COS(1)^2-1 is exactly 0.
+
+# - Rule 1, limit (lm_sgn): a constant's sign only past its bound; strict, so a value that rounds to exactly 0 decides nothing
+| Command | Prints |
+|---|---|
+| `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X^2)÷X^2' X 0 + RAD` | `UNDECIDED` |
+| `casim limit '((10^10×SIN(1)^2+10^10×COS(1)^2-10^10)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((10^15×SIN(1)^2+10^15×COS(1)^2-10^15)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((SIN(1)^2+COS(1)^2-1)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim --arena 12288 limit '(TAN(SIN(X))-SIN(TAN(X))+(SIN(1)^2+COS(1)^2-1)×X^3)÷X^7' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '(SIN(1)+X)÷X' X 0 + RAD` | `∞` |
+
+# - Rule 1, taylor (taylor_hole, taylor_zero): a pole, a corner, TAN's pole, decided only past the bound
+| Command | Prints |
+|---|---|
+| `casim taylor '1÷((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor 'ABS((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor 'TAN((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+π÷2+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor '1÷(SIN(1)+X)' X 0 1 RAD` | `1÷SIN(1)-X÷SIN(1)^2` |
+| `casim taylor 'ABS(X+1)' X 0 2 RAD` | `1+X` |
+
+# - Rule 2: past decimal128's range is no value computed, which decides nothing
+| Command | Prints |
+|---|---|
+| `casim taylor '1÷(EXP(-20000)+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor 'EXP(20000)÷(1+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim limit '(EXP(20000)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+
+# - Rule 2, the sums: B-1 decidably nonzero (rule 4b of CAS 018), here an identity scaled past 10^20
+| Command | Prints |
+|---|---|
+| `casim sum 'K×(1+10^25×(SIN(1)^2+COS(1)^2-1))^K' K 0 N RAD` | `NO_CLOSED_FORM` |
+
+# - Rule 3: the two sides; letter-free sides whose difference isn't decided refuse; with a letter, as before (#9413)
+| Command | Prints |
+|---|---|
+| `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit 'ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
+| `casim limit 'K×ABS(X)÷X' X 0 '' RAD` | `UNDEFINED` |
+| `casim limit '(SIN(1)^2+COS(1)^2-1)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |

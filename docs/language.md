@@ -530,6 +530,15 @@ answer reached both ways is the same polynomial, though not always printed the s
 in the calculator's arena; what the series route can't reach (a fractional power of t, a logarithm's t^-1, a constant it
 can't decide) keeps the derivatives' NO_ROOM or UNDECIDED.
 
+**Signs decided by value (CAS 022, work/022-signs.md).** taylor, limit and sum decide a constant's sign, or whether it
+is 0, as the series route does: a number decides itself, a constant whose form is 0 is 0, and any other constant is
+nonzero only when its value is past 8 times the bound on its error; otherwise the operation is UNDECIDED. An exact zero
+the canon doesn't know, such as 10^25×SIN(1)^2+10^25×COS(1)^2-10^25, rounds to a small residue, and before CAS 022 it
+was taken for a number: a pole where there is none, a corner missed, a limit's two sides judged different. A value
+past decimal128's range (EXP(-20000)) is no value computed, so it decides nothing either. taylor's look at each typed
+part sizes a constant 8 levels deep, so a deeper one (LN(2+LN(2+…)) nested 21 times, at 0) is UNDECIDED. A fold that
+only rewrites (ABS and SGN of a constant) keeps the function when the sign isn't decided.
+
 Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
 1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
 calculator. EXP(SIN(X))'s eighth derivative is 416 bytes as text, so it reaches order 9 in a 16,384-byte arena and not
@@ -561,6 +570,9 @@ don't answer even in 1 MiB with 1,024-byte buffers (X^3 inside, order 9 or 10).
 | `casim taylor 'ABS(X)^2' X 0 2 RAD` | `X^2` |
 | `casim taylor 'SQRT(X^2)' X 0 1 RAD` | `UNDEFINED` |
 | `casim taylor 'K×ABS(X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor '1÷((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)' X 0 1 RAD` | `UNDECIDED` |
+| `casim taylor '1÷(SIN(1)+X)' X 0 1 RAD` | `1÷SIN(1)-X÷SIN(1)^2` |
+| `casim taylor '1÷(EXP(-20000)+X)' X 0 1 RAD` | `UNDECIDED` |
 
 ### limit: a limit at a point or at ±∞
 
@@ -585,7 +597,9 @@ Where the walk refuses (NO_ROOM or UNDECIDED), limit takes taylor's series route
 at X = A ± t as t^v × (c_0 + c_1×t + …), whose limit is 0 for v above 0, c_0 for v = 0, and ∞ or -∞ by c_0's decided
 sign for v below 0; at ∞ and -∞ the text at X = ±1÷t. Two sides must agree, as the walk's must. So 1÷X^2-1÷SIN(X)^2 at
 0 is -1÷3 in the calculator's arena, where L'Hôpital runs out of room. It has no asymptotic scales: X^13÷EXP(X) and
-LN(X)÷X at ∞ are the walk's, and SIN(X)÷X at ∞ stays UNDECIDED.
+LN(X)÷X at ∞ are the walk's, and SIN(X)÷X at ∞ stays UNDECIDED. A constant's sign is decided as in taylor (CAS 022):
+the walk's orders, leading terms and quotients, and the two sides' agreement, refuse (UNDECIDED) on a constant the
+bound can't decide.
 
 Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
 SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). UNDECIDED means the walk
@@ -608,6 +622,8 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit 'TAN(X)' X 'π÷2' - RAD` | `∞` |
 | `casim limit 'SIN(X)' X ∞ '' RAD` | `UNDEFINED` |
 | `casim limit 'SIN(X)÷X' X ∞ '' RAD` | `UNDECIDED` |
+| `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
 | `casim limit '1÷LN(1+X)-1÷X' X 0 '' RAD` | `1÷2` |
 
@@ -701,7 +717,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
 | 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "" |
 | 11 | IMPROPER | defint: a pole or domain edge on the interval | "" |
-| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered), nor the series route; never "no limit". taylor: an SGN(0) it can't decide, nor the series route a sign | "" |
+| 12 | UNDECIDED | limit: the walk couldn't decide (past 12 L'Hôpital steps, a damped oscillation, a form not covered), nor the series route; never "no limit". taylor: an SGN(0) it can't decide, nor the series route a sign. taylor, limit and sum: a constant whose sign or zero the error bound can't decide, or whose value is past the range (CAS 022) | "" |
 | 13 | NO_CLOSED_FORM | sum: no closed form found (Σ 1÷K, Σ SIN(K)), and the bounds aren't whole numbers at most 64 apart | "" |
 | 14 | DECIMAL_FORM | casim_run: the answer, in →DEC's form, because its fractions passed cap or the arena, and it holds a decimal (CAS 019) | the answer |
 

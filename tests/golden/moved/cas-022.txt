@@ -1,0 +1,39 @@
+# The golden lines CAS 022 (signs decided by value: work/022-signs.md) moved. Each line's inputs, then its status and
+# answer before (CAS 021's b282bbe) and after. Putting every before back gives b282bbe's files byte for byte (their
+# sha256 below), and every after is a refusal (scripts/signs-golden.py, in make check). Rule 4: taylor_hole sizes a
+# constant 8 levels deep, so the 21-deep LN(2+…) and SQRT(1+…) nests at 0 refuse (UNDECIDED) where they answered or ran
+# out of room: 6 corpus lines (4 OK, 2 NO_ROOM) and 4 under →DEC. With the series route compiled out they move the same
+# way (scripts/series-golden.py takes them at their after).
+# b282bbe corpus.txt sha256 7eed276b29691b70b1219618018e95b66b43d73ef7980636154fd5e9e72aca33
+# b282bbe decimal.txt sha256 370e0ac3f459a9b5d0cd0cd67220672ba7e93b60539a6351d82c26e8e0e051e5
+taylor	35	23	1	35	65536	65536	LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+X)))))))))))))))))))))	0	0
+  before	OK	LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)
+  after	UNDECIDED	
+taylor	35	23	1	35	8800	192	LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+X)))))))))))))))))))))	0	0
+  before	OK	LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)
+  after	UNDECIDED	
+taylor	35	23	1	35	65536	65536	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X)))))))))))))))))))))	0	0
+  before	OK	SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(2)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)
+  after	UNDECIDED	
+taylor	35	23	1	35	8800	192	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X)))))))))))))))))))))	0	0
+  before	OK	SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(2)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)
+  after	UNDECIDED	
+taylor	35	23	1	35	65536	65536	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X))))))))))))))))))))	0	2
+  before	NO_ROOM	
+  after	UNDECIDED	
+taylor	35	23	1	35	8800	192	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X))))))))))))))))))))	0	2
+  before	NO_ROOM	
+  after	UNDECIDED	
+# Under →DEC (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL OR'd into the angle)
+taylor	35	23	1	35	65536	65536	LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+X)))))))))))))))))))))	0	0
+  before	OK	LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)
+  after	UNDECIDED	
+taylor	35	23	1	35	8800	192	LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+LN(2+X)))))))))))))))))))))	0	0
+  before	OK	LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(LN(2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)+2)
+  after	UNDECIDED	
+taylor	35	23	1	35	65536	65536	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X)))))))))))))))))))))	0	0
+  before	OK	SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(2)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)
+  after	UNDECIDED	
+taylor	35	23	1	35	8800	192	SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+SQRT(1+X)))))))))))))))))))))	0	0
+  before	OK	SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(SQRT(2)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)+1)
+  after	UNDECIDED	

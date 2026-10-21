@@ -1365,9 +1365,12 @@ static abn abn_pi(void)
     return p;
 }
 
+/* CAS 022 rule 2: the core's ABN_OVERFLOW and ABN_UNDERFLOW (unit 026 took them out of ABN_RANGE) are a value past
+   decimal128's range, none computed: CV_NO, not "not real" */
 static int cv_status(abn_status st)
 {
-    return st == ABN_OK ? CV_OK : st == ABN_DIV_ZERO || st == ABN_RANGE ? CV_UNDEF : CV_NOTREAL;
+    return st == ABN_OK ? CV_OK : st == ABN_DIV_ZERO || st == ABN_RANGE ? CV_UNDEF :
+           st == ABN_OVERFLOW || st == ABN_UNDERFLOW ? CV_NO : CV_NOTREAL;
 }
 
 /* an int64 as abn, in two parts of 10^9 (|v| < 2^62) */
@@ -1433,10 +1436,44 @@ static int const_pow(ctx *c, ref e, abn *v)
     return cv_status(abn_exp(v, &l));
 }
 
+/* f at the value t, as const_val takes a function of a constant (CAS 022: shared with rule 8's walk, so its values are
+   const_val's own) */
+static int cv_fn(ctx *c, int f, abn t, abn *v)
+{
+    abn k;
+    int st;
+    if ((f == F_LN || f == F_LOG) && abn_is_zero(&t)) return CV_UNDEF;
+    if (f == F_SIN || f == F_COS || f == F_TAN) k = mode_scale(c->angle, true), abn_mul(&t, &t, &k);
+    switch (f) {
+    case F_LN: st = cv_status(abn_ln(v, &t)); break;
+    case F_LOG: st = cv_status(abn_log10(v, &t)); break;
+    case F_EXP: st = cv_status(abn_exp(v, &t)); break;
+    case F_ALOG: st = cv_status(abn_exp10(v, &t)); break;
+    case F_SIN: st = cv_status(abn_sin(v, &t)); break;
+    case F_COS: st = cv_status(abn_cos(v, &t)); break;
+    case F_TAN: st = cv_status(abn_tan(v, &t)); break;
+    case F_ASIN: st = cv_status(abn_asin(v, &t)); break;
+    case F_ACOS: st = cv_status(abn_acos(v, &t)); break;
+    case F_ATAN: st = cv_status(abn_atan(v, &t)); break;
+    case F_SINH: st = cv_status(abn_sinh(v, &t)); break;
+    case F_COSH: st = cv_status(abn_cosh(v, &t)); break;
+    case F_TANH: st = cv_status(abn_tanh(v, &t)); break;
+    case F_ASINH: st = cv_status(abn_asinh(v, &t)); break;
+    case F_ACOSH: st = cv_status(abn_acosh(v, &t)); break;
+    case F_ATANH: st = cv_status(abn_atanh(v, &t)); break;
+    case F_ABS: *v = abn_abs(&t), st = CV_OK; break;
+    case F_SGN: *v = abn_from_int(abn_is_zero(&t) ? 0 : abn_is_negative(&t) ? -1 : 1), st = CV_OK; break;
+    default: st = CV_NO; break;
+    }
+    if (st == CV_OK && (f == F_ASIN || f == F_ACOS || f == F_ATAN))
+        k = mode_scale(c->angle, false), st = cv_status(abn_mul(v, v, &k));
+    return st;
+}
+
 static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
 {
     const node *x;
-    abn t, k;
+    abn t;
     int st;
     if (!enter(c)) return CV_NO;
     x = nd(c, r);
@@ -1459,34 +1496,7 @@ static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
     case K_FN: {
         int f = x->id;
         if ((st = const_val(c, x->a, &t)) != CV_OK) break;
-        if ((f == F_LN || f == F_LOG) && abn_is_zero(&t)) {
-            st = CV_UNDEF;
-            break;
-        }
-        if (f == F_SIN || f == F_COS || f == F_TAN) k = mode_scale(c->angle, true), abn_mul(&t, &t, &k);
-        switch (f) {
-        case F_LN: st = cv_status(abn_ln(v, &t)); break;
-        case F_LOG: st = cv_status(abn_log10(v, &t)); break;
-        case F_EXP: st = cv_status(abn_exp(v, &t)); break;
-        case F_ALOG: st = cv_status(abn_exp10(v, &t)); break;
-        case F_SIN: st = cv_status(abn_sin(v, &t)); break;
-        case F_COS: st = cv_status(abn_cos(v, &t)); break;
-        case F_TAN: st = cv_status(abn_tan(v, &t)); break;
-        case F_ASIN: st = cv_status(abn_asin(v, &t)); break;
-        case F_ACOS: st = cv_status(abn_acos(v, &t)); break;
-        case F_ATAN: st = cv_status(abn_atan(v, &t)); break;
-        case F_SINH: st = cv_status(abn_sinh(v, &t)); break;
-        case F_COSH: st = cv_status(abn_cosh(v, &t)); break;
-        case F_TANH: st = cv_status(abn_tanh(v, &t)); break;
-        case F_ASINH: st = cv_status(abn_asinh(v, &t)); break;
-        case F_ACOSH: st = cv_status(abn_acosh(v, &t)); break;
-        case F_ATANH: st = cv_status(abn_atanh(v, &t)); break;
-        case F_ABS: *v = abn_abs(&t), st = CV_OK; break;
-        case F_SGN: *v = abn_from_int(abn_is_zero(&t) ? 0 : abn_is_negative(&t) ? -1 : 1), st = CV_OK; break;
-        default: st = CV_NO; break;
-        }
-        if (st == CV_OK && (f == F_ASIN || f == F_ACOS || f == F_ATAN))
-            k = mode_scale(c->angle, false), st = cv_status(abn_mul(v, v, &k));
+        st = cv_fn(c, f, t, v);
         break;
     }
     default: break;                     /* a letter, an opaque name: not a constant */
@@ -1495,13 +1505,42 @@ static __attribute__((noinline)) int const_val(ctx *c, ref r, abn *v)
     return st;
 }
 
-/* the sign of a constant, when the evaluator decides it beyond 1E-20 (CAS 009 rule 5); 0 when it can't */
+static bool contains(const ctx *c, ref r, int var);
+
+/* a letter anywhere in r (not i), in one walk */
+static bool any_letter(ctx *c, ref r)
+{
+    const node *x = nd(c, r);
+    switch (x->kind) {
+    case K_VAR: return x->id < 26;
+    case K_NUM: case K_PI: return false;
+    case K_FN: return any_letter(c, x->a);
+    case K_POW: return any_letter(c, x->a) || any_letter(c, x->b);
+    case K_ADD: case K_MUL:
+        for (int i = 0; i < x->n; i++)
+            if (any_letter(c, list(c, x->a)[i])) return true;
+        return false;
+    default:
+        for (int l = 0; l < 26; l++)
+            if (contains(c, r, l)) return true;
+        return false;
+    }
+}
+
+/* rule 8's walk (CAS 021) and its test, below; today's routes size a constant as deep as enter() allows (CAS 022
+   rule 4), the series route and taylor_hole 8 levels */
+#define S_DEEP (-CASIM_DEPTH_MAX)
+static int s_eval(ctx *c, ref r, abn *v, abn *b, int d);
+static bool s_lt(const abn *x, const abn *y, int k);
+
+/* the sign of a constant, 1 or -1, decided by rule 8's bound (CAS 022 rule 1); 0 when it isn't: a number decides
+   itself, any other constant only past 8 times its bound (CAS 009 rule 5's 1E-20 took a rounded identity zero for a
+   number) */
 static int const_sign(ctx *c, ref a)
 {
-    abn v, tiny, w;
-    if (const_val(c, a, &v) != CV_OK || abn_pow10(&tiny, -20) != ABN_OK) return 0;
-    w = abn_abs(&v);
-    if (abn_cmp(&w, &tiny) <= 0) return 0;
+    abn v, b;
+    if (is_num(c, a)) return val(c, a)->p > 0 ? 1 : val(c, a)->p < 0 ? -1 : 0;
+    if (s_eval(c, a, &v, &b, S_DEEP) != CV_OK || !s_lt(&b, &v, 8)) return 0;
     return abn_is_negative(&v) ? -1 : 1;
 }
 
@@ -8899,6 +8938,8 @@ static __attribute__((noinline)) bool taylor_zero(ctx *c, ref u, int var, ref a)
     u = canon(c, check_rewrite(c, u));
     c->sub_val = 0, c->sub_var = -1;
     z = c->st == CASIM_OK && is_k(c, u, 0, 1);
+    if (!z && c->st == CASIM_OK && !any_letter(c, u) && !const_sign(c, u))
+        c->st = CASIM_UNDECIDED;                    /* CAS 022: not 0 by form, not decided either */
     if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;
     taylor_drop(c, mark);
     return z;
@@ -8929,20 +8970,23 @@ static bool taylor_hole(ctx *c, ref r, int var, ref a)
         size_t mark = c->used;
         bool tan = (kind == K_FN || kind == K_RFN) && id == F_TAN, sgn = (kind == K_FN || kind == K_RFN) && id == F_SGN;
         ref u = tan || sgn ? nd(c, r)->a : r;
-        abn x;
-        int l = 0, cv;
+        abn x, b;
+        int cv;
         c->sub_var = var, c->sub_val = a;           /* a put in: the canonical walk substitutes, canon reads the raw */
         u = canon(c, raw ? u : check_rewrite(c, u));
         if (tan) u = canon(c, fn(c, F_COS, u));                     /* a pole: COS is 0 there */
         c->sub_val = 0, c->sub_var = -1;
         if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK, h = true;
-        else if (c->st == CASIM_OK && (tan || sgn)) h = is_k(c, u, 0, 1);
-        else if (c->st == CASIM_OK) {
-            while (l < 26 && !contains(c, u, l)) l++;
-            if (l == 26) {                              /* no letters left: its value, by the core's arithmetic */
-                cv = const_val(c, u, &x);
-                h = cv == CV_UNDEF || cv == CV_NOTREAL;
-            }
+        else if (c->st == CASIM_OK && (tan || sgn)) {
+            h = is_k(c, u, 0, 1);                       /* CAS 022: not 0 by form, and not decided: UNDECIDED */
+            if (!h && !any_letter(c, u) && !const_sign(c, u)) c->st = CASIM_UNDECIDED;
+        } else if (c->st == CASIM_OK && !any_letter(c, u)) {     /* no letters left: its value, by the core's arithmetic */
+            cv = const_val(c, u, &x);
+            h = cv == CV_UNDEF || cv == CV_NOTREAL;
+            /* CAS 022: a value only past its bound (rule 1; 8 levels here, rule 4), and none computed (past the range)
+               decides nothing (rule 2) */
+            if (cv == CV_NO || (cv == CV_OK && (s_eval(c, u, &x, &b, 0) != CV_OK || (!abn_is_zero(&x) && !s_lt(&b, &x, 8)))))
+                c->st = CASIM_UNDECIDED;
         }
         taylor_drop(c, mark);
     }
@@ -9306,17 +9350,21 @@ static __attribute__((noinline)) bool s_dsize(ctx *c, int f, const abn *t, const
 }
 
 #define S_EVAL_DEPTH 8          /* the bound's walk: a constant nested deeper is undecided (176 B a level on the S3) */
+#ifndef CASIM_VCHECK
+#define CASIM_VCHECK 0          /* the tests' build (CAS 022 rule 5): each value the walk forms is const_val's, bit for bit */
+#endif
 static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d)
 {
     const node *x = nd(c, r);
     abn tv, tb, w, q;
-    int st = const_val(c, r, v);
+    int st = CV_OK;
     *b = abn_from_int(0);
-    if (st != CV_OK) return st;
     if (d >= S_EVAL_DEPTH) return CV_NO;
     if (!enter(c)) return CV_NO;
-    switch (x->kind) {
-    case K_NUM: case K_PI: st = s_b(b, v, S_U) ? CV_OK : CV_NO; break;
+    switch (x->kind) {                                  /* v as const_val forms it, from the parts' values (CAS 022) */
+    case K_NUM: case K_PI:
+        if ((st = const_val(c, r, v)) == CV_OK && !s_b(b, v, S_U)) st = CV_NO;
+        break;
     case K_ADD: case K_MUL:
         w = abn_from_int(x->kind == K_MUL);
         for (int i = 0; i < x->n && st == CV_OK; i++) {
@@ -9331,17 +9379,29 @@ static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d
             }
             if (st == CV_OK && !s_b(b, &w, S_U)) st = CV_NO;
         }
+        *v = w;                                         /* const_val's sum or product, in its order */
         break;
-    case K_POW: {                                       /* |v| × (2 |e| rel + U (130 + |e ln|a||)), |e| rel < 1/2 */
+    case K_POW: {               /* |v| × (2 |e| rel + U × L), |e| rel < 1/2; L by const_pow's own path (CAS 022) */
         abn e, rel, L;
-        if (!is_num(c, x->b) || (st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK) { st = CV_NO; break; }
-        if (abn_is_zero(&tv) || !rat_abn(val(c, x->b), &e) || abn_div(&rel, &tb, &tv) != ABN_OK) { st = CV_NO; break; }
+        const rat *ev = val(c, x->b);
+        long k, m;
+        int bits = 0;
+        if (!is_num(c, x->b) || (st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK) { st = st == CV_OK ? CV_NO : st; break; }
+        *v = tv;
+        if ((st = const_pow(c, x->b, v)) != CV_OK) break;
+        if (abn_is_zero(&tv) || !rat_abn(ev, &e) || abn_div(&rel, &tb, &tv) != ABN_OK) { st = CV_NO; break; }
         e = abn_abs(&e), rel = abn_abs(&rel), w = abn_abs(&tv);
-        if (!s_m(&q, &e, &rel) || abn_ln(&L, &w) != ABN_OK || !s_m(&L, &L, &e)) { st = CV_NO; break; }
+        if (!s_m(&q, &e, &rel)) { st = CV_NO; break; }
+        if (rat_whole(ev, &k) || ev->q == 2) {         /* by squaring (and one SQRT for p/2): 2 bits(p) + 6 roundings */
+            for (m = ev->p < 0 ? -(long)ev->p : (long)ev->p; m; m >>= 1) bits++;
+            L = abn_from_int(2 * bits + 6);
+        } else {                                        /* exp(e ln a): U (130 + |e ln|a||) */
+            if (abn_ln(&L, &w) != ABN_OK || !s_m(&L, &L, &e)) { st = CV_NO; break; }
+            w = abn_from_int(130);
+            if (abn_add(&L, &L, &w) != ABN_OK) { st = CV_NO; break; }
+        }
         w = abn_from_int(1);
         if (!s_lt(&q, &w, 2)) { st = CV_NO; break; }    /* |e| rel < 1/2 */
-        w = abn_from_int(130);
-        if (abn_add(&L, &L, &w) != ABN_OK) { st = CV_NO; break; }
         *b = abn_from_int(0);
         if (!s_b(b, &L, S_U) || abn_add(&q, &q, &q) != ABN_OK || abn_add(b, b, &q) != ABN_OK || !s_m(b, b, v))
             st = CV_NO;
@@ -9349,7 +9409,7 @@ static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d
     }
     case K_FN: {
         abn D;
-        if ((st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK) break;
+        if ((st = s_eval(c, x->a, &tv, &tb, d + 1)) != CV_OK || (st = cv_fn(c, x->id, tv, v)) != CV_OK) break;
         if (x->id == F_SIN || x->id == F_COS || x->id == F_TAN) {          /* the argument in radians */
             abn k = mode_scale(c->angle, true);
             if (!s_m(&tb, &tb, &k) || abn_mul(&tv, &tv, &k) != ABN_OK || !s_b(&tb, &tv, S_U)) { st = CV_NO; break; }
@@ -9366,6 +9426,14 @@ static __attribute__((noinline)) int s_eval(ctx *c, ref r, abn *v, abn *b, int d
     default: st = CV_NO;
     }
     c->depth--;
+    if (CASIM_VCHECK && st == CV_OK) {  /* a value const_val wouldn't give, or gives otherwise: BAD_ARG, which fails the
+                                           line in every golden check; const_val out of depth (NO_ROOM) compares nothing */
+        casim_status was = c->st;
+        abn t;
+        int cs = const_val(c, r, &t);
+        if (cs == CV_NO && c->st == CASIM_NO_ROOM && was != CASIM_NO_ROOM) c->st = was;
+        else if (cs != CV_OK || memcmp(&t, v, sizeof t) != 0) c->st = CASIM_BAD_ARG;
+    }
     return st;
 }
 
@@ -11069,14 +11137,15 @@ static __attribute__((noinline)) bool lm_at(ctx *c, ref f, const lwalk *L, ref *
     return const_val(c, *v, &x) == CV_OK;
 }
 
-/* a constant's sign: 1, -1, 0, or 2 when it has none here */
+/* a constant's sign: 1, -1, 0, or 2 when it has none here. CAS 022 rule 1: 0 by form or as a number; any other
+   constant's sign only past 8 times rule 8's bound (a value that rounds to exactly 0 is a residue like any other) */
 static __attribute__((noinline)) int lm_sgn(ctx *c, ref v)
 {
-    abn x;
-    for (int l = 0; l < 26; l++)
-        if (contains(c, v, l)) return 2;
-    if (const_val(c, v, &x) != CV_OK) return 2;
-    return abn_is_zero(&x) ? 0 : abn_is_negative(&x) ? -1 : 1;
+    abn x, b;
+    if (any_letter(c, v) || const_val(c, v, &x) != CV_OK) return 2;
+    if (is_num(c, v) || is_k(c, v, 0, 1)) return abn_is_zero(&x) ? 0 : abn_is_negative(&x) ? -1 : 1;
+    if (s_eval(c, v, &x, &b, S_DEEP) != CV_OK || !s_lt(&b, &x, 8)) return 2;
+    return abn_is_negative(&x) ? -1 : 1;
 }
 
 /* the leading term of f at +∞ for an algebraic f: f ~ coef × var^deg (coef a constant, not 0); false when it isn't
@@ -11549,9 +11618,14 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
             L.side = -1, L.steps = 0, dn = lm_walk(&c, f, &L);
             if (up.k == L_UND || dn.k == L_UND) r = lm(L_UND, 0);
             else if (up.k == L_NONE || dn.k == L_NONE || up.k == L_OSC || dn.k == L_OSC) r = lm(L_NONE, 0);
-            else if (up.k != dn.k || (up.k == L_FIN && cmp(&c, canon(&c, up.v), canon(&c, dn.v)) != 0))
-                r = lm(L_NONE, 0);
-            else r = up;
+            else if (up.k != dn.k) r = lm(L_NONE, 0);
+            else if (up.k == L_FIN && cmp(&c, canon(&c, up.v), canon(&c, dn.v)) != 0) {
+                /* CAS 022 rule 3: letter-free sides whose forms differ are one value when their difference is 0 by
+                   form or as numbers, undecided when its sign is; with a letter, no limit as before (#9413) */
+                int sd = any_letter(&c, up.v) || any_letter(&c, dn.v) ? 1
+                       : lm_sgn(&c, canon(&c, add2(&c, up.v, ib_neg(&c, dn.v))));
+                r = sd == 0 ? up : sd == 2 ? lm(L_UND, 0) : lm(L_NONE, 0);
+            } else r = up;
         }
     } else r = lm_walk(&c, f, &L);
     if (CASIM_SER == 2 && c.st == CASIM_OK) r = lm(L_UND, 0);       /* the tests' build: the series route alone */

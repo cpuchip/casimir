@@ -6,6 +6,7 @@ add	304
 add_root	16
 add_sorted	160
 angle_factor	64
+any_letter	32
 any_marked	8
 as_power	96
 below	8
@@ -14,6 +15,7 @@ blocks	80
 by_factor	80
 by_mono	64
 cancel_	64
+canon	16
 canon_	96
 canon_ofn	48
 canon_var	8
@@ -49,7 +51,8 @@ coef_parts	80
 combine_logs	336
 compact	48
 conj_pairs.isra	16
-const_sign	96
+const_pow	112
+const_sign	80
 const_val	128
 contains_	48
 content	112
@@ -57,6 +60,7 @@ content_mark	32
 content_of	48
 copy_up	96
 cterm_product	128
+cv_fn	96
 decimal_len	8
 decimal_of.isra	112
 dep	16
@@ -72,7 +76,7 @@ do_integrate	224
 do_iparts	272
 do_irational	400
 do_irsteps.isra	560
-do_limit	320
+do_limit	336
 do_partfrac	272
 do_poly	352
 do_psteps	336
@@ -209,7 +213,7 @@ lm_lead_in	192
 lm_prod	160
 lm_quot	160
 lm_root	8
-lm_sgn	64
+lm_sgn	112
 lm_sign_near	112
 lm_split	128
 lm_sum	112
@@ -333,7 +337,7 @@ s_b.constprop	96
 s_const	32
 s_dint	160
 s_dsize	176
-s_eval	272
+s_eval	288
 s_fn	112
 s_fval	80
 s_keep	8
@@ -390,7 +394,7 @@ taylor_00	96
 taylor_check	32
 taylor_corner.constprop	96
 taylor_has_hole	16
-taylor_hole	128
+taylor_hole	144
 taylor_part	80
 taylor_rest_hole	80
 taylor_ser.constprop	176

@@ -37,13 +37,19 @@ CORE_LIBS := build/libcore.a $(CB)/build/intel/libbid.a -lm
 all: $(LIB) build/casim build/hello build/golden_check
 
 check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_check build/pfcheck_check build/ircheck_check \
-       build/ibcheck_check build/smcheck_check check-abn build/casim-ser0 build/casim-ser2 build/golden_check-ser0
+       build/ibcheck_check build/smcheck_check check-abn build/casim-ser0 build/casim-ser2 build/golden_check-ser0 \
+       build/casim-vcheck build/golden_check-vcheck
 	scripts/run-tests.sh build/gcdprimes_check build/pfcheck_check build/ircheck_check build/ibcheck_check \
 	    build/smcheck_check
 	scripts/frame-table.py
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
 	scripts/series-golden.py
+	scripts/signs-golden.py
+	build/golden_check-vcheck tests/golden/corpus.txt
+	scripts/decimal-golden.py build/golden_check-vcheck
+	scripts/complex-golden.py build/golden_check-vcheck
+	scripts/doc-examples.py build/casim-vcheck
 	scripts/decimal-golden.py
 	scripts/complex-golden.py
 	scripts/typed-values.py
@@ -132,6 +138,16 @@ build/casim-ser0 build/casim-ser2: build/casim-ser%: cli/casim_cli.c src/casim.h
 
 build/golden_check-ser0: tests/golden_check.c src/casim.h build/casim-ser0.o build/abn_intel.o
 	$(CC) $(CFLAGS) -Isrc -o $@ $< build/casim-ser0.o build/abn_intel.o build/intel/libbid.a -lm
+
+# CAS 022 rule 5: the tests' build where each value rule 8's walk forms must be const_val's, bit for bit (a mismatch is
+# BAD_ARG), run over the corpus, →DEC, complex and the doc examples (work/022-signs.md)
+build/casim-vcheck.o: $(CASIM_SRC) $(CASIM_HDRS)
+	@mkdir -p build
+	$(CC) $(CFLAGS) -DCASIM_VCHECK=1 -I$(ABN) -c -o $@ $<
+
+build/casim-vcheck build/golden_check-vcheck: build/%-vcheck: build/casim-vcheck.o build/abn_intel.o src/casim.h
+	$(CC) $(CFLAGS) -Isrc -o $@ $(if $(filter casim,$*),cli/casim_cli.c,tests/golden_check.c) build/casim-vcheck.o \
+	    build/abn_intel.o build/intel/libbid.a -lm
 
 # No pow in casim's objects (abacus #5589): libm's or libbid's would land in the firmware. A planted control must fail.
 build/symbols.ok: $(CASIM_SRC) $(CASIM_HDRS) tests/symbol_control.c scripts/symbol-check.sh

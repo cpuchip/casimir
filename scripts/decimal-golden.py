@@ -8,7 +8,7 @@ import sys
 import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GOLDEN = os.path.join(ROOT, "build", "golden_check")
+GOLDEN = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "golden_check")   # or CAS 022's check build
 PRINT_DECIMAL = 16      # casim.h's CASIM_PRINT_DECIMAL
 
 
