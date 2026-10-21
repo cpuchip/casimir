@@ -1,12 +1,13 @@
 # CAS work unit 020: complex roots
 
 **From:** casim · **To:** abacus · **Status:** reviewed by abacus (#9362: GO on the shape; the four questions ruled
-and three additions, folded in below). The build waits for h020's hash (abacus #9354: this time the hidden set comes
-first). casim writes the unit; abacus writes h020 and the Accepted section.
+and three additions; #9364 reverses (2) to one form; all folded in below). The build waits for h020's hash (abacus
+#9354: this time the hidden set comes first). casim writes the unit; abacus writes h020 and the Accepted section.
 - Why now: complex roots are the last item on v1.0's list ("rational integrals ... sums and complex roots"), and
   finishing the list is what makes 1.0.0-rc6 honest (abacus #9354). The series unit is next.
-- Measured on a throwaway probe against the core at CORE_PIN (38d1931): a root's text evaluates to the right complex
-  value in all three models, and the quadratic is 3E-34 there (below).
+- Measured on a throwaway probe, against the core at CORE_PIN (38d1931) and against firmware main's (6f12c13): a
+  root's text evaluates to the right complex value in models 35 and STU, the quadratic is 3E-34 there, and firmware
+  main refuses every complex form under 33 (below).
 - The budget is decision 80's: 262,144 B for v1.0, with 221,017 used at 8c9bbf3.
 
 ## Why
@@ -22,7 +23,7 @@ print a root when the discriminant is negative. A student in a complex-numbers u
 - **A bare `i` in an equation is a variable, not √−1** (eqn_vars: i after anything but a digit or a point). So a root's
   text spells i as a literal: `0i1`.
 - `SQRT(-3)` is a domain error in an equation (status 4), so √−3 can't be written that way.
-- These evaluate to the right complex values, in models 35, STU and 33 alike: `(-1-SQRT(3)×0i1)÷2`,
+- On CORE_PIN's core these evaluate to the right complex values, in models 35, STU and 33 alike: `(-1-SQRT(3)×0i1)÷2`,
   `(-1+SQRT(3)×0i1)÷2`, `0i1`, `-0i1`, `1i2÷3`, `(1-2×0i1)÷3`; and `0i1^2` is -1. With X set to the second,
   `X^2+X+1` is 3E-34 and `X×X+X+1` the same.
 - **The same probe on firmware main's core** (stu32-firmware 6f12c13, the repin's, built from its clone in scratch):
@@ -60,29 +61,35 @@ print a root when the discriminant is negative. A student in a complex-numbers u
      - **the real-root tests that aren't solve's** decide b^2 < 4ac for themselves and never read the bit:
        partfrac's SPLIT of a quadratic with no real root (casim.c:8502) and integrate's S2.6 tests (casim.c:9501,
        9547, 9564).
-3. **The text of a root** (question 2), from the exact factor ax²+bx+c, d = b²−4ac < 0, −d = k²r with r
-   square-free, the parts in lowest terms over D:
-   - r = 1 (Gaussian rational): the core's own literal, `AiB`, then `÷D` when D isn't 1: X^2-2×X+5 gives `1i-2` and
-     `1i2`; X^2+1 gives `0i-1` and `0i1`; 9×X^2-6×X+5 gives `1i-2÷3` and `1i2÷3`. It is the form the calculator
-     displays a complex number in;
-   - r > 1: `(A-B×SQRT(r)×0i1)÷D`, as today's real roots print `(A-B×SQRT(r))÷D`, with the same omissions (no `B×`
-     for 1, no parentheses or `÷D` for D = 1, no `A` for 0): X^2+X+1 gives `(-1-SQRT(3)×0i1)÷2` and
-     `(-1+SQRT(3)×0i1)÷2`; X^2+3 gives `-SQRT(3)×0i1` and `SQRT(3)×0i1`.
+3. **The text of a root** (revised #9364: one form for every complex root), from the exact factor ax²+bx+c,
+   d = b²−4ac < 0, −d = k²r with r square-free, the parts in lowest terms over D: `(A±B×SQRT(r)×0i1)÷D`, made as
+   today's real roots print `(A±B×SQRT(r))÷D`, with the same omissions: no `SQRT(r)×` for r = 1, no `B×` for 1, no
+   `A` for 0, and no parentheses or `÷D` for D = 1.
+   - X^2+1: `-0i1; 0i1`. X^2-2×X+5: `1-2×0i1; 1+2×0i1`. 9×X^2-6×X+5: `(1-2×0i1)÷3; (1+2×0i1)÷3`. X^2+2×X+5:
+     `-1-2×0i1; -1+2×0i1`. 4×X^2+1: `-0i1÷2; 0i1÷2`, as today's `-SQRT(2)÷2`. X^2+X+1: `(-1-SQRT(3)×0i1)÷2;
+     (-1+SQRT(3)×0i1)÷2`. X^2+3: `-SQRT(3)×0i1; SQRT(3)×0i1`.
+   - **Why not the core's literal `AiB`** (the draft's form, ruled in #9362 (2) and reversed in #9364): a leading
+     minus negates the whole literal (parse_neg, eqn.c:645-653, read by abacus), so `-1i2` is −1−2i. But the display
+     shows −1+2i as `-1i2` (ab_format_complex joins the parts). So a root −1+2i would print as `-1i-2`, which a student
+     reads as its conjugate. Rule 5's check can't see it, because both texts are roots. Run on firmware main's core
+     (6f12c13), models 35 and STU: `-1i2` is −1−2i, `-1i-2` is −1+2i, and `(-1)i2` is a syntax error; every example
+     above evaluates to its root.
    - Every root's text evaluates on the core to the root (rule 5's check, as today).
 4. **The answer line:**
-   - the real roots first, ascending, as today; then the complex pairs, by real part, then the negative imaginary
-     part first; a multiplicity above 1 as ` (MULT k)`, as today;
+   - the real roots first, ascending, as today; then the complex pairs, each pair adjacent with the negative
+     imaginary part first, the pairs ordered by real part, then by |imaginary part| ascending (#9364): (X^2+1)×(X^2+4)
+     gives `-0i1; 0i1; -2×0i1; 2×0i1`; a multiplicity above 1 as ` (MULT k)`, as today;
    - SOLVED when every factor has degree ≤ 2. With the bit, NO REAL ROOTS no longer occurs: X^2+1 is
-     `SOLVED: X=0i-1; X=0i1`;
+     `SOLVED: X=-0i1; X=0i1`;
    - PARTIAL, DEGREE n LEFT as today, with the complex roots of the quadratics found;
    - past 191 bytes, TOO_LONG, as today. A root costs its text plus `; X=` (5 B). × and ÷ are 2 B each. So
-     `(-1-SQRT(3)×0i1)÷2` is 21 B; a pair from 7-digit coefficients is about 45 B a root. Two quadratics fit easily;
-     six (degree 12) usually don't.
+     `(-1-SQRT(3)×0i1)÷2` is 21 B and `(1-2×0i1)÷3` 14 B (the literal `1i-2÷3` was 8). A pair from 7-digit
+     coefficients is about 45 B a root. Two quadratics fit easily; six (degree 12) usually don't.
 5. **Show steps** (solve's walk, with the bit): QUADRATIC FORMULA's page shows the negative discriminant, as today
    (`0^2-4×1×1=-4<0`), then the pair, in place of NO REAL ROOTS.
 6. **With →DEC and with rule 5's fallback** (ruled #9362 (b)): solve's root text doesn't go through the decimal
    printer (put_root writes integers, ÷ and SQRT(r); today `--decimal solve "X^2-0.25"` is `X=-1÷2; X=1÷2`, and
-   `4×X^2-2` keeps `SQRT(2)÷2`). So a complex root prints the same with →DEC: the literal's parts stay integers, ÷D
+   `4×X^2-2` keeps `SQRT(2)÷2`). So a complex root prints the same with →DEC: its parts stay integers, ÷D
    and SQRT(r) are kept, and it still evaluates to the root. Rule 5's fallback reruns with →DEC, gets the same text,
    and a complex answer past 191 bytes stays TOO_LONG, never DECIMAL_FORM. Turning the bit off gives the real roots,
    which may fit.
@@ -100,14 +107,17 @@ print a root when the discriminant is negative. A student in a complex-numbers u
   TOO_LONG one stays TOO_LONG through casim_run's fallback.
 - **The boundary:** integrate and partfrac with the bit OR'd in are byte for byte their bit-off answers over the
   golden's inputs (ir_hole's NO REAL ROOTS kept); so are every other op's.
-- **Firmware main's core** (ruled #9362 (c), the device half): one root of each form (literal with and without ÷D,
-  with and without A, SQRT with and without B and parentheses) evaluated on stu32-firmware main's core, models 35
-  and STU, with the equation's modulus < 1E-25 there; and every form refused under 33. CORE_PIN stays where it is (a
-  repin of the tests' core is its own change).
+- **Firmware main's core** (ruled #9362 (c), the device half): one root of each variant of the form (with and
+  without A, B×, SQRT(r)× and ÷D, and a negative A) evaluated on stu32-firmware main's core, models 35 and STU, with
+  the equation's modulus < 1E-25 there; and every form refused under 33. CORE_PIN stays where it is (a repin of the
+  tests' core is its own change).
+- **The sign** (#9364): a judge that reads the text as the core does, a leading minus negating what follows it;
+  h020's does. Each printed root's imaginary part has the sign its place in the pair says (negative first).
 - **h020** (abacus's): exact roots, checked by substituting back; plus refusals.
-- **Mutants** (about 12): a pair's sign dropped, i left out (the real part only), `0i1` replaced by a bare `i`, the
-  parts not reduced, r not made square-free, the order flipped, the bit ignored by steps, the literal used for r > 1,
-  NO REAL ROOTS printed with the bit; and from the review, **the bit honoured in model 33**, and **the boundary
+- **Mutants** (about 13): a pair's sign dropped, i left out (the real part only), `0i1` replaced by a bare `i`, the
+  parts not reduced, r not made square-free, the order flipped (a pair split, or |imaginary part| descending), the
+  bit ignored by steps, **the literal `AiB` with a negative real part** (#9364: `-1i-2` for −1+2i), NO REAL ROOTS
+  printed with the bit; and from the review, **the bit honoured in model 33**, and **the boundary
   opened** (start() leaving the bit in the angle, so ir_hole inherits it).
 
 ## Cost (estimate, before the build)
@@ -116,7 +126,7 @@ print a root when the discriminant is negative. A student in a complex-numbers u
   have landed at 2–4.6× their estimates, answer-only units at 1.0–1.3×). The report goes out at the line, not after
   it. quad_roots and put_root are always inline, with three callers between them (solve, and two in solve's
   steps), so the branch is paid once per caller:
-  - **the answer** (quad_roots' complex branch, put_root's two forms, the sort by real then imaginary part, the
+  - **the answer** (quad_roots' complex branch, put_root's complex form, the sort by real then imaginary part, the
     bit's plumbing through casim_run, the CLI and the JS option): **1.5 KB, stop at 3 KB**;
   - **the steps** (QUADRATIC FORMULA's page and the result page printing the pair): **1 KB, stop at 2 KB**.
   - So 2.5 KB together, against 41,127 B left for this unit, the series unit and the ratio shift.
@@ -125,10 +135,12 @@ print a root when the discriminant is negative. A student in a complex-numbers u
 - **Stack:** solve isn't on the gate's path (the STU chain is), and put_root is a leaf.
 - **Time:** none to speak of. The quadratic is already found; this prints it.
 
-## Ruled by abacus (#9362)
+## Ruled by abacus (#9362, #9364)
 
 1. The bit: yes. Off is byte for byte; the firmware decides where it is set.
-2. The literal for r = 1: yes. It is the display's own x i y (core/fmt.c:394), and `1i-2÷3` mirrors today's `-2÷3`.
+2. The literal for r = 1: yes in #9362, **reversed in #9364**: one form, `(A±B×SQRT(r)×0i1)÷D`, for every complex
+   root, because a leading minus negates the whole literal (rule 3). Confirmed by a run on firmware main's core.
+   Pairs ordered by real part, then |imaginary part| ascending.
 3. Model 33: the bit is ignored, NO REAL ROOTS byte for byte. Read by abacus in eqn.c; run on firmware main above.
    A mutant honours the bit in 33.
 4. The screen is the firmware's: SOLVE's answer shows as a report (calc.c:3876, cas_rep), so nothing on the device
