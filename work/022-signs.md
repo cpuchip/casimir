@@ -29,8 +29,9 @@ and 10^15) and Z1 = SIN(1)^2+COS(1)^2-1 (exactly 0).
 | 5 | limit's two sides compared by form | 1 (do_limit) | Z×ABS(X)÷X at 0: UNDEFINED, truth 0 | UNDECIDED |
 
 Out of the census, by ruling (#9413): with a letter, K×ABS(X)÷X at 0 → UNDEFINED is right for every K but 0, a generic
-answer with an unshown condition. How limit and taylor present that (silent, "K≠0" shown, or a refusal) is Michael's
-call, on abacus's card. The prototype leaves every row with a letter as it is.
+answer with an unshown condition. **Michael ruled the card (#9428):** such an answer is given with its condition shown
+under it, as in CAS 018 rule 4b (K×ABS(X)÷X at 0 → UNDEFINED, with K≠0). That is its own unit after this one, with its
+own hidden set; 022 stays letter-free, and the prototype leaves every row with a letter as it is.
 
 The range rows (family 2) were found while probing and traced after the review (#9425). The vendored number layer
 returns ABN_OVERFLOW and ABN_UNDERFLOW, separate statuses since the firmware's unit 026 took them out of ABN_RANGE.
@@ -68,6 +69,9 @@ as a hole. limit on the same constants already refuses (UNDECIDED).
    bound along const_pow's own paths (no LN for whole and half powers) with s_b's 10^-32 computed once, re-measured
    against the shipping mask; (b) if any row is still over, depth 8 at taylor_hole alone and 44 at every other site,
    with taylor_hole's moves listed (the 6 corpus lines, 4 →DEC, 6 complex). The mask is the instrument and stays.
+   **Measured at the shipping mask (#9433):** (a) panicked the chip's interrupt watchdog; (b) gave DEVICE PASS, the deep
+   nests refusing in 17–27 ms and the census rows in 18–239 ms. So the build has two caps: the bound at taylor_hole
+   walks 8 levels (S_EVAL_DEPTH, as the series route's), and at every other site as deep as enter() allows.
 5. **The bound walks a constant once.** CAS 021's s_eval runs const_val on its whole subtree at every node, quadratic
    in the depth. That was fine under the series route's cap of 8, but at depth 44 it isn't: taylor_hole sizes every
    typed part, so a 21-deep nest becomes cubic. The first device run of the prototype never reported (below), and on
@@ -160,5 +164,5 @@ traced by reading only (no golden row reaches them with a residue): 1.5–2.5 KB
 
 ## Out of scope
 
-The letter rows (Michael's card). The series route's own decisions (CAS 021): its bound's walk becomes linear under
+The letter rows (ruled #9428: their own unit, after this one). The series route's own decisions (CAS 021): its bound's walk becomes linear under
 rule 5, with the same values, so they don't change. The two-letter-ratio shift.
