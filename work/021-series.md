@@ -213,10 +213,11 @@ it's a wrong answer, not a refusal.
 
 **A second, found by the build's own rows (the same family).** Today's limit walk compares the two one-sided limits by
 their canonical form, and any difference is "no limit". K×ABS(X)÷X at 0 is K from above and -K from below, so faae625
-answers UNDEFINED; with K = 0 the limit is 0. **Restated after acceptance (#9412):** with a letter, UNDEFINED is the
-generic answer under the library's own convention (simplify K÷K is 1; limit X÷(K×X) at 0 is 1÷K), so the letter rows
-are a convention question, not a bug (limit 1÷(K×X) at 0 is UNDECIDED, so limit isn't uniform about a letter). The
-letter-free shape is wrong: (10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X at 0 is UNDEFINED, truth 0. So do (K-1)×ABS(X)÷X, K^2×ABS(X)÷X and SQRT(K)×ABS(X)÷X at 0, and
+answers UNDEFINED; with K = 0 the limit is 0. **Restated after acceptance (#9412, ruled #9413):** with a letter,
+UNDEFINED is right for every K other than 0, a generic answer with a condition it doesn't show, not a value decided
+wrong; it is out of the follow-up's scope. Whether limit and taylor stay silent, show "K≠0" or refuse is Michael's
+presentation call (abacus's card; the precedents show a condition: 018's sums, CANCEL's rows). The letter-free shape
+is in scope: (10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X at 0 is UNDEFINED, truth 0. So do (K-1)×ABS(X)÷X, K^2×ABS(X)÷X and SQRT(K)×ABS(X)÷X at 0, and
 K×ABS(X-1)÷(X-1) at 1. The series route alone says UNDECIDED on each (rule 4's disagreement needs 2×K's sign decided,
 and rule 8 doesn't decide a letter). It's an answer in accepted code (CAS 015), so not this unit's to move; the
 follow-up unit's decider could test the sides' difference too. The fixed row (1÷X^2-1÷SIN(X)^2)×K×ABS(X)÷X, which
