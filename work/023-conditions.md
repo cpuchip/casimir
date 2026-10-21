@@ -133,6 +133,28 @@ part at the point, as taylor_hole does, but only on inputs with a letter; the de
    divisors are its divisors' powers, and LN's and SQRT's arguments. In the probe's 23 taylor rows no answer's formula
    fails where no part of f does; h023 is the place to look for one.
 
+## Ruled (#9493)
+
+1. **Q1, (a):** status UNDEFINED, with the rows in out; the CLI prints `UNDEFINED; K≠0`. Programs that read the status
+   keep working.
+2. **Q2, > rows in,** solved as the ≠ rows are: SQRT(K^2+X) prints K≠0, not K^2>0. K>0 is right for SQRT at order 0
+   too: at K = 0, SQRT(X) has no two-sided expansion at 0. (018 rule 4b.3's ABS(X)<1 replaces the X≠1 it implies.)
+3. **Q3, out of scope,** with a line in docs/language.md: canon's reading comes before any decision, the class of the
+   ruled 1÷c^K sums and the factored 1÷Z.
+4. **Q4, the typed f only.** h023 aims rows at derivative-only cases (an odd root, (K+X)^(1/3)); one reopens it.
+
+Conditions for the build:
+1. **Signs aren't conditions:** inputs whose answer flips with K's sign (X^K at 0+, EXP(K×X) at ∞, K^X at ∞) refuse;
+   none prints one side's value with a row.
+2. **A cost stop: S3 +5 KB built.** Past it, back to abacus before landing.
+3. **The stack on the device:** the deepest letter nest through taylor's typed-f walk, and limit's walk with rows
+   recorded, each a peak against the gate under the 2,000 ms mask.
+4. **Mutants:** as listed under The oracle, plus a > row not dropping its ≠ (rule 4) and a row recorded on a letter-free
+   input (rule 2).
+5. **The sums (rule 6):** h022's (1+Z30)^K rows go NO_ROOM → UNDECIDED and nothing else moves.
+
+h023 is frozen before the build; only its hash comes to casim.
+
 ## Out of scope
 
 The two-letter-ratio shift. The follow-up list's letter-free items (#9480 (1), #9482): sum 1÷c^K to 3, and canon's
