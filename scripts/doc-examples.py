@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = [os.path.join(ROOT, "docs", "language.md"), os.path.join(ROOT, "work", "013-steps-examples.txt"),
         os.path.join(ROOT, "work", "016-examples.txt"), os.path.join(ROOT, "work", "017-examples.txt"),
         os.path.join(ROOT, "work", "017-steps-examples.txt"), os.path.join(ROOT, "work", "018-examples.txt"),
-        os.path.join(ROOT, "work", "019-examples.txt")]
+        os.path.join(ROOT, "work", "019-examples.txt"), os.path.join(ROOT, "work", "020-examples.txt")]
 CLI = os.path.join(ROOT, "build", "casim")
 ROW = re.compile(r"^\| `casim ([^`]+)` \| `([^`]*)` \|$")
 

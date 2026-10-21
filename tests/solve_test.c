@@ -3,7 +3,8 @@
  * coefficient bound, near-coincident roots, an irreducible quartic with real roots); and seeded polynomials
  * built from known factors, each printed root evaluated on the core and matched by value to the factors it
  * was built from, with its multiplicity, and the status and the degree left checked against the
- * construction. */
+ * construction. CAS 020: the same polynomials with CASIM_COMPLEX, every root real and complex judged by its value on
+ * the core and its place in the answer, and the unit's examples exactly, each root making its equation 0 on the core. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +17,15 @@
 #define OUT 4096
 static unsigned char arena[65536];
 
+static casim_status solve_bits(const char *eqn, int var, int model, int bits, char *out)
+{
+    casim_req rq = {CASIM_SOLVE, eqn, model, var, NULL, 0, CASIM_RAD | bits, NULL};
+    return casim_run(&rq, out, OUT, arena, sizeof arena);
+}
+
 static casim_status solve(const char *eqn, int var, int model, char *out)
 {
-    casim_req rq = {CASIM_SOLVE, eqn, model, var, NULL, 0, CASIM_RAD, NULL};
-    return casim_run(&rq, out, OUT, arena, sizeof arena);
+    return solve_bits(eqn, var, model, 0, out);
 }
 
 static void is(const char *eqn, const char *want)
@@ -289,7 +295,8 @@ static int parse_roots(const char *out, char roots[][256], int *mult, int cap)
 
 static void seeded(void)
 {
-    int judged = 0, bad = 0, over = 0;
+    int judged = 0, bad = 0, over = 0, cx_judged = 0, cx_bad = 0;
+    double gre[32], gim[32];
     ce_angle(CASIM_RAD);
     for (int n = 0; n < 3000 && bad < 6; n++) {
         long long p[32] = {1};
@@ -389,7 +396,61 @@ static void seeded(void)
             }
             if (!ok && bad++ < 6) CHECK(false, "%s: \"%s\" (%d expected roots)", text, out, nw);
         }
+        /* CAS 020, the same polynomial with CASIM_COMPLEX: every root, real and complex, printed once with its
+           multiplicity and evaluated on the core to its value; the reals ascending, then each conjugate pair adjacent,
+           its negative imaginary part first, the pairs by real part and then |imaginary part| */
+        {
+            double cre[32], cim[32];
+            int cmult[32], nc = 0, kc;
+            bool ok = true;
+            casim_status st;
+            for (int i = 0; i < nw; i++) cre[nc] = want[i], cim[nc] = 0, cmult[nc++] = wmult[i];
+            for (int i = 0; i < nf; i++)
+                if (fs[i].deg == 2 && fs[i].b * fs[i].b - 4 * fs[i].a * fs[i].c < 0) {
+                    double d = (double)(4 * fs[i].a * fs[i].c - fs[i].b * fs[i].b);
+                    for (int sg = -1; sg <= 1; sg += 2)
+                        cre[nc] = -(double)fs[i].b / (2.0 * (double)fs[i].a),
+                        cim[nc] = sg * sqrt(d) / (2.0 * (double)fs[i].a), cmult[nc++] = mults[i];
+                }
+            st = solve_bits(text, 'X' - 'A', CASIM_MODEL_35, CASIM_COMPLEX, out);
+            if (st == CASIM_TOO_LONG) continue;
+            cx_judged++;
+            if (st != CASIM_OK || strncmp(out, left ? "PARTIAL" : "SOLVED", left ? 7 : 6) != 0) ok = false;
+            kc = ok ? parse_roots(out, roots, rm, 32) : 0;
+            ok = ok && kc == nc;
+            for (int i = 0; i < kc && ok; i++) {
+                ab_val v;
+                bool found = false;
+                if (strchr(roots[i], 'i') && !strstr(roots[i], "0i1")) ok = false;            /* no bare i */
+                if (ce_eval_val(roots[i], &v) != ABN_OK) { ok = false; break; }
+                gre[i] = strtod(ce_text(&v.re), NULL), gim[i] = strtod(ce_text(&v.im), NULL);
+                for (int j = 0; j < nc; j++)
+                    if (fabs(gre[i] - cre[j]) <= 1e-9 * fmax(1, fabs(cre[j])) &&
+                        fabs(gim[i] - cim[j]) <= 1e-9 * fmax(1, fabs(cim[j])) && rm[i] == cmult[j])
+                        found = true;
+                if (!found) ok = false;
+                if (i > 0) {
+                    bool pc = gim[i - 1] != 0, c = gim[i] != 0;
+                    if (pc && !c) ok = false;                                                   /* the reals first */
+                    else if (!pc && !c && gre[i - 1] >= gre[i]) ok = false;                     /* ascending */
+                }
+            }
+            for (int i = 0; i < kc && ok; i++)                                                  /* the pairs */
+                if (gim[i] != 0) {
+                    if (i + 1 >= kc || gim[i] >= 0 || fabs(gre[i] - gre[i + 1]) > 1e-12 * fmax(1, fabs(gre[i])) ||
+                        fabs(gim[i] + gim[i + 1]) > 1e-12 * fmax(1, fabs(gim[i])))
+                        ok = false;
+                    else if (i + 2 < kc && (gre[i + 2] < gre[i] - 1e-12 * fmax(1, fabs(gre[i])) ||
+                                            (fabs(gre[i + 2] - gre[i]) <= 1e-12 * fmax(1, fabs(gre[i])) &&
+                                             fabs(gim[i + 2]) < fabs(gim[i]))))
+                        ok = false;                                                             /* the pairs' order */
+                    i++;
+                }
+            if (!ok && cx_bad++ < 6) CHECK(false, "--complex %s: %d \"%s\" (%d expected roots)", text, (int)st, out, nc);
+        }
     }
+    printf("solve --complex: %d seeded polynomials judged, %d wrong\n", cx_judged, cx_bad);
+    CHECK(cx_bad == 0 && cx_judged > 1500, "--complex: %d seeded polynomials judged, %d wrong", cx_judged, cx_bad);
     printf("solve: %d seeded polynomials judged, %d wrong, %d past the bounds\n", judged, bad, over);
     CHECK(bad == 0 && judged > 1500, "%d seeded polynomials judged, %d wrong (%d past the bounds)", judged, bad, over);
 }
@@ -415,6 +476,54 @@ static void roots_are_roots(void)
             ce_set_abn('X', x);
             CHECK(ce_eval(eqs[i], &f) == ABN_OK && (mag = abn_abs(&f), abn_cmp(&mag, &tiny) < 0), "%s at X=%s: %s", eqs[i],
                   roots[j], ce_text(&f));
+        }
+    }
+}
+
+/* CAS 020: complex roots with CASIM_COMPLEX, each text exactly (work/020-complex-roots.md), the same without it or in
+   model 33; and every printed root, set as X (complex), makes the equation 0 on the core */
+static void complex_roots(void)
+{
+    static const char *const ex[][2] = {
+        {"X^2+1", "SOLVED: X=-0i1; X=0i1"},
+        {"X^2-2×X+5", "SOLVED: X=1-2×0i1; X=1+2×0i1"},
+        {"9×X^2-6×X+5", "SOLVED: X=(1-2×0i1)÷3; X=(1+2×0i1)÷3"},
+        {"X^2+2×X+5", "SOLVED: X=-1-2×0i1; X=-1+2×0i1"},
+        {"4×X^2+1", "SOLVED: X=-0i1÷2; X=0i1÷2"},
+        {"X^2+X+1", "SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2"},
+        {"X^2+3", "SOLVED: X=-SQRT(3)×0i1; X=SQRT(3)×0i1"},
+        {"12×X^2+4×X+3", "SOLVED: X=(-1-2×SQRT(2)×0i1)÷6; X=(-1+2×SQRT(2)×0i1)÷6"},
+        {"(X^2+1)×(X^2+4)", "SOLVED: X=-0i1; X=0i1; X=-2×0i1; X=2×0i1"},
+        {"(X^2+3)×(X^2+1)", "SOLVED: X=-0i1; X=0i1; X=-SQRT(3)×0i1; X=SQRT(3)×0i1"},
+        {"(X^2+2×X+5)×(X^2+2×X+2)", "SOLVED: X=-1-0i1; X=-1+0i1; X=-1-2×0i1; X=-1+2×0i1"},
+        {"(X-2)×(X^2+1)", "SOLVED: X=2; X=-0i1; X=0i1"},
+        {"(X^2+1)^2", "SOLVED: X=-0i1 (MULT 2); X=0i1 (MULT 2)"},
+        {"(X^2+1)×(X^3-2×X-5)", "PARTIAL, DEGREE 3 LEFT: X=-0i1; X=0i1"},
+        {"X^2-2", "SOLVED: X=-SQRT(2); X=SQRT(2)"},
+    };
+    for (size_t i = 0; i < sizeof ex / sizeof ex[0]; i++) {
+        char out[OUT], plain[OUT], m33[OUT], roots[32][256];
+        int rm[32], k;
+        casim_status st = solve_bits(ex[i][0], 'X' - 'A', CASIM_MODEL_35, CASIM_COMPLEX, out);
+        casim_status s0 = solve(ex[i][0], 'X' - 'A', CASIM_MODEL_35, plain);
+        casim_status s3 = solve_bits(ex[i][0], 'X' - 'A', CASIM_MODEL_33, CASIM_COMPLEX, m33);
+        CHECK(st == CASIM_OK && strcmp(out, ex[i][1]) == 0, "solve --complex %s: %d \"%s\", want \"%s\"", ex[i][0],
+              (int)st, out, ex[i][1]);
+        CHECK(s3 == s0 && strcmp(m33, plain) == 0, "solve --complex --model 33 %s: \"%s\", want without it \"%s\"", ex[i][0],
+              m33, plain);
+        CHECK(strstr(plain, "0i1") == NULL, "solve %s without the bit: \"%s\"", ex[i][0], plain);
+        k = parse_roots(out, roots, rm, 32);
+        for (int j = 0; j < k; j++) {
+            ab_val x, f;
+            abn tiny = ce_num("1E-25"), mr, mi;
+            if (ce_eval_val(roots[j], &x) != ABN_OK) {
+                CHECK(false, "%s: root %s does not evaluate", ex[i][0], roots[j]);
+                continue;
+            }
+            ce_set_val('X', &x);
+            CHECK(ce_eval_val(ex[i][0], &f) == ABN_OK && (mr = abn_abs(&f.re), mi = abn_abs(&f.im),
+                  abn_cmp(&mr, &tiny) < 0 && abn_cmp(&mi, &tiny) < 0), "%s at X=%s: %s %s", ex[i][0], roots[j],
+                  ce_text(&f.re), ce_text(&f.im));
         }
     }
 }
@@ -466,5 +575,6 @@ int main(void)
     edges();
     seeded();
     roots_are_roots();
+    complex_roots();
     return check_done();
 }

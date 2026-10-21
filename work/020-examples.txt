@@ -1,0 +1,38 @@
+# CAS 020 complex roots: visible examples (work/020-complex-roots.md), written by casim from the build and read again by
+# scripts/doc-examples.py (make check). The default arena is 8,800 B. A status line and its answer join with " / ".
+
+# - Rule 2: the bit (--complex); without it, today's answer; model 33 ignores it
+| `casim solve "X^2+X+1" X RAD` | `NO REAL ROOTS` |
+| `casim --complex solve "X^2+X+1" X RAD` | `SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex --model STU solve "X^2+3" X RAD` | `SOLVED: X=-SQRT(3)×0i1; X=SQRT(3)×0i1` |
+| `casim --complex --model 33 solve "X^2+X+1" X RAD` | `NO REAL ROOTS` |
+
+# - Rule 3: one form, (A±B×SQRT(r)×0i1)÷D, with today's omissions; i as the core's literal 0i1
+| `casim --complex solve "X^2+1" X RAD` | `SOLVED: X=-0i1; X=0i1` |
+| `casim --complex solve "X^2-2×X+5" X RAD` | `SOLVED: X=1-2×0i1; X=1+2×0i1` |
+| `casim --complex solve "X^2+2×X+5" X RAD` | `SOLVED: X=-1-2×0i1; X=-1+2×0i1` |
+| `casim --complex solve "9×X^2-6×X+5" X RAD` | `SOLVED: X=(1-2×0i1)÷3; X=(1+2×0i1)÷3` |
+| `casim --complex solve "4×X^2+1" X RAD` | `SOLVED: X=-0i1÷2; X=0i1÷2` |
+| `casim --complex solve "12×X^2+4×X+3" X RAD` | `SOLVED: X=(-1-2×SQRT(2)×0i1)÷6; X=(-1+2×SQRT(2)×0i1)÷6` |
+
+# - Rule 4: the reals first, then each pair (negative imaginary part first), by real part, then |imaginary part|
+| `casim --complex solve "(X-2)×(X^2+1)=0" X RAD` | `SOLVED: X=2; X=-0i1; X=0i1` |
+| `casim --complex solve "(X^2+1)×(X^2+4)" X RAD` | `SOLVED: X=-0i1; X=0i1; X=-2×0i1; X=2×0i1` |
+| `casim --complex solve "(X^2+2×X+5)×(X^2+2×X+2)" X RAD` | `SOLVED: X=-1-0i1; X=-1+0i1; X=-1-2×0i1; X=-1+2×0i1` |
+| `casim --complex solve "(X^2+1)^2" X RAD` | `SOLVED: X=-0i1 (MULT 2); X=0i1 (MULT 2)` |
+| `casim --complex solve "(X^2+1)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT: X=-0i1; X=0i1` |
+| `casim --complex --cap 40 solve "(X^2+X+1)×(X^2-X+1)" X RAD` | `TOO_LONG` |
+
+# - Rule 5: show steps, the pair where NO REAL ROOTS was
+| `casim --one-line steps solve "(X-2)×(X^2+1)=0" X RAD` | `BOTH SIDES: X^3-2×X^2+X-2=0 / LINEAR FACTOR: (X-2)×(X^2+1)=0 /   LINEAR: X-2=0: X=2 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED: X=2` |
+| `casim --complex --one-line steps solve "(X-2)×(X^2+1)=0" X RAD` | `BOTH SIDES: X^3-2×X^2+X-2=0 / LINEAR FACTOR: (X-2)×(X^2+1)=0 /   LINEAR: X-2=0: X=2 /   QUADRATIC FORMULA: X^2+1=0: X=-0i1; X=0i1 / ANSWER: SOLVED: X=2; X=-0i1; X=0i1` |
+| `casim --complex --one-line steps solve "X^2+X+1" X RAD` | `QUADRATIC FORMULA: X^2+X+1=0: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2 / ANSWER: SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
+
+# - Rule 6: →DEC leaves a root's text as it is
+| `casim --complex --decimal solve "X^2-0.5×X+0.5" X RAD` | `SOLVED: X=(1-SQRT(7)×0i1)÷4; X=(1+SQRT(7)×0i1)÷4` |
+
+# - The boundary: only solve reads the bit; integrate's rule 8 asks solve for real roots (a "p=0" factor, X^2+6)
+| `casim --complex integrate "(X^4+7×X^2+6)÷(X^2+6)" X RAD` | `X+X^3÷3` |
+| `casim --complex integrate "1÷(X^2+1)" X RAD` | `ATAN(X)` |
+| `casim --complex factor "X^2+1" X RAD` | `X^2+1` |
+| `casim --complex partfrac "1÷(X^3+X)" X RAD` | `1÷X-X÷(X^2+1)` |

@@ -31,7 +31,7 @@ casim_pgcd	64
 casim_rule_name	8
 casim_run	96
 casim_simplify	48
-casim_solve	48
+casim_solve	64
 casim_step	368
 casim_subst	64
 casim_sum	80
@@ -142,6 +142,7 @@ ib_walk	432
 ib_wfac	32
 ib_whole	176
 ib_wlet	64
+im_abs	96
 impure	32
 impure_	48
 in_place	48
@@ -293,7 +294,7 @@ put_power	80
 put_rat_abs.isra	96
 put_raw_integral	64
 put_signed	48
-put_solution	448
+put_solution	480
 put_step	80
 put_sum_template	80
 put_template	176
@@ -321,6 +322,7 @@ reduce	48
 reduce_to	48
 removed_rows	288
 repeated_factors	464
+root_after	80
 rule_of	32
 run_base	8
 sgn_count	64
@@ -345,6 +347,7 @@ sm_split.constprop	128
 sm_term	144
 sm_typed_ok	64
 small	64
+solve_	16
 sort	112
 split	480
 split_impure	96

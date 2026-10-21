@@ -35,7 +35,8 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 docs/language.md is the input language, with every operation's statuses and examples.
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
-**What it doesn't do (yet):** complex roots, infinite series and sums, trigonometric identities (so not SIN(X)^2's
+**What it doesn't do (yet):** complex roots beyond a quadratic's (solve's `--complex` gives those), infinite
+series and sums, trigonometric identities (so not SIN(X)^2's
 integral), matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
@@ -147,8 +148,8 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 334 deliberate faults, each of which the tests
-  must catch; `make test` catches all 334. After the arena move to 8,800 B, two faults survived, one in the run of
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 348 deliberate faults, each of which the tests
+  must catch; `make test` catches all 348. After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
   new arena, and both are caught again. Each mutant's copy

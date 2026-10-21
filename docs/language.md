@@ -162,6 +162,13 @@ its result first:
 - PARTIAL, DEGREE n LEFT: a factor of degree 3 or more is left, with the roots found so far;
 - NO REAL ROOTS, NO SOLUTION (for a nonzero constant), or EVERY X (for 0).
 
+**Complex roots** (CAS 020): `CASIM_COMPLEX` OR'd into the angle (the CLI's `--complex`, the JS wrapper's `complex`)
+gives each quadratic factor with no real root its conjugate pair, as `(A±B×SQRT(r)×0i1)÷D` with the real roots' own
+omissions. i is spelled `0i1`, the core's complex literal, because a bare `i` in an equation is a variable. The pairs
+come after the real roots, each pair's negative imaginary part first, ordered by real part and then by |imaginary
+part|. Only solve and its steps read the bit, and not in model 33, whose equations have no complex numbers; →DEC
+leaves a root's text as it is.
+
 Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π or an irrational number), NO_ROOM
 (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
 
@@ -171,6 +178,8 @@ Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π 
 | `casim solve "X^3-3×X+2" X RAD` | `SOLVED: X=-2; X=1 (MULT 2)` |
 | `casim solve "2×X^2-4" X RAD` | `SOLVED: X=-SQRT(2); X=SQRT(2)` |
 | `casim solve "X^2+1" X RAD` | `NO REAL ROOTS` |
+| `casim --complex solve "X^2+1" X RAD` | `SOLVED: X=-0i1; X=0i1` |
+| `casim --complex solve "X^2+X+1" X RAD` | `SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
 | `casim solve "(X+3)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT: X=-3` |
 | `casim solve "SIN(X)=0.5" X RAD` | `NOT_POLYNOMIAL` |
 | `casim solve "A×X^2-1" X RAD` | `NOT_NUMERIC` |

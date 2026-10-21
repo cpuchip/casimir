@@ -74,6 +74,10 @@ typedef enum {
    the decimal one key away (→DEC). Without it a number casim makes prints as a fraction, and one from a typed
    decimal by CAS 002's rule. A mode bit, not a casim_req field, so no initializer changes. */
 #define CASIM_PRINT_DECIMAL 16
+/* CAS 020, OR'd into any call's angle: solve prints the complex roots of its quadratic factors, a conjugate pair each,
+   as (A±B×SQRT(r)×0i1)÷D, where it would say NO REAL ROOTS or leave them out. Only solve (and its steps) reads it,
+   and not in model 33, whose equations have no complex numbers; every other answer is the same with it. */
+#define CASIM_COMPLEX 32
 
 /* d/d(var) of eqn: an expression gives its derivative, L=R gives L'=R' (unit CAS 001). var is 0-25
    for A-Z. The text written to out (cap bytes, NUL included) is valid in the core's grammar. */

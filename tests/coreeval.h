@@ -53,6 +53,21 @@ static inline abn_status ce_eval(const char *text, abn *out)
     return ABN_OK;
 }
 
+/* CAS 020: the value of text, real or complex (kind AB_REAL or AB_COMPLEX); and a variable set to one */
+static inline abn_status ce_eval_val(const char *text, ab_val *out)
+{
+    int errpos = 0;
+    abn_status st = eqn_eval(ce_calc, text, ce_model, false, false, out, &errpos);
+    if (st != ABN_OK) return st;
+    if (out->kind == AB_REAL) out->im = abn_zero();
+    return out->kind == AB_REAL || out->kind == AB_COMPLEX ? ABN_OK : ABN_DOMAIN;
+}
+
+static inline void ce_set_val(char var, const ab_val *value)
+{
+    ce_calc->var[var - 'A'] = *value;
+}
+
 static inline abn ce_num(const char *text)
 {
     abn a;

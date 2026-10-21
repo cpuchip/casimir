@@ -106,8 +106,8 @@ MUTANTS = {
         ("src/casim.c", "    for (int s = -1; s <= 1; s += 2) {\n        iroot x", "    for (int s = 1; s <= 1; s += 2) {\n        iroot x"),
     ],
     "solve-stamp-ignored": [
-        ("src/casim.c", "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);",
-         "    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, ((void)model, false));"),
+        ("src/casim.c", "    return (model == CASIM_MODEL_STU ? SF_RTL : 0) | ((angle & ANGLE_CX)",
+         "    return (0 ? SF_RTL : 0) | ((angle & ANGLE_CX)"),
     ],
     # CAS 006: the unit's list, and each of the check's two rewrites (abacus #5124)
     "integ-substitution-a-dropped": [
@@ -1010,6 +1010,34 @@ MUTANTS = {
                                 "        if (*t == '.') return true;")],
     "fallback-first-status": [("src/casim.c", "        fell = true, st = run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap);",
                                "        fell = run_(rq, rq->angle | ANGLE_DEC, out, cap, arena, arena_cap) == CASIM_OK, st = fell ? CASIM_OK : st;")],
+    # CAS 020 (complex roots): the pair, its text, its order, and where the bit may go
+    "cx-pair-sign-dropped": [("src/casim.c", "iroot x = {d < 0 ? 2 : 1, 0, 1, -b / g, s * (k / g), r,",
+                              "iroot x = {d < 0 ? 2 : 1, 0, 1, -b / g, (d < 0 ? 1 : s) * (k / g), r,")],
+    "cx-i-left-out": [("src/casim.c", "        if (x->irr == 2) puts_(w, \"0i1\");", "        if (x->irr == 2 && 0) puts_(w, \"0i1\");")],
+    "cx-bare-i": [("src/casim.c", "        if (x->irr == 2) puts_(w, \"0i1\");", "        if (x->irr == 2) puts_(w, \"i\");")],
+    "cx-parts-unreduced": [("src/casim.c", "    g = gcd64(gcd64(b, k), 2 * a);\n    for (int s = -1; s <= 1; s += 2) {",
+                            "    g = d < 0 ? 1 : gcd64(gcd64(b, k), 2 * a);\n    for (int s = -1; s <= 1; s += 2) {")],
+    "cx-r-not-square-free": [("src/casim.c", "    square_free(d < 0 ? -d : d, &k, &r);",
+                              "    if (d < 0) k = 1, r = -d;\n    else square_free(d, &k, &r);")],
+    "cx-pairs-by-im-descending": [("src/casim.c", "    if ((k = abn_cmp(&x, &y)) != 0) return k > 0;\n    return a->B > b->B;",
+                                   "    if ((k = abn_cmp(&x, &y)) != 0) return k < 0;\n    return a->B > b->B;")],
+    "cx-negative-last": [("src/casim.c", "    return a->B > b->B;\n}", "    return a->B < b->B;\n}")],
+    "cx-pairs-before-reals": [("src/casim.c", "    if ((a->irr == 2) != (b->irr == 2)) return a->irr == 2;",
+                               "    if ((a->irr == 2) != (b->irr == 2)) return b->irr == 2;")],
+    "cx-steps-ignore-bit": [("src/casim.c", "    if (solve_flags(rq->model, rq->angle) & SF_CX) c.nm |= NM_CX;     /* the walk's quadratics as solve's */",
+                             "    (void)0;")],
+    # the core's own literal AiB for r = 1 (abacus #9364): a leading minus negates the whole literal, so -1+2i reads -1-2i
+    "cx-literal-negative-real": [("src/casim.c", "        int64_t b = x->B < 0 ? -x->B : x->B;\n        bool paren = x->A != 0 && x->D != 1;",
+                                  "        int64_t b = x->B < 0 ? -x->B : x->B;\n        bool paren = x->A != 0 && x->D != 1;\n"
+                                  "        if (x->irr == 2 && x->r == 1) {\n            put_int(w, x->A), puts_(w, \"i\"), put_int(w, x->B);\n"
+                                  "            if (x->D != 1) puts_(w, DIVIDE), put_int(w, x->D);\n"
+                                  "            if (x->mult > 1) puts_(w, \" (MULT \"), put_int(w, x->mult), puts_(w, \")\");\n            return;\n        }")],
+    "cx-no-real-roots-with-bit": [("src/casim.c", "    } else puts_(w, nr ? \"SOLVED\" : \"NO REAL ROOTS\");",
+                                   "    } else puts_(w, nr && rs[0].irr != 2 ? \"SOLVED\" : \"NO REAL ROOTS\");")],
+    "cx-bit-in-33": [("src/casim.c", "((angle & ANGLE_CX) && model != CASIM_MODEL_33 ? SF_CX : 0)", "((angle & ANGLE_CX) ? SF_CX : 0)")],
+    "cx-boundary-ir-hole": [("src/casim.c", "arena_cap - 3 * SLOT, rtl ? SF_RTL : 0) != CASIM_OK ||",
+                             "arena_cap - 3 * SLOT, (rtl ? SF_RTL : 0) | SF_CX) != CASIM_OK ||")],
+    "cx-start-keeps-bit": [("src/casim.c", "    c->angle = angle & ~ANGLE_BITS;", "    c->angle = angle & ~ANGLE_DEC;")],
     "collect-fold-off": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0 && !(c->nm & NM_DEC) && 0) {")],
     "collect-fold-under-dec": [("src/casim.c", "    } else if (t->k > 0 && !(c->nm & NM_DEC)) {", "    } else if (t->k > 0) {")],
     "mark-cache-poisoned": [("src/casim.c", "    ref r = num(c, v);\n    if (m && r != SPARE) nd(c, r)->id = NUM_MARK;",

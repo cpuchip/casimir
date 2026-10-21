@@ -11,7 +11,8 @@
 // how powers chain), replModel (subst's replacement, pdiv's and pgcd's second polynomial; default model), arena (bytes
 // of working memory, default 65536; the calculator's is 8800), cap (bytes of answer with its NUL, default 65536; the
 // calculator's equation slot is 192), decimal (true prints every number as a decimal, →DEC; by default a number
-// the CAS made prints as a fraction and a typed decimal stays one).
+// the CAS made prints as a fraction and a typed decimal stays one), complex (true: solve's complex roots too, a conjugate
+// pair for each quadratic factor with no real root, as (A±B×SQRT(r)×0i1)÷D; not in model 33).
 import createCasimirModule from "./casim.js";
 
 export const STATUSES = ["OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM", "NOT_POLYNOMIAL",
@@ -20,6 +21,7 @@ export const OPS = ["derive", "simplify", "expand", "collect", "subst", "solve",
     "pdiv", "pgcd", "cancel", "partfrac", "taylor", "limit", "sum"];
 const ANGLES = { DEG: 0, RAD: 1, GRAD: 2 };
 const PRINT_DECIMAL = 16;     // casim.h's CASIM_PRINT_DECIMAL (→DEC), OR'd into the angle
+const COMPLEX = 32;           // casim.h's CASIM_COMPLEX (CAS 020), the same way
 const MODELS = { STU: 1, 33: 33, 35: 35 };
 
 function letter(v) {
@@ -44,7 +46,8 @@ export async function loadCasimir(moduleOptions = {}) {
             ["number", "string", "number", "number", "string", "number", "number", "string", "number", "number"],
             [OPS.indexOf(op), text, model, letter(opts.var ?? "X"), repl,
              opts.replModel === undefined ? model : pick(MODELS, opts.replModel, "replModel"),
-             pick(ANGLES, opts.angle ?? "RAD", "angle") | (opts.decimal ? PRINT_DECIMAL : 0), repl2,
+             pick(ANGLES, opts.angle ?? "RAD", "angle") | (opts.decimal ? PRINT_DECIMAL : 0) | (opts.complex ? COMPLEX : 0),
+             repl2,
              opts.arena ?? 65536, opts.cap ?? 65536]);
         return { status: STATUSES[st] ?? String(st), out: m.UTF8ToString(m.ccall("casimjs_out", "number", [], [])) };
     }

@@ -366,6 +366,14 @@ stays checked: an overflow means "not a factor", which a true factor never cause
   is the textbook's form, not 002's canonical one (which would print 2.5−SQRT(13)÷2): abacus amended rule 5
   for it. Every root's text evaluates on the core to the root.
 - Past 191 bytes, TOO_LONG.
+- **Complex roots (CAS 020, CASIM_COMPLEX in the angle):** a quadratic factor with a negative discriminant gives
+  its pair (A±B×SQRT(r)×0i1)÷D in lowest terms, −d = k²r, r square-free (SQRT(r)× left out for r = 1), with the
+  real form's omissions. `0i1` is i as the core reads it: a bare `i` is a variable, `SQRT(-3)` is a domain error,
+  and a leading minus negates a whole literal (`-1i2` is −1−2i), so the core's own `AiB` would print −1+2i as
+  `-1i-2` (abacus #9364). The pairs follow the real roots, each pair's negative imaginary part first, by real part
+  and then |imaginary part|, so NO REAL ROOTS doesn't occur. Model 33 ignores the bit (its equations read no complex
+  number). The bit reaches do_solve only from solve's public paths (SF_CX): start() takes it out of every angle, so
+  rule 8's own solve (ir_hole) stays real.
 
 ## CAS 006: integrate
 

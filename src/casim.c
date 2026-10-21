@@ -443,6 +443,13 @@ static const rat *val(const ctx *c, ref r)
 /* CAS 019 rule 6: →DEC (and rule 5's fallback) rides in the angle every do_* takes and passes on (casim.h promises
    no globals): start() takes it out as NM_DEC. */
 #define ANGLE_DEC CASIM_PRINT_DECIMAL
+/* CAS 020: solve's complex roots ride in the angle only as far as solve's public paths, which hand them to do_solve as
+   SF_CX; start() takes the bit out of every angle, so nothing inside casim inherits it (ir_hole's solve stays real). */
+#define ANGLE_CX CASIM_COMPLEX
+#define ANGLE_BITS (ANGLE_DEC | ANGLE_CX)
+#define NM_CX 8                 /* solve: the complex roots too (SF_CX) */
+#define SF_RTL 1                /* do_solve's flags: the text is STU's */
+#define SF_CX 2                 /* and the complex roots are printed (CAS 020) */
 
 static bool marked(const ctx *c, ref r)
 {
@@ -2875,7 +2882,7 @@ static void start(ctx *c, const char *eqn, int angle, void *arena, size_t arena_
     size_t cap = arena_cap > q - p ? arena_cap - (q - p) : 0;
     memset(c, 0, sizeof *c);
     c->s = eqn;
-    c->angle = angle & ~ANGLE_DEC;
+    c->angle = angle & ~ANGLE_BITS;
     c->nm = (angle & ANGLE_DEC) ? NM_DEC : 0;
     c->mem = (unsigned char *)arena + (q - p);
     if (cap > 65535u * 8u) cap = 65535u * 8u;
@@ -2902,7 +2909,7 @@ static __attribute__((noinline)) casim_status do_derive(const char *eqn, int var
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.var = var;
@@ -2919,7 +2926,7 @@ static __attribute__((noinline)) casim_status do_simplify(const char *eqn, int a
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3248,7 +3255,7 @@ static inline __attribute__((always_inline)) casim_status step_(const casim_req 
         return do_psteps(rq, &W, &w, arena, arena_cap);
     }
     if (!rq || !rq->eqn || rq->op != CASIM_DERIVE || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 ||
-        rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
+        rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_BITS) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     start(&c, rq->eqn, rq->angle, arena, arena_cap);
@@ -3798,7 +3805,7 @@ static __attribute__((noinline)) casim_status do_expand(const char *eqn, int ang
     ref n = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3817,7 +3824,7 @@ static __attribute__((noinline)) casim_status do_collect(const char *eqn, int va
     out_t w = {out, cap < SLOT ? cap : SLOT, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -3845,7 +3852,7 @@ static __attribute__((noinline)) casim_status do_subst(const char *eqn, int var,
     int chars = 0;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;                 /* review: no text is a bad argument */
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD || !repl) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -4270,9 +4277,10 @@ static __attribute__((noinline)) void factors(ctx *c, ipoly *f, solve_ws *s, int
     }
 }
 
-/* A root: rational p/q (q > 0), or (A + B√r)/D with r square-free > 1, D > 0, B != 0 (its sign the root's). */
+/* A root: irr 0, rational p/q (q > 0); irr 1, (A + B√r)/D with r square-free > 1, D > 0, B != 0 (its sign the
+   root's); irr 2 (CAS 020), (A + B√r i)/D, r square-free >= 1, and v its real part. */
 typedef struct {
-    bool irr;
+    uint8_t irr;
     int64_t p, q, A, B, r, D;
     int mult;
     abn v;
@@ -4318,7 +4326,7 @@ static void add_root(iroot *rs, int *n, iroot x)
 static void rational_root(iroot *rs, int *n, int64_t p, int64_t q, int mult)
 {
     int64_t g = gcd64(p, q);
-    iroot x = {false, 0, 1, 0, 0, 0, 1, mult, {{0}}};
+    iroot x = {0, 0, 1, 0, 0, 0, 1, mult, {{0}}};
     abn ap, aq;
     if (q < 0) p = -p, q = -q;
     if (g > 1) p /= g, q /= g;
@@ -4339,13 +4347,15 @@ static bool quad_root_ok(int64_t a, int64_t b, int64_t c, int64_t p, int64_t q)
 }
 
 /* The roots of a x^2 + b x + c (a > 0): none, one twice (discriminant 0), two rationals, or (-b ± k√r)/(2a)
-   in lowest terms. A rational root is checked exactly against the quadratic before it is kept (the review
+   in lowest terms; with cx (CAS 020) and a negative discriminant, the pair (-b ± k√r i)/(2a), the negative imaginary
+   part first. A rational root is checked exactly against the quadratic before it is kept (the review
    of 93daf60: a discriminant of 0 printed two wrong roots); false when a check fails, so the caller counts
    the factor as unsolved rather than print anything. */
-static inline __attribute__((always_inline)) bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult)
+static inline __attribute__((always_inline)) bool quad_roots(iroot *rs, int *n, int64_t a, int64_t b, int64_t c, int mult,
+                                                             bool cx)
 {
     int64_t d = b * b - 4 * a * c, k, r, g;
-    if (d < 0) return true;
+    if (d < 0 && !cx) return true;
     if (d == 0) {
         /* defensive (abacus #5077: no input reaches it): a repeated rational root leaves as a linear factor
            before any quadratic is formed, so (q x - p)^2 arrives here only if the numbers missed it as
@@ -4355,8 +4365,8 @@ static inline __attribute__((always_inline)) bool quad_roots(iroot *rs, int *n, 
         rational_root(rs, n, -b, 2 * a, 2 * mult);
         return true;
     }
-    square_free(d, &k, &r);
-    if (r == 1) {
+    square_free(d < 0 ? -d : d, &k, &r);
+    if (r == 1 && d > 0) {
         if (!quad_root_ok(a, b, c, -b - k, 2 * a) || !quad_root_ok(a, b, c, -b + k, 2 * a)) return false;
         rational_root(rs, n, -b - k, 2 * a, mult);
         rational_root(rs, n, -b + k, 2 * a, mult);
@@ -4364,14 +4374,35 @@ static inline __attribute__((always_inline)) bool quad_roots(iroot *rs, int *n, 
     }
     g = gcd64(gcd64(b, k), 2 * a);
     for (int s = -1; s <= 1; s += 2) {
-        iroot x = {true, 0, 1, -b / g, s * (k / g), r, 2 * a / g, mult, {{0}}};
+        iroot x = {d < 0 ? 2 : 1, 0, 1, -b / g, s * (k / g), r, 2 * a / g, mult, {{0}}};
         abn A = abn_of(x.A), B = abn_of(x.B), R = abn_of(x.r), D = abn_of(x.D), t;
-        if (abn_sqrt(&t, &R) != ABN_OK || abn_mul(&t, &t, &B) != ABN_OK || abn_add(&t, &t, &A) != ABN_OK ||
-            abn_div(&x.v, &t, &D) != ABN_OK)
-            x.v = abn_zero();
+        if (d < 0) t = abn_zero();          /* a pair's v is its real part: root_after orders the imaginary parts */
+        else if (abn_sqrt(&t, &R) != ABN_OK || abn_mul(&t, &t, &B) != ABN_OK) t = abn_zero();
+        if (abn_add(&t, &t, &A) != ABN_OK || abn_div(&x.v, &t, &D) != ABN_OK) x.v = abn_zero();
         add_root(rs, n, x);
     }
     return true;
+}
+
+/* a complex root's |imaginary part|, |B|√r/D */
+static abn im_abs(const iroot *x)
+{
+    abn B = abn_of(x->B < 0 ? -x->B : x->B), R = abn_of(x->r), D = abn_of(x->D), t;
+    if (abn_sqrt(&t, &R) != ABN_OK || abn_mul(&t, &t, &B) != ABN_OK || abn_div(&t, &t, &D) != ABN_OK) t = abn_zero();
+    return t;
+}
+
+/* Whether root a comes after b in the answer: the reals ascending, then the complex pairs, by real part, then by
+   |imaginary part|, each pair's negative imaginary part first (CAS 020, abacus #9364) */
+static __attribute__((noinline)) bool root_after(const iroot *a, const iroot *b)
+{
+    int k;
+    abn x, y;
+    if ((a->irr == 2) != (b->irr == 2)) return a->irr == 2;
+    if ((k = abn_cmp(&a->v, &b->v)) != 0 || a->irr != 2) return k > 0;
+    x = im_abs(a), y = im_abs(b);
+    if ((k = abn_cmp(&x, &y)) != 0) return k > 0;
+    return a->B > b->B;
 }
 
 static inline __attribute__((always_inline)) void put_root(out_t *w, const iroot *x)
@@ -4387,7 +4418,11 @@ static inline __attribute__((always_inline)) void put_root(out_t *w, const iroot
         if (x->B < 0) puts_(w, "-");
         else if (x->A != 0) puts_(w, "+");
         if (b != 1) put_int(w, b), puts_(w, TIMES);
-        puts_(w, "SQRT("), put_int(w, x->r), puts_(w, ")");
+        if (x->r != 1) {
+            puts_(w, "SQRT("), put_int(w, x->r), puts_(w, ")");
+            if (x->irr == 2) puts_(w, TIMES);
+        }
+        if (x->irr == 2) puts_(w, "0i1");      /* i, as the core reads it: a bare i is a variable (CAS 020) */
         if (paren) puts_(w, ")");
         if (x->D != 1) puts_(w, DIVIDE), put_int(w, x->D);
     }
@@ -4722,13 +4757,13 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
     for (int i = 0; i < s->nfac; i++) {
         const ifac *x = &s->fac[i];
         if (x->deg == 1) rational_root(rs, &nr, x->b, x->a, x->mult);
-        else if (!quad_roots(rs, &nr, x->a, x->b, x->c, x->mult)) f->n += 2 * x->mult;     /* unsolved: left */
+        else if (!quad_roots(rs, &nr, x->a, x->b, x->c, x->mult, (c->nm & NM_CX) != 0)) f->n += 2 * x->mult;   /* left */
     }
-    /* ascending, by value in decimal128 (34 digits) */
+    /* ascending, by value in decimal128 (34 digits); the complex pairs after the reals (root_after) */
     for (int i = 1; i < nr; i++) {
         iroot t = rs[i];
         int j = i;
-        while (j > 0 && abn_cmp(&rs[j - 1].v, &t.v) > 0) rs[j] = rs[j - 1], j--;
+        while (j > 0 && root_after(&rs[j - 1], &t)) rs[j] = rs[j - 1], j--;
         rs[j] = t;
     }
     if (f->n >= 3) {
@@ -4741,7 +4776,7 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
 }
 
 static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var, int angle, char *out, size_t cap,
-                                                        void *arena, size_t arena_cap, bool rtl)
+                                                        void *arena, size_t arena_cap, int sf)
 {
     ctx c;
     ref n = SPARE, ws, cr, dq;
@@ -4749,10 +4784,11 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
     ipoly f;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     size_t mark;
     start(&c, eqn, angle, arena, arena_cap);
-    c.rtl = rtl;
+    c.rtl = (sf & SF_RTL) != 0;
+    if (sf & SF_CX) c.nm |= NM_CX;
     c.opaque = true;
     cr = grab(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
     mark = c.used;
@@ -4784,12 +4820,19 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
 
 /* ---- the API: CAS 005 ---- */
 
+/* do_solve's flags from a public call: STU's text, and CAS 020's complex roots where the angle asks and the model's
+   equations can read them (not the 33s's, abacus #9362) */
+static int solve_flags(int model, int angle)
+{
+    return (model == CASIM_MODEL_STU ? SF_RTL : 0) | ((angle & ANGLE_CX) && model != CASIM_MODEL_33 ? SF_CX : 0);
+}
+
 static casim_status solve_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                            size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
-    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    return do_solve(eqn, var, angle, out, cap, arena, arena_cap, solve_flags(model, angle));
 }
 
 casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
@@ -5090,7 +5133,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
             const ifac *x = &W->fs[i];
             int nr = 0;
             if (x->deg == 2) {
-                bool solved = quad_roots(W->r, &nr, x->a, x->b, x->c, x->mult);
+                bool solved = quad_roots(W->r, &nr, x->a, x->b, x->c, x->mult, (c->nm & NM_CX) != 0);
                 ss_quadratic(S, w, W, x, var, solved, nr);
             } else if (ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
                 ipoly p;
@@ -5130,15 +5173,15 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
     ipoly f0;
     sstep_t S;
     if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
-        (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
+        (rq->angle & ~ANGLE_BITS) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     st = arena_cap < SLOT ? CASIM_NO_ROOM
-                          : do_solve(rq->eqn, rq->var, rq->angle, ans, SLOT, arena, room, rq->model == CASIM_MODEL_STU);
+                          : do_solve(rq->eqn, rq->var, rq->angle, ans, SLOT, arena, room, solve_flags(rq->model, rq->angle));
     if (st == CASIM_NO_ROOM) {
         /* the slot took the room solve needed: plain solve's own run says whether it refuses (its status and out),
            or answers, and then only the steps don't fit */
-        st = do_solve(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
+        st = do_solve(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, solve_flags(rq->model, rq->angle));
         if (cap) out[0] = st == CASIM_OK ? '\0' : out[0];
         return st == CASIM_OK ? CASIM_NO_ROOM : st;
     }
@@ -5147,6 +5190,7 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
         return st;
     }
     start(&c, rq->eqn, rq->angle, arena, room);
+    if (solve_flags(rq->model, rq->angle) & SF_CX) c.nm |= NM_CX;     /* the walk's quadratics as solve's */
     cr = held(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
     ws = held(&c, sizeof(solve_ws));
     held(&c, SOLVE_DIVS * sizeof(int32_t));
@@ -5656,7 +5700,7 @@ static __attribute__((noinline)) casim_status do_integrate(const char *eqn, int 
     ref n = SPARE, F = SPARE;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -5686,7 +5730,7 @@ static __attribute__((noinline)) bool ir_hole(const char *row, int var, int angl
     if (row[0] == 'A' + var && row[1] == '=')
         return do_subst(slot, var, row + 2, angle, val, SLOT, arena, arena_cap - 2 * SLOT, false, false) != CASIM_UNDEFINED;
     return arena_cap <= 5 * SLOT ||
-           do_solve(row, var, angle, slot - SLOT, SLOT, arena, arena_cap - 3 * SLOT, rtl) != CASIM_OK ||
+           do_solve(row, var, angle, slot - SLOT, SLOT, arena, arena_cap - 3 * SLOT, rtl ? SF_RTL : 0) != CASIM_OK ||
            strncmp(slot - SLOT, "NO REAL ROOTS", 13) != 0;
 }
 
@@ -6177,7 +6221,7 @@ static casim_status do_isteps(const casim_req *rq, int k, int flags, casim_step_
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
     if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG ||
-        (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
+        (rq->angle & ~ANGLE_BITS) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     start(&c, rq->eqn, rq->angle, arena, arena_cap);
@@ -6382,7 +6426,7 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     size_t ocap = cap < SLOT ? cap : SLOT;
     if (cap) out[0] = '\0';
     if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -6776,7 +6820,7 @@ static __attribute__((noinline)) casim_status do_factor(const char *eqn, int var
     long budget = FACTOR_BUDGET;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -7133,7 +7177,7 @@ static __attribute__((noinline)) casim_status do_poly(int op, const char *eqn, i
     CASIM_FRAME_PLANT
     if (cap) out[0] = '\0';
     if (!eqn || (op != CASIM_CANCEL && !repl)) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.opaque = true;
@@ -7722,7 +7766,7 @@ static __attribute__((noinline)) casim_status do_partfrac(const char *eqn, int v
     rat *co;
     if (cap) out[0] = '\0';
     if (!eqn) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     if (arena_cap < skip + sizeof(pfkeep) + sizeof(pfwork) + 64) return out[0] = '\0', CASIM_NO_ROOM;
     room = (arena_cap - skip - sizeof(pfkeep)) & ~(size_t)7;
     K = (pfkeep *)(void *)(base + room);
@@ -8071,7 +8115,7 @@ static SS_KEEP_ARGS casim_status do_psteps(const casim_req *rq, walk_t *Pw, out_
     ref wr, pr;
     unsigned char *base;
     pstep_t S;
-    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_DEC) > CASIM_GRAD)
+    if (!rq->eqn || !model_ok(rq->model) || rq->var < 0 || rq->var > 25 || rq->angle < CASIM_DEG || (rq->angle & ~ANGLE_BITS) > CASIM_GRAD)
         return CASIM_BAD_ARG;
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
     st = arena_cap < SLOT ? CASIM_NO_ROOM
@@ -9059,7 +9103,7 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     out_t w = {out, ocap, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn || !point || n < 0 || n > TAYLOR_MAX) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     start(&c, eqn, angle, arena, arena_cap);
     c.rtl = rtl;
     c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */
@@ -10861,7 +10905,7 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
     out_t w = {out, ocap, 0, false};
     if (cap) out[0] = '\0';
     if (!eqn || !point || side < -1 || side > 1) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     if (!strcmp(point, "\xe2\x88\x9e")) inf = 1;
     if (!strcmp(point, "-\xe2\x88\x9e")) inf = -1;
     if (inf && side) return CASIM_BAD_ARG;              /* rule 2: the side of ∞ is implied */
@@ -11720,7 +11764,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
     bool swung;
     if (cap) out[0] = '\0';
     if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
-    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_DEC) > CASIM_GRAD) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
     memset(&S, 0, sizeof S);
     S.var = var, S.eqn = eqn;
     S.inf = !strcmp(hi, "\xe2\x88\x9e");

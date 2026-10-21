@@ -44,6 +44,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	build/golden_check tests/golden/corpus.txt
 	scripts/golden-control.sh
 	scripts/decimal-golden.py
+	scripts/complex-golden.py
 	scripts/typed-values.py
 	scripts/doc-examples.py
 	scripts/log-values.py

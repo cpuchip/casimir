@@ -1,8 +1,9 @@
 # CAS work unit 020: complex roots
 
-**From:** casim · **To:** abacus · **Status:** reviewed by abacus (#9362: GO on the shape; the four questions ruled
-and three additions; #9364 reverses (2) to one form; all folded in below). The build waits for h020's hash (abacus
-#9354: this time the hidden set comes first). casim writes the unit; abacus writes h020 and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built (As built, Measured), for h020's run. Reviewed by abacus
+before the build (#9362: GO on the shape, the four questions ruled, three additions; #9364 reverses (2) to one form;
+all folded in below). h020 was frozen before the build (#9367). casim writes the unit; abacus writes h020 and the
+Accepted section.
 - Why now: complex roots are the last item on v1.0's list ("rational integrals ... sums and complex roots"), and
   finishing the list is what makes 1.0.0-rc6 honest (abacus #9354). The series unit is next.
 - Measured on a throwaway probe, against the core at CORE_PIN (38d1931) and against firmware main's (6f12c13): a
@@ -134,6 +135,51 @@ print a root when the discriminant is negative. A student in a complex-numbers u
   slots). No new work area.
 - **Stack:** solve isn't on the gate's path (the STU chain is), and put_root is a leaf.
 - **Time:** none to speak of. The quadratic is already found; this prints it.
+
+## As built (where the code differs from the reviewed text, or settles what it left open)
+
+- **The bit:** CASIM_COMPLEX (32) in casim.h. ANGLE_BITS (→DEC's and this one) is masked at the 18 angle checks and in
+  start(), so any op takes the bit and none but solve sees it.
+- **The boundary:** do_solve's last argument was `bool rtl` and is now flags (SF_RTL, SF_CX), so no argument was
+  added. solve_flags(model, angle) makes them at solve's two public paths: solve_ (casim_run's CASIM_SOLVE and
+  casim_solve) and do_ssteps (both its do_solve calls, and the walk's own ctx). It gives no SF_CX in model 33.
+  ir_hole passes SF_RTL alone. do_solve sets NM_CX (a fourth bit in CAS 019's ctx byte), which put_solution and
+  ss_walk hand to quad_roots.
+- **iroot:** irr is 0 (rational), 1 (irrational real) or 2 (complex), so no field was added. v is a pair's real
+  part, and root_after computes |B|√r/D from the root itself (im_abs). A first build with `bool cx` and a stored
+  imaginary part grew put_solution 448 → 528 and rational_root 240 → 288 on the host.
+- **quad_roots** takes the pair through the irrational loop it already had (square_free of |d|, the same gcd).
+  **put_root** is the irrational branch, with `SQRT(r)×` left out for r = 1 and `0i1` after it.
+- **The CLI's `--complex`** goes through mode_bits with `--decimal`. The `--decimal` comment's sentence, cut off at
+  "then it" in cfe68ad, is finished. The JS wrapper takes `complex: true`.
+
+## Measured (the build, over 2ba7217's library)
+
+- **S3 text: 222,075 B, +1,058 over 221,017.** That leaves 40,069 for the series unit and the ratio shift. Split by a
+  variant with the steps' complex path off (221,989):
+  - **the answers: +972 B** (stop at 3 KB);
+  - **the steps: +86 B** (stop at 2 KB).
+  - put_root's complex branch is compiled into the steps' inlined copies whatever their flag, so the answers'
+    figure carries some of it.
+- **S3 frames:** casim_run 64, casim_step 240, do_solve 288 and put_solution 400 are unchanged. ss_walk is 560 → 576.
+  New: im_abs 112, root_after 64, and solve_ 48 (now out of line). On the host, casim_solve 48 → 64 and put_solution
+  448 → 480 (frame table re-recorded).
+- **The gate:** solve isn't on the STU chain's path, and casim_run and casim_step are unchanged. The on-chip bench
+  wasn't rerun: with the bit off nothing changes, and no bench row sets the bit.
+- **Tests:**
+  - make test: 19 tests, 118,271 checks.
+  - solve_test: 302 checks. With the bit, 2,190 seeded polynomials are judged, each root by its value on the core
+    and its place in the answer, 0 wrong.
+  - scripts/complex-golden.py (make check): 10,265 golden lines that aren't solve's or are model 33's, byte for byte
+    with the bit; 523 solve lines the same with the bit as with the bit and →DEC; its control is that the bit moves
+    solve lines.
+  - doc-examples: 643 checks (work/020-examples.txt, 25 rows).
+- **Mutants: 348 of 348 caught.** 14 are new (cx-*, including the literal with a negative real part, the bit
+  honoured in 33 and the boundary at ir_hole), and solve-stamp-ignored is re-anchored to solve_flags. The full run
+  was 4 shards of 87 on copies of the tree, with a peak process-tree RSS of 2,051,780 KiB.
+- **Firmware main's core (6f12c13), the device half:**
+  - solve_test against it: 302 checks, the 2,190 seeded polynomials with the bit, 0 wrong;
+  - the probe: every form in 35 and STU, every form refused under 33.
 
 ## Ruled by abacus (#9362, #9364)
 
