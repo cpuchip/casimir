@@ -1,7 +1,8 @@
 # CAS work unit 021: series
 
 **From:** casim · **To:** abacus · **Status:** draft, revised after abacus's review (#9386: the four questions
-ruled, gaps A–F filled below, in rules 1, 3, 4 and 8, Cost and the oracle). For h021, frozen before the build.
+ruled, gaps A–F filled below, in rules 1, 3, 4 and 8, Cost and the oracle; A and C–F accepted in #9388, and rule
+8 rewritten after it). For h021, frozen before the build.
 casim writes the unit; abacus writes h021 and the Accepted section.
 - **Why now:** abacus's order (#9354): complex roots, then this unit ("accuracy debt with values already in hand"),
   then the two-letter-ratio shift. CAS 016 named its debt (docs/language.md, "a later unit composes power series"):
@@ -90,12 +91,32 @@ casim writes the unit; abacus writes h021 and the Accepted section.
 7. **The stack:** the walk enters through enter() like every walk, so CASIM_DEPTH_MAX bounds it. On the S3 its frame
    is 48 B a level, against canon_'s 48 and deriv_'s 64. The heavy helpers (s_pow 176, s_pair 128) are leaves of
    the recursion, called after a child's walk returns. casim_run's and casim_step's frames must not move.
-8. **Deciding zero** (#9386 B): one test for every decision the route makes. A coefficient is:
+8. **Deciding zero** (#9386 B; rewritten after #9388, which showed the first version unsound). One test serves every
+   decision the route makes. A coefficient is:
    - **zero** only as canon's literal 0;
-   - **nonzero** as a rational other than 0, or when the evaluator's value has |v| > 1E-20 × max(1, M), where M is the
-     largest |value| among the constant's parts. A sum's rounding is relative to its largest term, so a cancellation
-     of large terms is never decided by its leftover digits;
+   - **nonzero** as a rational other than 0, or when its value is past 8 times an error bound carried beside it;
    - **undecided** otherwise, and the route gives up.
+
+   The bound (s_eval) walks the constant as const_val does. It takes each part's value from const_val, the value used
+   everywhere, and carries the error:
+   - every rounding adds 1E-32 of the magnitude rounded, about 20 times decimal128's half unit; a number and π are
+     one rounding each;
+   - a sum adds its parts' bounds;
+   - a product scales each part's bound by the other factor: |w|·b_t + |t|·b_w + b_w·b_t;
+   - a power x^e scales x's relative bound by 2|e| (refused unless |e| times it is under 1÷2), and adds (130 +
+     |e·LN|x||) roundings for computing x^e itself;
+   - a function scales its argument's bound by twice its derivative's size there, and adds its own rounding,
+     1E-32 × (1 + |value| + |argument|). It is refused near a singularity:
+     - LN and LOG within 4 bounds of 0;
+     - ASIN, ACOS, ACOSH and ATANH within 8 bounds of ±1;
+     - TAN where the bound times 1+TAN^2 passes 1÷10;
+     - EXP, ALOG, SINH and COSH where the argument's bound passes 1÷2.
+
+     SIN, COS and TAN take the angle factor first, as const_val does;
+   - SGN is decided only when its argument is past twice its bound;
+   - a letter is undecided;
+   - the walk goes at most 8 deep, and a deeper constant is undecided. On the S3 its frame is 176 B a level, against
+     canon_'s 48, so it isn't left to CASIM_DEPTH_MAX's 44.
 
    The decisions it serves:
    - the leading coefficient a ÷, a radical or a fractional power needs (Miller), and ABS's and SGN's sign;
@@ -106,11 +127,19 @@ casim writes the unit; abacus writes h021 and the Accepted section.
    The order v comes only from taking literal zeros off the front. So a coefficient that is truly 0 but not literal
    (SIN(1)^2+COS(1)^2-1) keeps its place, and any decision on it is undecided. Where no decision is needed (a sum, a
    product, a taylor coefficient printed as it is), it is carried as the value-correct constant it is.
-   - Measured: the test changes nothing over the golden corpus and the seeded judges.
-   - Its control: the same build deciding by today's const_sign (an absolute 1E-20) answers UNDEFINED for
-     (1÷X^2-1÷SIN(X)^2)+(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)÷X at 0. The truth is -1÷3, and the relative test
-     gives up.
-   - The mutant: deciding from the plain value.
+
+   Measured on the prototype, with Z = 10^25×SIN(1)^2+10^25×COS(1)^2-10^25 (exactly 0) and k = 20, 30, 40:
+   - The bound gives up on every one of these rows, where deciding from the plain value answers:
+     - (1÷X^2-1÷SIN(X)^2)+(Z×10^k)÷X at 0: the plain value gives UNDEFINED;
+     - (1÷X^2-1÷SIN(X)^2)+(Z×10^k)÷X^2 at 0+: ∞;
+     - ABS(Z×10^k+X)×EXP(SIN(X)) to order 9: a polynomial.
+
+     The truths are -1÷3, -1÷3 and UNDEFINED.
+   - EXP(SIN(X))÷(Z×10^k+2+X) to order 9 is TOO_LONG either way.
+   - No line moves on the golden corpus or on any seeded judge, with or without the bound.
+   - The mutant: deciding from the plain value. The first rows above catch it.
+   - ABS(X×(Z×10^k)+X^2)×EXP(SIN(X)) is UNDEFINED with the series route off too: that is today's corner rule
+     (taylor_corner), and so the follow-up unit's.
    - **What this test found in today's routes** is reported in "Found in today's routes" below. Rule 8 itself changes
      only the series route.
 
@@ -152,7 +181,8 @@ casim writes the unit; abacus writes h021 and the Accepted section.
   - Result: 854 values and 316 UNDEFINED, 0 UNDECIDED, 0 wrong. Today: 427, 207, and 536 UNDECIDED, 0 wrong.
   - The judge's control: ABS's sign flipped turns 216 rows red.
   - It is a differently made oracle from abacus's gen_abs, which judges by difference quotients at 150 digits.
-- **S3 text: 232,834 B, +10,759.**
+- **S3 text: 232,834 B, +10,759,** before rule 8's bound. The bound adds 2,775 (s_eval 1,620, s_dsize 813, small
+  helpers), so the prototype as it stands is 235,705 (+13,630; claim #9389).
   - s_fn 2,262 (derive's table inlined), s_pow 1,278, taylor_series 1,182, limit_series 999, s_pair 809, ser 699,
     and the rest under 600 each.
   - Frames: casim_run 64, casim_step 240, do_taylor 304 and do_limit 208 are unchanged; ser is 48 a level.
@@ -171,20 +201,26 @@ about 10^20 keeps rounding digits above that, so an identity zero is taken for a
 - With 10^10 or 10^15 in place of 10^25, limit gives 1. With 10^20, it gives UNDEFINED.
 
 These are wrong answers in accepted code (CAS 014–016), not refusals. Fixing const_sign with rule 8's test would move
-today's answers, which crosses this unit's boundary. So I'd make it its own small unit after 021, with these rows as
-its examples. **Your call.**
+today's answers, which crosses this unit's boundary. **Ruled (#9388):** it becomes its own small unit after 021,
+reusing 021's decider, so the zero test exists once. Its golden moves get listed, and abacus writes its hidden rows
+from these four and the 10^k sweep. abacus puts it to Michael as a known issue: only contrived inputs reach it, but
+it's a wrong answer, not a refusal.
 
 ## Cost (estimate, before the build)
 
-- **About 7–9 KB of S3 text, stop at 12 KB.** That's the prototype's 10.8 KB minus two things it did twice:
+- **About 10–11 KB of S3 text, stop at 12 KB.** That's the prototype's 13.6 KB (rule 8's bound included) minus two
+  things it does twice:
   - its two drivers repeat the parse, the point and rule 7's check, where the build runs the series route inside
     do_taylor and do_limit on the canonical f they already hold (about 1.5 KB);
   - s_fn inlines derive's whole table, where the build calls derive's own walk with the placeholder as the variable
     (about 1.5 KB).
+
+  The margin to the stop is thin. If the merges save less, the stop line is where I report: before the build goes
+  past it, not after.
 - No steps pages (taylor and limit have none), so there's no steps line.
 - **Reported as it lands** (#9386 E): S3 text after each piece (the series core, the taylor driver merged into
   do_taylor, the limit driver merged into do_limit, derive's walk in place of its table, and the relative zero test),
-  each against the 12 KB stop. Past 12 KB I stop and report; past 28 KB left for the ratio shift and v1.0's margin, it
+  each against the 12 KB stop, with rule 8's bound as its own line. Past 12 KB I stop and report; past 28 KB left for the ratio shift and v1.0's margin, it
   goes to Michael.
 - Arena: the route runs after the first route's arena is given back. Its peak on EXP(SIN(X)) to order 9 is 2,064 B.
 - Stack: the gate entry points must not move. canon stays inlined everywhere, and the series code reaches it through
