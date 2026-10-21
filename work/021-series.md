@@ -380,7 +380,9 @@ the walk refuses and the route answers UNDECIDED, keeps the route's own test hon
     answer both ways but the 10 tests/golden/moved/cas-021-examples.txt lists with their NO_ROOM, UNDECIDED or
     DECIMAL_FORM; added for the two mutants below).
   - make test: 20 tests, 118,420 checks. series_test (the route alone on every taylor and limit golden line, judged by
-    the core): taylor 317 the same text and 17 equal in value, limit 382 and 2, 0 differ; and its 11 fixed rows.
+    the core): ~~taylor 317 the same text and 17 equal in value, limit 382 and 2, 0 differ~~ (a66609f's corpus) at
+    b282bbe taylor 622 lines, 337 the same text, 17 equal in value; limit 632 lines, 388 and 2; 0 differ, 149 checks
+    with its 11 fixed rows (re-run after acceptance: the 34 new corpus lines came after the first count).
 - **Mutants:** 367 of 367 caught, the 19 ser-* new (the doc's list but the two left out above). The full run (4 shards,
   2.5 h) caught 363, left two ser-* unrun at shard 0's timeout, and didn't catch two old ones: CAS 016's
   limit-sides-share-arena and CAS 019's fallback-flags-no-decimal. Each makes today's route refuse a row it answered,
