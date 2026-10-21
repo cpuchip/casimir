@@ -1067,8 +1067,11 @@ MUTANTS = {
                                  "            if (!is_k(c, d, 0, 1)) return CASIM_UNDEFINED;")],
     "ser-limit-none-undecided": [("src/casim.c", "        return s_sign(&z, ib_canon(c, add2(c, up.v, neg(c, dn.v)))) ? lm(L_NONE, 0) : lm(L_UND, 0);",
                                   "        (void)z;\n        return lm(L_NONE, 0);")],
+    # (CAS 022 made const_sign rule 8, so this mutant's 021 text, s_sign as const_sign, became a depth change alone;
+    # it now puts CAS 009's 1E-20 test, what const_sign was at 021, in s_sign itself)
     "ser-zero-plain-value": [("src/casim.c", "    if (s_eval(c, k, &v, &b, 0) != CV_OK || !s_lt(&b, &v, 8)) return 0;\n    return abn_is_negative(&v) ? -1 : 1;",
-                              "    (void)v, (void)b, (void)s_eval;\n    return const_sign(c, k);")],
+                              "    abn tiny;\n    if (const_val(c, k, &v) != CV_OK || abn_pow10(&tiny, -20) != ABN_OK) return 0;\n"
+                              "    b = abn_abs(&v);\n    if (abn_cmp(&b, &tiny) <= 0) return 0;\n    return abn_is_negative(&v) ? -1 : 1;")],
     "ser-bound-product-unscaled": [("src/casim.c", "                if (!s_m(&p1, &w, &tb) || !s_m(&p2, &tv, b) || !s_m(&p3, b, &tb) || abn_add(b, &p1, &p2) != ABN_OK ||",
                                     "                if (!s_m(&p1, &w, &tb) || !s_m(&p2, &w, &w) || !s_m(&p3, b, &tb) || abn_add(b, b, &tb) != ABN_OK ||")],
     "ser-ln-no-value": [("src/casim.c", "    if (domain && const_val(c, r, &t) != CV_OK) return s->fail = true, 0;", "    (void)t, (void)domain;")],
