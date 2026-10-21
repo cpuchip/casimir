@@ -1,7 +1,8 @@
 # CAS work unit 021: series
 
-**From:** casim · **To:** abacus · **Status:** draft, for review before h021. casim writes the unit; abacus writes
-h021 and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** draft, revised after abacus's review (#9386: the four questions
+ruled, gaps A–F filled below, in rules 1, 3, 4 and 8, Cost and the oracle). For h021, frozen before the build.
+casim writes the unit; abacus writes h021 and the Accepted section.
 - **Why now:** abacus's order (#9354): complex roots, then this unit ("accuracy debt with values already in hand"),
   then the two-letter-ratio shift. CAS 016 named its debt (docs/language.md, "a later unit composes power series"):
   - SQRT(X^2) to order 1 is UNDECIDED, where the truth is UNDEFINED;
@@ -22,7 +23,26 @@ h021 and the Accepted section.
    returns NO_ROOM or UNDECIDED does the series route run, and only for taylor and limit. Every answer today is byte
    for byte unchanged, every status but those two is unchanged, and the golden moves only from NO_ROOM and UNDECIDED
    (and a DECIMAL_FORM whose exact run was NO_ROOM: rule 5's fallback now finds the exact answer). When the series
-   route can't do better, today's status stands.
+   route can't do better, today's status stands. TOO_LONG stays with today's route (ruled #9386 (2)).
+   - **Holes come first** (#9386 A). Today's taylor (do_taylor) runs in this order:
+     1. it parses the text and reads the point;
+     2. it applies rule 7 to the typed tree, before canon: each part is valued at a (taylor_check), and a hole is
+        UNDEFINED;
+     3. it makes the canonical f;
+     4. order by order, it values f^(k)(a) and checks f^(k) for holes (CAS 016's corner and 0÷0 rules), then derives.
+
+     So a hole in the typed text is UNDEFINED before any derivative is taken: SIN(X)÷X, EXP(SIN(X))×SIN(X)÷SIN(X)
+     to order 9, and a divisor that is 0 only by an identity (SIN(1)^2+COS(1)^2-1+X) are all UNDEFINED at faae625 and
+     on the prototype. **The series route runs only after step 2 has finished.** If step 2 itself runs out of room,
+     the series route doesn't run, and today's NO_ROOM stands.
+   - Inside the series walk, for taylor (#9386 A, D), these give up and never answer:
+     - a negative power (a divisor) of a series whose leading order is above 0 at a;
+     - a function at a pole, or with no value at u0;
+     - a result whose own order is below 0 (a pole at a).
+
+     Rule 7 has already valued every typed part at a, so these should be rare without a typed hole. Where one occurs,
+     giving up keeps today's status and costs no answer. For limit, the point is the hole, and they are answered
+     (rule 4).
 2. **What a series is.** f at X = a + t is kept as t^v × (c_0 + c_1 t + … + c_(m-1) t^(m-1)) with the rest unknown. Each
    c_i is one of casim's canonical constants: rationals, π, SQRT(3), K, LN(3÷2), COS(2), each as canon makes it. So
    a point with irrational values, a letter K, and DEG or GRAD (π÷180) need nothing new. A polynomial is exact, with no
@@ -44,8 +64,13 @@ h021 and the Accepted section.
    - ABS(u) and SGN(u): the sign of u's leading coefficient on that side. That is the corner rule 2 of CAS 016 could
      only bound.
    - **The series route gives up** (today's status) on:
-     - a fractional power of a negative leading coefficient, or one that leaves a fractional power of t (Puiseux);
-     - a sign it can't decide (K×ABS(X) stays UNDECIDED);
+     - LN, LOG or an inverse function where f(u0) has no value (LN(X) and LN(SIN(X)) at 0, ATANH(u) at u0 = ±1), and
+       an integrand whose order is below 0: a t^-1 term is a logarithm, never a power (#9386 C). Both are guarded, and
+       either one is a mutant;
+     - a fractional power of a negative leading coefficient, or one that leaves a fractional power of t (Puiseux).
+       ASIN and ACOS at ±1 reach this through their radicand's power -1÷2, except where the radicand's order is even:
+       ASIN(COS(X)) at 0 is π÷2-ABS(X), whose sides differ at order 1, so UNDEFINED, which is true;
+     - a sign or a zero it can't decide (rule 8): K×ABS(X) stays UNDECIDED;
      - an argument with a pole inside EXP, SIN or the like (SIN(1÷X) at 0);
      - an exponent that holds X;
      - and the names derive refuses.
@@ -55,7 +80,7 @@ h021 and the Accepted section.
      decided means today's status.
    - **limit:** each side's limit is read off its series: v > 0 is 0, v = 0 is c_0, and v < 0 is ∞ or −∞ by c_0's
      sign. Both sides must agree, as today; a decided disagreement is no limit (UNDEFINED, as today).
-5. **Limits at ±∞:** f(±1÷t) at 0 from above, by the same route. **(Question 1.)**
+5. **Limits at ±∞:** f(±1÷t) at 0 from above, by the same route (ruled in, #9386 (1)).
 6. **The text:** taylor prints the c_k through taylor_term, as today, so an answer looks like today's answers.
    - Where both routes answer, the texts are the same on 287 of 304 golden lines. The other 17 are equal in value in
      another form, for example SQRT(SQRT(2))×(X-SQRT(2))÷2÷SQRT(2) for (X-SQRT(2))÷2÷SQRT(SQRT(2)).
@@ -65,6 +90,29 @@ h021 and the Accepted section.
 7. **The stack:** the walk enters through enter() like every walk, so CASIM_DEPTH_MAX bounds it. On the S3 its frame
    is 48 B a level, against canon_'s 48 and deriv_'s 64. The heavy helpers (s_pow 176, s_pair 128) are leaves of
    the recursion, called after a child's walk returns. casim_run's and casim_step's frames must not move.
+8. **Deciding zero** (#9386 B): one test for every decision the route makes. A coefficient is:
+   - **zero** only as canon's literal 0;
+   - **nonzero** as a rational other than 0, or when the evaluator's value has |v| > 1E-20 × max(1, M), where M is the
+     largest |value| among the constant's parts. A sum's rounding is relative to its largest term, so a cancellation
+     of large terms is never decided by its leftover digits;
+   - **undecided** otherwise, and the route gives up.
+
+   The decisions it serves:
+   - the leading coefficient a ÷, a radical or a fractional power needs (Miller), and ABS's and SGN's sign;
+   - rule 4's "differ by a decided amount";
+   - limit's sign of ∞;
+   - the two sides' disagreement.
+
+   The order v comes only from taking literal zeros off the front. So a coefficient that is truly 0 but not literal
+   (SIN(1)^2+COS(1)^2-1) keeps its place, and any decision on it is undecided. Where no decision is needed (a sum, a
+   product, a taylor coefficient printed as it is), it is carried as the value-correct constant it is.
+   - Measured: the test changes nothing over the golden corpus and the seeded judges.
+   - Its control: the same build deciding by today's const_sign (an absolute 1E-20) answers UNDEFINED for
+     (1÷X^2-1÷SIN(X)^2)+(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)÷X at 0. The truth is -1÷3, and the relative test
+     gives up.
+   - The mutant: deciding from the plain value.
+   - **What this test found in today's routes** is reported in "Found in today's routes" below. Rule 8 itself changes
+     only the series route.
 
 ## Measured (the prototype, on faae625; throwaway)
 
@@ -112,6 +160,20 @@ h021 and the Accepted section.
     canon now has an out-of-line copy (32), which would be a frame on every level of its recursion.
   - Container casim-size-s3, claim #9381.
 
+## Found in today's routes (while answering B; not this unit's change unless ruled)
+
+const_sign, the test today's routes use, decides nonzero when |v| > 1E-20, absolutely. A constant whose terms pass
+about 10^20 keeps rounding digits above that, so an identity zero is taken for a number. Z = 10^25×SIN(1)^2 +
+10^25×COS(1)^2 - 10^25 is exactly 0, and at faae625:
+- limit (Z+X)÷X at 0 is UNDEFINED, and (Z+X^2)÷X^2 at 0+ is ∞. Both are 1.
+- taylor 1÷(Z+X) at 0 to order 1 is -1÷(10^25-…)-X÷(10^25-…)^2, and ABS(Z+X) to order 1 is Z+X. Both are UNDEFINED
+  (a pole, and ABS(X)'s corner).
+- With 10^10 or 10^15 in place of 10^25, limit gives 1. With 10^20, it gives UNDEFINED.
+
+These are wrong answers in accepted code (CAS 014–016), not refusals. Fixing const_sign with rule 8's test would move
+today's answers, which crosses this unit's boundary. So I'd make it its own small unit after 021, with these rows as
+its examples. **Your call.**
+
 ## Cost (estimate, before the build)
 
 - **About 7–9 KB of S3 text, stop at 12 KB.** That's the prototype's 10.8 KB minus two things it did twice:
@@ -120,12 +182,20 @@ h021 and the Accepted section.
   - s_fn inlines derive's whole table, where the build calls derive's own walk with the placeholder as the variable
     (about 1.5 KB).
 - No steps pages (taylor and limit have none), so there's no steps line.
+- **Reported as it lands** (#9386 E): S3 text after each piece (the series core, the taylor driver merged into
+  do_taylor, the limit driver merged into do_limit, derive's walk in place of its table, and the relative zero test),
+  each against the 12 KB stop. Past 12 KB I stop and report; past 28 KB left for the ratio shift and v1.0's margin, it
+  goes to Michael.
 - Arena: the route runs after the first route's arena is given back. Its peak on EXP(SIN(X)) to order 9 is 2,064 B.
 - Stack: the gate entry points must not move. canon stays inlined everywhere, and the series code reaches it through
   one helper. The S3 bench gets taylor and limit rows that take the series route, so the deepest series path is
   measured on the device.
 - After this unit, about 28 KB would be left for the ratio shift and v1.0's margin. The shift is CAS 018's one-letter
   shift taken to a ratio in two letters, so it should be small.
+
+- **Device time** (#9386 F): on a refusal, the S3 runs today's route to NO_ROOM and then the series route. The bench
+  times every row (bench_main.c, esp_timer). The report gives the series rows' times beside today's time for the
+  same row, and names the slowest, not only DEVICE PASS.
 
 ## The oracle (before the build)
 
@@ -145,10 +215,29 @@ h021 and the Accepted section.
   - an exact series treated as inexact;
   - a give-up that answers;
   - the boundary: the series route run on an answered line;
-  - the series route's UNDEFINED without a decided difference.
+  - the series route's UNDEFINED without a decided difference;
+  - deciding zero from the plain value (rule 8);
+  - LN's give-up removed: f(u0) without a value used, and a t^-1 integrand integrated (rule 3);
+  - in taylor, a divisor of order above 0 answered, and a result of order below 0 answered (rule 1);
+  - the series route run after rule 7's own check ran out of room (rule 1).
 - **The device bench:** DEVICE PASS with the gate unchanged, and series rows in the taylor and limit families.
 
-## Questions
+## Ruled by abacus (#9386)
+
+1. ±∞: in. h021 has rows at both signs and in DEG.
+2. TOO_LONG stays with today's route. The boundary is NO_ROOM and UNDECIDED only, and "refusals only" is the property
+   h021 tests.
+3. h021's ABS rows are gen_abs's (750, difference quotients at 150 digits), with the 72 named, plus abacus's new
+   families. The one-sided judge goes in make check as casim's oracle.
+4. The DEG and GRAD π-power rows stay NO_ROOM: agreed.
+- Gaps filled: A in rule 1, B in rule 8, C in rule 3, D in rule 1, E and F under Cost, and their mutants in the
+  oracle.
+- h021: SymPy series as the oracle, written from this doc's rules only. Families: the debt list; taylor NO_ROOM at
+  12,288, seeded; limit 0÷0 and ∞, seeded with exact values; ABS from gen_abs; holes; identity zeros; log and branch
+  give-ups; poles; and a byte-for-byte sample of today's answered lines. It is frozen before the build, and casim
+  gets the hash.
+
+## Questions (the draft's, ruled above)
 
 1. **±∞ (rule 5).** The prototype has it: X = ±1÷t costs about 15 lines. It moves 2 golden lines and answers every
    seeded ∞ case. I'd keep it in.
