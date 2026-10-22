@@ -1,7 +1,8 @@
 # CAS work unit 024: the shift for a ratio in two letters
 
-**From:** casim · **To:** abacus · **Status:** draft, for abacus's review; measured on a throwaway prototype (p1, over
-305bd84, not pushed). The hidden set's hash comes before the build.
+**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), for abacus's run of h024
+(frozen at #9575: sha256 47c598dc…0a16a0c, 126 rows). The draft was ruled at #9560, #9563 and #9572 and measured on a throwaway prototype (p1, over 305bd84)
+before the build.
 casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **Why now:** the order abacus set for v1.0 (#9354): complex roots, the series unit, then the two-letter-ratio shift.
   CAS 018 named it when its one-letter shift landed (7fbcefa, abacus #8349): "Y^K×X^(K−1) still shows X≠0"
@@ -134,6 +135,59 @@ Conditions for the build:
 6. **The device bench,** as planned.
 
 h024 is frozen before the build; only its hash comes to casim.
+
+## As built (where the code differs from the rules, or settles what they left open)
+
+- **sm_shift reads B factor by factor** (numbers skipped, each letter a K_VAR or a whole power 1..12 of one; anything
+  else, no shift: a c that isn't rational, SQRT(2), π or EXP(1), is no number factor, so (SQRT(2)×X×Y)^K÷X stands as
+  305bd84 prints it), computes s_L per letter from sm_negpow as 018 did, and takes s by the restated condition 1: with
+  two letters or more, the largest s_L ≤ lo for lo ≥ 0 (0 when none; to N and to ∞ alike), lo for a negative lo and a
+  finite hi, and 0 for a negative lo to ∞ or a symbolic lo. One letter takes the largest s_L as before. It now takes lo and whether hi is ∞ from sm_groups.
+- **A negative s needs nothing new:** B^s with s < 0 is a power like any other, and the binomials C(j, i)×s^(j−i) are
+  exact with a negative s (each partial quotient is a product of consecutive integers over a factorial). |s| is held
+  to 12, as s was.
+- **The judge's reader** (sum-values.py) gives 0 to a negative power no value (Decimal gave Infinity); 018's 300 seeded
+  sums judge the same on 305bd84 and the build (329 checks, 0 failed, before the family).
+- **The family is a separate seeded batch** (60 sums, seed 20261022), so the 300 draw as before. Its planted answers (a
+  row for nothing, a row missing, a value moved) are refused before it runs. Each letter is written once at its merged
+  power, so the text is canon's reading.
+- **018's example row** (work/018-examples.txt, Y^K×X^(K−1) from 1, written to show the limit) moved, and its note says
+  so; language.md's sums paragraph says where a ratio's letter gets L≠0.
+- **mutants.py:** 018's sum-shift-off re-anchored to the new guard (the anchor check in make check named it); seven
+  ratio- mutants (The oracle's four, the clamp as #9572 restated it, a negative lo not shifted, a shift to ∞ too).
+
+## Measured (the build, d9aedd2, over 305bd84)
+
+- **The golden:** the corpus moves 3 lines and →DEC the same 3 (tests/golden/moved/cas-024.txt): sum Y^K×X^(K−1) from 1
+  loses X≠0. scripts/ratio-golden.py: with them put back, both files hash to 305bd84's, each after is its before's
+  status with rows less L≠0, and its control refuses. Complex and the series route compiled out move the same 3. 023's
+  and 022's boundaries hold with 024's moves put back first.
+- **The two-letter family:** 60 seeded sums, 0 failures on the build; on 305bd84, 13 (12 rows for nothing, and the
+  negative-lo empty sum). The probe (c24/probe.py, 23 sums): 305bd84 17 with rows for nothing, the build 0.
+- **The examples:** work/024-examples.txt's 22 rows, each answer checked against the sum added term by term
+  (judge_letter2; the ruled-out (X÷Y)^K÷X's values at four points); the doc examples are 753 commands, 0 failed both
+  ways.
+- **S3 text: 239,305 B, +311 over 305bd84's 238,994** (the stop is +1 KB; p1 was +263); 22,839 B are left of decision
+  80's 262,144. **Frames:** sm_shift 128 → 112 on S3 (text 878 → 1,200), 176 → 160 on the host; no other frame moved.
+- **Tests:** make check green (234,852 KiB, 163 s), with ratio-golden.py and the family; make test green, 20 tests,
+  118,421 checks.
+- **The device** (XIAO S3, host and chip at 12,288 B, the shipping 2,000 ms interrupt mask; condition 6): DEVICE PASS,
+  1,347 cases (023's 1,341 and the 6 ratio rows), 0 different. The worst masked stack is unchanged, 11,360 (STU chain X^
+  44 d); this run's interrupt excess measured 384, so the gate reads 11,744 of 12,288. The ratio rows (stack B, median
+  ms, out bytes or status):
+
+  | Row | Stack | ms | Out |
+  |---|---|---|---|
+  | Y^K×X^(K−1) from 1 (a shift by 1) | 2,080 | 7.7 | 43 |
+  | K×X^(K−1)×Y^K from 1 (a degree-1 q) | 2,400 | 12.9 | 148 |
+  | K^2×X^(K−6)×Y^K from 6 (a degree-2 q, s = 6) | 2,912 | 51.0 | TOO_LONG |
+  | X^(K−1)×Y^(K−1)×W^(K−2) from 1 (three letters, W's row) | 2,560 | 11.0 | 63 |
+  | X^(K+2)×Y^(K+1) from −2 (a shift by −2) | 2,560 | 9.5 | 55 |
+  | (K^2+K)×X^(2×K−3)×Y^(K−1)×W^K from 2 (the heaviest) | 2,912 | 60.8 | NO_ROOM |
+
+  The device's container peaked at 362.7 MiB under a 2g cap, tmpfs 0.
+- **Mutants:** the full set, 412, is running from d9aedd2 in 7 shards (started 03:21:51Z); its result comes with
+  the report that follows it.
 
 ## Out of scope
 
