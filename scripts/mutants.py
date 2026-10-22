@@ -1169,9 +1169,10 @@ MUTANTS = {
                           "            if (!any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;")],
     # CAS 024 (work/024-ratio-shift.md; abacus #9560, #9572): a ratio in two letters or more not shifted; rule 2's cap
     # off (the largest s_L, past lo); the cap for one letter too; a letter at a negative power read as positive (X÷Y);
-    # s below a row-free letter's s_L (the clamp, as #9572 restated it); lo < 0 not shifted; a shift to ∞ too
+    # s below a row-free letter's s_L (the clamp, as #9572 restated it); lo < 0 not shifted; a shift to ∞ too. A mutant
+    # that drops the last use of inf keeps (void)inf, or -Werror stops its build (the 414 on de84a69 lost two so)
     "ratio-two-letters-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
-                               "    if (nl > 1) s = 0;")],
+                               "    (void)inf; if (nl > 1) s = 0;")],
     "ratio-cap-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
                        "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : s;")],
     "ratio-cap-one-letter": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
@@ -1187,7 +1188,7 @@ MUTANTS = {
     "ratio-neglo-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
                          "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? 0 : cap;")],
     "ratio-neglo-at-inf": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
-                            "    if (nl > 1) s = !whole ? 0 : low < 0 ? low : cap;")],
+                            "    (void)inf; if (nl > 1) s = !whole ? 0 : low < 0 ? low : cap;")],
     # abacus #9594 (h024's R083): a letter a term from lo divides by keeps its row to ∞; the row from the clamped s_L
     # (a letter q holds at a positive power read as s_L 0: rows for nothing at a negative lo)
     "ratio-rowl-off": [("src/casim.c", "            if (G[gi].rowl >> l & 1u) {", "            if (0) {")],

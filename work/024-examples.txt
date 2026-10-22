@@ -34,7 +34,8 @@
 # - Condition 1 as ruled (#9572): s lies between the largest s_L of the letters left without a row and lo. For lo < 0
 #   and a finite hi, s = lo, so the answer has a value at a letter's 0 wherever the sum does, from N = lo-1
 #   (X^(K+2)×Y^(K+1) from -1 is 0 at N = -2, X = 0); a letter a term divides by keeps its row. To ∞ there is no N power:
-#   no shift
+#   no shift. (K+1)×X^(K+1)×Y^K from -1 keeps an X≠0 for nothing (the sum at X = 0 is 0); a shift by lo to ∞ too would
+#   drop it, and runs out of room on K^2×X^(K+2)×Y^(2×K) from -1 (on the follow-up list, abacus #9619)
 | Command | Prints |
 |---|---|
 | `casim sum 'X^(K+2)×Y^(K+1)' K -1 N RAD` | `X×(X×Y)^(N+2)÷(X×Y-1)-X÷(X×Y-1); X×Y≠1` |
@@ -42,6 +43,8 @@
 | `casim sum 'X^K×Y^K' K -1 N RAD` | `1÷(X×Y-X^2×Y^2)-(X×Y)^(N+2)÷(X×Y-X^2×Y^2); X≠0; Y≠0; X×Y≠1` |
 | `casim sum 'X^(K+1)×Y^(K+2)' K -2 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+3)÷(X-X^2×Y); X≠0; X×Y≠1` |
 | `casim sum 'X^(K+3)×Y^(K+1)' K -2 ∞ RAD` | `X÷(Y-X×Y^2); Y≠0; ABS(X×Y)<1` |
+| `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1` |
+| `casim sum 'K^2×X^(K+2)×Y^(2×K)' K -1 ∞ RAD` | `X÷(Y^2-X×Y^4)+X^2÷2÷(X×Y^2-X^2×Y^4÷2-1÷2)-2×X^3×Y^2÷3÷(X×Y^2-X^2×Y^4+X^3×Y^6÷3-1÷3); Y≠0; ABS(X×Y^2)<1` |
 
 # - After h024 (abacus #9594, its R083): to ∞ as to N, a letter a term from lo divides by keeps its row, though the
 #   answer has a value there: K×(X×Y)^K÷Y is K×X^K×Y^(K-1), whose K = 0 term is 0×Y^(-1) (a zero q cancels nothing,
