@@ -9901,8 +9901,9 @@ typedef struct {
 
 /* CAS 023 rules 2 and 4: what node r needs, noted when it holds a letter: a divisor's value (÷, INV, a negative power)
    ≠ 0, TAN's COS ≠ 0, LN's, LOG's and SQRT's argument and a fractional power's base > 0, and for taylor ABS's and
-   SGN's argument ≠ 0 (the corner); valued at the point when there is one. r is a typed tree (taylor's rule 7) or a
-   canonical one (limit). Out of cd_walk's recursion, as taylor_hole's valuing is out of its own */
+   SGN's argument ≠ 0 (the corner) when it holds var as canon reads it (ABS(K) is no corner: abacus #9525, h023's L053);
+   valued at the point when there is one. r is a typed tree (taylor's rule 7) or a canonical one (limit). Out of
+   cd_walk's recursion, as taylor_hole's valuing is out of its own */
 static __attribute__((noinline)) void cd_at(ctx *c, ref r, const cdwalk *W)
 {
     int kind = nd(c, r)->kind, id = nd(c, r)->id;
@@ -9910,7 +9911,9 @@ static __attribute__((noinline)) void cd_at(ctx *c, ref r, const cdwalk *W)
     char op = '!';
     ref u = 0;
     if (kind == K_BDIV) u = nd(c, r)->b;
-    else if (f_ && (id == F_INV || id == F_TAN || (W->corner && (id == F_ABS || id == F_SGN)))) u = nd(c, r)->a;
+    else if (f_ && (id == F_INV || id == F_TAN ||
+                    (W->corner && (id == F_ABS || id == F_SGN) && contains(c, canon(c, nd(c, r)->a), W->var))))
+        u = nd(c, r)->a;
     else if (f_ && (id == F_LN || id == F_LOG || id == F_SQRT)) u = nd(c, r)->a, op = '>';
     else if (kind == K_BPOW || kind == K_POW) {
         ref e = is_num(c, nd(c, r)->b) ? nd(c, r)->b : canon(c, nd(c, r)->b);
@@ -10031,7 +10034,8 @@ static __attribute__((noinline)) casim_status do_taylor(const char *eqn, int var
     if (c.st == CASIM_OK && !w.full && w.n == 0) puts_(&w, "0");
     if (c.st == CASIM_OK && !w.full && raw_letter(&c, raw, var)) {
         cdset C = {{0}, {0}, 0};
-        cdwalk W = {&C, var, a, true};                      /* CAS 023: the typed f's conditions at a, as rows */
+        cdwalk W = {&C, var, a, n > 0};                     /* CAS 023: the typed f's conditions at a, as rows; order 0
+                                                               is f's value, where a corner is no hole (#9525) */
         c.opaque = c.own_text = false;
         cd_walk(&c, raw, &W);
         cd_print(&c, &w, &C, true);

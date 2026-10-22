@@ -37,6 +37,7 @@ TAYLORS = [  # (text, point, order)
     ("1÷(K+SIN(X))", "0", 1), ("LN(K)+X", "0", 1), ("K÷X", "1", 1), ("1÷(X-K)", "1", 1), ("LN(1-K+X)", "0", 1),
     ("SQRT(K^2+X)", "0", 1), ("(K+X)^(1÷3)", "0", 1), ("K×X÷K", "0", 1), ("LN(K+X)÷(K+X)", "0", 1),
     ("LN(K+X)÷(K^2+X)", "0", 0), ("LN(2+X)+1÷(K+X)", "0", 0),
+    ("ABS(K)×SQRT(1+X)", "0", 2), ("ABS(K)+X", "0", 1), ("ABS(K+X)", "0", 0),     # abacus #9525: no corner, no row
 ]
 FN = {"SIN": "math.sin", "COS": "math.cos", "TAN": "math.tan", "LN": "math.log", "LOG": "math.log10",
       "EXP": "math.exp", "SQRT": "math.sqrt", "ABS": "abs", "SGN": "_sgn"}

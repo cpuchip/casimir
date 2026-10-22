@@ -1130,8 +1130,11 @@ MUTANTS = {
     "cond-site6-answer": [("src/casim.c", "        if (r.k == L_FIN) cd_walk(&c, canon(&c, r.v), &W);", "        (void)0;")],
     "cond-site7-f": [("src/casim.c", "        cd_walk(&c, f, &W);\n    }", "        (void)0;\n    }")],
     "cond-divisor": [("src/casim.c", "    if (kind == K_BDIV) u = nd(c, r)->b;", "    if (0) u = nd(c, r)->b;")],
-    "cond-corner": [("src/casim.c", "    else if (f_ && (id == F_INV || id == F_TAN || (W->corner && (id == F_ABS || id == F_SGN)))) u = nd(c, r)->a;",
-                     "    else if (f_ && (id == F_INV || id == F_TAN)) u = nd(c, r)->a;")],
+    "cond-corner": [("src/casim.c", "    else if (f_ && (id == F_INV || id == F_TAN ||\n                    (W->corner && (id == F_ABS || id == F_SGN) && contains(c, canon(c, nd(c, r)->a), W->var))))\n",
+                     "    else if (f_ && (id == F_INV || id == F_TAN))\n")],
+    # abacus #9525 (h023's L053): a corner only where its argument holds var (ABS(K)×SQRT(1+X)), and never at order 0
+    "cond-corner-constant": [("src/casim.c", " && contains(c, canon(c, nd(c, r)->a), W->var))))\n", ")))\n")],
+    "cond-corner-order0": [("src/casim.c", "        cdwalk W = {&C, var, a, n > 0};", "        cdwalk W = {&C, var, a, true};")],
     "cond-tan-not-cos": [("src/casim.c", "    if (f_ && id == F_TAN) u = fn(c, F_COS, u);", "    (void)0;")],
     "cond-domain-as-ne": [("src/casim.c", "    else if (f_ && (id == F_LN || id == F_LOG || id == F_SQRT)) u = nd(c, r)->a, op = '>';",
                            "    else if (f_ && (id == F_LN || id == F_LOG || id == F_SQRT)) u = nd(c, r)->a;")],

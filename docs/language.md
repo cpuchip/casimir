@@ -544,8 +544,8 @@ letter expression isn't 0 is given with that condition as a row after "; ", as s
 0 is `1÷K-X÷K^2; K≠0`. LN's, LOG's and SQRT's argument and a fractional power's base must be above 0 (`K>0`, which
 says K≠0 too). A row is solved for its letter where that is plain (`K≠1`; `K≠-1; K≠1` for K^2-1; `K<1` for LN(1-K+X);
 none for K^2+1, never 0), and otherwise written as canon prints it (`COS(K)≠0` for TAN's pole). taylor's rows come from
-the typed text at A, as its rule 7 reads it: a divisor, ABS's and SGN's corner, TAN's pole, LN's, LOG's and SQRT's
-argument. limit's come from its walk: each division by a letter's value, the two sides apart (UNDEFINED with its rows),
+the typed text at A, as its rule 7 reads it: a divisor, ABS's and SGN's corner (from order 1, and only where the
+argument holds the variable: ABS(K)×SQRT(1+X) has no row), TAN's pole, LN's, LOG's and SQRT's argument. limit's come from its walk: each division by a letter's value, the two sides apart (UNDEFINED with its rows),
 and the answer's own denominators. A sign isn't a condition: an answer that flips with a letter's sign (X^K at 0+,
 EXP(K×X) at ∞) stays UNDECIDED. The text is read as canon reads it, before any decision: SIN(K×X)÷SIN(K×X) is 1, so its
 limit at 0 is 1, with no row. More than 8 rows is NO_ROOM, and an answer with its rows past 191 bytes TOO_LONG.

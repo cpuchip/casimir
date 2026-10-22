@@ -145,7 +145,9 @@ part at the point, as taylor_hole does, but only on inputs with a letter; the de
    too: at K = 0, SQRT(X) has no two-sided expansion at 0. (018 rule 4b.3's ABS(X)<1 replaces the X≠1 it implies.)
 3. **Q3, out of scope,** with a line in docs/language.md: canon's reading comes before any decision, the class of the
    ruled 1÷c^K sums and the factored 1÷Z.
-4. **Q4, the typed f only.** h023 aims rows at derivative-only cases (an odd root, (K+X)^(1/3)); one reopens it.
+4. **Q4, the typed f only.** h023 aims rows at derivative-only cases ~~(an odd root, (K+X)^(1/3))~~; one reopens it.
+   abacus's correction (#9525): h023 has no odd root; its derivative-only rows are SQRT(K^2+X^2), LN(K^2+X^2) and
+   ABS(K)×SQRT(1+X). The odd root is in abacus's post-build probe p023 instead, where (K+X)^(1÷3) prints `…; K>0`.
 
 Conditions for the build:
 1. **Signs aren't conditions:** inputs whose answer flips with K's sign (X^K at 0+, EXP(K×X) at ∞, K^X at ∞) refuse;
@@ -185,6 +187,10 @@ h023 is frozen before the build; only its hash comes to casim.
 - **cd_gt's product branch** (K×π > 0 as K > 0) was dropped to stay inside the cost stop; a generic e>0 row is right.
 - **Rule 6 is limited to real bases:** i^K first moved (NO_CLOSED_FORM → UNDECIDED, corpus 10717-10718) and is excluded.
 - **The CLI prints UNDEFINED's rows** (`UNDEFINED; K≠0`), and scripts/device_cases.py reads them for the bench.
+- **Rule 6 moves more of h022 than condition 5 named** (abacus #9525): besides the (1+Z30)^K rows (NO_ROOM →
+  UNDECIDED), 22 rows over EXP(±20000), 1±EXP(±20000) and 1÷EXP(±20000)^K go NO_CLOSED_FORM → UNDECIDED. They are rule
+  6's class: the base is past the core's range, so const_sign can't decide its sign, and fc46c8b's sm_term gave up
+  on it as not geometric. Refusal to refusal; reproduced here from the bases alone (work/023-examples.txt).
 - **Two mutants are left out,** run and surviving: lm_combine's give-back of an abandoned attempt's notes (a letter limit
   reaches lm_combine only through an ∞-∞ of known signs, which letters make unknown) and the series route's reset (with
   site 7 the rows are the same; the reset is also a safety guard, since the notes point into the arena the route

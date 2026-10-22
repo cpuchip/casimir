@@ -94,7 +94,7 @@ do_ssteps	496
 do_subst	240
 do_sum	160
 do_sum_	800
-do_taylor	512
+do_taylor	496
 edge_tol	112
 emit	8
 esym	32

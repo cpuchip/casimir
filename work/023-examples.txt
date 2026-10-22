@@ -40,6 +40,14 @@
 | `casim taylor '1÷(K+X)+1÷(L+X)' X 0 0 RAD` | `1÷K+1÷L; K≠0; L≠0` |
 | `casim taylor '1÷(K^2+1+X)' X 0 1 RAD` | `1÷(K^2+1)-X÷(K^2+1)^2` |
 
+# - After h023 (abacus #9525, its L053): a corner only where ABS's argument holds X, and only from order 1 (order 0 is
+#   f's value, which ABS has at every K); right for every K, so no row
+| Command | Prints |
+|---|---|
+| `casim taylor 'ABS(K)×SQRT(1+X)' X 0 2 RAD` | `ABS(K)+X×ABS(K)÷2-X^2×ABS(K)÷8` |
+| `casim taylor 'ABS(K)+X' X 0 1 RAD` | `ABS(K)+X` |
+| `casim taylor 'ABS(K+X)' X 0 0 RAD` | `ABS(K)` |
+
 # - Rule 4's implication: one expression noted ≠ 0 and > 0 is one row, > (LN(K+X)÷(K+X)); K^2≠0's K≠0 beside LN's K>0 is
 #   left out (said); a letter-free part makes no row (LN(2+X)); a refusal prints none, though the walk noted K≠0 first
 | Command | Prints |
@@ -69,10 +77,13 @@
 | `casim taylor '1÷((K-1)×(K-2)×(K-3)×(K-4)×(K-5)×(K-6)×(K-7)×(K-8)×(K-9)+X)' X 0 0 RAD` | `NO_ROOM` |
 
 # - Rule 6, the sums (abacus #9480): a real constant ratio whose sign isn't decided refuses (UNDECIDED, where partfrac's
-#   64-bit reading said NO_ROOM); a number's and i's are unchanged
+#   64-bit reading said NO_ROOM, and where EXP(±20000), past the core's range, said NO_CLOSED_FORM: abacus #9525); a
+#   number's and i's are unchanged
 | Command | Prints |
 |---|---|
 | `casim sum '(1+(10^30×SIN(1)^2+10^30×COS(1)^2-10^30))^K' K 0 N RAD` | `UNDECIDED` |
 | `casim sum '(1-(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×10^40)^K' K 0 ∞ RAD` | `UNDECIDED` |
+| `casim sum 'EXP(20000)^K' K 0 N RAD` | `UNDECIDED` |
+| `casim sum '1÷EXP(-20000)^K' K 0 ∞ RAD` | `UNDECIDED` |
 | `casim sum 'i^K' K 0 N RAD` | `NO_CLOSED_FORM` |
 | `casim sum '0^(K+1)' K 0 N RAD` | `NO_CLOSED_FORM` |
