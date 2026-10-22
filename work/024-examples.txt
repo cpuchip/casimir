@@ -43,6 +43,16 @@
 | `casim sum 'X^(K+1)×Y^(K+2)' K -2 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+3)÷(X-X^2×Y); X≠0; X×Y≠1` |
 | `casim sum 'X^(K+3)×Y^(K+1)' K -2 ∞ RAD` | `X÷(Y-X×Y^2); Y≠0; ABS(X×Y)<1` |
 
+# - After h024 (abacus #9594, its R083): to ∞ as to N, a letter a term from lo divides by keeps its row, though the
+#   answer has a value there: K×(X×Y)^K÷Y is K×X^K×Y^(K-1), whose K = 0 term is 0×Y^(-1) (a zero q cancels nothing,
+#   #9563). One letter's K×X^(K-1) from 0 to ∞ had its row already
+| Command | Prints |
+|---|---|
+| `casim sum 'K×(X×Y)^K÷Y' K 0 ∞ RAD` | `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1` |
+| `casim sum 'K×(X×Y)^K÷X' K 0 ∞ RAD` | `-Y÷2÷(X×Y-X^2×Y^2÷2-1÷2); X≠0; ABS(X×Y)<1` |
+| `casim sum 'K×(X×Y)^K÷Y' K 0 N RAD` | `-N×(X×Y)^(N+1)÷(Y-X×Y^2)+X×(X×Y)^(N+1)÷2÷(X×Y-X^2×Y^2÷2-1÷2)-X÷2÷(X×Y-X^2×Y^2÷2-1÷2)-(X×Y)^(N+1)÷(Y-X×Y^2); Y≠0; X×Y≠1` |
+| `casim sum 'K×X^(K-1)' K 0 ∞ RAD` | `X÷(X-2×X^2+X^3); X≠0; ABS(X)<1` |
+
 # - Rule 3: one letter is 018's, unchanged (K×X^(K-2) from 1 keeps its shift by 2 and its X≠0)
 | Command | Prints |
 |---|---|

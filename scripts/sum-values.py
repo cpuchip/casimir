@@ -440,13 +440,16 @@ def gen_letter2(rnd):
     if rnd.random() < 0.25:
         letters.append("W"), ms.append(1), es.append(rnd.choice((0, -1, -2)))
     co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1, 2)))] + [rand_frac(rnd)]
+    lo = rnd.choice((-2, -1, 0, 1, 1, 2, 3))
+    if rnd.random() < 0.2:          # q × (K - lo): a zero coefficient at lo cancels no power (abacus #9563, #9594)
+        co = [(co[i - 1] if i else 0) - lo * (co[i] if i < len(co) else 0) for i in range(len(co) + 1)]
 
     def pw(L, m, e):
         ex = ("K" if m == 1 else f"{m}×K") + (f"+{e}" if e > 0 else f"{e}" if e < 0 else "")
         return f"{L}^K" if ex == "K" else f"{L}^({ex})"
     parts = ([f"({poly_text(co)})"] if len(co) > 1 or co[0] != 1 else []) + ([f"{ft(c)}^K"] if c != 1 else [])
     summand = "×".join(parts + [pw(L, m, e) for L, m, e in zip(letters, ms, es)])
-    return summand, rnd.choice((-2, -1, 0, 1, 1, 2, 3)), INF if rnd.random() < 0.3 else "N", "RAD", \
+    return summand, lo, INF if rnd.random() < 0.3 else "N", "RAD", \
         ("LETTER2", c, letters, ms)
 
 
@@ -585,8 +588,17 @@ def main():
         print("FAIL scripts/sum-values.py: its two-letter judge accepts a planted answer or refuses the right one")
         sys.exit(1)
     rnd2, n2 = random.Random(20261022), 60
-    for _ in range(n2):
-        summand, lo, hi, angle, truth = gen_letter2(rnd2)
+    # and held rows of one class the draws rarely reach (h024's R083, abacus #9594): q is 0 at lo while a letter's power
+    # there is negative, so the term has no value at that letter's 0 and its row stands, to ∞ as to N
+    held2 = [("K×X^K×Y^(K-1)", 0, INF, F(1), ["X", "Y"], [1, 1]), ("K×X^(K-1)×Y^K", 0, INF, F(1), ["X", "Y"], [1, 1]),
+             ("(K-1)×X^(K-2)×Y^K", 1, INF, F(1), ["X", "Y"], [1, 1]),
+             ("(K-2)×X^(K-3)×Y^(K-1)", 2, INF, F(1), ["X", "Y"], [1, 1]),
+             ("K×2^K×X^K×Y^(K-1)", 0, INF, F(2), ["X", "Y"], [1, 1]),
+             ("K×X^K×Y^(K-1)×W^K", 0, INF, F(1), ["X", "Y", "W"], [1, 1, 1]),
+             ("K×X^K×Y^(K-1)", 0, "N", F(1), ["X", "Y"], [1, 1])]
+    cases2 = [gen_letter2(rnd2) for _ in range(n2)] + [(s, lo, hi, "RAD", ("LETTER2", c, ls, ms))
+                                                       for s, lo, hi, c, ls, ms in held2]
+    for summand, lo, hi, angle, truth in cases2:
         out = run_sum(summand, lo, hi, angle)
         if out in ("NO_ROOM", "TOO_LONG"):
             soft += 1
@@ -597,8 +609,8 @@ def main():
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}) and "
-          f"{n2} ratios in two or three letters (CAS 024) at {ARENA} B, {soft} NO_ROOM or TOO_LONG; {rows} example "
-          f"rows by value\nchecks: {n_cases + n2 + rows} failed: {failed + rfailed}")
+          f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held) at {ARENA} B, {soft} NO_ROOM or "
+          f"TOO_LONG; {rows} example rows by value\nchecks: {n_cases + len(cases2) + rows} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 

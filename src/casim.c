@@ -11992,6 +11992,7 @@ typedef struct {
     ref B;                              /* the ratio; 0 for a polynomial */
     ref q[SM_DEG + 1];                  /* q(var)'s coefficients, free of var */
     int d;
+    unsigned rowl;                      /* CAS 024: B's letters a term from lo divides by, whose L≠0 rows stand */
 } smgroup;
 
 typedef struct {
@@ -12207,7 +12208,7 @@ static void sm_add(ctx *c, smgroup *G, int *ng, ref coef, int j, ref B)
             c->st = CASIM_NO_CLOSED_FORM;
             return;
         }
-        G[gi].B = B, G[gi].d = 0;
+        G[gi].B = B, G[gi].d = 0, G[gi].rowl = 0;
         for (int q = 0; q <= SM_DEG; q++) G[gi].q[q] = small(c, C_0);
         (*ng)++;
     }
@@ -12460,19 +12461,21 @@ static ref sm_q(ctx *c, const smgroup *g, ref x)
 
 static bool sm_mono(ctx *c, ref B, rat *k, int *L, int *m);
 
-/* the most negative whole power of the letter L among t's factors, 0 for none */
-static int sm_negpow(ctx *c, ref t, int L)
+/* the letter L's whole power among t's factors (a canonical product holds L once), 0 when L isn't one: negative where t
+   divides by L, positive where it holds L (CAS 024: X^(K+2)'s q is X^2) */
+static int sm_powof(ctx *c, ref t, int L)
 {
     const node *x = nd(c, t);
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &t;
-    int n = x->kind == K_MUL ? x->n : 1, e = 0;
+    int n = x->kind == K_MUL ? x->n : 1;
     for (int i = 0; i < n; i++) {
         const node *y = nd(c, f[i]);
+        if (y->kind == K_VAR && y->id == L) return 1;
         if (y->kind == K_POW && nd(c, y->a)->kind == K_VAR && nd(c, y->a)->id == L && is_num(c, y->b) &&
-            val(c, y->b)->q == 1 && val(c, y->b)->p < e)
-            e = (int)val(c, y->b)->p;
+            val(c, y->b)->q == 1 && val(c, y->b)->p >= -SM_DEG * SM_DEG && val(c, y->b)->p <= SM_DEG * SM_DEG)
+            return (int)val(c, y->b)->p;
     }
-    return e;
+    return 0;
 }
 
 /* rule 4b, abacus #8349: a letter group q(var)×B^var whose q holds a negative power of B's letter L (K×X^(K-1): q is
@@ -12483,6 +12486,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
 {
     bool whole = is_num(c, lo) && val(c, lo)->q == 1 && val(c, lo)->p >= -SM_DEG && val(c, lo)->p <= SM_DEG;
     int s = 0, cap = 0, n, nl = 0, low = whole ? (int)val(c, lo)->p : 0;
+    unsigned rl = 0;
     ref Bs;
     if (!g->B) return 0;
     n = nd(c, g->B)->kind == K_MUL ? nd(c, g->B)->n : 1;
@@ -12502,15 +12506,20 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
                  val(c, x->b)->q == 1 && val(c, x->b)->p > 0 && val(c, x->b)->p <= SM_DEG)
             L = nd(c, x->a)->id, m = (int)val(c, x->b)->p;
         else return 0;
-        int sl = 0;
+        int sl = 0, lp = SM_DEG * SM_DEG;
         nl++;
         for (int j = 0; j <= g->d; j++) {
-            int e = sm_negpow(c, g->q[j], L);
+            int e = sm_powof(c, g->q[j], L);
             if (e < 0 && (-e + m - 1) / m > sl) sl = (-e + m - 1) / m;
+            if (!is_k(c, g->q[j], 0, 1) && e < lp) lp = e;
         }
         if (sl > s) s = sl;
         if (sl <= low && sl > cap) cap = sl;
+        /* the least K whose term has no negative power of L is the true s_L (negative where q holds L): when it passes
+           a whole lo, the terms from lo divide by L, a zero coefficient's too (#9563), and the row stands (#9594) */
+        if (whole && (lp < 0 ? (-lp + m - 1) / m : -(lp / m)) > low) rl |= 1u << L;
     }
+    g->rowl = rl;
     if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;
     if (s == 0 || s > SM_DEG || s < -SM_DEG) return 0;
     Bs = power(c, g->B, sm_int(c, s));
@@ -12702,6 +12711,10 @@ static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, s
             size_t mark = c->used;
             bool hole;
             if (!contains(c, B, l) || (sm_mono(c, B, &k, &L, &m) && m < 0 && S->ilo && S->a >= 1)) continue;
+            if (G[gi].rowl >> l & 1u) {     /* CAS 024, abacus #9594: a term from lo divides by l (0×Y^(-1) too) */
+                sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);
+                continue;
+            }
             ib_at(c, sum, l, small(c, C_0));
             hole = c->st == CASIM_UNDEFINED;
             if (hole) c->st = CASIM_OK;

@@ -1188,6 +1188,12 @@ MUTANTS = {
                          "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? 0 : cap;")],
     "ratio-neglo-at-inf": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
                             "    if (nl > 1) s = !whole ? 0 : low < 0 ? low : cap;")],
+    # abacus #9594 (h024's R083): a letter a term from lo divides by keeps its row to ∞; the row from the clamped s_L
+    # (a letter q holds at a positive power read as s_L 0: rows for nothing at a negative lo)
+    "ratio-rowl-off": [("src/casim.c", "            if (G[gi].rowl >> l & 1u) {", "            if (0) {")],
+    "ratio-rowl-clamped": [("src/casim.c",
+                            "        if (whole && (lp < 0 ? (-lp + m - 1) / m : -(lp / m)) > low) rl |= 1u << L;",
+                            "        if (whole && sl > low) rl |= 1u << L;")],
 }
 
 
