@@ -57,6 +57,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/doc-examples.py
 	scripts/log-values.py
 	scripts/letter-values.py
+	scripts/mutants.py --anchors
 	scripts/step-values.py
 	scripts/istep-values.py
 	scripts/ssteps-values.py

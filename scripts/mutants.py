@@ -12,6 +12,8 @@ its code changed shape. The faults whose catch is the frame table itself are lis
 
     scripts/mutants.py            every mutant
     scripts/mutants.py NAME ...   the named ones
+    scripts/mutants.py --anchors  only that every anchor is found once (make check; CAS 023: a full run's
+                                  shards stopped on five anchors the build had moved)
 """
 import os
 import shutil
@@ -709,7 +711,7 @@ MUTANTS = {
     # the names derive refuses taken as opaque (X! printed as its own Taylor polynomial)
     "taylor-names-opaque": [("src/casim.c", "    c.var = var;                        /* the names derive refuses are refused here too (not opaque): it derives */", "    c.var = var, c.opaque = true;")],
     # CAS 015, the unit's six. L'Hôpital applied to a quotient that isn't indeterminate (finite ÷ finite nonzero)
-    "limit-lhopital-not-indeterminate": [("src/casim.c", "                if (ln.k == L_FIN) return lm(L_FIN, canon(c, mul2(c, ln.v, power(c, ld.v, small(c, C_M1)))));\n", "")],
+    "limit-lhopital-not-indeterminate": [("src/casim.c", "                    return lm(L_FIN, canon(c, mul2(c, ln.v, power(c, ld.v, small(c, C_M1)))));\n", "")],
     # the one-sided sign rule flipped: an odd derivative's sign taken as it is from below
     "limit-side-sign-flipped": [("src/casim.c", "        return L->side > 0 || m % 2 == 0 ? s : -s;", "        return L->side > 0 || m % 2 == 0 ? -s : s;")],
     # ATAN's ends without the angle factor: π÷2 in DEG
@@ -749,7 +751,7 @@ MUTANTS = {
     # CAS 016: the one-denominator rewrite applied to a sum whose terms all have limits
     "combine-finite-sum": [("src/casim.c", "    if (pinf) return lm(L_PINF, 0);\n    if (ninf) return lm(L_NINF, 0);\n    return lm(L_FIN, canon(c, s));\n", "    if (pinf) return lm(L_PINF, 0);\n    if (ninf) return lm(L_NINF, 0);\n    return L->a ? lm_combine(c, f, small(c, C_0), small(c, C_0), L, c->used, L->steps) : lm(L_FIN, canon(c, s));\n")],
     # CAS 016: the - side walked on top of the + side's work
-    "limit-sides-share-arena": [("src/casim.c", "            if (up.k == L_FIN) up.v = compact(&c, mark, up.v);     /* CAS 016: the - side gets the arena back */\n            else if (c.st == CASIM_OK) taylor_drop(&c, mark);\n", "            (void)mark;\n")],
+    "limit-sides-share-arena": [("src/casim.c", "            else if (up.k == L_FIN) up.v = compact(&c, mark, up.v);     /* CAS 016: the - side gets the arena back */\n            else if (c.st == CASIM_OK) taylor_drop(&c, mark);\n", "            (void)mark;\n")],
     # CAS 016: the 1,024 B buffers from one byte past 16 KB
     "buffer-threshold-off-by-one": [("src/casim.c", "    tt = arena_cap >= TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;\n", "    tt = arena_cap > TAYLOR_BIG_ARENA ? TAYLOR_TEXT_BIG : TAYLOR_TEXT;\n")],
     # CAS 016: derive's walk of 0^u through LN(0), a pole (it ends UNDEFINED where derive answers 0)
@@ -867,8 +869,8 @@ MUTANTS = {
                           "        if (c->st == CASIM_OK && sm_lit(c, P)) c->st = CASIM_NO_ROOM;     /* its text is partfrac's, not eqn */\n")],
     "sum-ratio-one": [("src/casim.c", "            if (w && !sm_letter(c, B) && const_sign(c, ib_canon(c, add2(c, B, small(c, C_M1)))) == 0)",
                        "            if (w && !sm_letter(c, B) && const_sign(c, ib_canon(c, add2(c, B, small(c, C_M1)))) == 0 && 0)")],
-    "sum-base-zero": [("src/casim.c", "        if (base && const_sign(c, base) == 0 && !sm_letter(c, base)) return false;",
-                       "        if (base && const_sign(c, base) == 0 && !sm_letter(c, base) && 0) return false;")],
+    "sum-base-zero": [("src/casim.c", "        if (base && const_sign(c, base) == 0 && !sm_letter(c, base)) {",
+                       "        if (base && const_sign(c, base) == 0 && !sm_letter(c, base) && 0) {")],
     "sum-poly-not-faster": [("src/casim.c", "                int e = g->d + !B, eb = G[best].d + !G[best].B;", "                int e = g->d, eb = G[best].d;")],
     "sum-swing-before-sign": [("src/casim.c", "        if (tie) return c->st = CASIM_UNDECIDED, SPARE;\n",
                                "        if (tie) return c->st = CASIM_UNDECIDED, SPARE;\n        if (g->B && const_sign(c, g->B) < 0) return c->st = CASIM_UNDEFINED, SPARE;\n")],
@@ -878,7 +880,7 @@ MUTANTS = {
     "sum-row-read-late": [("src/casim.c", "                v = ib_canon(c, v);                             /* a raw number reads its digits from c->s */\n                c->s = S->eqn;\n",
                            "                c->s = S->eqn;\n                v = ib_canon(c, v);\n")],
     # CAS 018 rule 4b: a letter in the ratio, with its rows
-    "sum-4b-even-root": [("src/casim.c", "                sm_row(c, rows, n, leaf(c, K_VAR, L), '!', ib_canon(c, ib_neg(c, u)), L);\n", "")],
+    "sum-4b-even-root": [("src/casim.c", "        sm_row(c, rows, n, leaf(c, K_VAR, L), '!', ib_canon(c, ib_neg(c, u)), L);\n", "")],
     "sum-4b-inf-op": [("src/casim.c", "m > 0 ? '<' : '>',", "'<',")],
     "sum-4b-inf-power": [("src/casim.c", "            rat ak = k, e = {-1, m};", "            rat ak = k, e = {1, m};")],
     "sum-4b-row-order": [("src/casim.c", "    for (at = *n; at > 0; at--) {", "    for (at = *n; at > 0 && 0; at--) {")],
@@ -889,7 +891,7 @@ MUTANTS = {
     "sum-4b-closed-first": [("src/casim.c", "    casim_status st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, false, &direct);",
                              "    casim_status st = do_sum_(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl, true, &direct);")],
     "sum-4b-no-fallback": [("src/casim.c", "    if (st != CASIM_TOO_LONG || !direct) return st;", "    if (st != CASIM_TOO_LONG || !direct || 1) return st;")],
-    "sum-4b-odd-sign": [("src/casim.c", "'!', neg ? ib_canon(c, ib_neg(c, u)) : u, L);", "'!', u, L);")],
+    "sum-4b-odd-sign": [("src/casim.c", "'!', t.p < 0 ? ib_canon(c, ib_neg(c, u)) : u, L);", "'!', u, L);")],
     # CAS 018 after h018 (abacus #8460): a typed n÷d's terms are one rational term; equal fractions one entry
     # abacus #8494: the divisors compared in sm_put keep their room
     "sum-closed-room-as-long": [("src/casim.c", "    return st == CASIM_OK || st == CASIM_NO_ROOM ? st : CASIM_TOO_LONG;",
@@ -1172,14 +1174,22 @@ def run(cmd, cwd):
 
 
 def main():
-    names = sys.argv[1:] or list(MUTANTS)
+    anchors = sys.argv[1:] == ["--anchors"]
+    if anchors and os.path.basename(os.path.dirname(ROOT)) == "mutants":
+        return 0                    # a mutant's own copy: its anchor is gone by design
+    names = [] if anchors else sys.argv[1:]
+    names = names or list(MUTANTS)
     # every anchor once in its own file before an hour of builds: a refactor can copy or move a mutant's text
     stale = [f"{name}: its text appears {open(os.path.join(ROOT, path), encoding='utf-8').read().count(old)} times "
              f"in {path}" for name in names for path, old, new in MUTANTS[name]
              if open(os.path.join(ROOT, path), encoding="utf-8").read().count(old) != 1]
     if stale:
-        print("NOT RUN, stale anchors:\n  " + "\n  ".join(stale))
+        print(("FAIL scripts/mutants.py: stale anchors" if anchors else "NOT RUN, stale anchors") + ":\n  " +
+              "\n  ".join(stale))
         return 1
+    if anchors:
+        print(f"mutant anchors: {len(names)} mutants, each anchor found once")
+        return 0
     survived = 0
     for name in names:
         tree = os.path.join(ROOT, "build", "mutants", name)
