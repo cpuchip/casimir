@@ -47,6 +47,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/series-golden.py
 	scripts/signs-golden.py
 	scripts/conditions-golden.py
+	scripts/ratio-golden.py
 	build/golden_check-vcheck tests/golden/corpus.txt
 	scripts/decimal-golden.py build/golden_check-vcheck
 	scripts/complex-golden.py build/golden_check-vcheck

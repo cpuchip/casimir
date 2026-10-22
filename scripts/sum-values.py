@@ -91,6 +91,8 @@ def dvalue(text, fns):
             e = factor()
             if v == 0 and e == 0:
                 return D(1)
+            if v == 0 and e < 0:                # Decimal gives Infinity here; it has no value, as 1÷0 has none
+                raise ZeroDivisionError("0 to a negative power")
             v = v ** int(e) if e == int(e) else (e * v.ln()).exp()
         return v
 
@@ -427,6 +429,80 @@ def judge_letter(summand, lo, hi, out, c, m, rnd):
     return ""
 
 
+
+def gen_letter2(rnd):
+    """CAS 024 (abacus #9560): q(K) × c^K × X^(a×K+e) × Y^(b×K+f), with W^(K+g) a quarter of the time: a ratio
+    c×X^a×Y^b (×W) in two or three letters, lo from -2 to 3, to N and to ∞. Each letter is written once, at its merged
+    power, so the text is canon's reading (abacus #9563)"""
+    c = rnd.choice((F(1), F(1), F(-1), F(2), F(1, 2)))
+    letters, ms = ["X", "Y"], [rnd.choice((1, 1, 2)), rnd.choice((1, 1, 2))]
+    es = [rnd.choice((0, -1, -1, -2, -3, 1, 2)), rnd.choice((0, 0, -1, -2, 1))]
+    if rnd.random() < 0.25:
+        letters.append("W"), ms.append(1), es.append(rnd.choice((0, -1, -2)))
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1, 2)))] + [rand_frac(rnd)]
+
+    def pw(L, m, e):
+        ex = ("K" if m == 1 else f"{m}×K") + (f"+{e}" if e > 0 else f"{e}" if e < 0 else "")
+        return f"{L}^K" if ex == "K" else f"{L}^({ex})"
+    parts = ([f"({poly_text(co)})"] if len(co) > 1 or co[0] != 1 else []) + ([f"{ft(c)}^K"] if c != 1 else [])
+    summand = "×".join(parts + [pw(L, m, e) for L, m, e in zip(letters, ms, es)])
+    return summand, rnd.choice((-2, -1, 0, 1, 1, 2, 3)), INF if rnd.random() < 0.3 else "N", "RAD", \
+        ("LETTER2", c, letters, ms)
+
+
+def judge_letter2(summand, lo, hi, out, c, letters, ms):
+    """'' when out ('answer; rows') is right: L≠0 stands exactly where a term from lo divides by L (canon's reading
+    with K put in, nothing cancelled after: abacus #9560 (2), #9563); one row for the ratio, E≠v with E÷v the ratio, or
+    ABS(E)<v to ∞; and the answer is the sum at letter values with each letter 0 in turn and at three without a 0, from
+    N = lo-1 (to ∞ inside ABS(E) < 3÷4 of v)"""
+    if out in STATUS or not out:
+        return f"{out} for an answer with rows"
+    parts = out.split("; ")
+    answer, rows = parts[0], parts[1:]
+
+    def at(text, pt):
+        for L, v in pt.items():
+            text = sub(text, L, ft(v))
+        return text
+
+    def pole(pt):
+        return any(term(at(summand, pt), k, "RAD") is None for k in range(lo, lo + 13))
+
+    def ratio(pt):
+        b = c
+        for L, m in zip(letters, ms):
+            b *= pt[L] ** m
+        return b
+    off = {L: F(1, 3) for L in letters}
+    for L in letters:
+        want = pole({**off, L: F(0)})
+        if want != (f"{L}≠0" in rows):
+            return (f"{L}≠0 {'missing' if want else 'for nothing'}: a term from {lo} "
+                    f"{'divides' if want else 'never divides'} by {L}")
+    rest = [r for r in rows if r not in [f"{L}≠0" for L in letters]]
+    m = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
+        re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
+    if not m:
+        return f"rows {rest} for the ratio's one row"
+    E, v = m.group(1), m.group(2)
+    for pt in ({L: F(2, 3) for L in letters}, {L: F(-5, 4) + i for i, L in enumerate(letters)}):
+        if not close(value(at(E, pt)) / value(v), dec(ratio(pt))):
+            return f"row {rest[0]}: not the ratio {ft(c)}×{'×'.join(f'{L}^{m}' for L, m in zip(letters, ms))} at {pt}"
+    grid = (F(1, 2), F(-1, 3), F(2), F(-3, 2))
+    pts = [{**{M: grid[(i + j) % 4] for j, M in enumerate(letters)}, L: F(0)} for i, L in enumerate(letters)]
+    pts += [{M: grid[(i + 2 * j) % 4] for j, M in enumerate(letters)} for i in range(3)]
+    for pt in pts:
+        if any(pt[L] == 0 and f"{L}≠0" in rows for L in letters) or pole(pt):
+            continue
+        e = value(at(E, pt)) / value(v)
+        if (hi == INF and abs(e) >= D(3) / 4) or (hi != INF and close(e, D(1))):
+            continue
+        why = judge_value(at(answer, pt), tail_sum(at(summand, pt), lo)) if hi == INF else \
+            judge_n(at(summand, pt), lo, at(answer, pt), points=12)
+        if why:
+            return f"at {', '.join(f'{L}={x}' for L, x in pt.items())}: {why}"
+    return ""
+
 FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
             (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
@@ -498,10 +574,31 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 024: ratios in two and three letters, their own seeded batch (the 300 above draw as before), and the judge's
+    # planted answers first: a row for nothing, a row missing and a value moved must each be refused
+    good = ("Y^K×X^(K-1)", 1, "N", "Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1", F(1), ["X", "Y"], [1, 1])
+    plants = [("Y^K×X^(K-1)", 1, "N", "Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X≠0; X×Y≠1"),
+              ("X^(K-2)×Y^K", 1, "N", "Y÷(X-X^2×Y)-(X×Y)^(N+1)÷(X^2-X^3×Y); X×Y≠1"),
+              ("Y^K×X^(K-1)", 1, "N", "Y×(X×Y)^N÷(X×Y-1)-2×Y÷(X×Y-1); X×Y≠1")]
+    if judge_letter2(*good[:2], good[2], good[3], *good[4:]) or \
+            any(not judge_letter2(s, lo, hi, out, F(1), ["X", "Y"], [1, 1]) for s, lo, hi, out in plants):
+        print("FAIL scripts/sum-values.py: its two-letter judge accepts a planted answer or refuses the right one")
+        sys.exit(1)
+    rnd2, n2 = random.Random(20261022), 60
+    for _ in range(n2):
+        summand, lo, hi, angle, truth = gen_letter2(rnd2)
+        out = run_sum(summand, lo, hi, angle)
+        if out in ("NO_ROOM", "TOO_LONG"):
+            soft += 1
+            continue
+        why = judge_letter2(summand, lo, hi, out, *truth[1:])
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
-    print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}) at "
-          f"{ARENA} B, {soft} NO_ROOM or TOO_LONG; {rows} example rows by value\n"
-          f"checks: {n_cases + rows} failed: {failed + rfailed}")
+    print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}) and "
+          f"{n2} ratios in two or three letters (CAS 024) at {ARENA} B, {soft} NO_ROOM or TOO_LONG; {rows} example "
+          f"rows by value\nchecks: {n_cases + n2 + rows} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 

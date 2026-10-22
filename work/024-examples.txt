@@ -1,0 +1,57 @@
+# CAS 024's examples (work/024-ratio-shift.md): the shift for a ratio in two letters or more. Each row is run by
+# scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the value check's build
+# (CAS 022 rule 5). Each printed answer was checked against the sum added term by term, exactly (sum-values.py's
+# reader).
+
+# - Rule 1: a ratio that is a monomial in its letters is shifted as 018's one letter is, so the answer needs no L≠0 the
+#   sum doesn't (at X = 0, Σ Y^K×X^(K-1) from 1 is Y). A typed ÷X is read as canon reads it (abacus #9563)
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K×X^(K-1)' K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1` |
+| `casim sum 'X^(K-1)×Y^(K-1)' K 1 N RAD` | `-1÷(X×Y-1)+(X×Y)^N÷(X×Y-1); X×Y≠1` |
+| `casim sum '(X×Y)^K÷X' K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1` |
+| `casim sum 'X^(2×K-1)×Y^K' K 1 N RAD` | `X×Y×(X^2×Y)^N÷(X^2×Y-1)-X×Y÷(X^2×Y-1); X^2×Y≠1` |
+| `casim sum 'X^(K-1)×Y^K×W^K' K 1 N RAD` | `W×Y×(W×X×Y)^N÷(W×X×Y-1)-W×Y÷(W×X×Y-1); W×X×Y≠1` |
+| `casim sum '(K+1)×X^(K-1)×Y^(K-1)' K 1 N RAD` | `-2÷(X×Y-1)+N×(X×Y)^N÷(X×Y-1)+X×Y×(X×Y)^N÷2÷(X×Y-X^2×Y^2÷2-1÷2)-X×Y÷2÷(X×Y-X^2×Y^2÷2-1÷2)+2×(X×Y)^N÷(X×Y-1); X×Y≠1` |
+| `casim sum 'Y^K×X^(K-1)' K 1 ∞ RAD` | `-Y÷(X×Y-1); ABS(X×Y)<1` |
+| `casim sum 'X^(K-1)×Y^(K-1)' K 1 ∞ RAD` | `-1÷(X×Y-1); ABS(X×Y)<1` |
+
+# - Rule 2: with two letters or more, only the letters a shift of at most lo clears; a letter a term from lo divides by
+#   keeps its row (its first term is 1÷X, 1÷Y, 1÷W). Condition 2: a zero q doesn't cancel a negative power, so
+#   (K-1)×X^(K-2)×Y^K from 1 keeps X≠0 (0×X^(-1)×Y at K = 1)
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K×X^(K-1)' K 0 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1` |
+| `casim sum 'X^(K-1)×Y^(K-2)' K 1 N RAD` | `1÷(Y-X×Y^2)-(X×Y)^N÷(Y-X×Y^2); Y≠0; X×Y≠1` |
+| `casim sum 'X^(K-1)×Y^(K-1)×W^(K-2)' K 1 N RAD` | `1÷(W-W^2×X×Y)-(W×X×Y)^N÷(W-W^2×X×Y); W≠0; W×X×Y≠1` |
+| `casim sum '(K-1)×X^(K-2)×Y^K' K 1 N RAD` | `-N×(X×Y)^(N+1)÷(X^2-X^3×Y)+X×Y÷(X^2-X^3×Y)+X×Y^2÷(X-2×X^2×Y+X^3×Y^2)-Y×(X×Y)^(N+1)÷(X-2×X^2×Y+X^3×Y^2)-Y÷(X-X^2×Y); X≠0; X×Y≠1` |
+
+# - Condition 1: no shift without a negative power (and never a negative one)
+| Command | Prints |
+|---|---|
+| `casim sum 'X^(K+2)×Y^(K+1)' K 0 N RAD` | `X^2×Y×(X×Y)^(N+1)÷(X×Y-1)-X^2×Y÷(X×Y-1); X×Y≠1` |
+
+# - Condition 1 as ruled (#9572): s lies between the largest s_L of the letters left without a row and lo. For lo < 0
+#   and a finite hi, s = lo, so the answer has a value at a letter's 0 wherever the sum does, from N = lo-1
+#   (X^(K+2)×Y^(K+1) from -1 is 0 at N = -2, X = 0); a letter a term divides by keeps its row. To ∞ there is no N power:
+#   no shift
+| Command | Prints |
+|---|---|
+| `casim sum 'X^(K+2)×Y^(K+1)' K -1 N RAD` | `X×(X×Y)^(N+2)÷(X×Y-1)-X÷(X×Y-1); X×Y≠1` |
+| `casim sum 'X^(K+2)×Y^(K+1)' K -2 N RAD` | `1÷(Y-X×Y^2)-(X×Y)^(N+3)÷(Y-X×Y^2); Y≠0; X×Y≠1` |
+| `casim sum 'X^K×Y^K' K -1 N RAD` | `1÷(X×Y-X^2×Y^2)-(X×Y)^(N+2)÷(X×Y-X^2×Y^2); X≠0; Y≠0; X×Y≠1` |
+| `casim sum 'X^(K+1)×Y^(K+2)' K -2 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+3)÷(X-X^2×Y); X≠0; X×Y≠1` |
+| `casim sum 'X^(K+3)×Y^(K+1)' K -2 ∞ RAD` | `X÷(Y-X×Y^2); Y≠0; ABS(X×Y)<1` |
+
+# - Rule 3: one letter is 018's, unchanged (K×X^(K-2) from 1 keeps its shift by 2 and its X≠0)
+| Command | Prints |
+|---|---|
+| `casim sum 'K×X^(K-2)' K 1 N RAD` | `1÷(X-X^2)-1÷2÷(X-X^2÷2-1÷2)+N×X^(N-1)÷(X-1)+X^N÷2÷(X-X^2÷2-1÷2)+X^(N-1)÷(X-1); X≠0; X≠1` |
+| `casim sum 'K×X^(K-1)' K 1 N RAD` | `-1÷(X-1)+N×X^N÷(X-1)-X÷2÷(X-X^2÷2-1÷2)+X^N÷(X-1)+X^(N+1)÷2÷(X-X^2÷2-1÷2); X≠1` |
+
+# - Out of scope, ruled (#9560, on the follow-up list): a ratio with a letter at a negative power isn't shifted, so its
+#   row for nothing is today's; a quotient of two letter powers isn't read as one ratio (a refusal)
+| Command | Prints |
+|---|---|
+| `casim sum '(X÷Y)^K÷X' K 1 N RAD` | `-1÷(X-Y)-(X÷Y)^(N+1)÷(X-X^2÷Y); X≠0; Y≠0; X÷Y≠1` |
+| `casim sum 'X^K÷Y^K' K 0 N RAD` | `NO_CLOSED_FORM` |

@@ -12479,17 +12479,40 @@ static int sm_negpow(ctx *c, ref t, int L)
    K÷X) is summed shifted, as q(var+s)×B^s×B^var over lo-s .. hi-s, with s the least that clears them; the answer then
    divides by no power of L, and needs no row for L = 0 that the sum doesn't. g->q becomes q(var+s)×B^s; returns s, 0
    when there is none to clear (or past SM_DEG, or a binomial that overflows) */
-static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g)
+static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool inf)
 {
-    rat k;
-    int L, m, s = 0;
+    bool whole = is_num(c, lo) && val(c, lo)->q == 1 && val(c, lo)->p >= -SM_DEG && val(c, lo)->p <= SM_DEG;
+    int s = 0, cap = 0, n, nl = 0, low = whole ? (int)val(c, lo)->p : 0;
     ref Bs;
-    if (!g->B || !sm_mono(c, g->B, &k, &L, &m) || m <= 0) return 0;
-    for (int j = 0; j <= g->d; j++) {
-        int e = sm_negpow(c, g->q[j], L);
-        if (e < 0 && (-e + m - 1) / m > s) s = (-e + m - 1) / m;
+    if (!g->B) return 0;
+    n = nd(c, g->B)->kind == K_MUL ? nd(c, g->B)->n : 1;
+    /* CAS 024: each letter of B at a whole power m > 0 (Y^K×X^(K-1)'s X×Y too); any other factor than a number: no
+       shift. With two letters or more B is 0 where any one letter is, so s lies between the largest s_L of the letters
+       left without a row and lo (abacus #9572): then P = B^s×q's power of each such letter is >= 0, and so are B's
+       powers in the answer at N = lo-1. For lo >= 0 that is the largest s_L <= lo (0 when none clears a power: today's
+       forms); for lo < 0 and a finite hi, s = lo (X^(K+2)×Y^(K+1) from -1 is 0 at N = -2, X = 0). To ∞ there is no N
+       power, so no shift. A letter whose s_L passes lo has a term that divides by it, and keeps its row */
+    for (int i = 0; i < n; i++) {
+        ref f = nd(c, g->B)->kind == K_MUL ? list(c, nd(c, g->B)->a)[i] : g->B;
+        const node *x = nd(c, f);
+        int L, m;
+        if (x->kind == K_NUM) continue;
+        if (x->kind == K_VAR && x->id < 26) L = x->id, m = 1;
+        else if (x->kind == K_POW && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26 && is_num(c, x->b) &&
+                 val(c, x->b)->q == 1 && val(c, x->b)->p > 0 && val(c, x->b)->p <= SM_DEG)
+            L = nd(c, x->a)->id, m = (int)val(c, x->b)->p;
+        else return 0;
+        int sl = 0;
+        nl++;
+        for (int j = 0; j <= g->d; j++) {
+            int e = sm_negpow(c, g->q[j], L);
+            if (e < 0 && (-e + m - 1) / m > sl) sl = (-e + m - 1) / m;
+        }
+        if (sl > s) s = sl;
+        if (sl <= low && sl > cap) cap = sl;
     }
-    if (s == 0 || s > SM_DEG) return 0;
+    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;
+    if (s == 0 || s > SM_DEG || s < -SM_DEG) return 0;
     Bs = power(c, g->B, sm_int(c, s));
     for (int i = 0; i <= g->d; i++) {
         /* q'(i) = B^s × Σ_{j >= i} q(j) × C(j, i) × s^(j-i) */
@@ -12534,7 +12557,7 @@ static __attribute__((noinline)) ref sm_groups(ctx *c, const smsum *S, smgroup *
         int sh;
         for (int j = 0; j <= g->d; j++) zero = zero && is_k(c, g->q[j], 0, 1);
         if (zero) continue;
-        sh = sm_shift(c, g);                                        /* rule 4b: lo-sh .. hi-sh, q shifted */
+        sh = sm_shift(c, g, S->lo, S->inf);                         /* rule 4b: lo-sh .. hi-sh, q shifted */
         mark = c->used;                                             /* each group's work is given back (not q's) */
         if (B) {
             /* rule 4: a rational B is solved as it is; another with B = W+1, so the check's

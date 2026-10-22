@@ -388,6 +388,17 @@ def all_cases():
             ("cond LN(K+X) to 1", "LN(K+X)", "X", "taylor", "0|1"),
             ("cond (1+Z30)^K", "(1+" + Z30 + ")^K", "K", "sum", "0|N")]:
         rows.append((name, expr, var, "RAD", op, repl, "35"))
+    # CAS 024: the shift for a ratio in two letters or more (work/024-ratio-shift.md, abacus #9560 (6)): a shift by 1, a
+    # degree-1 and a degree-2 q (the binomials; s = 6 is TOO_LONG past the cap), three letters with W's row, a shift by a
+    # negative lo, and the heaviest the arena refuses (NO_ROOM)
+    for name, expr, repl in [
+            ("ratio Y^K×X^(K-1) from 1", "Y^K×X^(K-1)", "1|N"),
+            ("ratio K×X^(K-1)×Y^K from 1", "K×X^(K-1)×Y^K", "1|N"),
+            ("ratio K^2×X^(K-6)×Y^K from 6", "K^2×X^(K-6)×Y^K", "6|N"),
+            ("ratio X^(K-1)×Y^(K-1)×W^(K-2) from 1", "X^(K-1)×Y^(K-1)×W^(K-2)", "1|N"),
+            ("ratio X^(K+2)×Y^(K+1) from -2", "X^(K+2)×Y^(K+1)", "-2|N"),
+            ("ratio (K^2+K)×X^(2×K-3)×Y^(K-1)×W^K from 2", "(K^2+K)×X^(2×K-3)×Y^(K-1)×W^K", "2|N")]:
+        rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

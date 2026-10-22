@@ -665,7 +665,9 @@ UNDEFINED also for a pole in the range: Σ 1÷(K×(K+1)) from 0, and
 A letter in the ratio (Σ X^K) is answered with its condition, as rows after the answer, as CANCEL prints the values
 it removed: `X≠1` where the ratio is 1 (X≠-1 too for X^(2×K)), and to ∞ `ABS(X)<1` where it converges (`ABS(X)>1` for
 X^(-K)). Between whole bounds the sum term by term comes first (Σ X^K from 1 to 3 is X+X^2+X^3, true for every X);
-the closed form and its row only when that doesn't fit.
+the closed form and its row only when that doesn't fit. A letter of the ratio gets `X≠0` only where a term from LO
+divides by it: Σ K×X^(K-1) and, in two letters, Σ Y^K×X^(K-1) from 1 have a value at X = 0 and show none (CAS 018's
+shift, and CAS 024's for a ratio in two letters or more), while from 0 the first term is 1÷X and the row stands.
 
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
 (SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.

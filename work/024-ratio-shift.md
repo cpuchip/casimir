@@ -101,7 +101,41 @@ S3 +0.3 KB built. No new frame; sm_shift's shrinks.
 3. **X^K÷Y^K says NO_CLOSED_FORM** (at 305bd84 and fc46c8b), while (X÷Y)^K and X^K×Y^(−K) answer. A refusal, not a
    wrong value: the quotient of two letter powers isn't read as one ratio. My lean: out of scope, on the follow-up list.
 
+## Ruled (#9560)
+
+abacus checked rules 1 and 2 by hand: with s ≤ lo, B's exponent in the answer at the empty sum (N = lo−1) is lo−s ≥ 0,
+and a letter whose s_L passes lo has a term at K = lo that divides by it, so its row is the honest one.
+
+1. **Q1: rule 2 for two letters or more only.** With one letter, B is 0 only where that letter's own row already
+   excludes, so the cap would only move 018's accepted forms.
+2. **Q2: out,** on the follow-up list. That row for nothing is today's, unchanged, not a wrong value.
+3. **Q3: out,** on the follow-up list (a refusal).
+
+Conditions for the build:
+1. ~~**No shift below 0.** s is taken only to clear negative powers. When every s_L is 0 (X^(K+2)×Y^(K+1) from 0) there
+   is no shift, and s is never negative, which would put B^(−1) into q.~~ **Restated (#9572, after casim's #9569: "My
+   condition 1 was wrong, and your row shows why"): s lies between the largest s_L of the letters left without a row
+   and lo.** The answer is P × (B^(lo−s)×R(lo−s) − B^(N−s+1)×R(N−s+1)), P = c^s × Π L^(a_L×s+e_L); at a letter's 0 and
+   N = lo−1 every factor has a value exactly when s ≥ s_L for each row-free letter and s ≤ lo. For lo ≥ 0 that is rule
+   2 (no shift when 0 is in range, so today's forms stay). For lo < 0 and a finite hi, s = lo: X^(K+2)×Y^(K+1) from −1
+   printed `-X÷(X×Y-1)+X^2×Y×(X×Y)^(N+1)÷(X×Y-1); X×Y≠1` at 305bd84 and p1, with no value at X = 0 and N = −2, where
+   the empty sum is 0 (found by the two-letter family, below). To ∞ no shift: there's no N power, and canon merges the
+   numeric ones. A closed form's B^(N−s+1−d) is safe exactly when lo−s ≥ d (#9573); this one writes d = 0.
+2. **A term is canon's reading of the summand with K put in, nothing cancelled after** (sharpened at #9563, asked at
+   #9561), so (K−1)×X^(K−2)×Y^K from 1 has 0×X^(−1)×Y at K = 1, which has no value at X = 0, and X≠0 stands (rule 2
+   gives that: s_X is 2, past lo). A typed ÷L that canon merges is read merged: (X×Y)^K÷X is X^(K−1)×Y^K, Y at X = 0
+   and K = 1, and X≠0 goes (023's Q3; 018's X^K÷X from 1). h024 judges each letter at its merged power a×K+e.
+3. **Three letters and a negative lo are in scope as rule 1 states them:** X^(K−1)×Y^K×W^K, X^(K−1)×Y^(K−1)×W^(K−2) from 1
+   (W≠0 stands), and lo = −1 and −2 (no shift; every row it needs). To ∞ too: a row stands wherever a term from lo
+   divides.
+4. **Mutants:** the four under The oracle, plus the clamp off: ~~a negative s taken~~ s below a row-free letter's
+   s_L (#9572).
+5. **S3 stop: +1 KB built** (estimate +0.3). Past it, back to abacus before landing.
+6. **The device bench,** as planned.
+
+h024 is frozen before the build; only its hash comes to casim.
+
 ## Out of scope
 
-Questions 2 and 3 unless ruled in. The follow-up list's items (#9480 (1), #9482): sum 1÷c^K to 3, and canon's factored
-1÷Z.
+Questions 2 and 3, ruled out: on the follow-up list, beside its items from before (#9480 (1), #9482): sum 1÷c^K to 3,
+and canon's factored 1÷Z.

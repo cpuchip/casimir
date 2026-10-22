@@ -901,7 +901,8 @@ MUTANTS = {
     "sum-fractions-unmerged": [("src/casim.c", "                if (at < nt) tm[at].cf = ib_canon(c, add2(c, tm[at].cf, cm));",
                                 "                if (0) tm[at].cf = ib_canon(c, add2(c, tm[at].cf, cm));")],
     # CAS 018 rule 4b's shift (abacus #8349): a negative power of the ratio's letter cleared
-    "sum-shift-off": [("src/casim.c", "    if (s == 0 || s > SM_DEG) return 0;\n    Bs =", "    if (1) return 0;\n    Bs =")],
+    "sum-shift-off": [("src/casim.c", "    if (s == 0 || s > SM_DEG || s < -SM_DEG) return 0;\n    Bs =",
+                       "    if (1) return 0;\n    Bs =")],
     "sum-shift-bounds": [("src/casim.c", "        lo = sh ? add2(c, S->lo, sm_int(c, -sh)) : S->lo;", "        lo = S->lo;")],
     "sum-shift-binom": [("src/casim.c", "            for (int r = 1; r <= j - i; r++) w /= r;", "")],
     # CAS 018 rule 4b's cold review
@@ -1166,6 +1167,27 @@ MUTANTS = {
                      "            if (!is_num(c, base) && !any_letter(c, base)) c->st = CASIM_UNDECIDED;")],
     "cond-sums-number": [("src/casim.c", "            if (!is_num(c, base) && !any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;",
                           "            if (!any_letter(c, base) && !contains(c, base, 26)) c->st = CASIM_UNDECIDED;")],
+    # CAS 024 (work/024-ratio-shift.md; abacus #9560, #9572): a ratio in two letters or more not shifted; rule 2's cap
+    # off (the largest s_L, past lo); the cap for one letter too; a letter at a negative power read as positive (X÷Y);
+    # s below a row-free letter's s_L (the clamp, as #9572 restated it); lo < 0 not shifted; a shift to ∞ too
+    "ratio-two-letters-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                               "    if (nl > 1) s = 0;")],
+    "ratio-cap-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                       "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : s;")],
+    "ratio-cap-one-letter": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                              "    if (nl >= 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;")],
+    "ratio-negpow-as-positive": [("src/casim.c", "val(c, x->b)->q == 1 && val(c, x->b)->p > 0 &&"
+                                  " val(c, x->b)->p <= SM_DEG)\n"
+                                  "            L = nd(c, x->a)->id, m = (int)val(c, x->b)->p;",
+                                  "val(c, x->b)->q == 1 && val(c, x->b)->p != 0 && val(c, x->b)->p <= SM_DEG)\n"
+                                  "            L = nd(c, x->a)->id, m = val(c, x->b)->p < 0 ? -(int)val(c, x->b)->p :"
+                                  " (int)val(c, x->b)->p;")],
+    "ratio-clamp-below": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                           "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap - (cap > 0);")],
+    "ratio-neglo-off": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                         "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? 0 : cap;")],
+    "ratio-neglo-at-inf": [("src/casim.c", "    if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;",
+                            "    if (nl > 1) s = !whole ? 0 : low < 0 ? low : cap;")],
 }
 
 

@@ -1,0 +1,26 @@
+# The golden lines CAS 024 (the shift for a ratio in two letters: work/024-ratio-shift.md) moved. Each line's
+# inputs, then its status and answer before (CAS 023's 305bd84) and after. Putting every before back gives 305bd84's
+# files byte for byte (their sha256 below), and every after keeps its before's status and its rows less the L≠0 rows the
+# shift clears (scripts/ratio-golden.py, in make check). The 3 are sum Y^K×X^(K-1) from 1, which loses X≠0 (its sum is Y
+# at X = 0); under →DEC the same 3 inputs.
+# 305bd84 corpus.txt sha256 54f95d63550b343092afce6b5da16eb72dbe3961cf3060386751cb8e529ef7dc
+# 305bd84 decimal.txt sha256 ef2c24892f5a7c3d13f05e1e562ba7ee1cdec2cd6d57246973f3bd28ab3c1bab
+sum	35	10	1	35	65536	65536	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1
+sum	35	10	1	35	8800	192	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1
+sum	35	10	1	35	8800	65536	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1
+# Under →DEC (decimal.txt):
+sum	35	10	1	35	65536	65536	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1
+sum	35	10	1	35	8800	192	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1
+sum	35	10	1	35	8800	65536	Y^K×X^(K-1)	1	N
+  before	OK	-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1
+  after	OK	Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1

@@ -24,7 +24,8 @@
 #   stays UNDEFINED beside a letter group. After abacus #8349: a letter group whose coefficient holds a negative power
 #   of the ratio's letter is summed shifted (K×X^(K-1) as (K+1)×X^K from 0 to N-1), so its answer divides by no power
 #   of X and needs no X≠0 the sum doesn't (K×X^(K-1), X^(2×K-1)). K×X^(K-2) keeps it: its first term is 1÷X. The
-#   shift takes a ratio in one letter; Y^K×X^(K-1) (ratio X×Y) still shows X≠0.
+#   shift took a ratio in one letter, so Y^K×X^(K-1) (ratio X×Y) showed X≠0, until CAS 024 (work/024-ratio-shift.md)
+#   took it to two letters or more: the row below moved there.
 # - After abacus's h018 (#8460): a telescoping sum typed as one n÷d is several terms once canon expands it, one per
 #   power of K in the numerator, each over the one divisor. They are now one rational term, through partfrac once
 #   (before, 7 terms passed the 6 allowed, and 4 terms of 3 fractions passed the 12 allowed). Fractions with the same
@@ -139,7 +140,7 @@
 | `casim sum "X^(2×K-1)" K 1 N RAD` | `X×(X^2)^N÷(X^2-1)-X÷(X^2-1); X≠-1; X≠1` |
 | `casim sum "X^(-K)" K 0 N RAD` | `-1÷(1÷X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1` |
 | `casim sum "X^(K-1)" K 1 N RAD` | `-1÷(X-1)+X^N÷(X-1); X≠1` |
-| `casim sum "Y^K×X^(K-1)" K 1 N RAD` | `-Y÷(X×Y-1)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1` |
+| `casim sum "Y^K×X^(K-1)" K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1` |
 | `casim sum "X^K+1÷(K×(K+1))" K 0 ∞ RAD` | `UNDEFINED` |
 | `casim sum "(16+10×K^3+39×K^2+48×K)÷(K^6+4×K^2+6×K^5+12×K^3+13×K^4)" K 1 ∞ RAD` | `17÷4` |
 | `casim --arena 65536 sum "(384+3×K^6+38×K^5+219×K^4+712×K^3+1280×K+1328×K^2)÷(2×K^8+30×K^7+178×K^6+192×K^2+530×K^5+640×K^3+828×K^4)" K 1 N RAD` | `-2÷(N+1)^2+2÷3÷(N+2)^2-2÷(N+2)+2÷3÷(N+3)^2+1÷2÷(N+3)+2÷3÷(N+4)^2+551÷216` |
