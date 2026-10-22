@@ -1,0 +1,27 @@
+# The mutant count at the v1.0.0-rc6 tag (casimir e551d3e, tag object a98ccb1): all 414 caught, from one run of
+# every mutant on the tag and one rerun of six with the core built (2026-10-22, lepton, claim #9628).
+#
+# The run (07:21:51Z to 09:26:00Z, 6 shards, copies of a fresh worktree at the tag): 408 caught, 6 "survived". The
+# worktree had never run make test, so it held no core in build/, and a copy can't fetch one (CORE_REPO is relative):
+# each copy's make test passed make check and then stopped at build/core/.pin ("make test needs the firmware's
+# clone"), so no developer test ran. The 408 were caught by make check alone. The six whose only catcher is a
+# developer test were never tested, and the runner called that SURVIVED.
+#
+# The rerun (09:27:47Z to 09:33:31Z): the core built in the worktree at CORE_PIN 38d1931, the six from fresh copies,
+# beside an unmutated copy's make test as the control.
+#   control: all green, 20 tests, 118,421 checks
+#   ser-bound-product-unscaled  caught by build/series_test
+#   ser-limit-no-retry          caught by build/series_test
+#   ser-after-rule7-ran-out     caught by build/series_test
+#   ser-puiseux-answers         caught by build/series_test
+#   ser-root-of-negative        caught by build/series_test
+#   ser-taylor-no-retry         caught by build/series_test
+# Each was caught by build/series_test in all five earlier logs that ran it (the runs of CAS 021 to 024).
+#
+# scripts/mutants.py now refuses to start without a core at CORE_PIN in build/ ("NOT RUN"), and labels a make test
+# that stops with no FAIL line NOT TESTED, not SURVIVED (both observed: a copy with no core, and one with a pin and
+# no core, where ser-root-of-negative came back NOT TESTED).
+#
+# Peaks, host RSS summed over the copies, sampled every 5 s: 1,583,480 KiB (the 414), 1,784,548 KiB (the rerun with
+# the control); /tmp and /dev/shm untouched. The clang check's container (casim-clang-*, --memory 2g, run by each
+# copy's make test) sits outside that sample; its own memory.peak read 55.5 and 56.4 MiB.

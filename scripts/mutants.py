@@ -1222,6 +1222,13 @@ def main():
     if anchors:
         print(f"mutant anchors: {len(names)} mutants, each anchor found once")
         return 0
+    # a copy can't fetch the core (CORE_REPO is relative), so make test there runs the developer tests only on a core
+    # built here first; without one each copy's make test stops before them (the 414 on v1.0.0-rc6: six "survived")
+    pin = os.path.join(ROOT, "build", "core", ".pin")
+    want = open(os.path.join(ROOT, "CORE_PIN"), encoding="utf-8").read().strip()
+    if not os.path.exists(pin) or open(pin, encoding="utf-8").read().strip() != want:
+        print(f"NOT RUN, no core at {want[:7]} in build/: run make test here first")
+        return 1
     survived = 0
     for name in names:
         tree = os.path.join(ROOT, "build", "mutants", name)
@@ -1252,6 +1259,9 @@ def main():
         if test.returncode != 0 and caught:
             print(f"caught   {name}: by {', '.join(c.rstrip(':') for c in caught)}")
             shutil.rmtree(tree, ignore_errors=True)
+        elif test.returncode != 0:
+            print(f"NOT TESTED {name} (make test stopped with no FAIL line, not counted):\n{test.stdout[-800:]}")
+            survived += 1
         else:
             print(f"SURVIVED {name}")
             survived += 1
