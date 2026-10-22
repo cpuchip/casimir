@@ -1,7 +1,8 @@
 # CAS work unit 023: conditions shown under limit and taylor answers
 
-**From:** casim · **To:** abacus · **Status:** draft, for abacus's review; measured on a throwaway prototype (p1, over
-fc46c8b, not pushed). h023's hash comes before the build.
+**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), for abacus's run of h023 (frozen at
+#9494: sha256 366abadb…565130, 57 rows). The draft was reviewed and ruled at #9493 and measured on a throwaway
+prototype (p1, over fc46c8b) before the build.
 casim writes the unit; abacus writes h023 and the Accepted section.
 - **Why now:** Michael's ruling on the letter card, through abacus (#9428): when a limit or taylor answer holds only for
   K≠0, "the answer is given and the condition is shown under it, as in CAS 018 rule 4b", with the example K×ABS(X)÷X at
@@ -157,6 +158,84 @@ Conditions for the build:
 5. **The sums (rule 6):** h022's (1+Z30)^K rows go NO_ROOM → UNDECIDED and nothing else moves.
 
 h023 is frozen before the build; only its hash comes to casim.
+
+## As built (where the code differs from the rules, or settles what they left open)
+
+- **Conditions are kept as expressions** (at most 6, each once; past it NO_ROOM, as past the sums' 8 rows): e≠0 or e>0,
+  the same expression's > keeping its place (cd_note). They become rows at the end (cd_print), through the sums' smrow
+  and sm_row; the sums' root solving (cd_roots) and row printer (rows_put) are now shared, and the sums print as before
+  (the corpus's sum lines and 018's examples hold). A ≠ row that a > or < row with its l and r says is left out, which
+  also covers two expressions (K^2+X's K≠0 beside LN's K>0: LN(K+X)÷(K^2+X) is `LN(K)÷K^2; K>0`).
+- **One walker** (cd_walk, with cd_at out of its recursion as taylor_hole's valuing is) serves both operations: taylor
+  walks the typed f at the point, ABS's and SGN's corners included; limit walks canonical trees without them (ABS(K) is
+  continuous at K = 0).
+- **Limit's sites:** 1 (lm_quot), 2 (L'Hôpital, d''s letter factors), 4 (the sides), 5 (lm_at at every level, after
+  both of its successes: a letter-free value too, as K÷K is 1), 6 (the answer's own), and **7, new: f's own constant
+  factors.** The series route divides by f's 1÷K (SIN(K×X)÷(K×X) is K^-1×X^-1×SIN(K×X)) without a note, and the walk's
+  notes go with its arena when the route runs: limit 1÷X^2-1÷SIN(X)^2+SIN(K×X)÷(K×X) at 0 in 12,288 B printed `2÷3`
+  (wrong at K = 0) until f itself was walked for its constant divisors and domains after the answer, on either path. A
+  search for a surviving mutant found it. Site 3 is a guard and isn't reached.
+- **A fractional power's domain** reached through lm_walk's power branch gets no note there: any call in that branch grew
+  lm_walk's S3 frame from 80 to 96 (measured with the note inline, out of line, and with the original branch back:
+  80), and lm_walk is the walk's recursion. Its row comes from site 5 or site 6 instead ((K+SIN(X)÷X)^(1÷3) at 0 is
+  `(K+1)^(1÷3); K>-1`); LN's, LOG's and SQRT's are noted in lm_func.
+- **lm_sign_near's walk is non-const** now, since lm_at notes through it; a sign probe's notes lead only to refusals.
+- **do_limit keeps the + side's arena** when it noted conditions (compact would move them), and clears the walk's notes
+  when the series route runs (site 7 then notes what the route needs).
+- **cd_gt's product branch** (K×π > 0 as K > 0) was dropped to stay inside the cost stop; a generic e>0 row is right.
+- **Rule 6 is limited to real bases:** i^K first moved (NO_CLOSED_FORM → UNDECIDED, corpus 10717-10718) and is excluded.
+- **The CLI prints UNDEFINED's rows** (`UNDEFINED; K≠0`), and scripts/device_cases.py reads them for the bench.
+- **Two mutants are left out,** run and surviving: lm_combine's give-back of an abandoned attempt's notes (a letter limit
+  reaches lm_combine only through an ∞-∞ of known signs, which letters make unknown) and the series route's reset (with
+  site 7 the rows are the same; the reset is also a safety guard, since the notes point into the arena the route
+  reuses). 48 rows aimed at both, at 65,536 and 12,288 B, route on and off: 192 runs, 0 differ.
+
+## Measured (the build, over fc46c8b's library)
+
+- **S3 text: 238,904 B, +4,411 over fc46c8b's 234,493** (the stop is +5 KB; p1 was +6,061 unshared). 23,240 B are left
+  of decision 80's 262,144.
+- **S3 frames:** do_limit 240 → 304; lm_walk 80, do_taylor 336, lm_quot, lm_func and every sums frame unchanged; new:
+  cd_print 288 (its rows), cd_ne 144, cd_root and cd_roots 64, rows_put 64, cd_note and lm_at_cd 48, cd_at, cd_walk
+  (32 a level), cd_mono, lm_note and raw_letter 32; ib_at was inlined by the compiler (its 32 gone). Host (the frame
+  table, re-recorded, 419 frames): do_limit 336 → 432, do_taylor 464 → 512, do_sum_ 816 → 800.
+- **The golden:** the corpus moves 8 lines and →DEC 8, all letter limits over SIN(K×X) gaining K≠0
+  (tests/golden/moved/cas-023.txt; with their befores put back both files hash to fc46c8b's, scripts/conditions-golden.py,
+  with a control); complex the same 8 inputs. 022's boundary (signs-golden.py, now putting 023's moves back first) and
+  021's (series-golden.py) hold. The doc examples: 725 commands both ways, one of 022's moved (K×ABS(X)÷X → its row) and
+  two of 023's on the route-off list (the route's answers).
+- **The letter judge** (scripts/letter-values.py, in make check): 39 limits and 26 taylors at 10 values of K and each
+  row's excluded value, 0 failures; on fc46c8b's build it fails 40 of the 65 rows (70 failures). Its 3 controls refuse.
+- **The probe** (c23/probe.py, 54 rows): fc46c8b 29 wrong at an unexcluded K, the build 0.
+- **Tests:** make check green (adding conditions-golden.py and letter-values.py); make test green at e246da4, 20 tests,
+  118,421 checks (8d56639 adds only the mutant anchor check; its make check is green).
+- **The device** (XIAO S3, host and chip at 12,288 B, the shipping 2,000 ms interrupt mask; condition 3): DEVICE PASS,
+  1,341 cases (022's 1,334 and 7 cond rows), 0 different. The worst masked stack is unchanged, 11,360 (STU chain X^ 44
+  d); this run's interrupt excess measured 400 (336 at 022's run), so the gate reads 11,760 of 12,288. The cond rows
+  (stack B, median ms):
+
+  | Row | Stack | ms |
+  |---|---|---|
+  | taylor (1÷(K+X)+X) chained 40 deep, to 0: the typed-f walk's deepest | 4,656 | 3.3 |
+  | limit 36 SINs around SIN(K×X)÷(K×X) at 0: the walk down to L'Hôpital's K | 7,248 | 839.8 |
+  | limit K×ABS(X)÷X at 0 (UNDEFINED; K≠0) | 2,448 | 5.5 |
+  | limit (K^2-1)×ABS(X)÷X at 0 | 2,112 | 7.3 |
+  | taylor TAN(K+X) to 1 | 2,432 | 4.1 |
+  | taylor LN(K+X) to 1 | 2,432 | 3.6 |
+  | sum (1+Z30)^K (UNDECIDED) | 2,880 | 27.2 |
+
+  The two nests are the deepest of their shapes that answer at 12,288 B with a 192-byte cap: one SIN more is TOO_LONG
+  (the answer past 191 bytes), one more link of the chain NO_ROOM.
+  The device's container peaked at 523.4 MiB under a 2g cap, tmpfs 0.
+- **Mutants: 403 of 403 caught** (scripts/mutants.py: 022's 380 and 23 cond- mutants). abacus's two (#9493 (4)) are
+  cond-gt-says-not-ne (a > row not leaving out its ≠) and cond-letter-free-walk and cond-letter-free-row (rows on
+  letter-free input). The first full run (e246da4, 22:29Z) ran one shard of four. The other three stopped before their
+  first build on five anchors the build had moved: limit-lhopital-not-indeterminate, limit-sides-share-arena,
+  sum-base-zero, sum-4b-even-root and sum-4b-odd-sign. The run checks anchors only at its start and only for the
+  mutants it names, and the 24-mutant probe named only cond- ones. 8d56639 re-anchors each to the same fault and puts
+  `scripts/mutants.py --anchors` in make check. It goes red on the five old anchors, and it skips in a mutant's own copy,
+  whose anchor is gone by design. Shard 1's 101 ran at e246da4 and the other 302 at 8d56639, in 6 shards; the two trees
+  differ only in scripts/mutants.py and that Makefile line, and none of the 302 was caught by the anchor check. make
+  check is green at 8d56639. Peak RSS: shard 1 alone 283,948 KiB; the 6 shards together 1,608,716 KiB; tmpfs none.
 
 ## Out of scope
 
