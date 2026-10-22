@@ -243,6 +243,35 @@ h023 is frozen before the build; only its hash comes to casim.
   differ only in scripts/mutants.py and that Makefile line, and none of the 302 was caught by the anchor check. make
   check is green at 8d56639. Peak RSS: shard 1 alone 283,948 KiB; the 6 shards together 1,608,716 KiB; tmpfs none.
 
+## After h023 (abacus #9525)
+
+h023 at 24d6de5: 114 runs, one failure. L053, taylor ABS(K)×SQRT(1+X) at 0 to order 2, printed
+`ABS(K)+X×ABS(K)÷2-X^2×ABS(K)÷8; K≠0` (both arenas): a row on an answer right for every K (fc46c8b printed it without
+one). Every other h023 line holds (76 of 76 of today's wrong lines right with rows), and so do the older sets.
+
+- **The cause** (abacus read it; the code says the same): cd_at took ABS's and SGN's argument as a corner whether or not
+  it held X, so ABS(K) noted K≠0. The same mechanism at order 0, found here: taylor ABS(K+X) to order 0 printed
+  `ABS(K); K≠0`, though order 0 is f's value, which ABS has at every K.
+- **The fix (33e8f18):** cd_at asks contains() of canon's reading of the argument (so ABS(X-X+K) is no corner either),
+  and taylor's walk takes corners only from order 1. SGN(K)×X refuses on both builds (NOT_DIFFERENTIABLE), with no row.
+  work/023-examples.txt and scripts/letter-values.py gain L053, ABS(K)+X to order 1 and ABS(K+X) to order 0; mutants
+  cond-corner-constant and cond-corner-order0 put each half back; cond-corner is re-anchored.
+- **Measured:** S3 text 238,994, +90 over 24d6de5 (+4,501 over fc46c8b; 23,150 B left). No S3 frame moved (x.su function
+  by function); cd_at's text 484 → 560. contains_ is 32 B a level, on the argument canon reads at the same node with
+  canon_'s 48, so no new peak, and the device isn't rerun. The host frame table: do_taylor 512 → 496 (re-recorded). make
+  check green (730 doc commands, the letter judge 71 checks), make test green, 20 tests, 118,421 checks.
+- **Mutants:** the cond- set, 25 of 25 caught at 33e8f18 (4 shards; peak 1,055,844 KiB, tmpfs none). The three corner
+  mutants are caught by work/023-examples.txt, which runs first in make check. scripts/letter-values.py, run alone on
+  each new mutant's build, fails its rows too: 4 failures on cond-corner-constant, 2 on cond-corner-order0. The other
+  380 mutants weren't rerun. Their anchors are all found once (make check), their tests are unchanged or grew, and the
+  fix moves only a corner row with no X in it or at order 0.
+- **Still open, for abacus: a real corner multiplied away.** K×ABS(K+X) to order 1 prints
+  `K×ABS(K)+K×X×SGN(K); K≠0`, but at K = 0 f is 0, which the answer gives: the row leaves out a K where the answer holds,
+  and fc46c8b printed the same answer without it. The same for (K-1)×ABS(K-1+X) (K≠1), K^2×ABS(K+X), SIN(K)×ABS(K+X),
+  ABS(K)×ABS(K+X), and X×ABS(K+X) to order 1 (at K = 0, f is X×ABS(X), whose order-1 polynomial is 0, as given; to
+  order 2 the row is right, since X×ABS(X) has no second derivative there). The rows say where each node of the typed f
+  is fine. An exact row would value the answer against f at the row's own K, which is a second taylor per row.
+
 ## Out of scope
 
 The two-letter-ratio shift. The follow-up list's letter-free items (#9480 (1), #9482): sum 1÷c^K to 3, and canon's
