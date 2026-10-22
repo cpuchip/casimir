@@ -48,6 +48,12 @@
 | `casim taylor 'ABS(K)+X' X 0 1 RAD` | `ABS(K)+X` |
 | `casim taylor 'ABS(K+X)' X 0 0 RAD` | `ABS(K)` |
 
+# - Ruled OVER (abacus #9538): a real corner multiplied away keeps its row, though the answer holds at K = 0 (the row
+#   says where each part of the typed f is well behaved)
+| Command | Prints |
+|---|---|
+| `casim taylor 'K×ABS(K+X)' X 0 1 RAD` | `K×ABS(K)+K×X×SGN(K); K≠0` |
+
 # - Rule 4's implication: one expression noted ≠ 0 and > 0 is one row, > (LN(K+X)÷(K+X)); K^2≠0's K≠0 beside LN's K>0 is
 #   left out (said); a letter-free part makes no row (LN(2+X)); a refusal prints none, though the walk noted K≠0 first
 | Command | Prints |

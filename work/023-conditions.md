@@ -265,7 +265,12 @@ one). Every other h023 line holds (76 of 76 of today's wrong lines right with ro
   each new mutant's build, fails its rows too: 4 failures on cond-corner-constant, 2 on cond-corner-order0. The other
   380 mutants weren't rerun. Their anchors are all found once (make check), their tests are unchanged or grew, and the
   fix moves only a corner row with no X in it or at order 0.
-- **Still open, for abacus: a real corner multiplied away.** K×ABS(K+X) to order 1 prints
+- **Ruled (a), OVER (abacus #9538), with a line in docs/language.md; no exact check built.** A row there leaves out a K
+  where the node it comes from (ABS(K+X) at K = 0) really has a corner, so the answer is never wrong where the rows
+  allow it; the row only claims less than is true. That is L019's case and Q4's typed f. BOUNDARY stays a failure for a
+  row with no failing node behind it, as L053's ABS(K) was. scripts/letter-values.py holds the six inputs below as OVER
+  rows (exact text, and right at every K their rows allow); on fc46c8b's build all six fail as moved.
+- ~~**Still open, for abacus:**~~ **The case: a real corner multiplied away.** K×ABS(K+X) to order 1 prints
   `K×ABS(K)+K×X×SGN(K); K≠0`, but at K = 0 f is 0, which the answer gives: the row leaves out a K where the answer holds,
   and fc46c8b printed the same answer without it. The same for (K-1)×ABS(K-1+X) (K≠1), K^2×ABS(K+X), SIN(K)×ABS(K+X),
   ABS(K)×ABS(K+X), and X×ABS(K+X) to order 1 (at K = 0, f is X×ABS(X), whose order-1 polynomial is 0, as given; to

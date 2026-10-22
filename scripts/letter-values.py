@@ -39,6 +39,17 @@ TAYLORS = [  # (text, point, order)
     ("LN(K+X)÷(K^2+X)", "0", 0), ("LN(2+X)+1÷(K+X)", "0", 0),
     ("ABS(K)×SQRT(1+X)", "0", 2), ("ABS(K)+X", "0", 1), ("ABS(K+X)", "0", 0),     # abacus #9525: no corner, no row
 ]
+# held OVER rows (abacus #9538, ruled (a)): a real corner multiplied away. The row leaves out a K where the answer holds,
+# since the node it comes from has a corner there. Each must print as held (a change that drops or moves a row shows)
+# and be right at every K its rows allow
+HELD = [
+    (("K×ABS(K+X)", "0", 1), "K×ABS(K)+K×X×SGN(K); K≠0"),
+    (("(K-1)×ABS(K-1+X)", "0", 1), "ABS(K-1)×(K-1)+X×SGN(K-1)×(K-1); K≠1"),
+    (("K^2×ABS(K+X)", "0", 1), "K^2×ABS(K)+K^2×X×SGN(K); K≠0"),
+    (("SIN(K)×ABS(K+X)", "0", 1), "SIN(K)×ABS(K)+X×SIN(K)×SGN(K); K≠0"),
+    (("ABS(K)×ABS(K+X)", "0", 1), "ABS(K)^2+X×ABS(K)×SGN(K); K≠0"),
+    (("X×ABS(K+X)", "0", 1), "X×ABS(K); K≠0"),
+]
 FN = {"SIN": "math.sin", "COS": "math.cos", "TAN": "math.tan", "LN": "math.log", "LOG": "math.log10",
       "EXP": "math.exp", "SQRT": "math.sqrt", "ABS": "abs", "SGN": "_sgn"}
 REFUSED = ("UNDECIDED", "NO_ROOM", "TOO_LONG", "BAD_ARG", "NOT_DIFFERENTIABLE")
@@ -176,6 +187,15 @@ def main():
                 failed += 1
                 print(f"FAIL scripts/letter-values.py: {kind} {row[0]} at {row[1]}{row[2] if kind == 'limit' else ''}: "
                       f"{ans}: {b}")
+    for row, want in HELD:
+        ans = casim("taylor", row[0], "X", row[1], str(row[2]), "RAD")
+        n += 1
+        bad = [b for b in judge("taylor", row, ans) if not b.startswith("a row leaves out")]
+        if ans != want:
+            bad.append(f"a held OVER row moved (held: {want})")
+        for b in bad:
+            failed += 1
+            print(f"FAIL scripts/letter-values.py: taylor {row[0]} at {row[1]}: {ans}: {b}")
     # the controls: each must fail
     controls = [("limit", ("SIN(K×X)÷(K×X)", "0", ""), "1"),                      # the row dropped
                 ("taylor", ("1÷(K+X)", "0", 1), "1÷K-X÷K^2; K≠1"),                # a wrong row
@@ -186,7 +206,8 @@ def main():
             failed += 1
             print(f"FAIL scripts/letter-values.py: its control passed: {kind} {row[0]} as {ans}")
     print(f"letter values: {len(LIMITS)} limits and {len(TAYLORS)} taylors with letters, judged at {len(KS)} values of "
-          f"K and at each row's excluded value; the 3 controls refused\nchecks: {n} failed: {failed}")
+          f"K and at each row's excluded value; {len(HELD)} held OVER rows; the 3 controls refused\nchecks: {n} failed: "
+          f"{failed}")
     sys.exit(1 if failed else 0)
 
 
