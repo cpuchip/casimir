@@ -399,6 +399,17 @@ def all_cases():
             ("ratio X^(K+2)×Y^(K+1) from -2", "X^(K+2)×Y^(K+1)", "-2|N"),
             ("ratio (K^2+K)×X^(2×K-3)×Y^(K-1)×W^K from 2", "(K^2+K)×X^(2×K-3)×Y^(K-1)×W^K", "2|N")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 025 (work/025-every-ratio-rows.md, abacus #9687): the rows read past an irrational constant, a letter in a
+    # function and a letter at a negative power, in one letter to three, to ∞ and to N, and the heaviest of p1's set
+    for name, expr, repl in [
+            ("ratio K×(SQRT(2)×X×Y)^K÷Y to ∞", "K×(SQRT(2)×X×Y)^K÷Y", "0|∞"),
+            ("ratio K×(π×Y)^K÷Y to ∞", "K×(π×Y)^K÷Y", "0|∞"),
+            ("ratio K×(SIN(Z)×Y)^K÷Y to ∞", "K×(SIN(Z)×Y)^K÷Y", "0|∞"),
+            ("ratio (X÷Y)^K÷Y to ∞", "(X÷Y)^K÷Y", "0|∞"),
+            ("ratio K×(X×Z÷Y)^K÷X to ∞", "K×(X×Z÷Y)^K÷X", "0|∞"),
+            ("ratio K×(SQRT(2)×Y)^K÷Y to N", "K×(SQRT(2)×Y)^K÷Y", "0|N"),
+            ("ratio (K^2-K)×(SQRT(2)×Y)^K÷Y^2 to ∞", "(K^2-K)×(SQRT(2)×Y)^K÷Y^2", "0|∞")]:
+        rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

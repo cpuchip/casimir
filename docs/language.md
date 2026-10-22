@@ -668,6 +668,12 @@ X^(-K)). Between whole bounds the sum term by term comes first (Σ X^K from 1 to
 the closed form and its row only when that doesn't fit. A letter of the ratio gets `X≠0` only where a term from LO
 divides by it: Σ K×X^(K-1) and, in two letters, Σ Y^K×X^(K-1) from 1 have a value at X = 0 and show none (CAS 018's
 shift, and CAS 024's for a ratio in two letters or more), while from 0 the first term is 1÷X and the row stands.
+Whatever else the ratio holds, the row stands too (CAS 025): Σ K×(SQRT(2)×X×Y)^K÷Y from 0 prints `Y≠0`, and so does
+a letter at a negative power, whose terms divide by it from some K on: Σ (X÷Y)^K÷Y from 0 is `-1÷(X-Y); Y≠0;
+ABS(X÷Y)<1`, since a row with no value at Y = 0 can't exclude it. A term is read as canon reads it, with its powers
+merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), with no value at Y = 0. Added term by term
+(whole bounds at most 64 apart), each term is the typed text simplified, so it cancels as simplify does: 0÷Y is 0,
+X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`.
 
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
 (SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.

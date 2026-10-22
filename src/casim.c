@@ -12487,6 +12487,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
     bool whole = is_num(c, lo) && val(c, lo)->q == 1 && val(c, lo)->p >= -SM_DEG && val(c, lo)->p <= SM_DEG;
     int s = 0, cap = 0, n, nl = 0, low = whole ? (int)val(c, lo)->p : 0;
     unsigned rl = 0;
+    bool other = false;
     ref Bs;
     if (!g->B) return 0;
     n = nd(c, g->B)->kind == K_MUL ? nd(c, g->B)->n : 1;
@@ -12495,7 +12496,8 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
        left without a row and lo (abacus #9572): then P = B^s×q's power of each such letter is >= 0, and so are B's
        powers in the answer at N = lo-1. For lo >= 0 that is the largest s_L <= lo (0 when none clears a power: today's
        forms); for lo < 0 and a finite hi, s = lo (X^(K+2)×Y^(K+1) from -1 is 0 at N = -2, X = 0). To ∞ there is no N
-       power, so no shift. A letter whose s_L passes lo has a term that divides by it, and keeps its row */
+       power, so no shift. A letter whose s_L passes lo has a term that divides by it, and keeps its row. CAS 025
+       (abacus #9687): the rows are read past any other factor (SQRT(2), SIN(Z), Y^(-1)), which still stops the shift */
     for (int i = 0; i < n; i++) {
         ref f = nd(c, g->B)->kind == K_MUL ? list(c, nd(c, g->B)->a)[i] : g->B;
         const node *x = nd(c, f);
@@ -12505,7 +12507,16 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
         else if (x->kind == K_POW && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26 && is_num(c, x->b) &&
                  val(c, x->b)->q == 1 && val(c, x->b)->p > 0 && val(c, x->b)->p <= SM_DEG)
             L = nd(c, x->a)->id, m = (int)val(c, x->b)->p;
-        else return 0;
+        else {
+            /* L^m, m < 0: term K holds L^(e+m×K), so from some K on the terms from lo divide by L (to N, for N past
+               it). Its row stands: B's own row (ABS(X÷Y)<1) has no value at L = 0, so it can't exclude it (abacus
+               #9687 (2)) */
+            if (whole && x->kind == K_POW && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26 && is_num(c, x->b) &&
+                val(c, x->b)->q == 1 && val(c, x->b)->p < 0)
+                rl |= 1u << nd(c, x->a)->id;
+            other = true;
+            continue;
+        }
         int sl = 0, lp = SM_DEG * SM_DEG;
         nl++;
         for (int j = 0; j <= g->d; j++) {
@@ -12520,6 +12531,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
         if (whole && (lp < 0 ? (-lp + m - 1) / m : -(lp / m)) > low) rl |= 1u << L;
     }
     g->rowl = rl;
+    if (other) return 0;
     if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;
     if (s == 0 || s > SM_DEG || s < -SM_DEG) return 0;
     Bs = power(c, g->B, sm_int(c, s));
@@ -12709,9 +12721,14 @@ static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, s
            before the row is made */
         for (int l = 0; l < 26 && c->st == CASIM_OK; l++) {
             size_t mark = c->used;
-            bool hole;
-            if (!contains(c, B, l) || (sm_mono(c, B, &k, &L, &m) && m < 0 && S->ilo && S->a >= 1)) continue;
-            if (G[gi].rowl >> l & 1u) {     /* CAS 024, abacus #9594: a term from lo divides by l (0×Y^(-1) too) */
+            bool hole, neg;
+            if (!contains(c, B, l)) continue;
+            neg = sm_mono(c, B, &k, &L, &m) && m < 0;
+            if (neg && S->ilo && S->a >= 1) continue;
+            /* CAS 024, abacus #9594: a term from lo divides by l (0×Y^(-1) too). A monomial at a negative power keeps
+               the probe: its own row, ABS(X)>v, is false at X = 0 (CAS 025's rows are for a B whose row has no value
+               there) */
+            if (!neg && G[gi].rowl >> l & 1u) {
                 sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);
                 continue;
             }

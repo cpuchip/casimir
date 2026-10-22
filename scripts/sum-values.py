@@ -132,8 +132,8 @@ def close(got, want):
     return abs(got - want) <= TOL * max(D(1), abs(want))
 
 
-def judge_n(summand, lo, out, angle="RAD", points=26):
-    """'' when out, an answer in N, is the running sum from lo at N = lo-1 .. lo+points-2"""
+def judge_n(summand, lo, out, angle="RAD", points=26, first=None):
+    """'' when out, an answer in N, is the running sum from lo at N = lo-1 (or first) .. lo+points-2"""
     if out in STATUS or out in (INF, NINF) or not out:
         return f"{out} for a closed form"
     run = D(0)
@@ -143,6 +143,8 @@ def judge_n(summand, lo, out, angle="RAD", points=26):
             if t is None:
                 return f"the truth has a pole at {n}"
             run += t
+        if first is not None and n < first:
+            continue
         try:
             got = value(sub(out, "N", n), angle)
         except (ValueError, ZeroDivisionError, decimal.InvalidOperation) as e:
@@ -506,6 +508,119 @@ def judge_letter2(summand, lo, hi, out, c, letters, ms):
             return f"at {', '.join(f'{L}={x}' for L, x in pt.items())}: {why}"
     return ""
 
+C025 = ("SQRT(2)", "π", "EXP(1)", "SQRT(5)÷3", "LN(3)", "π÷4", "EXP(-1)", "-SQRT(3)", "3^(1÷4)", "2×π")
+
+
+def gen_letter3(rnd):
+    """CAS 025 (abacus #9687): CAS 024's ratios whose B holds a factor the shift doesn't read: an irrational constant c,
+    a letter at a negative power (Y^(-K)), or SIN(Z) or SQRT(Z). q(K) × c^K × X^(a×K+e) × Y^(b×K+f) (× W^(K+g)), lo
+    from -2 to 3, to N and to ∞, written as canon reads it (abacus #9563)"""
+    kind = rnd.choice(("c", "c", "c", "neg", "neg", "fn"))
+    c = rnd.choice(C025) if kind == "c" else ft(rnd.choice((F(1), F(1), F(-1), F(2), F(1, 2))))
+    letters, ms = ["X", "Y"], [rnd.choice((1, 1, 2)), rnd.choice((1, 1, 2))]
+    if kind == "neg" or (kind == "c" and rnd.random() < 0.2):
+        ms[1] = -ms[1]
+    es = [rnd.choice((0, -1, -1, -2, -3, 1, 2)), rnd.choice((0, 0, -1, -2, 1))]
+    if rnd.random() < 0.25:
+        letters.append("W"), ms.append(1), es.append(rnd.choice((0, -1, -2)))
+    fn = rnd.choice(("SIN(Z)", "SQRT(Z)")) if kind == "fn" else None
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1, 2)))] + [rand_frac(rnd)]
+    lo = rnd.choice((-2, -1, 0, 1, 1, 2, 3))
+    if rnd.random() < 0.2:          # q × (K - lo): a zero coefficient at lo cancels no power (abacus #9563, #9594)
+        co = [(co[i - 1] if i else 0) - lo * (co[i] if i < len(co) else 0) for i in range(len(co) + 1)]
+
+    def pw(L, m, e):
+        ex = ("K" if m == 1 else "-K" if m == -1 else f"{m}×K") + (f"+{e}" if e > 0 else f"{e}" if e < 0 else "")
+        return f"{L}^K" if ex == "K" else f"{L}^({ex})"
+    cp = c if c.startswith("(") else f"({c})"
+    parts = ([f"({poly_text(co)})"] if len(co) > 1 or co[0] != 1 else []) + ([f"{cp}^K"] if c != "1" else []) + \
+        ([f"{fn}^K"] if fn else [])
+    summand = "×".join(parts + [pw(L, m, e) for L, m, e in zip(letters, ms, es)])
+    B = "×".join([cp] + [f"{L}^({m})" for L, m in zip(letters, ms)] + ([fn] if fn else []))
+    return summand, lo, INF if rnd.random() < 0.3 else "N", "RAD", \
+        ("LETTER3", B, letters + (["Z"] if fn else []), dict(zip(letters, ms)), dict(zip(letters, es)))
+
+
+def judge_letter3(summand, lo, hi, out, B, letters, ms, es):
+    """('' when out ('answer; rows') is right, and what it names). CAS 025, abacus #9687: L≠0 stands wherever a term from
+    lo divides by L (canon's reading, nothing cancelled: #9563), past any factor of B; a row with no value at L = 0
+    (ABS(X÷Y)<1) excludes nothing. One row for the ratio, ABS(E)<v or E≠v with E÷v = B; the answer is the sum at each
+    letter 0 in turn and at three points with none 0 (to ∞ inside ABS(B) < 3÷4). Named, each as at rc6 (e551d3e), and
+    counted, not failed:
+      - a row for nothing on a letter B holds at a positive power, where q divides by it or lo < 0: the shift that
+        would clear it is refused past another factor (the follow-up list's class, p2's fix; to ∞ from lo < 0 it is the
+        follow-up item for a rational ratio too; abacus #9699 (b));
+      - to N from lo < 0, no value at a letter's 0 for N from lo-1 to -2 (B^(N+1) at a negative power), which CAS
+        024's shift by lo gives one (#9572);
+      - a letter inside a function with no row where a term from lo divides by its factor (K×(SIN(Z)×Y)^K÷SIN(Z) from
+        0): a row on the factor, abacus #9698, #9699.
+    DECIMAL_FORM (3^(1÷4)'s ratio, as at rc6) is the caller's soft count"""
+    if out in STATUS or not out:
+        return f"{out} for an answer with rows", []
+    parts = out.split("; ")
+    answer, rows = parts[0], parts[1:]
+
+    def at(text, pt):
+        for L, v in pt.items():
+            text = sub(text, L, ft(v))
+        return text
+
+    def pole(pt):
+        return any(term(at(summand, pt), k, "RAD") is None for k in range(lo, lo + 13))
+    named = []
+    off = {L: F(1, 3) for L in letters}
+    for L in letters:
+        want = pole({**off, L: F(0)})
+        if want and f"{L}≠0" not in rows:
+            if L not in ms:
+                named.append(f"{L} in a function")
+                continue
+            return f"{L}≠0 missing: a term from {lo} divides by {L}", named
+        if not want and f"{L}≠0" in rows:
+            if ms.get(L, 0) > 0 and (es[L] < 0 or lo < 0):
+                named.append(L)
+            else:
+                return f"{L}≠0 for nothing: no term from {lo} divides by {L}", named
+    rest = [r for r in rows if r not in [f"{L}≠0" for L in letters]]
+    m = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
+        re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
+    if not m:
+        return f"rows {rest} for the ratio's one row", named
+    E, v = m.group(1), m.group(2)
+    for pt in ({L: F(2, 3) for L in letters}, {L: F(-5, 4) + i for i, L in enumerate(letters)}):
+        if not close(value(at(E, pt)) / value(v), value(at(B, pt))):
+            return f"row {rest[0]}: not the ratio {B} at {pt}", named
+    # to ∞ a letter B holds at a positive power is small and one at a negative power large, so B is inside 3÷4
+    small, large, grid = (F(1, 5), F(-1, 4), F(1, 3)), (F(4), F(-3), F(5, 2)), (F(1, 2), F(-1, 3), F(2), F(-3, 2))
+
+    def pick(L, i):
+        return (large if ms.get(L, 1) < 0 else small)[i % 3] if hi == INF else grid[i % 4]
+    pts = [{**{M: pick(M, i + j) for j, M in enumerate(letters)}, L: F(0)} for i, L in enumerate(letters)]
+    pts += [{M: pick(M, i + 2 * j) for j, M in enumerate(letters)} for i in range(3)]
+    judged = 0
+    for pt in pts:
+        if any(pt[L] == 0 and f"{L}≠0" in rows for L in letters) or pole(pt):
+            continue
+        e = value(at(B, pt))
+        if (hi == INF and abs(e) >= D(3) / 4) or (hi != INF and close(e, D(1))):
+            continue
+        judged += 1
+        first = None
+        for n in range(lo - 1, -1) if hi != INF and 0 in pt.values() else ():
+            try:
+                value(sub(at(answer, pt), "N", n))
+                break
+            except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+                first = n + 1
+        if first is not None:
+            named.append(f"N<{first}")
+        why = judge_value(at(answer, pt), tail_sum(at(summand, pt), lo)) if hi == INF else \
+            judge_n(at(summand, pt), lo, at(answer, pt), points=12, first=first)
+        if why:
+            return f"at {', '.join(f'{L}={x}' for L, x in pt.items())}: {why}", named
+    return ("" if judged else "no point judged"), named
+
+
 FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
             (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
@@ -607,10 +722,56 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 025 (abacus #9687): ratios whose B holds an irrational constant, a letter at a negative power or a letter in a
+    # function, their own seeded batch, and the judge's planted answers first: rc6's two (R083's irrational twin with
+    # no Y≠0, and ruling 2's (X÷Y)^K÷Y, whose ABS row has no value at Y = 0), a row for nothing outside the named class
+    # and a value moved must each be refused, and the right answers (one with a named row) taken
+    r083 = ("K×(SQRT(2))^K×X^K×Y^(K-1)", 0, INF, "(SQRT(2))×X^(1)×Y^(1)", ["X", "Y"], {"X": 1, "Y": 1},
+            {"X": 0, "Y": -1})
+    ans = "-X×SQRT(2)÷2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2)"
+    neg = ("X^K×Y^(-K-1)", 0, INF, "X^(1)×Y^(-1)", ["X", "Y"], {"X": 1, "Y": -1}, {"X": 0, "Y": -1})
+    named = ("(K-1)×(SQRT(2))^K×X^(K-1)×Y^K", 1, INF, "(SQRT(2))×X^(1)×Y^(1)", ["X", "Y"], {"X": 1, "Y": 1},
+             {"X": -1, "Y": 0})
+    named_out = ("X×Y×SQRT(2)÷(X-X^2×Y×SQRT(2))-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2)+Y×SQRT(2)÷(X×Y×SQRT(2)-1); X≠0; "
+                 "ABS(X×Y×SQRT(2))<1")
+    takes = [(r083, f"{ans}; Y≠0; ABS(X×Y×SQRT(2))<1"), (neg, "-1÷(X-Y); Y≠0; ABS(X÷Y)<1"), (named, named_out)]
+    refuses = [(r083, f"{ans}; ABS(X×Y×SQRT(2))<1"), (neg, "-1÷(X-Y); ABS(X÷Y)<1"),
+               (r083, f"{ans}; X≠0; Y≠0; ABS(X×Y×SQRT(2))<1"), (r083, f"{ans}+1÷1000; Y≠0; ABS(X×Y×SQRT(2))<1")]
+    if any(judge_letter3(*t[:3], out, *t[3:])[0] for t, out in takes) or \
+            judge_letter3(*named[:3], named_out, *named[3:])[1] != ["X"] or \
+            any(not judge_letter3(*t[:3], out, *t[3:])[0] for t, out in refuses):
+        print("FAIL scripts/sum-values.py: its CAS 025 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd3, n3 = random.Random(20261025), 60
+    held3 = [r083, neg, named, ("K×(π)^K×Y^(K-1)", 0, INF, "(π)×Y^(1)", ["Y"], {"Y": 1}, {"Y": -1}),
+             ("K×(SQRT(2))^K×X^(K-1)×Y^(K-1)", 0, INF, "(SQRT(2))×X^(1)×Y^(1)", ["X", "Y"], {"X": 1, "Y": 1},
+              {"X": -1, "Y": -1}),
+             ("K×SIN(Z)^K×Y^(K-1)", 0, INF, "SIN(Z)×Y^(1)", ["Y", "Z"], {"Y": 1}, {"Y": -1}),
+             ("K×X^(K-1)×Y^(-K)", 0, INF, "X^(1)×Y^(-1)", ["X", "Y"], {"X": 1, "Y": -1}, {"X": -1, "Y": 0}),
+             ("X^K×Y^(-K)", 1, INF, "X^(1)×Y^(-1)", ["X", "Y"], {"X": 1, "Y": -1}, {"X": 0, "Y": 0}),
+             ("(SQRT(2))^K×X^(-K)", 1, INF, "(SQRT(2))×X^(-1)", ["X"], {"X": -1}, {"X": 0}),
+             ("K×(SQRT(2))^K×Y^(K-1)", 0, "N", "(SQRT(2))×Y^(1)", ["Y"], {"Y": 1}, {"Y": -1})]
+    cases3 = [gen_letter3(rnd3) for _ in range(n3)] + [(s, lo, hi, "RAD", ("LETTER3", *t)) for s, lo, hi, *t in held3]
+    n_named = n_empty = n_fn = 0
+    for summand, lo, hi, angle, truth in cases3:
+        out = run_sum(summand, lo, hi, angle)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why, named_rows = judge_letter3(summand, lo, hi, out, *truth[1:])
+        n_named += any(len(r) == 1 for r in named_rows)
+        n_empty += any(r.startswith("N<") for r in named_rows)
+        n_fn += any(r.endswith("function") for r in named_rows)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
-    print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}) and "
-          f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held) at {ARENA} B, {soft} NO_ROOM or "
-          f"TOO_LONG; {rows} example rows by value\nchecks: {n_cases + len(cases2) + rows} failed: {failed + rfailed}")
+    print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
+          f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held) and {n3} past another factor (CAS "
+          f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
+          f"N = -1, {n_fn} with no row for a letter in a function) at {ARENA} B, {soft} NO_ROOM, "
+          f"TOO_LONG or DECIMAL_FORM; {rows} example rows by value\nchecks: {n_cases + len(cases2) + len(cases3) + rows} failed: "
+          f"{failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 

@@ -1,8 +1,8 @@
 # CAS work unit 025: a ratio's rows wherever a term from lo divides, whatever else the ratio holds
 
-**From:** casim · **To:** abacus · **Status:** draft for abacus's review. It's measured on two throwaway prototypes, p1
-and p2, both over 5ef631e (src as at v1.0.0-rc6) and not pushed. The hidden set's hash comes before the build.
-casim writes the unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built as ruled (#9687: p1 and ruling 2), for abacus's review against h025.
+The draft below was measured on two throwaway prototypes, p1 and p2, over 5ef631e (src as at v1.0.0-rc6); Ruled, As
+built and Measured follow it. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **Why now:** Michael's decision 89 (#9671). He amended decision 88 for this one item: it's fixed before 1.0.0, in
   rc7. It's the one known wrong answer in rc6's release notes. The rest of the follow-up list stays past 1.0.
 - **The question:** when a term of a sum from lo divides by a letter of its ratio, does the answer carry that letter's
@@ -138,3 +138,60 @@ a constant other than a number (SQRT(2), π, EXP(1), LN(2), 2^(1÷3)), a letter 
 ## Cost (estimate)
 
 p1: S3 under +0.1 KB (host +64 B). No frame should move except perhaps sm_shift's, by a byte or two.
+
+## Ruled (#9687)
+
+1. **p1.** Rows only before 1.0: it fixes the wrong answers and moves no form. The 10 irrational-c rows for nothing
+   ((K−1)×(c×X×Y)^K÷X from 1) go on the follow-up list with p2 as their fix, beside the 3 to N with c π, 1÷SQRT(3) and
+   π^2. h025 counts rows for nothing unchanged from rc6 and doesn't fail them; a new row for nothing fails.
+2. **Print Y≠0. A row with no value at a point does not exclude that point.** ABS(X÷Y)<1 at Y = 0 isn't false, it's
+   meaningless, so it can't carry the exclusion. A letter of B at a negative whole power is read; wherever a term from
+   lo divides by it, its L≠0 row stands, as CAS 024's condition 3 says. An excluded point must be excluded by a row
+   that has a value there and is false.
+3. **Out, named as simplify's convention:** "Added term by term (whole bounds at most 64 apart), each term is the typed
+   text simplified, so it cancels as simplify does: 0÷Y is 0, X÷X is 1." The tension stays visible in rc7's notes and
+   the README: K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has Y≠0.
+
+h025 was frozen before the build (#9694): sha256 b3b70d01767ef3b9499d4856785360ca8f961d5fdb037451e505d1e4b7447493, 124
+rows, against e551d3e.
+
+## As built (where the code differs from the rules, or settles what they left open)
+
+- **sm_shift** keeps reading B past a factor that isn't a number or a letter at a whole power 1..12: a flag in place of
+  rc6's early return, `g->rowl` set before the flag's return, so the letters' rows stand and the shift is still refused
+  (p1's patch, as measured). Its signature and its frames are rc6's: carrying hi in for a whole-hi test moved the host
+  frame 176 → 192, so the negative-power test went into the same branch as the flag.
+- **A letter at a negative whole power** (ruling 2) sets its row bit for a whole lo, to N and to ∞ alike: the terms
+  from lo divide by it from some K on (to N, for N past it), and the ratio's own row has no value at its 0. A whole hi
+  is not tested; past it a term from lo would need q to hold L^53 or more, and that answer divides by L anyway.
+- **A monomial at a negative power keeps the probe.** With one letter and a rational constant, ((1÷2)×X^(−2))^(K+1),
+  the ratio's row is ABS(X)>v, which has a value at X = 0 and is false there, so it already excludes 0, and CAS 018's
+  form stands (018's family refused the added X≠0 on the first make check). sm_rows ignores the bit there; sm_mono is
+  asked only for a letter B holds, as before.
+- **The oracle** (sum-values.py's third seeded batch, 60 sums, seed 20261025, and 10 held rows): q(K)×c^K×X^(a×K+e)×
+  Y^(b×K+f)(×W^(K+g)) with c from 10 irrational constants, or a letter at a negative power, or SIN(Z)^K or SQRT(Z)^K,
+  lo −2..3, to N and to ∞. Rows are judged by ruling 2: L≠0 must stand wherever a term from lo divides by L. Its planted
+  answers come first (rc6's two, a row for nothing, a value moved, refused; the right ones and a named row taken).
+  Three classes, each the same at e551d3e, are named and counted, not failed: rows for nothing where the refused shift
+  would clear them (or from lo < 0), no value at a letter's 0 for N from lo−1 to −2 (#9700), and a letter in a function
+  whose factor a term divides by (#9698). judge_n gained `first`, the first N it compares (the terms before it are
+  still added). DECIMAL_FORM (3^(1÷4)'s ratio, as at rc6) counts with NO_ROOM and TOO_LONG.
+- **Docs:** language.md's sums paragraph says where 025's rows stand and gives ruling 3's sentence; work/025-examples.txt
+  (38 rows) is in doc-examples; measure.py gains 7 bench rows.
+
+## Measured (the build, over 5ef631e)
+
+- **The probe** (c25/probe.py, rows by ruling 2: a row with no value at L = 0 excludes nothing): 343 sums, the draft's
+  207 and 13 shapes with a negative-power letter, each lo −1..2, to N and to ∞, and 4 monomials or one-letter irrational
+  ratios. rc6's source misses a row in 72; the build in 0, and moves exactly those 72, all to ∞. Rows for nothing: 20
+  on both, the same 20 (the named classes). Values: 0 wrong on both. Its controls: a dropped Y≠0, an added X≠0 and a
+  moved value, each caught.
+- **The oracle family, wide** (gen_letter3, 3 seeds × 2,000 draws): the build 0 failures; rc6 154 missing rows. Named
+  per 2,000: ~245 rows for nothing, ~35 with no value below N = −1, 3–4 with a function's letter, the same on both.
+- **The golden:** 10,822 checks, 0 moved; →DEC, complex and the series route compiled out the same.
+- **make check** green (2:44, 234,436 KiB peak): frames as recorded, the 420 mutant anchors, sum-values 466 checks (60
+  + 10 of 025's), doc examples 797 commands (1,606 checks). **make test** green: 20 tests, 118,421 checks (3:55,
+  234,972 KiB).
+- **S3 text: 239,580 B, +17 over rc6's 239,563.** No S3 frame moved (sm_shift 128, sm_groups 112, do_sum_ 656); host
+  frames as recorded; host text +64 B.
+- **p3** (abacus #9699, a row on a function factor; not in the build): measured and sent (#9701).

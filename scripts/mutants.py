@@ -1191,10 +1191,27 @@ MUTANTS = {
                             "    (void)inf; if (nl > 1) s = !whole ? 0 : low < 0 ? low : cap;")],
     # abacus #9594 (h024's R083): a letter a term from lo divides by keeps its row to ∞; the row from the clamped s_L
     # (a letter q holds at a positive power read as s_L 0: rows for nothing at a negative lo)
-    "ratio-rowl-off": [("src/casim.c", "            if (G[gi].rowl >> l & 1u) {", "            if (0) {")],
+    "ratio-rowl-off": [("src/casim.c", "            if (!neg && G[gi].rowl >> l & 1u) {", "            if (0) {")],
     "ratio-rowl-clamped": [("src/casim.c",
                             "        if (whole && (lp < 0 ? (-lp + m - 1) / m : -(lp / m)) > low) rl |= 1u << L;",
                             "        if (whole && sl > low) rl |= 1u << L;")],
+    # CAS 025 (work/025-every-ratio-rows.md; abacus #9687): the rows not read past another factor (rc6's early return);
+    # the rows set after the return; the flag ignored, so B is shifted past that factor; a letter inside a function read
+    # as a letter at a whole power; a letter at a negative power without its row; and that row for a monomial too,
+    # whose own row ABS(X)>v already excludes X = 0. (Its row for a symbolic lo too isn't a mutant: the answer then
+    # holds (X÷Y)^A, so the probe prints Y≠0 anyway)
+    "ratio025-early-return": [("src/casim.c", "            other = true;\n            continue;\n        }\n",
+                               "            return 0;\n        }\n")],
+    "ratio025-rowl-after-return": [("src/casim.c", "    g->rowl = rl;\n    if (other) return 0;\n",
+                                    "    if (other) return 0;\n    g->rowl = rl;\n")],
+    "ratio025-other-ignored": [("src/casim.c", "    if (other) return 0;\n", "    (void)other;\n")],
+    "ratio025-fn-letter-whole": [("src/casim.c", "        if (x->kind == K_VAR && x->id < 26) L = x->id, m = 1;\n",
+                                  "        if (x->kind == K_VAR && x->id < 26) L = x->id, m = 1;\n"
+                                  "        else if (x->kind == K_FN && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26)"
+                                  " L = nd(c, x->a)->id, m = 1;\n")],
+    "ratio025-negpow-row-off": [("src/casim.c", "                rl |= 1u << nd(c, x->a)->id;\n", "                (void)0;\n")],
+    "ratio025-negpow-mono-row": [("src/casim.c", "            if (!neg && G[gi].rowl >> l & 1u) {",
+                                  "            if ((void)neg, G[gi].rowl >> l & 1u) {")],
 }
 
 
