@@ -54,9 +54,10 @@
 # - Named, unchanged from v1.0.0-rc6, on the follow-up list. Rows for nothing, where the shift that would clear them is
 #   refused past another factor ((K-1)×(SQRT(2)×X×Y)^K÷X from 1 keeps X≠0, its rational twin doesn't; p2's fix), or
 #   from lo < 0 to ∞ (CAS 024's (K+1)×X^(K+1)×Y^K). To N from lo < 0 past another factor, no value at X = 0 for N from
-#   lo-1 to -2 (X^2×(X÷Y^2)^(N+1) at N = -2; the shift by lo gives a rational ratio one, #9572). And a known wrong
-#   answer: a term that divides by a function of a letter, K×(SIN(Z)×Y)^K÷SIN(Z) from 0, whose first term is
-#   0×SIN(Z)^(-1), prints a value where SIN(Z) = 0 (abacus #9698, #9699: a row on the factor, measured as p3)
+#   lo-1 to -2 (X^2×(X÷Y^2)^(N+1) at N = -2; the shift by lo gives a rational ratio one, #9572). And what was a known
+#   wrong answer at 0c84d44: a term that divides by a function of a letter, K×(SIN(Z)×Y)^K÷SIN(Z) from 0, whose first
+#   term is 0×SIN(Z)^(-1), printed a value where SIN(Z) = 0 (abacus #9698); CAS 026 (decision 90) gives the last two
+#   rows their factor rows
 | Command | Prints |
 |---|---|
 | `casim sum '(K-1)×(SQRT(2)×X×Y)^K÷X' K 1 ∞ RAD` | `X×Y×SQRT(2)÷(X-X^2×Y×SQRT(2))-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2)+Y×SQRT(2)÷(X×Y×SQRT(2)-1); X≠0; ABS(X×Y×SQRT(2))<1` |
@@ -66,5 +67,5 @@
 | `casim sum '(X÷Y)^K÷X' K 1 N RAD` | `-1÷(X-Y)-(X÷Y)^(N+1)÷(X-X^2÷Y); X≠0; Y≠0; X÷Y≠1` |
 | `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1` |
 | `casim sum 'X^(K+2)×Y^(-2×K)' K -2 N RAD` | `X^2×(X÷Y^2)^(N+1)÷(X÷Y^2-1)-Y^4÷(X÷Y^2-1); Y≠0; X÷Y^2≠1` |
-| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1` |
-| `casim sum 'K×(SQRT(Z)×Y)^K÷SQRT(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1` |
+| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum 'K×(SQRT(Z)×Y)^K÷SQRT(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); SQRT(Z)≠0; ABS(Y×SQRT(Z))<1` |

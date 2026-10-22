@@ -1,8 +1,8 @@
 # CAS work unit 026: a row on a function factor wherever a term from lo divides by it
 
-**From:** casim · **To:** abacus · **Status:** draft for abacus's review. It's measured on a throwaway prototype, p3c,
-over 0c84d44 (CAS 025, accepted, abacus 5ce0080), not pushed. The hidden set's hash comes before the build. casim
-writes the unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built as ruled (#9720, #9726: p3d2), for abacus's review against h026.
+The draft below was measured on prototype p3c over 0c84d44 (CAS 025, accepted, abacus 5ce0080); Ruled, As built and
+Measured follow it. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **Why now:** Michael's decision 90 (abacus #9702, 7a80db0). The class prints a value where the sum has none, the
   same kind as decision 89's item, so it's fixed before 1.0.0, as its own unit after 025; rc7 comes after it.
 - **The question:** when a term of a sum from lo divides by a factor of its ratio that holds a letter but isn't a letter
@@ -97,3 +97,50 @@ Each answer has a value where its factor is 0, and its ABS row holds there (ABS(
 ## Cost
 
 S3 text +1,238 B (stop +1.25 KB), host +2,176 B; no existing frame moves on either.
+
+## Ruled (#9720, #9726)
+
+1. **A factor's own domain adds nothing:** where TAN or LN has no value, the answer holding it has none either.
+2. **A redundant row is kept, if it never excludes a point where the sum has a value.** A Z≠0 the sum doesn't need,
+   where Z = 0 isn't a zero of the factor, would be a new row for nothing (casim #9724: the build makes no Z≠0 of its
+   own; the letter probe's are 0c84d44's).
+3. **p3d2, with the S3 stop at +1.5 KB** (abacus's to set, inside decision 80's budget). The merged root (a root at a
+   power canon merges into its letter, SQRT(Z)^(2×K−1)×Y^K, q holding Z^(−1÷2)) prints a value where the sum has
+   none, so it is fixed, not named: the letter path, from lo ≥ 0 only, negative powers staying 025's, no frame moved.
+   sm_powof stays as it is (the floor folded into it moved sm_shift's host frame 176 → 192).
+
+h026 was frozen before the build (#9727): sha256 2f6db4f3e886b2b3aee9c8dda1cac1b68c0183f9694f82e39ac92e8d4fc9e5b0, 98
+rows, against 0c84d44. Its judging rule: an answer has no value at a point when any part of it has none
+(−Y÷(Y−TAN(Z)) at Z = π÷2 is an error, as on the calculator), and so has the sum wherever a factor has none.
+
+## As built (where the code differs from the rules, or settles what they left open)
+
+- **sm_powf** reads q's power of the factor as the ratio of exponents, rounded down: e + m×lo < 0 exactly when
+  floor(e) + m×lo < 0, since m×lo is whole. So SQRT(Z)^(3×K−1)×Y^K, whose B holds Z^(3÷2) and q Z^(−1÷2), reads −1.
+- **sm_rowf** runs per group, in a loop of its own before sm_rows' group loop. Inside that loop do_sum_'s host frame went
+  816 → 832, and called once after it with seven arguments, 848. The probe needs no free letter: K, the sum's own
+  letter, is in no answer. The never-zero test is a mask over EXP, ALOG and COSH.
+- **The merged root's letter path** (#9726): a letter of B at a positive whole power takes the row its q's fraction
+  powers need, printed as the letter's row (`Z≠0`, sm_row keeping it once beside 024's). From lo ≥ 0 only: there 024's
+  shift raises q's powers of the letter, so a row read from a shifted q is one a term from lo needs.
+- **The oracle:** sum-values.py's fourth family (60 seeded, seed 20261026, and 10 held; planted answers first:
+  0c84d44's, a row on EXP(Z), a value moved, and the merged root without its row, refused). Each factor is judged at
+  its own zeros with the factor put to 0 exactly. The reader reads ABS and COSH now; the other families' 466 checks
+  hold.
+- **work/025-examples.txt:** its two named rows (÷SIN(Z), ÷SQRT(Z)) gain their factor rows, and its note says so.
+
+## Measured (the build, over 0c84d44)
+
+- **The factor probe** (c25/probe-f.py; each factor at its own zeros, put to 0 exactly): the function set, 448 sums,
+  0c84d44 15 missing, the build 0; a power set, 192 sums (8 factors at m = 2 and 3, with an extra power, lo 0 and 1, to
+  N and to ∞), 0c84d44 27 missing, the build 0. Factor rows for nothing: 0 on both. The build moves 15 and 27 sums.
+- **The letter probe:** its 343 sums, 0 moved; the function set at Z = 0, missing 12 → 0, rows for nothing 53 → 53, the
+  same rows, wrong values 0. The 8 to N that p3 refused print byte for byte as 0c84d44.
+- **The oracle family, wide** (gen_letter4, 2 seeds × 1,500 draws, on p3d2, this src): 0 failures; 0c84d44 44.
+- **The golden:** 10,822 checks, 0 moved; →DEC, complex and the series route compiled out the same.
+- **make check** green (3:16, 235,736 KiB peak): frames as recorded (421, the two new ones recorded), the 428 mutant
+  anchors, sum-values 536 checks (60 + 10 of 026's), doc examples 821 commands (1,654 checks). **make test** green:
+  20 tests, 118,421 checks (4:16, 236,104 KiB).
+- **S3 text: 241,085 B, +1,505 over 0c84d44's 239,580** (the stop +1.5 KB, 31 B under it; 21,059 left of decision 80's
+  262,144). S3 frames: none moved (sm_shift 128, sm_groups 112, do_sum_ 656); new sm_rowf 144, ib_at 32. Host text
+  +2,624 B.

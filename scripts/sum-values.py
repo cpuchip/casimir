@@ -117,6 +117,8 @@ def value(text, angle="RAD"):
     fns = dict(lv.FN)
     fns["SIN"] = lambda x: lv.d_sin(x * to_rad)
     fns["COS"] = lambda x: lv.d_cos(x * to_rad)
+    fns["ABS"] = abs                                            # CAS 026's factors
+    fns["COSH"] = lambda x: (x.exp() + (-x).exp()) / 2
     return dvalue(text, fns)
 
 
@@ -621,6 +623,122 @@ def judge_letter3(summand, lo, hi, out, B, letters, ms, es):
     return ("" if judged else "no point judged"), named
 
 
+# CAS 026 (decision 90, abacus #9719/#9720): a factor F of the ratio that holds Z and isn't a letter at a whole power. Its
+# zeros (F put to 0 exactly in the text, since the reader's SIN(π) isn't 0, Z at that value elsewhere), and Z where the
+# answer is valued off them. EXP, COSH and 2^Z have none, so any row on them is for nothing
+F026 = {"SIN(Z)": (["0", "π"], ["(7÷10)", "(-2÷5)", "(13÷10)"]), "COS(Z)": (["(π÷2)"], ["(7÷10)", "(-2÷5)", "(13÷10)"]),
+        "TAN(Z)": (["0", "π"], ["(7÷10)", "(-2÷5)", "(1÷3)"]), "SQRT(Z)": (["0"], ["(7÷10)", "(8÷5)", "(12÷5)"]),
+        "Z^(1÷3)": (["0"], ["(7÷10)", "(8÷5)", "(12÷5)"]), "ABS(Z)": (["0"], ["(7÷10)", "(-2÷5)", "(8÷5)"]),
+        "LN(Z)": (["1"], ["(7÷10)", "(8÷5)", "(12÷5)"]), "EXP(Z)": ([], ["(7÷10)", "(-2÷5)", "(-13÷10)"]),
+        "COSH(Z)": ([], ["(7÷10)", "(-2÷5)", "(1÷3)"]), "2^Z": ([], ["(7÷10)", "(-2÷5)", "(-13÷10)"])}
+
+
+def gen_letter4(rnd):
+    """CAS 026: q(K) × F^(m×K+g) × Y^(b×K+f), F one of F026 at power m = 1, 2 or -1, Y at 1 or 2, lo 0..3 (and -1), to
+    N and to ∞, written as canon reads it (#9563)"""
+    fac = rnd.choice(sorted(F026))
+    m, b = rnd.choice((1, 1, 2, -1)), rnd.choice((1, 1, 2))
+    g, f = rnd.choice((0, -1, -1, -2, 1)), rnd.choice((0, 0, -1, 1))
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1)))] + [rand_frac(rnd)]
+    lo = rnd.choice((-1, 0, 0, 1, 1, 2, 3))
+    if rnd.random() < 0.3:          # q × (K - lo): a zero coefficient where the term divides (#9563)
+        co = [(co[i - 1] if i else 0) - lo * (co[i] if i < len(co) else 0) for i in range(len(co) + 1)]
+
+    def pw(base, m, e):
+        ex = ("K" if m == 1 else "-K" if m == -1 else f"{m}×K") + (f"+{e}" if e > 0 else f"{e}" if e < 0 else "")
+        base = f"({base})" if base == "2^Z" or base == "Z^(1÷3)" else base
+        return f"{base}^K" if ex == "K" else f"{base}^({ex})"
+    parts = [f"({poly_text(co)})"] if len(co) > 1 or co[0] != 1 else []
+    summand = "×".join(parts + [pw(fac, m, g), pw("Y", b, f)])
+    fb = f"({fac})" if fac in ("2^Z", "Z^(1÷3)") else fac
+    return summand, lo, INF if rnd.random() < 0.35 else "N", "RAD", ("LETTER4", fac, f"{fb}^({m})×Y^({b})", b, f)
+
+
+def judge_letter4(summand, lo, hi, out, fac, B, b, f):
+    """('' when out ('answer; rows') is right, what it names). At each zero of F (F put to 0, Z there elsewhere, Y at
+    1÷3 and -1÷4): where a term from lo has no value, the answer must not claim one (a value, and no row with a value
+    false there: abacus #9687 (2)); F≠0 where the sum has a value at every zero is for nothing, and F with no zero gets
+    none. Y≠0 stands where a term divides by Y; a Z≠0 the sum doesn't need is named (the probe's, from the answer's
+    own hole at Z = 0, as at 0c84d44). One row for the ratio, its value B; the answer is the sum off F's zeros (to ∞
+    inside ABS(B) < 3÷4)"""
+    if out in STATUS or not out or out.startswith("DECIMAL_FORM"):
+        return f"{out} for an answer with rows", []
+    parts = out.split("; ")
+    answer, rows = parts[0], parts[1:]
+    zeros, offs = F026[fac]
+    named = []
+
+    def put(text, z, y, n=None):
+        t = text.replace(fac, "(0)") if z in zeros else text
+        t = sub(sub(t, "Z", z), "Y", y)
+        return sub(t, "N", str(n)) if n is not None else t
+
+    def has(z, y, last):
+        return all(term(put(summand, z, y), k, "RAD") is not None for k in range(lo, last + 1))
+
+    def claims(z, y, n):
+        try:
+            value(put(answer, z, y, n))
+        except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+            return False
+        for r in rows:
+            m = re.fullmatch(r"(.+?)(≠|<|>)(.+)", r)
+            try:
+                a, c = value(put(m.group(1), z, y, n)), value(put(m.group(3), z, y, n))
+            except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+                continue                                # no value there: it excludes nothing
+            if not {"≠": a != c, "<": a < c, ">": a > c}[m.group(2)]:
+                return False
+        return True
+    ns = range(lo - 1, lo + 6) if hi != INF else [None]
+    need = False
+    for z in zeros:
+        for y in ("(1÷3)", "(-1÷4)"):
+            for n in ns:
+                h = has(z, y, n if n is not None else lo + 12)
+                need = need or not h
+                if not h and claims(z, y, n):
+                    return f"a value where {fac} = 0 (Z = {z}, Y = {y}, N = {n}) and the sum has none", named
+    if f"{fac}≠0" in rows and not need:
+        return f"{fac}≠0 for nothing", named
+    want = not all(term(sub(sub(summand, "Z", offs[0]), "Y", "0"), k, "RAD") is not None for k in range(lo, lo + 13))
+    if want != ("Y≠0" in rows):
+        if not want and (f < 0 or lo < 0):
+            named.append("Y")                       # the shift refused past F, or lo < 0 (025's named classes)
+        else:
+            return f"Y≠0 {'missing' if want else 'for nothing'}", named
+    if "Z≠0" in rows:
+        try:
+            ok = all(term(sub(sub(summand, "Z", "0"), "Y", "(1÷3)"), k, "RAD") is not None for k in range(lo, lo + 13))
+        except ValueError:
+            ok = False
+        if ok:
+            named.append("Z")
+    rest = [r for r in rows if r not in ("Y≠0", "Z≠0", f"{fac}≠0")]
+    mt = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
+        re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
+    if not mt:
+        return f"rows {rest} for the ratio's one row", named
+    E, v = mt.group(1), mt.group(2)
+    for z, y in ((offs[0], "(2÷3)"), (offs[1], "(-5÷4)")):
+        if not close(value(sub(sub(E, "Z", z), "Y", y)) / value(v), value(sub(sub(B, "Z", z), "Y", y))):
+            return f"row {rest[0]}: not the ratio {B} at Z = {z}, Y = {y}", named
+    judged = 0
+    for z in offs:
+        for y in ("(1÷5)", "(-1÷7)", "(1÷9)", "(3÷2)"):
+            pt_s = sub(sub(summand, "Z", z), "Y", y)
+            if any(term(pt_s, k, "RAD") is None for k in range(lo, lo + 13)):
+                continue
+            e = value(sub(sub(B, "Z", z), "Y", y))
+            if (hi == INF and abs(e) >= D(3) / 4) or (hi != INF and close(e, D(1))):
+                continue
+            judged += 1
+            a = sub(sub(answer, "Z", z), "Y", y)
+            why = judge_value(a, tail_sum(pt_s, lo)) if hi == INF else judge_n(pt_s, lo, a, points=12)
+            if why:
+                return f"at Z = {z}, Y = {y}: {why}", named
+    return ("" if judged else "no point judged"), named
+
 FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
             (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
@@ -765,13 +883,49 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 026 (decision 90, abacus #9720/#9726): a function factor of the ratio, judged at its own zeros. Planted first:
+    # 0c84d44's answer (no SIN(Z)≠0), a row on EXP(Z), and a value moved, refused; the right ones taken
+    s4 = ("K×SIN(Z)^(K-1)×Y^K", 0, INF, "SIN(Z)", "SIN(Z)^(1)×Y^(1)", 1, 0)
+    a4 = "-Y÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)"
+    e4 = ("K×EXP(Z)^(K-1)×Y^K", 0, INF, "EXP(Z)", "EXP(Z)^(1)×Y^(1)", 1, 0)
+    ae4 = "-Y÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2)"
+    r4 = ("K×SQRT(Z)^(2×K-1)×Y^K", 0, INF, "SQRT(Z)", "SQRT(Z)^(2)×Y^(1)", 1, 0)
+    ar4 = "-Y×SQRT(Z)÷2÷(Y×Z-Y^2×Z^2÷2-1÷2)"
+    takes4 = [(s4, f"{a4}; SIN(Z)≠0; ABS(Y×SIN(Z))<1"), (e4, f"{ae4}; ABS(Y×EXP(Z))<1"), (r4, f"{ar4}; Z≠0; ABS(Y×Z)<1")]
+    refuses4 = [(s4, f"{a4}; ABS(Y×SIN(Z))<1"), (e4, f"{ae4}; EXP(Z)≠0; ABS(Y×EXP(Z))<1"),
+                (s4, f"{a4}+1÷1000; SIN(Z)≠0; ABS(Y×SIN(Z))<1"), (r4, f"{ar4}; ABS(Y×Z)<1")]
+    if any(judge_letter4(*t[:3], out, *t[3:])[0] for t, out in takes4) or \
+            any(not judge_letter4(*t[:3], out, *t[3:])[0] for t, out in refuses4):
+        print("FAIL scripts/sum-values.py: its CAS 026 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd4, n4 = random.Random(20261026), 60
+    held4 = [s4, e4, r4, ("K×COS(Z)^(K-1)×Y^K", 0, INF, "COS(Z)", "COS(Z)^(1)×Y^(1)", 1, 0),
+             ("K×SQRT(Z)^(K-1)×Y^K", 0, INF, "SQRT(Z)", "SQRT(Z)^(1)×Y^(1)", 1, 0),
+             ("SIN(Z)^(-K)×Y^K", 1, INF, "SIN(Z)", "SIN(Z)^(-1)×Y^(1)", 1, 0),
+             ("K×ABS(Z)^(2×K-1)×Y^K", 0, INF, "ABS(Z)", "ABS(Z)^(2)×Y^(1)", 1, 0),
+             ("K×LN(Z)^(K-1)×Y^K", 0, INF, "LN(Z)", "LN(Z)^(1)×Y^(1)", 1, 0),
+             ("K×TAN(Z)^(K-1)×Y^K", 0, INF, "TAN(Z)", "TAN(Z)^(1)×Y^(1)", 1, 0),
+             ("SIN(Z)^K×Y^K", -1, INF, "SIN(Z)", "SIN(Z)^(1)×Y^(1)", 1, 0)]
+    cases4 = [gen_letter4(rnd4) for _ in range(n4)] + [(s, lo, hi, "RAD", ("LETTER4", *t)) for s, lo, hi, *t in held4]
+    n4named = 0
+    for summand, lo, hi, angle, truth in cases4:
+        out = run_sum(summand, lo, hi, angle)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why, named_rows = judge_letter4(summand, lo, hi, out, *truth[1:])
+        n4named += bool(named_rows)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
-          f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held) and {n3} past another factor (CAS "
+          f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
-          f"N = -1, {n_fn} with no row for a letter in a function) at {ARENA} B, {soft} NO_ROOM, "
-          f"TOO_LONG or DECIMAL_FORM; {rows} example rows by value\nchecks: {n_cases + len(cases2) + len(cases3) + rows} failed: "
-          f"{failed + rfailed}")
+          f"N = -1, {n_fn} with no row for a letter in a function) and {n4} with a function factor (CAS 026; and "
+          f"{len(held4)} held; {n4named} with a named letter row) at {ARENA} B, {soft} NO_ROOM, TOO_LONG or "
+          f"DECIMAL_FORM; {rows} example rows by value\nchecks: "
+          f"{n_cases + len(cases2) + len(cases3) + len(cases4) + rows} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 

@@ -673,7 +673,10 @@ a letter at a negative power, whose terms divide by it from some K on: Σ (X÷Y)
 ABS(X÷Y)<1`, since a row with no value at Y = 0 can't exclude it. A term is read as canon reads it, with its powers
 merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), with no value at Y = 0. Added term by term
 (whole bounds at most 64 apart), each term is the typed text simplified, so it cancels as simplify does: 0÷Y is 0,
-X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`.
+X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`. A factor of the ratio that holds a
+letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
+0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
+the same, unless the answer itself has no value there. A factor that is never 0 (EXP, COSH, 2^Z) gets none.
 
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
 (SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.

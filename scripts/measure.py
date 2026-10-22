@@ -410,6 +410,15 @@ def all_cases():
             ("ratio K×(SQRT(2)×Y)^K÷Y to N", "K×(SQRT(2)×Y)^K÷Y", "0|N"),
             ("ratio (K^2-K)×(SQRT(2)×Y)^K÷Y^2 to ∞", "(K^2-K)×(SQRT(2)×Y)^K÷Y^2", "0|∞")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 026 (work/026-factor-rows.md, decision 90): a row on a function factor, the merged root's letter row, rule 2's
+    # skip (to N, the answer's own hole) and rule 3's (EXP)
+    for name, expr, repl in [
+            ("factor K×(SIN(Z)×Y)^K÷SIN(Z) to ∞", "K×(SIN(Z)×Y)^K÷SIN(Z)", "0|∞"),
+            ("factor (Y÷SQRT(Z))^K to ∞", "(Y÷SQRT(Z))^K", "1|∞"),
+            ("factor K×SQRT(Z)^(2×K-1)×Y^K to ∞", "K×SQRT(Z)^(2×K-1)×Y^K", "0|∞"),
+            ("factor K×SIN(Z)^(K-1) from -1 to N", "K×SIN(Z)^(K-1)", "-1|N"),
+            ("factor K×(EXP(Z)×Y)^K÷EXP(Z) to ∞", "K×(EXP(Z)×Y)^K÷EXP(Z)", "0|∞")]:
+        rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

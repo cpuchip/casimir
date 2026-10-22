@@ -1212,6 +1212,29 @@ MUTANTS = {
     "ratio025-negpow-row-off": [("src/casim.c", "                rl |= 1u << nd(c, x->a)->id;\n", "                (void)0;\n")],
     "ratio025-negpow-mono-row": [("src/casim.c", "            if (!neg && G[gi].rowl >> l & 1u) {",
                                   "            if ((void)neg, G[gi].rowl >> l & 1u) {")],
+    # CAS 026 (work/026-factor-rows.md; decision 90, abacus #9720/#9726): the factor row not made; rule 2's skip off (a row
+    # where the answer has no value already: the 8 to N go TOO_LONG); rule 3's off (EXP(Z)≠0); a fraction power read
+    # whole only (SQRT(Z)^(3×K-1)'s Z^(3÷2)); a negative fraction power read as a positive one ((Y÷SQRT(Z))^K); a root
+    # probed by replacement, its bare Z left free; the merged root's letter path off; the factor rows not asked at all
+    "factor026-row-off": [("src/casim.c", "        sm_row(c, rows, n, h, '!', small(c, C_0), x->kind == K_VAR ? x->id : 26);",
+                           "        (void)rows, (void)n;")],
+    "factor026-hole-kept": [("src/casim.c", "            compact(c, mark, sum);\n            continue;\n",
+                             "            compact(c, mark, sum);\n")],
+    "factor026-never-zero-off": [("src/casim.c",
+                                  "        if (x->kind == K_FN && (1u << x->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) continue;",
+                                  "")],
+    "factor026-floor-whole": [("src/casim.c", "            return t >= 0 ? t / u : -((-t + u - 1) / u);",
+                               "            return t % u ? 0 : t / u;")],
+    "factor026-negfrac-positive": [("src/casim.c",
+                                    "is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->p < 0) {",
+                                    "is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->p < 0 && !mf) {")],
+    "factor026-root-replaced": [("src/casim.c", "        else if (nd(c, x->a)->kind == K_VAR && ((x->kind == K_POW",
+                                 "        else if (0 && nd(c, x->a)->kind == K_VAR && ((x->kind == K_POW")],
+    "factor026-letter-off": [("src/casim.c", "        if (x->kind == K_VAR && (mf < 0 || S->a < 0)) continue;",
+                              "        if (x->kind == K_VAR) continue;")],
+    "factor026-not-asked": [("src/casim.c",
+                             "    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */",
+                             "    (void)sm_rowf;              /* referenced, or -Werror refuses the build and nothing is tested */")],
 }
 
 

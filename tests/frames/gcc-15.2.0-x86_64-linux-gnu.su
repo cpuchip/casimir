@@ -116,6 +116,7 @@ horner	8
 i64_abn	96
 i64_text	48
 ib	240
+ib_at	32
 ib_bad	48
 ib_body.constprop	192
 ib_cands	64
@@ -380,6 +381,7 @@ sm_q	112
 sm_rational	640
 sm_read	64
 sm_row.part.0	112
+sm_rowf	240
 sm_shift	176
 sm_split.constprop	128
 sm_term	144

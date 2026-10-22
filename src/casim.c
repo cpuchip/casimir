@@ -12478,6 +12478,31 @@ static int sm_powof(ctx *c, ref t, int L)
     return 0;
 }
 
+/* CAS 026: g's power among t's factors, 0 when g isn't one (sm_powof for a factor that isn't a letter at a whole power:
+   SIN(Z), and a letter's fraction powers). g is b^r (SQRT(Z) is Z^(1÷2)) or b itself, and a factor b^s is g^(s÷r),
+   rounded down */
+static int sm_powf(ctx *c, ref t, ref g)
+{
+    const node *x = nd(c, t);
+    const ref *f = x->kind == K_MUL ? list(c, x->a) : &t;
+    int n = x->kind == K_MUL ? x->n : 1, rp = 1, rq = 1;
+    ref b = g;
+    if (nd(c, g)->kind == K_POW && is_num(c, nd(c, g)->b))
+        b = nd(c, g)->a, rp = (int)val(c, nd(c, g)->b)->p, rq = (int)val(c, nd(c, g)->b)->q;
+    for (int i = 0; i < n; i++) {
+        ref y = f[i];
+        int sp = 1, sq = 1;
+        if (nd(c, y)->kind == K_POW && is_num(c, nd(c, y)->b) && val(c, nd(c, y)->b)->p >= -SM_DEG * SM_DEG &&
+            val(c, nd(c, y)->b)->p <= SM_DEG * SM_DEG && val(c, nd(c, y)->b)->q <= SM_DEG)
+            sp = (int)val(c, nd(c, y)->b)->p, sq = (int)val(c, nd(c, y)->b)->q, y = nd(c, y)->a;
+        if (cmp(c, y, b) == 0 && rp > 0) {                      /* the floor: e + m×lo < 0 exactly when it is */
+            int t = sp * rq, u = sq * rp;
+            return t >= 0 ? t / u : -((-t + u - 1) / u);
+        }
+    }
+    return 0;
+}
+
 /* rule 4b, abacus #8349: a letter group q(var)×B^var whose q holds a negative power of B's letter L (K×X^(K-1): q is
    K÷X) is summed shifted, as q(var+s)×B^s×B^var over lo-s .. hi-s, with s the least that clears them; the answer then
    divides by no power of L, and needs no row for L = 0 that the sum doesn't. g->q becomes q(var+s)×B^s; returns s, 0
@@ -12704,10 +12729,67 @@ static void sm_row(ctx *c, smrow *rows, int *n, ref l, char op, ref r, int lette
     (*n)++;
 }
 
+/* CAS 026 (decision 90): a factor of a group's B that holds a letter and isn't a letter at a whole power (SIN(Z),
+   SQRT(Z), ABS(Z), LN(Z)). Where a term from a whole lo divides by it, the sum has no value where it is 0 (every Z with
+   SIN(Z) = 0), and the row is on the factor, unless the answer itself has no value there (the factor's own probe, as
+   the letters'). EXP, ALOG, COSH and a positive number to a power are never 0. Its own frame, called per group in a
+   loop of its own, so do_sum_'s doesn't move */
+static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgroup *g, ref sum, smrow *rows, int *n)
+{
+    ref B = g->B;
+    int nf, j = 0;
+    if (!B || !S->ilo || S->a < -SM_DEG || S->a > SM_DEG) return;
+    while (j <= g->d && is_k(c, g->q[j], 0, 1)) j++;
+    if (j > g->d) return;                                           /* q is 0: no term */
+    nf = nd(c, B)->kind == K_MUL ? nd(c, B)->n : 1;
+    for (int i = 0; i < nf && c->st == CASIM_OK; i++) {
+        ref f = nd(c, B)->kind == K_MUL ? list(c, nd(c, B)->a)[i] : B, h = f;
+        const node *x;
+        int mf = 1, e = SM_DEG * SM_DEG, hl = -1;
+        size_t mark;
+        if (nd(c, f)->kind == K_POW && is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->q == 1)
+            h = nd(c, f)->a, mf = (int)val(c, nd(c, f)->b)->p;
+        else if (nd(c, f)->kind == K_POW && is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->p < 0) {
+            rat r = {-val(c, nd(c, f)->b)->p, val(c, nd(c, f)->b)->q};          /* Z^(-1÷2): SQRT(Z) to the -1 */
+            h = ib_canon(c, power(c, nd(c, f)->a, num(c, &r))), mf = -1;
+        }
+        x = nd(c, h);
+        /* a letter at a whole power is CAS 024's and 025's, but for q's fraction powers of it (SQRT(Z)^(2×K-1)×Y^K is
+           Z^K×Y^K over SQRT(Z)): 025 keeps a negative power, and from lo >= 0 a shift by 024 only raises q's powers,
+           so a row read from a shifted q is one a term from lo needs (from lo < 0 the shift can lower them) */
+        if (x->kind == K_VAR && (mf < 0 || S->a < 0)) continue;
+        if (!any_letter(c, h)) continue;
+        /* never 0, so a row would exclude nothing: EXP, ALOG, COSH, and a positive number to a power (2^Z) */
+        if (x->kind == K_FN && (1u << x->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) continue;
+        if (x->kind == K_POW && is_num(c, x->a) && val(c, x->a)->p > 0) continue;
+        for (j = 0; j <= g->d; j++) {
+            int p = is_k(c, g->q[j], 0, 1) ? e : sm_powf(c, g->q[j], h);
+            if (p < e) e = p;
+        }
+        if (mf > 0 && e + mf * (int)S->a >= 0) continue;
+        /* the probe: a root or ABS of a letter is 0 where the letter is, so that letter is put to 0 (the answer may hold
+           Z beside SQRT(Z)); any other factor is replaced by K, the sum's own letter, which is in no answer, put to 0 */
+        if (x->kind == K_VAR) hl = x->id;
+        else if (nd(c, x->a)->kind == K_VAR && ((x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->p > 0) ||
+                                                (x->kind == K_FN && x->id == F_ABS)))
+            hl = nd(c, x->a)->id;
+        mark = c->used;
+        ib_at(c, hl >= 0 ? sum : ib_replace(c, sum, h, S->var), hl >= 0 ? hl : S->var, small(c, C_0));
+        if (c->st == CASIM_UNDEFINED) {
+            c->st = CASIM_OK;                                       /* the answer has no value there already */
+            compact(c, mark, sum);
+            continue;
+        }
+        if (c->st == CASIM_OK) compact(c, mark, sum);
+        sm_row(c, rows, n, h, '!', small(c, C_0), x->kind == K_VAR ? x->id : 26);
+    }
+}
+
 /* rule 4b: each letter group's rows. Finite: where B is 1 (k×L^m = 1 solved for L, else B ≠ 1). At ∞: where it
    converges, |B| < 1 (|L| < or > |k|^(-1/m), else ABS(B) < 1) */
 static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, smrow *rows, int *n)
 {
+    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
         ref B = G[gi].B, one = small(c, C_1);
         rat k, t;
