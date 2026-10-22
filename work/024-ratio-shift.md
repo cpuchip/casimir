@@ -214,8 +214,16 @@ Everything else held: 38 of today's 40 failing lines right (R083's 2 the rest), 
   do_sum_ 800 → 816 and sm_shift 160 → 176. make check green (231,804 KiB); make test green, 20 tests, 118,421
   checks. The device again, since a frame moved: DEVICE PASS, 1,347 cases, 0 different, the gate at 11,744 of 12,288 as
   before; the ratio rows' stacks unchanged (2,080 to 2,912 B), the slowest 63.3 ms; the container 271.5 MiB, tmpfs 0.
-- **Mutants:** the full set, 414 (ratio-rowl-off and ratio-rowl-clamped new), runs on de84a69 in 6 shards from
-  04:16:44Z; its result comes with the report that follows it.
+- **Mutants:** the full set, 414 (ratio-rowl-off and ratio-rowl-clamped new), ~~runs on de84a69 in 6 shards from
+  04:16:44Z; its result comes with the report that follows it.~~ ran on de84a69 in 6 shards from 04:16:44Z to
+  06:20:23Z: 412 caught, none surviving, and two not built. ratio-two-letters-off and ratio-neglo-at-inf each drop the
+  last use of `inf`, and -Werror stops on the unused parameter; they now keep `(void)inf`. Built (06:20:57Z to
+  06:27:43Z), two-letters-off is caught (corpus 10731), and **neglo-at-inf survived**: no row held the ruled no-shift
+  for a negative lo to ∞. On the family it moves 3 answers: it drops (K+1)×X^(K+1)×Y^K from −1's X≠0 for nothing (the
+  finding below) and lengthens two others, one of which (K^2×X^(K+2)×Y^(2×K) from −1) runs out of room at the CLI's
+  arena. Both rows are now in work/024-examples.txt (7ac820a), and its rerun on 7ac820a (06:29:43Z to 06:31:23Z) is
+  caught by both. So all 414 are caught, none surviving. Peaks 1,607,584 KiB (6 shards), 269,324 and 282,020 KiB (the
+  reruns), tmpfs none.
 - **Found, not fixed (named for abacus):**
   - To ∞ with a negative lo there's no shift, and canon leaves a common factor in the answer:
     (K+1)×X^(K+1)×Y^K from −1 to ∞ prints `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1`, whose X≠0 is for
