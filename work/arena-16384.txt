@@ -1,0 +1,37 @@
+# The arena at 16,384 B (Michael's decision 88, abacus #9615: 16,384 on the device bench at the shipping 2,000 ms
+# interrupt mask), measured at the v1.0.0-rc6 tag (casimir e551d3e) for the firmware's repin.
+#
+# The device (XIAO S3, CASIM_BENCH_ARENA=16384 scripts/device.sh, CONFIG_ESP_INT_WDT_TIMEOUT_MS=2000; 2026-10-22
+# 07:21:55Z to 07:40:11Z): DEVICE PASS, 1,347 cases, each the host's byte for byte, 281 of them paged by steps too;
+# none timed out.
+# The gate is 12,288's: worst masked 11,360 (STU chain X^ 44 d) + interrupts 384 = 11,744 of 12,288, 544 left (floor
+# 256); the deepest page 10,944. The bench reads each answer's least arena by bisection: the most any case needs is
+# 12,424 of 16,384 (sweep SIN 42 D, both models; 11,536 at 12,288), and three need more than 12,288: the two SIN 42
+# sweeps and 18: 145 sum (12,316). The library takes no heap; the arena is the caller's. The slowest case is
+# unchanged, f budget spent at 853.6 ms (median of 15), and so is the slowest page, j linear to the 6th at 587.6 ms.
+# 281 cases paged, 279 at 12,288: the two SIN 42 sweeps now page.
+#
+# Against the same bench at 12,288 (de84a69, the same src), 5 answers move, each to what the host gives at 65,536:
+# sweep SIN 42 D and its STU twin, NO_ROOM to the derivative (4,899 chars; 97.7 to 53.5 ms, stack 3,472 to 4,480);
+# 18: 145 sum, NO_ROOM to its answer (322.0 to 161.6 ms); ser TAN(X) to 11 DEG and ratio (K^2+K)×X^(2×K-3)×Y^(K-1)×W^K
+# from 2, NO_ROOM to TOO_LONG (290.6 to 316.0 ms, 63.3 to 73.9 ms). The other outputs hold. Some cases take longer with
+# the same output (not traced): the most, ser EXP(SIN(X)) to 12 at 57.7 to 96.7 ms (×1.68), then ser TAN(X)-1÷COS(X)
+# π÷2- at 157.7 to 248.0 ms and p 84 limit at 146.4 to 214.7 ms. Six cases' stacks grow, inside the gate (the most,
+# ser TAN(X)-1÷COS(X) π÷2- at 5,040 to 6,256). Two cases' least arena falls with the same output (17: 146 integrate
+# 7,560 to 2,408, J0009 7,328 to 2,232): the bisection assumes an answer at one arena is an answer at every larger one,
+# and these two say it isn't always (not traced).
+#
+# The answers were checked outside casim. The derivative has 42 COS factors, and its value matches the chain rule's
+# product (to 5e-15) and a central difference (to 8e-9) at X = 30, -71, 0.5 and 89, in DEG. The sum equals the exact
+# running sums for N = 0..30.
+#
+# The host: the golden's 459 rows that are NO_ROOM at 8,800, run at 12,288 and at 16,384 (same cap). At 12,288, 440
+# stay NO_ROOM; at 16,384, 434 do. 6 move, each to what the same input gives at 65,536: 5 to TOO_LONG and 1 to an
+# answer (the sum above).
+# op	cap	input	point or bounds	at 12,288	at 16,384
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))))))	\N \N	NO_ROOM	TOO_LONG
+derive	192	SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(SIN(X))))))))))))))))))))))))))))))))))))))))))	\N \N	NO_ROOM	TOO_LONG
+taylor	65536	TAN(X)	0 11	NO_ROOM	TOO_LONG
+taylor	65536	(TAN(X))×(X×EXP(X))	0 9	NO_ROOM	TOO_LONG
+sum	192	(384+3×K^6+38×K^5+219×K^4+712×K^3+1280×K+1328×K^2)÷(2×K^8+30×K^7+178×K^6+192×K^2+530×K^5+640×K^3+828×K^4)	1 N	NO_ROOM	OK -2÷(N+1)^2+2÷3÷(N+2)^2-2÷(N+2)+2÷3÷(N+3)^2+1÷2÷(N+3)+2÷3÷(N+4)^2+551÷216
+taylor	192	TAN(X)	0 11	NO_ROOM	TOO_LONG
