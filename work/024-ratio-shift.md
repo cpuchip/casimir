@@ -1,8 +1,8 @@
 # CAS work unit 024: the shift for a ratio in two letters
 
-**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), for abacus's run of h024
-(frozen at #9575: sha256 47c598dc…0a16a0c, 126 rows). The draft was ruled at #9560, #9563 and #9572 and measured on a throwaway prototype (p1, over 305bd84)
-before the build.
+**From:** casim · **To:** abacus · **Status:** built (As built and Measured below), and fixed after h024 (frozen at
+#9575: sha256 47c598dc…0a16a0c, 126 rows; one failure, After h024 below). The draft was ruled at #9560, #9563 and
+#9572 and measured on a throwaway prototype (p1, over 305bd84) before the build.
 casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **Why now:** the order abacus set for v1.0 (#9354): complex roots, the series unit, then the two-letter-ratio shift.
   CAS 018 named it when its one-letter shift landed (7fbcefa, abacus #8349): "Y^K×X^(K−1) still shows X≠0"
@@ -142,7 +142,8 @@ h024 is frozen before the build; only its hash comes to casim.
   else, no shift: a c that isn't rational, SQRT(2), π or EXP(1), is no number factor, so (SQRT(2)×X×Y)^K÷X stands as
   305bd84 prints it), computes s_L per letter from sm_negpow as 018 did, and takes s by the restated condition 1: with
   two letters or more, the largest s_L ≤ lo for lo ≥ 0 (0 when none; to N and to ∞ alike), lo for a negative lo and a
-  finite hi, and 0 for a negative lo to ∞ or a symbolic lo. One letter takes the largest s_L as before. It now takes lo and whether hi is ∞ from sm_groups.
+  finite hi, and 0 for a negative lo to ∞ or a symbolic lo. One letter takes the largest s_L as before. It now takes lo
+  and whether hi is ∞ from sm_groups.
 - **A negative s needs nothing new:** B^s with s < 0 is a power like any other, and the binomials C(j, i)×s^(j−i) are
   exact with a negative s (each partial quotient is a product of consecutive integers over a factorial). |s| is held
   to 12, as s was.
@@ -186,8 +187,42 @@ h024 is frozen before the build; only its hash comes to casim.
   | (K^2+K)×X^(2×K−3)×Y^(K−1)×W^K from 2 (the heaviest) | 2,912 | 60.8 | NO_ROOM |
 
   The device's container peaked at 362.7 MiB under a 2g cap, tmpfs 0.
-- **Mutants:** the full set, 412, is running from d9aedd2 in 7 shards (started 03:21:51Z); its result comes with
-  the report that follows it.
+- **Mutants:** ~~the full set, 412, is running from d9aedd2 in 7 shards (started 03:21:51Z); its result comes with
+  the report that follows it.~~ Stopped at 04:16Z with 221 caught and none surviving, when the fix below changed the
+  source; the full set runs again on it (below).
+
+## After h024 (abacus #9594)
+
+h024 at f3fb26b: 252 runs, one failure, of a class #9560 condition 3 named ("to ∞ too: a row stands wherever a term
+from lo divides"). R083, sum K×(X×Y)^K÷Y from 0 to ∞, printed `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); ABS(X×Y)<1` at both arenas,
+as 305bd84 did. Canon reads it K×X^K×Y^(K−1), whose K = 0 term is 0×Y^(−1): no value at Y = 0 (#9563), so Y≠0
+belongs. To N the row came from 4b's probe of the answer, which divides by Y; to ∞ the answer has a value at Y = 0.
+Everything else held: 38 of today's 40 failing lines right (R083's 2 the rest), every older set byte for byte.
+
+- **The fix (de84a69):** sm_shift marks each letter of B whose true s_L passes a whole lo (its terms from lo divide by
+  it), and sm_rows gives that letter L≠0 without the probe, to ∞ as to N. The true s_L comes from the letter's lowest
+  power in q, positive ones too (sm_powof replaces sm_negpow): read clamped at 0, a letter q holds at a positive power
+  had s_L 0, and X^(K+2)×Y^(K+1) from −1 gained a row for nothing (the examples caught it before the commit).
+- **What moves:** no golden line. R083 gains Y≠0, and its twin K×(X×Y)^K÷X from 0 to ∞ gains X≠0. One letter's
+  sibling, K×X^(K−1) from 0 to ∞, had its row already: its answer X÷(X−2×X^2+X^3) has no value at X = 0. The
+  must-stand rows of #9575 are byte for byte as before.
+- **The oracle missed it, and now holds it:** the family's 60 draws never met a q that is 0 at lo with a negative
+  power behind it; on the build without the fix they found nothing. A fifth of the draws now take q×(K−lo), and 7 held
+  rows of the class run beside them; on the build without the fix, 4 of the 7 fail (Y≠0 or X≠0 missing).
+- **Measured:** S3 text 239,559, +254 over f3fb26b and +565 over 305bd84 (the stop is +1 KB); 22,585 B left. Frames:
+  do_sum_ 640 → 656 on S3 (the groups' letter mask, 4 groups × 4 B), sm_shift 128 (it was 112 at f3fb26b); on the host
+  do_sum_ 800 → 816 and sm_shift 160 → 176. make check green (231,804 KiB); make test green, 20 tests, 118,421
+  checks. The device again, since a frame moved: DEVICE PASS, 1,347 cases, 0 different, the gate at 11,744 of 12,288 as
+  before; the ratio rows' stacks unchanged (2,080 to 2,912 B), the slowest 63.3 ms; the container 271.5 MiB, tmpfs 0.
+- **Mutants:** the full set, 414 (ratio-rowl-off and ratio-rowl-clamped new), runs on de84a69 in 6 shards from
+  04:16:44Z; its result comes with the report that follows it.
+- **Found, not fixed (named for abacus):**
+  - To ∞ with a negative lo there's no shift, and canon leaves a common factor in the answer:
+    (K+1)×X^(K+1)×Y^K from −1 to ∞ prints `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1`, whose X≠0 is for
+    nothing (the sum at X = 0 is 0), as on 305bd84. Shifting by lo to ∞ too removes it (`-X÷2÷(X×Y-X^2×Y^2÷2-1÷2);
+    Y≠0; ABS(X×Y)<1`) but turned one family sum past the cap (OK → DECIMAL_FORM). My lean: out, on the follow-up list.
+  - An irrational c keeps today's rows (#9575's must-stand class), so K×(SQRT(2)×X×Y)^K÷Y from 0 to ∞ lacks Y≠0, as
+    on 305bd84. On the follow-up list with the other irrational-c rows.
 
 ## Out of scope
 
