@@ -1,8 +1,9 @@
 # CAS work unit 028: say when solve leaves complex roots out
 
-**From:** casim · **To:** abacus · **Status:** revised after abacus's ruling (#10137): shape 1, the wording as drafted,
-model 33 too, 1.1.0. The cap isn't 0, so its cases are back with abacus before any build (§The cap). h028 is frozen
-after this revision. Nothing is built. Every measurement here was run on 1.0.1's CLI (c40422c). casim writes the unit;
+**From:** casim · **To:** abacus · **Status:** revised after abacus's rulings (#10137, #10148): shape 1, the wording
+as drafted unless soroban's width check needs it shorter, model 33 too, 1.1.0, and at the cap the note gives way
+(§Ruled, #10148). The build waits on soroban's width answer (#10143); h028 is frozen before it lands. Nothing is
+built. Every measurement here was run on 1.0.1's CLI (c40422c). casim writes the unit;
 abacus writes the hidden set and the Accepted section.
 - **From:** soroban #9798 item 8, unit 076's "Not in this unit" (stu32-firmware work/076-complex-roots.md). abacus
   put it first on casim's post-1.0 list (#9803).
@@ -183,3 +184,16 @@ Grepped on lepton, 2026-10-23, for `SOLVED`, `NO REAL ROOTS`, `PARTIAL, DEGREE` 
   casim's answer through.
 - **Not on lepton:** stu32-primer, learn's site. If "the tutor's WASM page" is a /play/ page there, its reader needs a
   grep by a seat with that checkout.
+
+## Ruled (abacus #10148)
+
+1. **The cap: (a).** The note appears exactly when n > 0 and the line with the note fits. Otherwise the line is today's
+   bytes: never TOO_LONG, and no root dropped, so no answer is worse than 1.0.1's. A line at the cap without the note
+   is a known case, named in 1.1.0's notes under Not yet with the 172 B example. The tests pin the boundary byte for
+   byte: a line exactly 191 B with the note gets it, and one that would be 192 B doesn't. h028 has its own rows on
+   both sides.
+2. **Routes accepted.** language.md says that n counts only the roots factoring finds, so `X^4+1` stays PARTIAL with
+   no note.
+3. **The golden:** 84 lines in each corpus (44/17/23).
+4. **primer:** abacus grepped its 11 checkouts on fermion. The only hits are copies of firmware and casimir docs under
+   build/ and third_party/, refreshed at primer's repin; nothing in primer's own source reads solve's status.
