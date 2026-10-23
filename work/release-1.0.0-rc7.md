@@ -43,7 +43,9 @@ These print a row the answer doesn't need, have no value where the sum has one, 
   - a sum to ∞ from a negative bound: `(K+1)×X^(K+1)×Y^K` from -1 to ∞ prints `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1`, though the sum is 0 at X = 0;
   - `(X÷Y)^K÷X` from 1 to N prints `X≠0`, though the sum has a value at X = 0;
   - past an irrational constant, a letter in a function or a letter at a negative power, the shift that clears a rational ratio's row is refused. `(K-1)×(SQRT(2)×X×Y)^K÷X` from 1 to ∞ keeps `X≠0`, while its rational twin `(K-1)×(X×Y)^K÷X` doesn't, and `K×(SIN(Z)×Y)^K÷SIN(Z)` from 1 to ∞ keeps `Z≠0`.
-- **A missing value.** Summed to N from a negative lo, an answer can have no value at a letter's 0 for N ≤ −2, where the sum has one. `X^(K+2)×Y^(-2×K)` from -2 to N prints `X^2×(X÷Y^2)^(N+1)÷(X÷Y^2-1)-Y^4÷(X÷Y^2-1); Y≠0; X÷Y^2≠1`. At X = 0 and N = -2 the sum is Y^4, while X^2×(X÷Y^2)^(-1) has no value.
+- **A missing value.** Each has no value at a point where the sum has one, and no row excludes that point:
+  - summed to N from a negative lo, at a letter's 0 for N ≤ −2. `X^(K+2)×Y^(-2×K)` from -2 to N prints `X^2×(X÷Y^2)^(N+1)÷(X÷Y^2-1)-Y^4÷(X÷Y^2-1); Y≠0; X÷Y^2≠1`. At X = 0 and N = -2 the sum is Y^4, while X^2×(X÷Y^2)^(-1) has no value;
+  - at a zero of a function factor other than its letter's 0: SIN and TAN at π, COS at π÷2, LN at 1. The row the answer prints, `Z≠0`, is the letter's. `K×(SIN(Z)×Y)^K÷SIN(Z)` from 1 to ∞ prints `Y×SIN(Z)÷(SIN(Z)-Y×SIN(Z)^2)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1`, which has no value at Z = π, where the sum is Y. Summed to N it is the same: `SIN(Z)^(2×K-1)×Y^K` from 1 to N prints `-Y×SIN(Z)÷(Y×SIN(Z)^2-1)-(Y×SIN(Z)^2)^(N+1)÷(SIN(Z)-Y×SIN(Z)^3); Z≠0; Y×SIN(Z)^2≠1`, which has no value at Z = π for every N ≥ 0, where the sum is 0, while its rational twin `X^(2×K-1)×Y^K` doesn't divide by X. It's the same family as the refused shift past a function factor (above).
 - `X^K÷Y^K` is NO_CLOSED_FORM, while `(X÷Y)^K` answers.
 - A letter-free constant that is exactly 0 but isn't seen to be is printed as written:
   - in a finite sum's terms, Σ 1÷c^K for K = 1 to 3;
