@@ -6,7 +6,7 @@
 
 #include "casim.h"
 
-static unsigned char arena[8800];       /* all of Casimir's working memory: the caller's, here the calculator's */
+static unsigned char arena[16384];      /* all of Casimir's working memory: the caller's, here the calculator's */
 
 static const char *const STATUS[] = {"OK", "SYNTAX", "NOT_DIFFERENTIABLE", "TOO_LONG", "BAD_ARG", "NO_ROOM",
                                      "NOT_POLYNOMIAL", "NOT_NUMERIC", "NOT_INTEGRABLE", "PARTIAL", "UNDEFINED",

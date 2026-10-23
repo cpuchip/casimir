@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0-rc6.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0-rc7.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -27,7 +27,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
 | partfrac | partial fractions over the rationals (`(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`) |
-| taylor | a Taylor polynomial to order 12 about a point, exact (`LN(X)` about 1 to 3 is `(X-1)-0.5×(X-1)^2+(X-1)^3÷3`) |
+| taylor | a Taylor polynomial to order 12 about a point, exact (`LN(X)` about 1 to 3 is `(X-1)-(X-1)^2÷2+(X-1)^3÷3`) |
 | limit | a limit at a point from either side or both, or at ∞ and -∞, exact (`(1+3÷X)^X` at ∞ is `EXP(3)`) |
 | sum | a sum in closed form, to N or to ∞ (`K×2^K` from 1 to N is `-2^(N+1)+N×2^(N+1)+2`, `1÷(K×(K+1))` from 1 to ∞ is `1`), or exactly, term by term, between whole bounds |
 | steps | the working of derive, integrate (a rational function through its partial fractions too), solve and partfrac, a step a page, as a student walks it, each ending on the op's answer (`casim_step`) |
@@ -35,9 +35,8 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 docs/language.md is the input language, with every operation's statuses and examples.
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
-**What it doesn't do (yet):** complex roots beyond a quadratic's (solve's `--complex` gives those), infinite
-series and sums, trigonometric identities (so not SIN(X)^2's
-integral), matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
+**What it doesn't do (yet):** complex roots beyond a quadratic's (solve's `--complex` gives those), a sum with no
+closed form of the kinds above (Σ 1÷K), trigonometric identities (so not SIN(X)^2's integral), matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee
@@ -65,7 +64,7 @@ make check            # the standalone checks
 ```c
 #include "casim.h"
 
-static unsigned char arena[8800];       /* all of Casimir's working memory, given by the caller: the calculator's */
+static unsigned char arena[16384];      /* all of Casimir's working memory, given by the caller: the calculator's */
 
 int derivative(char out[192])
 {
@@ -83,10 +82,10 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.1 MB of flash (328,544 bytes of code, 1,765,456 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (385,353 bytes of code, 1,765,464 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
-src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (8,800 bytes is the
+src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
 calculator's budget), and casim keeps no global state.
 
 ## Quick start in JavaScript
@@ -104,7 +103,7 @@ cas.defint("1÷X", "-1", "1");                // {status: "IMPROPER", out: ""}
 ```
 
 wasm/casim.mjs documents the options (var, angle, model, arena, cap, decimal). examples/web/index.html is a page that uses it.
-Serve the repository's root (`python3 -m http.server`) and open /examples/web/. casim.wasm is 2.08 MB (1.84 MB
+Serve the repository's root (`python3 -m http.server`) and open /examples/web/. casim.wasm is 2.21 MB (1.89 MB
 gzipped), most of it the decimal library's tables.
 
 ## Limits
@@ -112,29 +111,29 @@ gzipped), most of it the decimal library's tables.
 - An equation slot on the calculator is 191 bytes. Every operation but derive and simplify stops at 191 bytes with
   TOO_LONG.
 - Polynomials have degree ≤ 12 and coefficients ≤ 10^7. Numbers are exact rationals below 2^62.
-- Nesting deeper than 44 levels is NO_ROOM, which bounds the stack: at most 11,360 bytes on the ESP32-S3, plus 384
-  for interrupts (two 192-byte frames; the bench has measured up to 272 bytes over the masked reading). Size a task
+- Nesting deeper than 44 levels is NO_ROOM, which bounds the stack: at most 11,360 bytes on the ESP32-S3, plus 400
+  for interrupts (the most the bench has measured over the masked reading; two 192-byte frames are 384). Size a task
   for 12 KB.
 - Built and tested with gcc and clang on Linux, emscripten, and ESP-IDF 5.4 on the ESP32-S3. macOS and MSVC are
   untested. Intel's library needs a different configuration on Windows.
 
 ## How it's tested
 
-- **The developer tests** (`make test`; 19 programs, about 118,000 checks) read every answer back through an
+- **The developer tests** (`make test`; 20 programs, about 118,000 checks) read every answer back through an
   independent evaluator and compare values. That evaluator is the calculator firmware's own core
   (cpuchip/stu32-firmware), so these tests need its clone (CORE_REPO, default ../stu32-firmware) at the commit in
   CORE_PIN. They are collect, core_link, defint, derive, exact, examples, expand, factor, fuzz, integrate, opaque,
-  pairs, partfrac, poly, simplify, solve, stamp, subst and syntax
+  pairs, partfrac, poly, series, simplify, solve, stamp, subst and syntax
   (tests/*_test.c). CI runs them too, on the firmware fetched by its sha at exactly CORE_PIN (scripts/ci-test.sh).
 - **The standalone checks** (`make check`, and CI) need only this repository:
-  - the golden test, 10,463 calls whose exact answers were recorded from earlier sources, so a change shows up;
+  - the golden test, 10,822 calls whose exact answers were recorded from earlier sources, so a change shows up;
   - the frame and symbol gates, and the table of every function's frame against the one recorded for its compiler,
     where one is;
   - a gcd check on small primes, partfrac's rule-7 check reached by spoiling a numerator, and the rational integrals'
     check reached by spoiling a term;
   - check-abn;
-  - the examples in docs/language.md, CAS 013's walks in work/013-steps-examples.txt, and CAS 016's rows in
-    work/016-examples.txt.
+  - the examples in docs/language.md and the units' rows and walks in work/0NN-examples.txt (scripts/doc-examples.py,
+    821 commands, each again with the series route compiled out).
   - Taylor polynomials judged exactly against power series over fractions, the opposite method, in the calculator's
     arena and in 65,536 bytes; and ABS's corners, X^j×ABS(X)^m, by their truth (scripts/taylor-values.py).
   - limits judged against truths built from those power series (a quotient's limit from its first nonzero terms, at
@@ -148,8 +147,9 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 348 deliberate faults, each of which the tests
-  must catch; `make test` catches all 348. After the arena move to 8,800 B, two faults survived, one in the run of
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 428 deliberate faults, each of which the tests
+  must catch; `make test` catches all 428 (at 1.0.0-rc7, work/rc7-mutants.txt).
+  After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
   new arena, and both are caught again. Each mutant's copy
@@ -162,7 +162,7 @@ gzipped), most of it the decimal library's tables.
   need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
-- **The S3 bench** (scripts/device.sh) runs 1,065 cases on the chip, through the ESP-IDF component, and requires every
+- **The S3 bench** (scripts/device.sh) runs 1,359 cases on the chip, through the ESP-IDF component, and requires every
   answer to be byte-identical to the host's.
 
 ## How it was made

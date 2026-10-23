@@ -1,0 +1,24 @@
+# The mutant count at the v1.0.0-rc7 tag: all 428 caught, from one run of every mutant on the tag's tree
+# (2026-10-22 to 10-23, lepton, claim #9737).
+#
+# The tree: a worktree at e0ef88a (CAS 026) with the rc7 bump applied (README.md, examples/hello.c,
+# idf_component.yml, src/casim.h's CASIM_VERSION); src, scripts and the Makefile are byte for byte the tag's. Its
+# core was built there at CORE_PIN 38d1931 before the run, by the control: make test, all green, 20 tests, 118,421
+# checks.
+#
+# The run (22:37:28Z to 00:46:41Z, 6 shards of 71 or 72, scripts/mutants.py on copies of that worktree):
+#   428 of 428 caught; none survived, none not built, none not tested.
+#   The 420 of CAS 025's run (all caught at 0c84d44, 19:23Z to 22:30Z) and CAS 026's eight factor026-*
+#   (all caught at e0ef88a) are among them.
+#   The six whose only catcher is a developer test, caught by build/series_test, as at rc6:
+#     ser-bound-product-unscaled, ser-limit-no-retry, ser-after-rule7-ran-out, ser-puiseux-answers,
+#     ser-root-of-negative, ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#
+# Peaks, host RSS summed over the shards' process trees, sampled every 5 s: 1,578,300 KiB. The clang check's
+# containers (casim-clang-*, --memory 2g, one per copy's make test) sit outside that sample.
+# /tmp and /dev/shm, read as df's used space against the run's start: 8,375,728 KiB at most, and not this run's.
+# vllm's engine (root, started 23:07:15Z, when production came back) holds a deleted 8,576,712,704-byte KV offload
+# file in /dev/shm (8,375,696 KiB), read through its open descriptors after the run. That leaves at most 32 KiB for
+# everything else, this run included. The df reading counts every tenant of the box, so it bounds this run's use and
+# doesn't attribute it.
