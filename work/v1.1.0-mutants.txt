@@ -1,0 +1,32 @@
+# The mutant count at the v1.1.0 tag: all 445 caught, from one run of every mutant on the tag's tree
+# (2026-10-23, lepton, claim #10212).
+#
+# The tree: a worktree at 840f09a, the commit v1.1.0 tags; src, scripts and the Makefile are the tag's. The version
+# text was in place by 21:35:12Z and was committed unchanged at 21:40:58Z. Its core was built there at CORE_PIN
+# 38d1931 before the run, by the control: make test, all green, 20 tests, 118,439 checks, "Casimir 1.1.0"
+# (21:35:33Z to 21:40:45Z).
+#
+# The run (21:40:45Z to 23:55:29Z, 6 shards of 74 or 75, scripts/mutants.py on copies of that worktree):
+#   445 of 445 caught; none survived, none not built, none not tested.
+#   1.0.1's 435 (all caught at 1.0.1's tree, work/v1.0.1-mutants.txt) and CAS 028's ten cplx028-* are among them:
+#     cplx028-after-the-roots, cplx028-bit-ignored, cplx028-cap-early, cplx028-cap-ignored, cplx028-cap-too-long,
+#     cplx028-every-quadratic, cplx028-mult-ignored, cplx028-no-real-roots-noted, cplx028-note-off,
+#     cplx028-partial-unnoted
+#   The six whose only catcher is a developer test, caught by build/series_test, as at 1.0.1:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers,
+#     ser-root-of-negative, ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s from
+# 21:35:40Z: 1,701,820 KiB, at 21:47:18Z. The control's largest process: 238,288 KiB.
+# The clang check's containers (casim-clang-*, --memory 2g), logged as docker reported them: seven, the control's
+# (21:38:34Z to 21:38:39Z) and six in the run (23:22:37Z to 23:30:32Z), at most two at once (23:23:06Z to 23:23:08Z),
+# each up 3 to 5 s. make test reaches the clang check only after make check passes, so most copies never start one.
+# Their memory wasn't sampled; their caps sit outside the tree's sample.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 8 KiB at the start and 16 KiB at most, /dev/shm 272 KiB
+# throughout. du doesn't see a deleted file held open.
+# The copies on disk (build/mutants): 1,613 MiB at most, at 21:40:55Z.
+# Host memory in use (free, every 10 s): 19,847 to 21,836 MiB. It counts every tenant of the box, so it doesn't
+# attribute this run's use.
