@@ -660,7 +660,7 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f):
     false there: abacus #9687 (2)); F≠0 where the sum has a value at every zero is for nothing, and F with no zero gets
     none. Y≠0 stands where a term divides by Y; a Z≠0 the sum doesn't need is named (the probe's, from the answer's
     own hole at Z = 0, as at 0c84d44). One row for the ratio, its value B; the answer is the sum off F's zeros (to ∞
-    inside ABS(B) < 3÷4)"""
+    inside ABS(B) < 3÷4). A row whose zero set is F's reads as F's row (Z^(2÷3)≠0 as Z^(1÷3)≠0; abacus #10004 (5))"""
     if out in STATUS or not out or out.startswith("DECIMAL_FORM"):
         return f"{out} for an answer with rows", []
     parts = out.split("; ")
@@ -675,6 +675,16 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f):
 
     def has(z, y, last):
         return all(term(put(summand, z, y), k, "RAD") is not None for k in range(lo, last + 1))
+
+    def same(r):
+        """r is p≠0, p a power of F or of Z, 0 at each of F's zeros and at none of the points off them"""
+        m = re.fullmatch(rf"((\(?{re.escape(fac)}\)?|Z)\^.+)≠0", r)
+        try:
+            return bool(m) and all(value(put(m.group(1), z, "0")) == 0 for z in zeros) and \
+                all(value(sub(m.group(1), "Z", z)) != 0 for z in offs)
+        except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+            return False
+    rows = [f"{fac}≠0" if same(r) else r for r in rows]
 
     def claims(z, y, n):
         try:
@@ -897,6 +907,14 @@ def main():
     if any(judge_letter4(*t[:3], out, *t[3:])[0] for t, out in takes4) or \
             any(not judge_letter4(*t[:3], out, *t[3:])[0] for t, out in refuses4):
         print("FAIL scripts/sum-values.py: its CAS 026 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    # the zero-set row (abacus #10004 (5)): the wide seed 20261101's Z^(2÷3)≠0 and a SIN(Z)^2≠0 taken, a Z^2≠0 for
+    # SIN(Z)≠0 refused
+    z5 = ("((-1)×K)×(Z^(1÷3))^(2×K-2)×Y^(K-1)", 0, INF, "Z^(1÷3)", "(Z^(1÷3))^(2)×Y^(1)", 1, -1)
+    if judge_letter4(*z5[:3], "1÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); Y≠0; Z^(2÷3)≠0; ABS(Y×Z^(2÷3))<1", *z5[3:])[0] or \
+            judge_letter4(*s4[:3], f"{a4}; SIN(Z)^2≠0; ABS(Y×SIN(Z))<1", *s4[3:])[0] or \
+            not judge_letter4(*s4[:3], f"{a4}; Z^2≠0; ABS(Y×SIN(Z))<1", *s4[3:])[0]:
+        print("FAIL scripts/sum-values.py: its zero-set row reading accepts a planted answer or refuses a right one")
         sys.exit(1)
     rnd4, n4 = random.Random(20261026), 60
     held4 = [s4, e4, r4, ("K×COS(Z)^(K-1)×Y^K", 0, INF, "COS(Z)", "COS(Z)^(1)×Y^(1)", 1, 0),
