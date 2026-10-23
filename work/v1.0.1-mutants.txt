@@ -1,0 +1,27 @@
+# The mutant count at the v1.0.1 tag: all 435 caught, from one run of every mutant on the tag's tree
+# (2026-10-23, lepton, claim #10121).
+#
+# The tree: a worktree at c40422c, the commit v1.0.1 tags; src, scripts and the Makefile are the tag's. Its core was
+# built there at CORE_PIN 38d1931 before the run, by the control: make test, all green, 20 tests, 118,421 checks
+# (09:55:50Z to 10:01:01Z).
+#
+# The run (10:01:01Z to 12:12:00Z, 6 shards of 72 or 73, scripts/mutants.py on copies of that worktree):
+#   435 of 435 caught; none survived, none not built, none not tested.
+#   rc7's 428 (all caught at rc7's tree, work/rc7-mutants.txt) and CAS 027's seven factor027-* are among them.
+#   The six whose only catcher is a developer test, caught by build/series_test, as at rc7:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers,
+#     ser-root-of-negative, ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s:
+# 1,644,388 KiB, at 10:01:30Z, as the shards' first builds ran. The control's largest process: 238,128 KiB.
+# The clang check's containers (casim-clang-*, --memory 2g, one per copy's make test, and a shard runs one make test
+# at a time, so at most six at once) sit outside that sample. Docker's event buffer had dropped their starts and
+# stops by the run's end, so they aren't counted here.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 8 KiB at the start and 16 KiB at most, /dev/shm 252 KiB
+# throughout. du doesn't see a deleted file held open.
+# The copies on disk (build/mutants): 1,612 MiB at most, at 10:01:31Z.
+# Host memory in use (free, every 10 s): 19,531 to 21,349 MiB. It counts every tenant of the box, so it doesn't
+# attribute this run's use.

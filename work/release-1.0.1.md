@@ -33,7 +33,7 @@ None.
 - Frame and symbol gates: no frame over 1 KiB, no `pow` linked, and every function's frame against the recorded table. No frame moved from 1.0.0; the one new function, sm_atom, takes 144 B on the host and 96 B on the S3.
 - Value checks beside the corpus judge Taylor polynomials, limits, integrals and sums against independent constructions: power series over fractions, numeric derivatives at 90 digits, and sums added term by term at 60 digits. A sum's rows are judged at each letter's 0 and at each factor's own zeros (SIN at 0 and π, COS at π÷2, LN at 1), with the factor put to 0 exactly. New in 1.0.1: at each such zero where the sum has a value, the answer must have one, and it must be the sum's.
 - CI on every push: `make check` under gcc and clang, `make test`, CMake under gcc and clang, WebAssembly, and the ESP-IDF component for the ESP32-S3.
-- 435 planted mutants, each caught by the tests. At this tag, the 30 on the sum's code (CAS 024 to 027, seven of them new) are caught, 30 of 30. All 428 of rc7's were caught at rc7's tree (work/rc7-mutants.txt); the 405 of them off the sum's code were last run there.
+- 435 planted mutants, each caught by the tests. All 435 were run at this tag's tree and caught, 435 of 435 (work/v1.0.1-mutants.txt): rc7's 428 and the seven new on CAS 027's code.
 - Hidden sets kept by the project's reviewer, independent of this repository, rerun at each unit's acceptance. At CAS 027's: its own, and CAS 014's to 026's.
 - On the ESP32-S3, every one of the bench's 1,364 cases is byte-identical to the host:
   - with a 16,384 B arena, the size the calculator runs it with;
