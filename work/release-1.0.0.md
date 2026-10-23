@@ -2,8 +2,27 @@ Casimir 1.0.0: exact computer algebra in portable C11, written for the STU-32 ca
 
 Everything on 0.9.0's list for 1.0 is in, and no wrong answer is known. 1.0.0's code is 1.0.0-rc7's with the version text changed. rc7 fixed rc6's known wrong answer with its siblings (CAS 025), and a second class of the same kind found while fixing it (CAS 026). The calculator's firmware now runs it (below).
 
-## What's new since rc6
+## What's new since 0.9.0
 
+- **partfrac**: partial fractions over the rationals. `(X^4+1)÷(X^3+1)` is `X+2÷(3×(X+1))-(2×X-1)÷(3×(X^2-X+1))`.
+- **integrate**, three new routes, each answer checked before it prints:
+  - rational functions through their partial fractions, with LN and ATAN terms (`(2×X+3)÷(X^2+X)` is `3×LN(ABS(X))-LN(ABS(X+1))`);
+  - substitution;
+  - by parts (`X×EXP(X)` is `-EXP(X)+X×EXP(X)`).
+- **taylor**: a Taylor polynomial to order 12 about a point, exact. `LN(X)` about 1 to order 3 is `(X-1)-(X-1)^2÷2+(X-1)^3÷3`.
+- **limit**: at a point from either side or both, or at ∞ and -∞, exact. `(1+3÷X)^X` at ∞ is `EXP(3)`.
+- **sum**: a sum in closed form, to N or to ∞; or exactly, term by term, between whole bounds at most 64 apart.
+  - Closed forms come from a polynomial times a geometric term, by an antidifference checked exactly, and from rational functions whose partial fractions telescope.
+  - `K×2^K` from 1 to N is `-2^(N+1)+N×2^(N+1)+2`, and `1÷(K×(K+1))` from 1 to ∞ is `1`.
+- **Conditions.** sum, taylor and limit answers carry the rows that say where they hold. `X^K` from 0 to N is `-1÷(X-1)+X^(N+1)÷(X-1); X≠1`.
+- **Complex roots**: set `CASIM_COMPLEX` (the CLI's `--complex`), and solve prints a quadratic factor's conjugate pair: `X^2+2×X+5` gives `SOLVED: X=-1-2×0i1; X=-1+2×0i1`. It's off by default, and with it off solve prints real roots only, as before.
+- **Fractions.** A number Casimir makes prints as a fraction (`X÷4+1÷6`). A typed decimal stays a decimal. →DEC prints decimals (`CASIM_PRINT_DECIMAL`).
+- **steps** for partfrac, and for integrate's new routes (partial fractions, substitution, by parts).
+- **New statuses**:
+  - UNDECIDED: a limit, Taylor coefficient or sum that it can't decide. That includes a constant whose sign or zero a carried error bound can't settle; it is never a guess.
+  - NO_CLOSED_FORM: a sum it finds no closed form for.
+  - DECIMAL_FORM: an answer printed as →DEC would, because its fractions didn't fit and it holds a decimal.
+  - UNDEFINED now covers a pole in every operation.
 - **A sum's rows wherever a term divides, whatever else the ratio holds** (CAS 025). The rows are read past an irrational constant, a letter inside a function, or a letter at a negative power.
   - `K×(SQRT(2)×X×Y)^K÷Y` from 0 to ∞ is `-X×SQRT(2)÷2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2); Y≠0; ABS(X×Y×SQRT(2))<1`. Its K = 0 term is 0×Y^(-1), which has no value at Y = 0.
   - A letter at a negative power keeps its row: `(X÷Y)^K÷Y` from 0 to ∞ is `-1÷(X-Y); Y≠0; ABS(X÷Y)<1`. ABS(X÷Y)<1 has no value at Y = 0, so it can't exclude that point; Y≠0 does.
