@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.1.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.1.0.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -22,7 +22,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | derive | the derivative of an expression or an equation |
 | simplify | one canonical text for each expression, with exact numbers and exact values (SIN(π÷6) is 0.5) |
 | expand, collect, subst | distribute and multiply out; gather the powers of a variable; replace a variable |
-| solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2) |
+| solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2), and a count of the complex roots it leaves out (`SOLVED, 2 CPLX: X=2`) |
 | integrate, defint | an antiderivative from a table of forms, of a rational function through its partial fractions, and by substitution and by parts (`X×EXP(X)` is `-EXP(X)+X×EXP(X)`); a definite integral, exactly |
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
@@ -82,7 +82,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (386,148 bytes of code, 1,765,464 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (386,726 bytes of code, 1,765,480 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
@@ -147,10 +147,11 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 435 deliberate faults, each of which the tests
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 445 deliberate faults, each of which the tests
   must catch. `make test` caught all 435 at 1.0.1's tree (work/v1.0.1-mutants.txt), the seven new on CAS 027's sum
   code among them (work/027-function-factor-shift.md), as it caught all 428 of 1.0.0-rc7's at rc7's tree
-  (work/rc7-mutants.txt).
+  (work/rc7-mutants.txt). At 1.1.0 it catches the ten on CAS 028's solve code (work/028-complex-left-out.md); the
+  other 435 were last run at 1.0.1's tree.
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
@@ -164,7 +165,7 @@ gzipped), most of it the decimal library's tables.
   need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
-- **The S3 bench** (scripts/device.sh) runs 1,364 cases on the chip, through the ESP-IDF component, and requires every
+- **The S3 bench** (scripts/device.sh) runs 1,369 cases on the chip, through the ESP-IDF component, and requires every
   answer to be byte-identical to the host's.
 
 ## How it was made
