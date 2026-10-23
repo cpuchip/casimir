@@ -24,10 +24,10 @@
 #include <stddef.h>
 
 /* The release, as semver; casim_version() returns the same text from the compiled library. */
-#define CASIM_VERSION "1.0.0"
+#define CASIM_VERSION "1.0.1"
 #define CASIM_VERSION_MAJOR 1
 #define CASIM_VERSION_MINOR 0
-#define CASIM_VERSION_PATCH 0
+#define CASIM_VERSION_PATCH 1
 
 const char *casim_version(void);
 

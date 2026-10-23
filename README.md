@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.1.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -82,7 +82,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (385,353 bytes of code, 1,765,464 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (386,148 bytes of code, 1,765,464 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
@@ -147,9 +147,10 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 428 deliberate faults, each of which the tests
-  must catch; `make test` catches all 428 (at 1.0.0-rc7, whose src differs from 1.0.0's only in the version text;
-  work/rc7-mutants.txt).
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 435 deliberate faults, each of which the tests
+  must catch. `make test` caught all 428 of 1.0.0-rc7's at rc7's tree, whose src differs from 1.0.0's only in the
+  version text (work/rc7-mutants.txt). At 1.0.1 it catches the 30 on the sum's code, CAS 024's to 027's, seven of them
+  new (work/027-function-factor-shift.md); the other 405 were last run at rc7's tree.
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
@@ -163,7 +164,7 @@ gzipped), most of it the decimal library's tables.
   need the developer tests.
 - **Acceptance.** Each unit of work was accepted against hidden test sets that a separate reviewer ran, comparing
   against other systems as black boxes. Every unit's sets are rerun at each acceptance.
-- **The S3 bench** (scripts/device.sh) runs 1,359 cases on the chip, through the ESP-IDF component, and requires every
+- **The S3 bench** (scripts/device.sh) runs 1,364 cases on the chip, through the ESP-IDF component, and requires every
   answer to be byte-identical to the host's.
 
 ## How it was made
