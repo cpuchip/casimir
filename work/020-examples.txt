@@ -24,7 +24,7 @@
 | `casim --complex --cap 40 solve "(X^2+X+1)×(X^2-X+1)" X RAD` | `TOO_LONG` |
 
 # - Rule 5: show steps, the pair where NO REAL ROOTS was
-| `casim --one-line steps solve "(X-2)×(X^2+1)=0" X RAD` | `BOTH SIDES: X^3-2×X^2+X-2=0 / LINEAR FACTOR: (X-2)×(X^2+1)=0 /   LINEAR: X-2=0: X=2 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED: X=2` |
+| `casim --one-line steps solve "(X-2)×(X^2+1)=0" X RAD` | `BOTH SIDES: X^3-2×X^2+X-2=0 / LINEAR FACTOR: (X-2)×(X^2+1)=0 /   LINEAR: X-2=0: X=2 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED, 2 CPLX: X=2` |
 | `casim --complex --one-line steps solve "(X-2)×(X^2+1)=0" X RAD` | `BOTH SIDES: X^3-2×X^2+X-2=0 / LINEAR FACTOR: (X-2)×(X^2+1)=0 /   LINEAR: X-2=0: X=2 /   QUADRATIC FORMULA: X^2+1=0: X=-0i1; X=0i1 / ANSWER: SOLVED: X=2; X=-0i1; X=0i1` |
 | `casim --complex --one-line steps solve "X^2+X+1" X RAD` | `QUADRATIC FORMULA: X^2+X+1=0: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2 / ANSWER: SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
 

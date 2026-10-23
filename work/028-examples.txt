@@ -1,0 +1,51 @@
+# CAS 028's examples (work/028-complex-left-out.md; ruled abacus #10137, #10148, #10163; the wording soroban's,
+# #10154): without the complex bit, the roots it would print counted after SOLVED's or PARTIAL's status as ", n CPLX".
+# Each row is run by scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the
+# value check's build (CAS 022 rule 5). Each n is the roots the same input's answer with --complex adds, counted with
+# their multiplicities (the --complex rows show two of them); tests/solve_test.c judges n on the seeded polynomials
+# against their construction.
+
+# - Each route (abacus #10148: one branch, quad_roots' negative discriminant without the bit):
+
+| Command | Prints |
+|---|---|
+| `casim solve '(X-2)×(X^2+1)' X RAD` | `SOLVED, 2 CPLX: X=2` |
+| `casim solve '(X^2+1)^2×(X-3)' X RAD` | `SOLVED, 4 CPLX: X=3` |
+| `casim solve 'X^6-1' X RAD` | `SOLVED, 4 CPLX: X=-1; X=1` |
+| `casim solve 'X^3-8' X RAD` | `SOLVED, 2 CPLX: X=2` |
+| `casim solve '(X^2+1)×(X^3-2×X-5)' X RAD` | `PARTIAL, DEGREE 3 LEFT, 2 CPLX` |
+| `casim --one-line steps solve 'X^4+X^2=0' X RAD` | `COMMON FACTOR: X^2×(X^2+1)=0 /   LINEAR: X^2=0: X=0 (MULT 2) /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED, 2 CPLX: X=0 (MULT 2)` |
+
+# - Model 33 ignores the bit, so the note is there with it or without it (abacus #10163); outside model 33 the bit
+#   prints the pair instead, as at 1.0.1:
+
+| Command | Prints |
+|---|---|
+| `casim --model 33 solve '(X-2)×(X^2+1)' X RAD` | `SOLVED, 2 CPLX: X=2` |
+| `casim --model 33 --complex solve '(X-2)×(X^2+1)' X RAD` | `SOLVED, 2 CPLX: X=2` |
+| `casim --complex solve '(X-2)×(X^2+1)' X RAD` | `SOLVED: X=2; X=-0i1; X=0i1` |
+| `casim --complex solve '(X^2+1)^2×(X-3)' X RAD` | `SOLVED: X=3; X=-0i1 (MULT 2); X=0i1 (MULT 2)` |
+
+# - No note: no real root at all (NO REAL ROOTS says it), and a factor of degree 3 or more left whole (n counts only
+#   the roots factoring finds):
+
+| Command | Prints |
+|---|---|
+| `casim solve 'X^4+4' X RAD` | `NO REAL ROOTS` |
+| `casim solve 'X^4+1' X RAD` | `PARTIAL, DEGREE 4 LEFT` |
+| `casim solve 'X^3-2' X RAD` | `PARTIAL, DEGREE 3 LEFT` |
+
+# - The widest status, 31 cells (the degree left and n are at most 12 together; soroban #10154):
+
+| Command | Prints |
+|---|---|
+| `casim solve '(X^2+1)×(X^10+X+1)' X RAD` | `PARTIAL, DEGREE 10 LEFT, 2 CPLX` |
+| `casim solve '(X-1)×(X^2+1)^5' X RAD` | `SOLVED, 10 CPLX: X=1` |
+
+# - The cap (abacus #10148): 183 B at 1.0.1 and 191 B with the note; 184 B at 1.0.1, which keeps its bytes, since the
+#   note would make it 192:
+
+| Command | Prints |
+|---|---|
+| `casim solve '(4×X^2+4×X-6)×(8×X^2-7×X-9)×(4×X^2-2×X-7)×(3×X^2-2×X-9)×(X^2+1)×(3×X+2)×(7×X-9)' X RAD` | `SOLVED, 2 CPLX: X=(-1-SQRT(7))÷2; X=(1-2×SQRT(7))÷3; X=(1-SQRT(29))÷4; X=(7-SQRT(337))÷16; X=-2÷3; X=(-1+SQRT(7))÷2; X=9÷7; X=(7+SQRT(337))÷16; X=(1+SQRT(29))÷4; X=(1+2×SQRT(7))÷3` |
+| `casim solve '(7×X-2)×(3×X^2-9×X-7)×(8×X^2+3×X-2)×(8×X-3)×(X^2-3×X+8)×(8×X^2+6×X-1)×(1×X^2+9×X+3)' X RAD` | `SOLVED: X=(-9-SQRT(69))÷2; X=(-3-SQRT(17))÷8; X=(-3-SQRT(73))÷16; X=(9-SQRT(165))÷6; X=(-9+SQRT(69))÷2; X=(-3+SQRT(17))÷8; X=2÷7; X=(-3+SQRT(73))÷16; X=3÷8; X=(9+SQRT(165))÷6` |

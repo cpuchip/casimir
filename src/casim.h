@@ -75,8 +75,9 @@ typedef enum {
    decimal by CAS 002's rule. A mode bit, not a casim_req field, so no initializer changes. */
 #define CASIM_PRINT_DECIMAL 16
 /* CAS 020, OR'd into any call's angle: solve prints the complex roots of its quadratic factors, a conjugate pair each,
-   as (A±B×SQRT(r)×0i1)÷D, where it would say NO REAL ROOTS or leave them out. Only solve (and its steps) reads it,
-   and not in model 33, whose equations have no complex numbers; every other answer is the same with it. */
+   as (A±B×SQRT(r)×0i1)÷D, where it would say NO REAL ROOTS or leave them out (counted as ", n CPLX", CAS 028). Only
+   solve (and its steps) reads it, and not in model 33, whose equations have no complex numbers; every other answer is
+   the same with it. */
 #define CASIM_COMPLEX 32
 
 /* d/d(var) of eqn: an expression gives its derivative, L=R gives L'=R' (unit CAS 001). var is 0-25
@@ -210,6 +211,9 @@ const char *casim_rule_name(int rule);
                                   above 1 follows it as " (MULT k)"; ascending; a÷b or (a±b×SQRT(r))÷d)
      PARTIAL, DEGREE n LEFT: ... a factor of degree >= 3 is left (n: the degree left in all)
      NO REAL ROOTS, NO SOLUTION (a nonzero constant), EVERY X (0)
+     SOLVED, 2 CPLX: X=2         CAS 028: the roots CASIM_COMPLEX would print, left out without it (always in model
+                                  33), n with their multiplicities after SOLVED's or PARTIAL's status, where the line
+                                  with it fits; NO REAL ROOTS has none
    Degree <= 12 and, cleared to a primitive integer polynomial, coefficients <= 10^7, else NO_ROOM. Every
    root is verified by exact division. TOO_LONG past 191 bytes, whatever cap is. */
 casim_status casim_solve(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,

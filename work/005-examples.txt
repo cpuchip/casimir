@@ -2,6 +2,7 @@
 # derived by hand from the factorization over Q, not taken from the code.
 # ID | solve | equation | variable | model | the answer (out, or the status), at the device's 8 KB arena
 # (V0019 is V0020 expanded: twelve roots past 191 bytes either way)
+# CAS 028 moved V0009 and V0015: the roots the bit would print, counted after the status (work/028-complex-left-out.md)
 V0001 | solve | X^2-5×X+6=0 | X | 35 | SOLVED: X=2; X=3
 V0002 | solve | X^3-3×X+2 | X | 35 | SOLVED: X=-2; X=1 (MULT 2)
 V0003 | solve | X^3-4×X^2+3×X+2 | X | 35 | SOLVED: X=1-SQRT(2); X=2; X=1+SQRT(2)
@@ -10,13 +11,13 @@ V0005 | solve | (X+3)×(X^3-2×X-5) | X | 35 | PARTIAL, DEGREE 3 LEFT: X=-3
 V0006 | solve | 0.5×X^2-0.25×X-0.125 | X | 35 | SOLVED: X=(1-SQRT(5))÷4; X=(1+SQRT(5))÷4
 V0007 | solve | X^2-X-1 | X | 35 | SOLVED: X=(1-SQRT(5))÷2; X=(1+SQRT(5))÷2
 V0008 | solve | X^2=2 | X | 35 | SOLVED: X=-SQRT(2); X=SQRT(2)
-V0009 | solve | (X^2+1)×(X-0.5) | X | 35 | SOLVED: X=1÷2
+V0009 | solve | (X^2+1)×(X-0.5) | X | 35 | SOLVED, 2 CPLX: X=1÷2
 V0010 | solve | X^2+X+1 | X | 35 | NO REAL ROOTS
 V0011 | solve | X+1=X | X | 35 | NO SOLUTION
 V0012 | solve | 2×X=X+X | X | 35 | EVERY X
 V0013 | solve | T^2-T-6 | T | 35 | SOLVED: T=-2; T=3
 V0014 | solve | X^3^2-64 | X | STU | PARTIAL, DEGREE 9 LEFT
-V0015 | solve | X^3^2-64 | X | 35 | SOLVED: X=-2; X=2
+V0015 | solve | X^3^2-64 | X | 35 | SOLVED, 4 CPLX: X=-2; X=2
 V0016 | solve | SIN(X)=0.5 | X | 35 | NOT_POLYNOMIAL
 V0017 | solve | A×X^2-1 | X | 35 | NOT_NUMERIC
 V0018 | solve | X^14-1 | X | 35 | NO_ROOM

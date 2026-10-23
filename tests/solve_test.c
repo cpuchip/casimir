@@ -4,7 +4,10 @@
  * built from known factors, each printed root evaluated on the core and matched by value to the factors it
  * was built from, with its multiplicity, and the status and the degree left checked against the
  * construction. CAS 020: the same polynomials with CASIM_COMPLEX, every root real and complex judged by its value on
- * the core and its place in the answer, and the unit's examples exactly, each root making its equation 0 on the core. */
+ * the core and its place in the answer, and the unit's examples exactly, each root making its equation 0 on the core.
+ * CAS 028: without the bit, the roots it would print as ", n CPLX" in the status where the line fits; each route
+ * exactly, the 191 B boundary byte for byte, and n on the seeded polynomials against their construction and against the
+ * same polynomial's answer with the bit. */
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +72,7 @@ static void exact(void)
     /* the statuses, by the factorization over Q */
     is("X^2+1", "NO REAL ROOTS");
     is("(X^2+1)×(X^2+X+1)", "NO REAL ROOTS");
-    is("(X-1)×(X^2+1)", "SOLVED: X=1");                   /* a quadratic without real roots adds nothing */
+    is("(X-1)×(X^2+1)", "SOLVED, 2 CPLX: X=1");           /* a quadratic without real roots adds no root (CAS 028) */
     is("X^3-2", "PARTIAL, DEGREE 3 LEFT");
     is("(X-1)×(X^3-2)", "PARTIAL, DEGREE 3 LEFT: X=1");
     is("(X^3-2)^2", "PARTIAL, DEGREE 6 LEFT");
@@ -82,9 +85,9 @@ static void exact(void)
     CHECK(solve("T^2-4", 'T' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "SOLVED: T=-2; T=2") == 0,
           "solve T^2-4 in T: \"%s\"", out);
     /* the stamp (rule 7): X^3^2-1 is X^9-1 read as STU, X^6-1 read as 35 */
-    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_STU, out) == CASIM_OK && strcmp(out, "PARTIAL, DEGREE 6 LEFT: X=1") == 0,
+    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_STU, out) == CASIM_OK && strcmp(out, "PARTIAL, DEGREE 6 LEFT, 2 CPLX: X=1") == 0,
           "solve X^3^2-1 (STU): \"%s\"", out);
-    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "SOLVED: X=-1; X=1") == 0,
+    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "SOLVED, 4 CPLX: X=-1; X=1") == 0,
           "solve X^3^2-1 (35): \"%s\"", out);
     /* the refusals */
     refused("SIN(X)-1", CASIM_NOT_POLYNOMIAL);
@@ -300,7 +303,7 @@ static void seeded(void)
     ce_angle(CASIM_RAD);
     for (int n = 0; n < 3000 && bad < 6; n++) {
         long long p[32] = {1};
-        int deg = 0, nf = 0, mults[16], realroots = 0, left = 0, k;
+        int deg = 0, nf = 0, mults[16], realroots = 0, left = 0, ncx = 0, noff = 0, k;
         fac fs[16];
         char text[2048], out[OUT], roots[32][256];
         int rm[32];
@@ -359,7 +362,7 @@ static void seeded(void)
                     want[nw] = (-(double)fs[i].b - sqrt(d)) / (2.0 * (double)fs[i].a), wmult[nw++] = mults[i];
                     want[nw] = (-(double)fs[i].b + sqrt(d)) / (2.0 * (double)fs[i].a), wmult[nw++] = mults[i];
                     realroots += 2;
-                }
+                } else ncx += 2 * mults[i];                 /* CAS 028: the bit's roots, left out without it */
             } else left += 3 * mults[i];
         }
         k = 0;
@@ -376,6 +379,19 @@ static void seeded(void)
                 continue;
             }
             k = parse_roots(out, roots, rm, 32);
+            for (int i = 0; i < k; i++) noff += rm[i];
+            /* CAS 028: ", n CPLX" right after the status exactly when n > 0 beside a root or PARTIAL's factor and the
+               line with it fits 191 B; else the status alone (abacus #10148) */
+            {
+                char note[16];
+                size_t hl = strlen(head), nl = (size_t)snprintf(note, sizeof note, ", %d CPLX", ncx);
+                bool noted = ncx && strncmp(out + hl, note, nl) == 0 && (out[hl + nl] == ':' || out[hl + nl] == '\0');
+                bool want = ncx && (realroots || left) && strlen(out) + (noted ? 0 : nl) <= 191;
+                if (noted != want || (!noted && out[hl] != ':' && out[hl] != '\0')) {
+                    if (bad++ < 6) CHECK(false, "%s: \"%s\", want %s\"%s\" after the status", text, out, want ? "" : "no ", note);
+                    continue;
+                }
+            }
         }
         /* every expected root printed once with its multiplicity, and nothing else; each text evaluates to it */
         {
@@ -446,6 +462,11 @@ static void seeded(void)
                         ok = false;                                                             /* the pairs' order */
                     i++;
                 }
+            if (ok) {                                                       /* CAS 028: n is what the bit adds */
+                int non = 0;
+                for (int i = 0; i < kc; i++) non += rm[i];
+                if (non - noff != ncx) ok = false;
+            }
             if (!ok && cx_bad++ < 6) CHECK(false, "--complex %s: %d \"%s\" (%d expected roots)", text, (int)st, out, nc);
         }
     }
@@ -528,6 +549,47 @@ static void complex_roots(void)
     }
 }
 
+/* CAS 028 (work/028-complex-left-out.md): without the bit, each quadratic factor with no real root is counted, with its
+   multiplicity, as ", n CPLX" after the status, beside real roots or PARTIAL's factor; NO REAL ROOTS keeps its text, and
+   a factor of degree 3 or more left whole adds nothing (n counts the roots factoring finds). Model 33 ignores the bit,
+   so it always has the note. Where the line with it would pass 191 B, the line is today's (abacus #10148). */
+static void left_out(void)
+{
+    static const struct { int model, bits; const char *eqn, *want; } ex[] = {
+        {CASIM_MODEL_35, 0, "(X-2)×(X^2+1)", "SOLVED, 2 CPLX: X=2"},
+        {CASIM_MODEL_35, 0, "(X^2+1)^2×(X-3)", "SOLVED, 4 CPLX: X=3"},
+        {CASIM_MODEL_35, 0, "X^6-1", "SOLVED, 4 CPLX: X=-1; X=1"},
+        {CASIM_MODEL_35, 0, "X^3-8", "SOLVED, 2 CPLX: X=2"},
+        {CASIM_MODEL_35, 0, "(X^2+1)×(X^3-2×X-5)", "PARTIAL, DEGREE 3 LEFT, 2 CPLX"},
+        {CASIM_MODEL_33, 0, "(X-2)×(X^2+1)", "SOLVED, 2 CPLX: X=2"},
+        {CASIM_MODEL_33, CASIM_COMPLEX, "(X-2)×(X^2+1)", "SOLVED, 2 CPLX: X=2"},
+        {CASIM_MODEL_35, CASIM_COMPLEX, "(X-2)×(X^2+1)", "SOLVED: X=2; X=-0i1; X=0i1"},
+        {CASIM_MODEL_35, 0, "X^4+4", "NO REAL ROOTS"},
+        {CASIM_MODEL_35, 0, "X^4+1", "PARTIAL, DEGREE 4 LEFT"},
+        {CASIM_MODEL_35, 0, "X^3-2", "PARTIAL, DEGREE 3 LEFT"},
+        {CASIM_MODEL_35, 0, "X^4+X^2=0", "SOLVED, 2 CPLX: X=0 (MULT 2)"},
+        /* the widest statuses: degree left + n <= 12 (soroban #10154: the report's row is 31 cells) */
+        {CASIM_MODEL_35, 0, "(X^2+1)×(X^10+X+1)", "PARTIAL, DEGREE 10 LEFT, 2 CPLX"},
+        {CASIM_MODEL_35, 0, "(X^2+1)^4×(X^4+X+1)", "PARTIAL, DEGREE 4 LEFT, 8 CPLX"},
+        {CASIM_MODEL_35, 0, "(X-1)×(X^2+1)^5", "SOLVED, 10 CPLX: X=1"},
+        /* the boundary: 183 B today, 191 B with the note; 184 B today, which keeps its bytes (192 B with it) */
+        {CASIM_MODEL_35, 0, "(4×X^2+4×X-6)×(8×X^2-7×X-9)×(4×X^2-2×X-7)×(3×X^2-2×X-9)×(X^2+1)×(3×X+2)×(7×X-9)",
+         "SOLVED, 2 CPLX: X=(-1-SQRT(7))÷2; X=(1-2×SQRT(7))÷3; X=(1-SQRT(29))÷4; X=(7-SQRT(337))÷16; X=-2÷3; "
+         "X=(-1+SQRT(7))÷2; X=9÷7; X=(7+SQRT(337))÷16; X=(1+SQRT(29))÷4; X=(1+2×SQRT(7))÷3"},
+        {CASIM_MODEL_35, 0, "(7×X-2)×(3×X^2-9×X-7)×(8×X^2+3×X-2)×(8×X-3)×(X^2-3×X+8)×(8×X^2+6×X-1)×(1×X^2+9×X+3)",
+         "SOLVED: X=(-9-SQRT(69))÷2; X=(-3-SQRT(17))÷8; X=(-3-SQRT(73))÷16; X=(9-SQRT(165))÷6; X=(-9+SQRT(69))÷2; "
+         "X=(-3+SQRT(17))÷8; X=2÷7; X=(-3+SQRT(73))÷16; X=3÷8; X=(9+SQRT(165))÷6"},
+    };
+    for (size_t i = 0; i < sizeof ex / sizeof ex[0]; i++) {
+        char out[OUT];
+        casim_status st = solve_bits(ex[i].eqn, 'X' - 'A', ex[i].model, ex[i].bits, out);
+        CHECK(st == CASIM_OK && strcmp(out, ex[i].want) == 0, "solve %s (model %d, bits %d): %d \"%s\", want \"%s\"",
+              ex[i].eqn, ex[i].model, ex[i].bits, (int)st, out, ex[i].want);
+    }
+    CHECK(strlen(ex[15].want) == 191 && strlen(ex[16].want) == 184, "the boundary rows: %zu and %zu B, want 191 and 184",
+          strlen(ex[15].want), strlen(ex[16].want));
+}
+
 /* work/005-examples.txt at the device's 8,800 B arena: each answer's exact text, or its status. */
 static void visible(void)
 {
@@ -570,6 +632,7 @@ int main(void)
     ce_init();
     visible();
     exact();
+    left_out();
     multiplicities();
     as_typed();
     edges();

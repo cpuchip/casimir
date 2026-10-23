@@ -3,8 +3,8 @@
 tests/golden/moved/cas-023.txt lists, and no others: with each listed line put back at its before, the corpus and
 →DEC's file are CAS 022's follow-up fc46c8b byte for byte (the sha256s in the list's header), each listed line's after
 is the file's, and every after is its before with condition rows after "; " (rule 1: the same status and answer). The
-check's control: a before list with one line left at its after must fail the hash. A later unit's moves (LATER: CAS
-024's) are put back first.
+check's control: a before list with one line left at its after must fail the hash. Later units' moves (LATER: CAS
+024's and 028's) are put back first.
     scripts/conditions-golden.py"""
 import hashlib
 import os
@@ -13,7 +13,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-023.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-024.txt")]
+LATER = [os.path.join(GOLDEN, "moved", "cas-024.txt"), os.path.join(GOLDEN, "moved", "cas-028.txt")]
 BASE = "fc46c8b"
 
 

@@ -4,7 +4,7 @@ tests/golden/moved/cas-024.txt lists, and no others: with each listed line put b
 →DEC's file are CAS 023's 305bd84 byte for byte (the sha256s in the list's header), each listed line's after is the
 file's, and every after keeps its before's status, and its rows are its before's less one or more L≠0 rows (the shift
 clears them; the answer's form changes with it). The check's control: a before list with one line left at its after
-must fail the hash.
+must fail the hash. Later units' moves (LATER: CAS 028's) are put back first.
     scripts/ratio-golden.py"""
 import hashlib
 import os
@@ -13,14 +13,15 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-024.txt")
+LATER = [os.path.join(GOLDEN, "moved", "cas-028.txt")]
 BASE = "305bd84"
 
 
-def moved():
+def moved(path=MOVED):
     """the list's sections (the corpus's moves, →DEC's): inputs (the first ten fields) -> (before, after), each
     [status, text]; and the header's sha256 for each file"""
     sections, lines, sha = [{}], [], {}
-    for ln in open(MOVED, encoding="utf-8").read().split("\n"):
+    for ln in open(path, encoding="utf-8").read().split("\n"):
         if ln.startswith("# " + BASE + " ") and " sha256 " in ln:
             name, _, h = ln[len("# " + BASE + " "):].split(" ")
             sha[name] = h
@@ -39,9 +40,15 @@ def moved():
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after): (failures, its sha256)"""
     bad, out, hit = 0, [], set()
+    later = {}
+    for path in LATER:                                  # a later unit's moves, at their before first
+        (c_mv, d_mv), _ = moved(path)
+        later.update(c_mv if name == "corpus.txt" else d_mv)
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if ln and not ln.startswith("#") and key in later:
+            f = f[:10] + later[key][0][:2]
         if ln and not ln.startswith("#") and key in mv:
             b, a = mv[key]
             hit.add(key)

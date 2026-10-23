@@ -428,6 +428,16 @@ def all_cases():
             ("shift (SIN(Z)×Y)^K×SIN(Z) from -1 to N", "(SIN(Z)×Y)^K×SIN(Z)", "-1|N"),
             ("shift K×SIN(Z)^(K-1) from 1 to N", "K×SIN(Z)^(K-1)", "1|N")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
+    # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
+    for name, expr, model in [
+            ("cplx PARTIAL with the pair", "(X^2+1)×(X^3-2×X-5)", "35"),
+            ("cplx model 33", "(X-2)×(X^2+1)", "33"),
+            ("cplx widest status", "(X^2+1)×(X^10+X+1)", "35"),
+            ("cplx 191 B with the note", "(4×X^2+4×X-6)×(8×X^2-7×X-9)×(4×X^2-2×X-7)×(3×X^2-2×X-9)×(X^2+1)×(3×X+2)×(7×X-9)", "35"),
+            ("cplx 184 B, no room", "(7×X-2)×(3×X^2-9×X-7)×(8×X^2+3×X-2)×(8×X-3)×(X^2-3×X+8)×(8×X^2+6×X-1)×(1×X^2+9×X+3)",
+             "35")]:
+        rows.append((name, expr, "X", "RAD", "solve", None, model))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

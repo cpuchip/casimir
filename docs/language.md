@@ -169,6 +169,12 @@ come after the real roots, each pair's negative imaginary part first, ordered by
 part|. Only solve and its steps read the bit, and not in model 33, whose equations have no complex numbers; →DEC
 leaves a root's text as it is.
 
+**Roots left out** (CAS 028): without the bit, and always in model 33, the roots it would print are counted after
+SOLVED's or PARTIAL's status as `, n CPLX`, n with their multiplicities: `(X-2)×(X^2+1)` is `SOLVED, 2 CPLX: X=2`.
+n counts only the roots factoring finds, the quadratic factors with no real root. A factor of degree 3 or more left
+whole adds none, so `X^4+1` is `PARTIAL, DEGREE 4 LEFT`, with no note. NO REAL ROOTS says it already and has none. Where
+the note would take the line past 191 bytes, the line is printed without it.
+
 Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π or an irrational number), NO_ROOM
 (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
 
@@ -181,6 +187,9 @@ Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π 
 | `casim --complex solve "X^2+1" X RAD` | `SOLVED: X=-0i1; X=0i1` |
 | `casim --complex solve "X^2+X+1" X RAD` | `SOLVED: X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
 | `casim solve "(X+3)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT: X=-3` |
+| `casim solve "(X-2)×(X^2+1)" X RAD` | `SOLVED, 2 CPLX: X=2` |
+| `casim solve "(X^2+1)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT, 2 CPLX` |
+| `casim solve "X^4+1" X RAD` | `PARTIAL, DEGREE 4 LEFT` |
 | `casim solve "SIN(X)=0.5" X RAD` | `NOT_POLYNOMIAL` |
 | `casim solve "A×X^2-1" X RAD` | `NOT_NUMERIC` |
 | `casim solve "X^14-1" X RAD` | `NO_ROOM` |
@@ -412,7 +421,7 @@ them, in descending powers. The steps are:
 | `casim steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X^3-3×X+2)÷(X+2)=X^2-2×X+1 / LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X^2-2×X+1)÷(X-1)^2=1 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
 | `casim steps solve "X^3-X" X RAD` | `COMMON FACTOR: X×(X^2-1)=0 / LINEAR FACTOR: (X^2-1)÷(X+1)=X-1 / LINEAR FACTOR: X×(X+1)×(X-1)=0 /   LINEAR: X+1=0: X=-1 /   LINEAR: X-1=0: X=1 / ANSWER: SOLVED: X=-1; X=0; X=1` |
 | `casim steps solve "(X+3)×(X^3-2×X-5)" X RAD` | `POLYNOMIAL: X^4+3×X^3-2×X^2-11×X-15=0 / LINEAR FACTOR: (X^4+3×X^3-2×X^2-11×X-15)÷(X+3)=X^3-2×X-5 / LINEAR FACTOR: (X+3)×(X^3-2×X-5)=0 /   LINEAR: X+3=0: X=-3 /   LEFT: X^3-2×X-5=0: DEGREE 3 LEFT / ANSWER: PARTIAL, DEGREE 3 LEFT: X=-3` |
-| `casim steps solve "X^4+X^2=0" X RAD` | `COMMON FACTOR: X^2×(X^2+1)=0 /   LINEAR: X^2=0: X=0 (MULT 2) /   QUADRATIC FORMULA: X^2+1=0: 0^2-4×1×1=-4<0 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED: X=0 (MULT 2)` |
+| `casim steps solve "X^4+X^2=0" X RAD` | `COMMON FACTOR: X^2×(X^2+1)=0 /   LINEAR: X^2=0: X=0 (MULT 2) /   QUADRATIC FORMULA: X^2+1=0: 0^2-4×1×1=-4<0 /   QUADRATIC FORMULA: X^2+1=0: NO REAL ROOTS / ANSWER: SOLVED, 2 CPLX: X=0 (MULT 2)` |
 | `casim steps solve "X+1=X+2" X RAD` | `BOTH SIDES: -1=0 / ANSWER: NO SOLUTION` |
 | `casim steps solve "(X^2-2)^2" X RAD` | `POLYNOMIAL: X^4-4×X^2+4=0 / QUADRATIC FACTOR: (X^4-4×X^2+4)÷(X^2-2)^2=1 / QUADRATIC FACTOR: (X^2-2)^2=0 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(8)÷2; X=SQRT(8)÷2 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2) / ANSWER: SOLVED: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2)` |
 | `casim steps solve "(X-1)×(X^3+X+1)^2" X RAD` | `POLYNOMIAL: X^7-X^6+2×X^5-X^3+X^2-X-1=0 / LINEAR FACTOR: (X^7-X^6+2×X^5-X^3+X^2-X-1)÷(X-1)=(X^3+X+1)^2 / LINEAR FACTOR: (X-1)×(X^3+X+1)^2=0 /   LINEAR: X-1=0: X=1 /   LEFT: (X^3+X+1)^2=0: DEGREE 6 LEFT / ANSWER: PARTIAL, DEGREE 6 LEFT: X=1` |

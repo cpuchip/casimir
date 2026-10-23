@@ -305,6 +305,7 @@ put_exp	112
 put_factor	80
 put_int	64
 put_istep	144
+put_left_out	80
 put_num	208
 put_power	80
 put_rat_abs.isra	96

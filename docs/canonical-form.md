@@ -356,7 +356,8 @@ stays checked: an overflow means "not a factor", which a true factor never cause
     PARTIAL, DEGREE 3 LEFT: X=1
     NO REAL ROOTS        NO SOLUTION        EVERY X
 
-- **SOLVED:** every irreducible factor over Q has degree ≤ 2 (a quadratic without real roots adds none).
+- **SOLVED:** every irreducible factor over Q has degree ≤ 2 (a quadratic without real roots adds no root; CAS 028
+  counts its two after the status, below).
   **NO REAL ROOTS:** the same, with no real root. **PARTIAL, DEGREE n LEFT:** a factor of degree ≥ 3 is
   left, n the degree left in all (an irreducible quartic is PARTIAL even without real roots: it is not
   solved). NO SOLUTION for a nonzero constant, EVERY X for 0.
@@ -374,6 +375,12 @@ stays checked: an overflow means "not a factor", which a true factor never cause
   and then |imaginary part|, so NO REAL ROOTS doesn't occur. Model 33 ignores the bit (its equations read no complex
   number). The bit reaches do_solve only from solve's public paths (SF_CX): start() takes it out of every angle, so
   rule 8's own solve (ir_hole) stays real.
+- **Roots left out (CAS 028):** without the bit (always in model 33), put_solution counts each quadratic factor with
+  no real root, twice its multiplicity, and put_left_out writes `, n CPLX` after SOLVED's or PARTIAL's status:
+  `SOLVED, 2 CPLX: X=2`. A factor of degree ≥ 3 left whole adds nothing to n, and NO REAL ROOTS has no note. The note
+  goes in only where the line with it fits (191 bytes at most); else the line is as it was, never TOO_LONG for it
+  (abacus #10148). The calculator's report shows the status as its first row, 31 cells, and the widest status is
+  `PARTIAL, DEGREE 10 LEFT, 2 CPLX`: the degree left and n together are at most 12.
 
 ## CAS 006: integrate
 
