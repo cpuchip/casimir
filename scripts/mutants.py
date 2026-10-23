@@ -1258,25 +1258,25 @@ MUTANTS = {
     # CAS 028 (solve's roots left out, ", n CPLX"): the note off; at the cap, TOO_LONG in place of today's line, the note
     # kept over the roots' last bytes (it ignores the cap, abacus #10167), and the note giving way one byte early; the
     # multiplicity ignored; NO REAL ROOTS noted; PARTIAL with no root unnoted; every quadratic counted, so the bit's
-    # pairs and the real ones too; the note after the roots, not the status
-    "cplx028-note-off": [("src/casim.c", "    if (out && (nr || f->n >= 3)) put_left_out(w, end, out);",
-                          "    if (out && (nr || f->n >= 3) && 0) put_left_out(w, end, out);")],
+    # pairs and the real ones too; the note after the roots, not the status; the note with the bit on too
+    "cplx028-note-off": [("src/casim.c", "    if (note) put_left_out(w, s);", "    if (note && 0) put_left_out(w, s);")],
     "cplx028-cap-too-long": [("src/casim.c", "    if (w->full || w->n + k + 1 > w->cap) return;",
                               "    if (w->full) return;\n    if (w->n + k + 1 > w->cap) {\n        w->full = true;\n        return;\n    }")],
     "cplx028-cap-ignored": [("src/casim.c", "    if (w->full || w->n + k + 1 > w->cap) return;",
                              "    if (w->full) return;\n    if (w->n + k + 1 > w->cap) w->n = w->cap - 1 - k, w->o[w->n] = '\\0';")],
     "cplx028-cap-early": [("src/casim.c", "    if (w->full || w->n + k + 1 > w->cap) return;",
                            "    if (w->full || w->n + k + 2 > w->cap) return;")],
-    "cplx028-mult-ignored": [("src/casim.c", "            else if (nr == k) out += 2 * x->mult;",
-                              "            else if (nr == k) out += 2;")],
-    "cplx028-no-real-roots-noted": [("src/casim.c", "    if (out && (nr || f->n >= 3)) put_left_out(w, end, out);",
-                                     "    if (out) put_left_out(w, end, out);")],
-    "cplx028-partial-unnoted": [("src/casim.c", "    if (out && (nr || f->n >= 3)) put_left_out(w, end, out);",
-                                 "    if (out && nr) put_left_out(w, end, out);")],
-    "cplx028-every-quadratic": [("src/casim.c", "            else if (nr == k) out += 2 * x->mult;",
-                                 "            else out += 2 * x->mult, (void)k;")],
-    "cplx028-after-the-roots": [("src/casim.c", "    if (out && (nr || f->n >= 3)) put_left_out(w, end, out);",
-                                 "    if (out && (nr || f->n >= 3)) put_left_out(w, w->n, out), (void)end;")],
+    "cplx028-mult-ignored": [("src/casim.c", "x->b * x->b - 4 * x->a * x->c < 0) n += 2 * x->mult;",
+                              "x->b * x->b - 4 * x->a * x->c < 0) n += 2;")],
+    "cplx028-no-real-roots-noted": [("src/casim.c", "    bool note = (nr || f->n >= 3) && !(c->nm & NM_CX);",
+                                     "    bool note = !(c->nm & NM_CX);")],
+    "cplx028-partial-unnoted": [("src/casim.c", "    bool note = (nr || f->n >= 3) && !(c->nm & NM_CX);",
+                                 "    bool note = nr && !(c->nm & NM_CX);")],
+    "cplx028-every-quadratic": [("src/casim.c", "        if (x->deg == 2 && x->b * x->b - 4 * x->a * x->c < 0) n +=",
+                                 "        if (x->deg == 2) n +=")],
+    "cplx028-after-the-roots": [("src/casim.c", "    while (at < w->n && w->o[at] != ':') at++;", "    at = w->n;")],
+    "cplx028-bit-ignored": [("src/casim.c", "    bool note = (nr || f->n >= 3) && !(c->nm & NM_CX);",
+                             "    bool note = (nr || f->n >= 3);")],
 }
 
 

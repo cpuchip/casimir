@@ -375,8 +375,9 @@ stays checked: an overflow means "not a factor", which a true factor never cause
   and then |imaginary part|, so NO REAL ROOTS doesn't occur. Model 33 ignores the bit (its equations read no complex
   number). The bit reaches do_solve only from solve's public paths (SF_CX): start() takes it out of every angle, so
   rule 8's own solve (ir_hole) stays real.
-- **Roots left out (CAS 028):** without the bit (always in model 33), put_solution counts each quadratic factor with
-  no real root, twice its multiplicity, and put_left_out writes `, n CPLX` after SOLVED's or PARTIAL's status:
+- **Roots left out (CAS 028):** without the bit (always in model 33), put_left_out counts each quadratic factor with
+  no real root (quad_roots' negative discriminant), twice its multiplicity, and writes `, n CPLX` after SOLVED's or
+  PARTIAL's status, the text before the line's first `:`:
   `SOLVED, 2 CPLX: X=2`. A factor of degree ≥ 3 left whole adds nothing to n, and NO REAL ROOTS has no note. The note
   goes in only where the line with it fits (191 bytes at most); else the line is as it was, never TOO_LONG for it
   (abacus #10148). The calculator's report shows the status as its first row, 31 cells, and the widest status is

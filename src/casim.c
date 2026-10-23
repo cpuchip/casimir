@@ -4769,19 +4769,26 @@ static bool clear(ctx *c, const rat *co, ipoly *f)
     return true;
 }
 
-/* CAS 028: the n roots the bit would have printed (quadratic factors with no real root, counted with multiplicity) as
-   ", n CPLX" after the status, which ends at s, where the line with it still fits; else the line as it was
-   (abacus #10148: never TOO_LONG for it, and no root dropped) */
-static __attribute__((noinline)) void put_left_out(out_t *w, size_t s, int n)
+/* CAS 028: the roots the bit would have printed, the pair of each quadratic factor with no real root (counted with
+   its multiplicity), as ", n CPLX" after the status (the text before the first ':'), where the line with it still
+   fits; else the line as it was (abacus #10148: never TOO_LONG for it, and no root dropped) */
+static __attribute__((noinline)) void put_left_out(out_t *w, const solve_ws *s)
 {
     char t[16] = ", ";
-    size_t k = 2;
+    size_t k = 2, at = 0;
+    int n = 0;
+    for (int i = 0; i < s->nfac; i++) {
+        const ifac *x = &s->fac[i];
+        if (x->deg == 2 && x->b * x->b - 4 * x->a * x->c < 0) n += 2 * x->mult;    /* quad_roots' d < 0 */
+    }
+    if (!n) return;
     if (n >= 10) t[k++] = (char)('0' + n / 10 % 10);
     t[k++] = (char)('0' + n % 10);
     memcpy(t + k, " CPLX", 5), k += 5;
     if (w->full || w->n + k + 1 > w->cap) return;
-    memmove(w->o + s + k, w->o + s, w->n - s + 1);
-    memcpy(w->o + s, t, k);
+    while (at < w->n && w->o[at] != ':') at++;
+    memmove(w->o + at + k, w->o + at, w->n - at + 1);
+    memcpy(w->o + at, t, k);
     w->n += k;
 }
 
@@ -4790,7 +4797,7 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
 {
     char name[2] = {(char)('A' + var), '\0'};
     iroot *rs;
-    int nr = 0, zero = 0, out = 0;
+    int nr = 0, zero = 0;
     ref room = grab(c, SOLVE_DEG * sizeof(iroot));
     if (!room) return;
     rs = (iroot *)(void *)nd(c, room);
@@ -4812,11 +4819,7 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
     for (int i = 0; i < s->nfac; i++) {
         const ifac *x = &s->fac[i];
         if (x->deg == 1) rational_root(rs, &nr, x->b, x->a, x->mult);
-        else {
-            int k = nr;
-            if (!quad_roots(rs, &nr, x->a, x->b, x->c, x->mult, (c->nm & NM_CX) != 0)) f->n += 2 * x->mult;   /* left */
-            else if (nr == k) out += 2 * x->mult;        /* no real root, and the bit is off: left out (CAS 028) */
-        }
+        else if (!quad_roots(rs, &nr, x->a, x->b, x->c, x->mult, (c->nm & NM_CX) != 0)) f->n += 2 * x->mult;   /* left */
     }
     /* ascending, by value in decimal128 (34 digits); the complex pairs after the reals (root_after) */
     for (int i = 1; i < nr; i++) {
@@ -4828,12 +4831,12 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
     if (f->n >= 3) {
         puts_(w, "PARTIAL, DEGREE "), put_int(w, f->n), puts_(w, " LEFT");
     } else puts_(w, nr ? "SOLVED" : "NO REAL ROOTS");
-    size_t end = w->n;                                  /* the status's end */
+    bool note = (nr || f->n >= 3) && !(c->nm & NM_CX);   /* CAS 028: NO REAL ROOTS says it already */
     for (int i = 0; i < nr; i++) {
         puts_(w, i ? "; " : ": "), puts_(w, name), puts_(w, "=");
         put_root(w, &rs[i]);
     }
-    if (out && (nr || f->n >= 3)) put_left_out(w, end, out);    /* NO REAL ROOTS says it already */
+    if (note) put_left_out(w, s);
 }
 
 static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var, int angle, char *out, size_t cap,

@@ -1,9 +1,10 @@
 # CAS work unit 028: say when solve leaves complex roots out
 
-**From:** casim · **To:** abacus · **Status:** revised after abacus's rulings (#10137, #10148): shape 1, the wording
+**From:** casim · **To:** abacus · **Status:** built (§As built), with the wording `, n CPLX` (soroban #10154,
+abacus #10163) and h028 frozen (#10167). ~~revised after abacus's rulings (#10137, #10148): shape 1, the wording
 as drafted unless soroban's width check needs it shorter, model 33 too, 1.1.0, and at the cap the note gives way
 (§Ruled, #10148). The build waits on soroban's width answer (#10143); h028 is frozen before it lands. Nothing is
-built. Every measurement here was run on 1.0.1's CLI (c40422c). casim writes the unit;
+built.~~ Every measurement before §As built was run on 1.0.1's CLI (c40422c). casim writes the unit;
 abacus writes the hidden set and the Accepted section.
 - **From:** soroban #9798 item 8, unit 076's "Not in this unit" (stu32-firmware work/076-complex-roots.md). abacus
   put it first on casim's post-1.0 list (#9803).
@@ -197,3 +198,73 @@ Grepped on lepton, 2026-10-23, for `SOLVED`, `NO REAL ROOTS`, `PARTIAL, DEGREE` 
 3. **The golden:** 84 lines in each corpus (44/17/23).
 4. **primer:** abacus grepped its 11 checkouts on fermion. The only hits are copies of firmware and casimir docs under
    build/ and third_party/, refreshed at primer's repin; nothing in primer's own source reads solve's status.
+
+## Ruled (soroban #10154, abacus #10163 and #10167)
+
+1. **The wording: `, n CPLX`.** The calculator's status row is 31 cells, so `n COMPLEX LEFT OUT` doesn't fit there
+   (soroban #10154). The widest status is `PARTIAL, DEGREE 10 LEFT, 2 CPLX`, 31 cells: the degree left and n together
+   are at most 12 (SOLVE_DEG), so a two-digit degree left comes with n ≤ 2 (soroban confirmed the bound, #10160).
+   Accepted (#10163), and model 33 with the bit set gets the note too, as without it.
+2. **h028 frozen** (#10167): 284 rows, sha256 882a92896b42d62431e0250e1bc85f2504b55b197930de5311e3f42628cd39c4
+   (abacus 7fdf788). The build lands when CI is green, with the new branch's mutants, one of them the note ignoring
+   the cap.
+
+## As built (over c96b328)
+
+- **src/casim.c:** put_left_out (noinline) counts each quadratic factor in solve's list whose discriminant is
+  negative, the branch where quad_roots drops a pair without the bit, twice its multiplicity. It writes `, n CPLX`
+  before the line's first `:` (at its end for PARTIAL with no root) where the line with it fits 191 B. Otherwise it
+  returns, and the line is as it was. put_solution calls it after the roots when the bit is off (always in model 33:
+  solve_flags drops it) and the status isn't NO REAL ROOTS.
+  The first build (697f94e) counted the pairs in put_solution's factor loop and kept the status's end. On the S3
+  that took put_solution's frame 400 → 416, which the frame rule doesn't allow. The count moved into put_left_out,
+  and put_solution's factor loop is c96b328's again.
+- **The oracle:**
+  - tests/solve_test.c judges n on the seeded polynomials twice: against their construction, and against the
+    bit's own answer (n is the bit-on count less the noted line's). 2,199 polynomials judged, 0 wrong, 487 past the
+    bounds; with the bit, 2,190, 0 wrong.
+  - Its left_out table pins the routes, model 33 with and without the bit, the bit's lines unchanged, `X^4+4`,
+    `X^4+1`, `X^3-2`, steps' `X^4+X^2=0`, the widest statuses, and the boundary byte for byte. A line that is 191 B
+    with the note gets it, and one of 184 B, which the note would take to 192, keeps its bytes.
+- **The golden:** 84 lines move in each corpus (tests/golden/moved/cas-028.txt). scripts/left-out-golden.py (make
+  check) proves each is its before with `, n CPLX`, n what the bit adds. Every other solve line has n = 0 or a note
+  that doesn't fit, and with the befores put back, both files are c96b328's byte for byte. 339 checks, 0 failed.
+  Falsified before it was trusted: a wrong n planted gave 2 failures, and a dropped entry failed the completeness
+  check and the hash. The older boundary scripts (conditions, signs, ratio) list cas-028.txt among their later moves.
+- **Docs and examples:**
+  - work/028-examples.txt has 17 rows. work/005-examples.txt V0009 and V0015 and work/020-examples.txt line 27
+    move.
+  - docs/language.md gains "Roots left out", which says n counts only the roots factoring finds (#10148 (2)). Its
+    steps example `X^4+X^2=0` moves. canonical-form.md and casim.h's status comment follow.
+  - The doc examples: 1,724 checks on both routes, 0 failed.
+- **make test:** green, 20 tests, 118,439 checks: the first form at 12:51–12:55Z (claim #10174), and the rework at
+  20:29–20:34Z (claim #10184, 4 min 49 s, peak RSS 238,808 KiB).
+- **Mutants:** ten new, in CAS 028's block of scripts/mutants.py:
+  - the note off;
+  - at the cap: TOO_LONG in place of the line; the note ignoring the cap, kept over the roots' last bytes
+    (#10167); the note giving way one byte early;
+  - the multiplicity ignored;
+  - NO REAL ROOTS noted; PARTIAL with no root unnoted;
+  - every quadratic counted;
+  - the note after the roots;
+  - the note with the bit on too.
+
+  10 of 10 caught on the rework (three shards, 20:44–20:51Z, claim #10184). The cap-ignored mutant is caught by
+  the 191 B row (work/028-examples.txt:51). The first form's nine were caught too: seven at 12:55–13:00Z, and two at
+  20:24–20:25Z, rerun after they were fixed to compile. 445 mutants in all, each anchor found once.
+- **Frames:**
+  - Host: 423 as recorded; put_left_out (80) is the one new.
+  - S3: c96b328's 419 as they were (put_solution.constprop 400, do_solve, solve_ in place), and put_left_out
+    48. No frame moved.
+- **S3 text: 242,532 B, +679 over 1.0.1's 241,853** (19,612 under decision 80's 262,144). bss 0. The first form was
+  +437; holding the frame cost 242 B. Host text +792 B (346,920 over 346,128).
+- **The device bench** (scripts/device.sh at 16,384 B, 20:51–21:09Z, claim #10184): DEVICE PASS, all 1,369 cases
+  byte for byte as the host (scripts/measure.py's five new `cplx` rows among them). The worst stack is 11,360 masked
+  (STU chain X^ 44 d, as at 1.0.1) plus interrupts 384: 11,744 of 12,288. The five rows take at most 4,360 B of arena
+  and 1,936 B of stack. The container's peak was 894,554,112 B (its cgroup's memory.peak). The first form's bench
+  (20:25–20:44Z) also passed, 11,760 of 12,288 with an excess of 400.
+- **The cap, re-measured with `, n CPLX`** (cap028.py with the ruled note, on 1.0.1's CLI): the golden, 0. The
+  near-cap family, 59 of 1,416 noted lines past 191 at seed 1 and 69 of 1,403 at seed 2 (210 and 213 with the
+  drafted note). The shortest that give way are 184 B today. The 172 B example in §The cap now gets the note (180 B).
+  So 1.1.0's Not yet needs a 184 B line, such as solve_test's
+  `(7×X-2)×(3×X^2-9×X-7)×(8×X^2+3×X-2)×(8×X-3)×(X^2-3×X+8)×(8×X^2+6×X-1)×(1×X^2+9×X+3)`.
