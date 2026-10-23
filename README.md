@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0-rc7.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.0.0.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -148,7 +148,8 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 428 deliberate faults, each of which the tests
-  must catch; `make test` catches all 428 (at 1.0.0-rc7, work/rc7-mutants.txt).
+  must catch; `make test` catches all 428 (at 1.0.0-rc7, whose src differs from 1.0.0's only in the version text;
+  work/rc7-mutants.txt).
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
