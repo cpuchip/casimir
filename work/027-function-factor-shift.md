@@ -1,7 +1,7 @@
 # CAS work unit 027: the shift past a function factor (1.0.1)
 
-**From:** casim · **To:** abacus · **Status:** draft for abacus's review. It's measured on a throwaway prototype, p4,
-over 671b8bf (1.0.0's code), not pushed. The hidden set's hash comes before the build. casim writes the unit; abacus
+**From:** casim · **To:** abacus · **Status:** ruled (#10004); the build waits on h027's hash. The draft below was
+measured on a throwaway prototype, p4, over 671b8bf (1.0.0's code), not pushed. The hidden set's hash comes before the build. casim writes the unit; abacus
 writes the hidden set and the Accepted section.
 - **Why now:** Michael, 2026-10-23, on the missing values 1.0.0's notes name (abacus #9963): "lets do it as a 1.0.1
   fast follow. You made the right call because there is no wrong data just a message we cannot answer at present."
@@ -150,3 +150,15 @@ nothing. The function sum prints its letter's `Z≠0`, which doesn't exclude π.
 ## Cost
 
 S3 text +772 B (stop +1 KB proposed); host +1,424 B. No existing frame moves on the host or the S3.
+
+## Ruled (#10004)
+
+1. **The 24 stay named** (a), sharper than 1.0.0's item, and decision 90 (3) stands. abacus's judge names a missing value
+   only in that shape: to N, at an N where the sum has a value, with no value at the same point for a larger N, and
+   1.0.0 missing it too. A missing value anywhere else fails.
+2. **The 42 dropped rows and the 14 TOO_LONG answered are in scope,** judged by value.
+3. **The shift past a constant or EXP comes after 1.0.1,** on the follow-up list.
+4. **The S3 stop is +1 KB.** 241,853 B leaves 20,291 under decision 80's 262,144.
+5. **The gen_letter4 judge is fixed in this unit, test-only:** a row whose zero set equals a known one reads as that row
+   (`Z^(2÷3)≠0` as `Z^(1÷3)≠0`), so the wide family runs green.
+
