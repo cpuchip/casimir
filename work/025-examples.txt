@@ -57,13 +57,14 @@
 #   lo-1 to -2 (X^2×(X÷Y^2)^(N+1) at N = -2; the shift by lo gives a rational ratio one, #9572). And what was a known
 #   wrong answer at 0c84d44: a term that divides by a function of a letter, K×(SIN(Z)×Y)^K÷SIN(Z) from 0, whose first
 #   term is 0×SIN(Z)^(-1), printed a value where SIN(Z) = 0 (abacus #9698); CAS 026 (decision 90) gives the last two
-#   rows their factor rows
+#   rows their factor rows. CAS 027 (1.0.1) shifts past a function factor: K×(SIN(Z)×Y)^K÷Y from 1 drops its Y≠0 (the
+#   sum is SIN(Z) at Y = 0, and so is the answer)
 | Command | Prints |
 |---|---|
 | `casim sum '(K-1)×(SQRT(2)×X×Y)^K÷X' K 1 ∞ RAD` | `X×Y×SQRT(2)÷(X-X^2×Y×SQRT(2))-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2)+Y×SQRT(2)÷(X×Y×SQRT(2)-1); X≠0; ABS(X×Y×SQRT(2))<1` |
 | `casim sum '(K-1)×(X×Y)^K÷X' K 1 ∞ RAD` | `-X×Y^2÷2÷(X×Y-X^2×Y^2÷2-1÷2); ABS(X×Y)<1` |
 | `casim sum '(K-1)×(π×Y)^K÷Y' K 1 N RAD` | `-N×(Y×π)^(N+1)÷(Y-Y^2×π)+Y×π÷(Y-Y^2×π)-Y×π^2÷2÷(Y×π-Y^2×π^2÷2-1÷2)+π×(Y×π)^(N+1)÷2÷(Y×π-Y^2×π^2÷2-1÷2)+π÷(Y×π-1); Y≠0; Y×π≠1` |
-| `casim sum 'K×(SIN(Z)×Y)^K÷Y' K 1 ∞ RAD` | `Y×SIN(Z)÷(Y-Y^2×SIN(Z))-Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum 'K×(SIN(Z)×Y)^K÷Y' K 1 ∞ RAD` | `-Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-SIN(Z)÷(Y×SIN(Z)-1); ABS(Y×SIN(Z))<1` |
 | `casim sum '(X÷Y)^K÷X' K 1 N RAD` | `-1÷(X-Y)-(X÷Y)^(N+1)÷(X-X^2÷Y); X≠0; Y≠0; X÷Y≠1` |
 | `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1` |
 | `casim sum 'X^(K+2)×Y^(-2×K)' K -2 N RAD` | `X^2×(X÷Y^2)^(N+1)÷(X÷Y^2-1)-Y^4÷(X÷Y^2-1); Y≠0; X÷Y^2≠1` |

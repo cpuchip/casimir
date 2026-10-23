@@ -419,6 +419,15 @@ def all_cases():
             ("factor K×SIN(Z)^(K-1) from -1 to N", "K×SIN(Z)^(K-1)", "-1|N"),
             ("factor K×(EXP(Z)×Y)^K÷EXP(Z) to ∞", "K×(EXP(Z)×Y)^K÷EXP(Z)", "0|∞")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 027 (work/027-function-factor-shift.md): the shift past a function factor, from 1 to ∞ and to N, at LN's zero,
+    # a negative shift from -1 (rule 4), and a sum that was TOO_LONG at 1.0.0
+    for name, expr, repl in [
+            ("shift K×(SIN(Z)×Y)^K÷SIN(Z) from 1 to ∞", "K×(SIN(Z)×Y)^K÷SIN(Z)", "1|∞"),
+            ("shift SIN(Z)^(2×K-1)×Y^K to N", "SIN(Z)^(2×K-1)×Y^K", "1|N"),
+            ("shift K×LN(Z)^(2×K-1)×Y^K to ∞", "K×LN(Z)^(2×K-1)×Y^K", "1|∞"),
+            ("shift (SIN(Z)×Y)^K×SIN(Z) from -1 to N", "(SIN(Z)×Y)^K×SIN(Z)", "-1|N"),
+            ("shift K×SIN(Z)^(K-1) from 1 to N", "K×SIN(Z)^(K-1)", "1|N")]:
+        rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
     for n in (40, 43):              # the walk's own depth: nests continuity can't settle, up to the guard
         rows.append((f"l EXP nest {n} at ∞", "EXP(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))
         rows.append((f"l LN nest {n} at ∞", "LN(" * n + "X" + ")" * n, "X", "RAD", "limit", "∞|", "35"))

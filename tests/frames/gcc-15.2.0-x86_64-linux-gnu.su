@@ -367,6 +367,7 @@ ser	64
 sgn_count	64
 sm_add	112
 sm_anti	224
+sm_atom	144
 sm_bound	64
 sm_cmpabs	80
 sm_den	112

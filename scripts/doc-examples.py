@@ -18,7 +18,7 @@ DOCS = [os.path.join(ROOT, "docs", "language.md"), os.path.join(ROOT, "work", "0
         os.path.join(ROOT, "work", "019-examples.txt"), os.path.join(ROOT, "work", "020-examples.txt"),
         os.path.join(ROOT, "work", "022-examples.txt"), os.path.join(ROOT, "work", "023-examples.txt"),
         os.path.join(ROOT, "work", "024-examples.txt"), os.path.join(ROOT, "work", "025-examples.txt"),
-        os.path.join(ROOT, "work", "026-examples.txt")]
+        os.path.join(ROOT, "work", "026-examples.txt"), os.path.join(ROOT, "work", "027-examples.txt")]
 CLI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "casim")   # or CAS 022's check build
 OFF = os.path.join(ROOT, "build", "casim-ser0")
 MOVED = os.path.join(ROOT, "tests", "golden", "moved", "cas-021-examples.txt")

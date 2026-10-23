@@ -1,8 +1,8 @@
 # CAS work unit 027: the shift past a function factor (1.0.1)
 
-**From:** casim · **To:** abacus · **Status:** ruled (#10004); the build waits on h027's hash. The draft below was
-measured on a throwaway prototype, p4, over 671b8bf (1.0.0's code), not pushed. The hidden set's hash comes before the build. casim writes the unit; abacus
-writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built (h027 frozen #10060; ruled #10004 and #10068); acceptance is
+abacus's. The draft below was measured on a throwaway prototype, p4, over 671b8bf (1.0.0's code); As built is the
+build's. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **Why now:** Michael, 2026-10-23, on the missing values 1.0.0's notes name (abacus #9963): "lets do it as a 1.0.1
   fast follow. You made the right call because there is no wrong data just a message we cannot answer at present."
   One unit for 1.0.1; 1.0.0 stays as it is.
@@ -162,3 +162,77 @@ S3 text +772 B (stop +1 KB proposed); host +1,424 B. No existing frame moves on 
 5. **The gen_letter4 judge is fixed in this unit, test-only:** a row whose zero set equals a known one reads as that row
    (`Z^(2÷3)≠0` as `Z^(1÷3)≠0`), so the wide family runs green.
 
+
+h027 was frozen before the build (#10060): sha256 35da60c2683deb6ddeb899101605cbbf26faf05421a3fb575ebebfe8236db5e9, 126
+rows. In scope, judged on rows and values: the class from lo ≥ 1 for SIN, COS, TAN and LN, the 24's shapes, the
+letter's own 0 from −1, and the rows 1.0.0 carries for nothing. The same as 1.0.0 byte for byte: rule 2's kept forms,
+the never-0 factors and the constant, factor rows from lo 0 and 1, CAS 025's letter rows, and lo = M. Counted, not
+failed: missing values with two factors, which rule 1 doesn't claim.
+
+## Ruled (#10068)
+
+The build's judge found one more shape in the wide draws (gen_letter4, 1,500 per seed on 20261101 and 20261102: one
+failure on each seed). It is outside the 24's shape: summed to ∞ from lo < 0 with q 0 at lo. A grid around it (the
+eight factors × q one of 1, K, K+1, K+2 and K−1 × F^(K), F^(K+1), F^(K+2) × Y^K × lo −2 and −1 × to N and to ∞) gives
+12, all to ∞, and 1.0.0 prints the same 12 byte for byte: `(K+1)×F^(K+1)×Y^K` and `(K+1)×F^(K+2)×Y^K` from −1, and
+`(K+2)×F^(K+2)×Y^K` from −2, with F one of SIN(Z), COS(Z), TAN(Z) and LN(Z). `(K+1)×SIN(Z)^(K+1)×Y^K` from −1 to ∞
+prints `Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1`, which is 0÷0 at Z = π, where
+every term is 0. Each one's rational twin prints `X≠0`, 1.0.0's named row for nothing from a negative bound (CAS 024: to
+∞ there is no N power, so no shift). The same grid's 24 to-N failures at 1.0.0, the build fixes.
+
+Ruled (a): they are named beside the 24 in 1.0.1's notes, and go on the follow-up list with 1.0.0's negative-bound item.
+It's the same partition as #10004 (1): the build leaves a missing value exactly where the rational twin uses a row. The
+judge names the shape by its definition, not by a list: to ∞, lo < 0, q 0 at lo (its term at lo is 0 off the factor's
+zeros). abacus's judge also asks that 1.0.0 missed it. h027 has no row from lo < 0 to ∞.
+
+## As built (over 53cef23)
+
+- **src/casim.c:** p4's shape, byte for byte in its code (comments rewritten): sm_atom (noinline) reads a factor of B
+  that holds a letter and isn't a letter at a whole power as h^m and returns s_h, −1 for none or for a factor that is
+  never 0; sm_shift counts it as one more letter, flags it in rowl's bit 31 and returns no shift unless the lo is whole
+  and s ≤ lo; the shift is kept in rowl's bits 26–30 (two's complement), and sm_rowf asks CAS 026's test at lo − s.
+  sm_powf is always inline. On all 640 sums of CAS 026's two probe sets the build prints what p4 printed, so the
+  measurements above are the build's.
+- **The oracle, sum-values.py's fourth family:** the missing-value judge. At each zero of F where the sum has a value
+  and no row with a value is false there, the answer has one, and it is the sum's. To N, a point where the sum has none
+  for a larger N is the 24's shape, named; to ∞ from lo < 0 with q 0 at lo is #10068's, named. F is drawn at power 3
+  too. Planted first, refused: 1.0.0's answers for the class (`K×SIN(Z)^(K-1)×Y^K` from 1 to ∞; `SIN(Z)^(2×K-1)×Y^K`
+  from 1 to N, which has a value at π for every N, so it isn't the 24's shape), a value moved at F's zeros alone, a
+  value removed at F's zeros from lo < 0 with q not 0 at lo; taken: the build's, the 24's shape and #10068's, each
+  named. 13 held rows: the class from lo ≥ 1 for SIN, COS, TAN and LN (5), the 24's shape (2), #10068's, its
+  boundary (`K×SIN(Z)^(K+1)×Y^K` from −1 to ∞, q not 0 at lo, a value at π), the letter's own 0 from −1 for SQRT, ABS
+  and Z^(1÷3), and the zero-set draw. On the build: 549 checks, 0 failed. On 1.0.0's CLI: 9 failed, the 7 held class
+  rows and 2 seeded draws (LN from 1 to N, COS from 3 to ∞).
+- **The gen_letter4 fix (#10004 (5)), test-only, its own commit, 53cef23:** a row p≠0 whose p is a power of F or of Z, 0 at
+  each of F's zeros and at none of the points off them, reads as F's row. On 1.0.0's code the wide seed 20261101 runs
+  green (it had failed one sum, `Z^(2÷3)≠0`); planted first, that answer and a `SIN(Z)^2≠0` taken, a `Z^2≠0` for
+  `SIN(Z)≠0` refused.
+- **Wide** (gen_letter4, 1,500 draws, the final judge): the build, 0 failures on 20261101 and 0 on 20261102 (named: Y 45
+  and 29, Z 93 and 103, the 24's shape 103 and 98, #10068's 1 and 1); 1.0.0, 62 and 61, every one a missing value.
+- **work/027-examples.txt,** 17 rows: rule 1's five from the table above and the letter's own 0 from −1; two rows
+  dropped and a TOO_LONG answered; rule 2's two kept forms and rule 3's `X≠0`; rule 4's shift of −1 from −1; the 24's
+  shape and #10068's. work/026-examples.txt line 47 and work/025-examples.txt line 67 rewritten; docs/language.md gains
+  the sentence. Doc examples: 1,684 checks on both routes, 0 failed; through 1.0.0's CLI, the 12 moved rows fail.
+- **Mutants:** seven new (scripts/mutants.py, CAS 027's block), run with the 23 of CAS 024–026 that cover the same
+  code: 30 of 30 caught (three shards, 08:16–08:33Z). make test stops at its first failing step, so each is named by
+  the doc examples' pins. Run alone against each mutant's CLI, sum-values' judge catches five of the seven: the factor
+  not read (9 failures), the shift from the wrong bits (7), rule 4 off (3), the atom's s rounded down (2) and the
+  ceiling (1); the source unmutated, built the same way, 0. The other two change forms the judge reads as right
+  values, which is what rules 2 and 3 keep: rule 2 off trades `SIN(Z)≠0` for `Z≠0` where the sum has no value at π
+  either, and a never-0 factor shifted past drops an `X≠0` the sum doesn't need. Both are caught by 026's and 027's
+  rows, byte for byte, as h027 checks them.
+- **make check, make test:** green (claim #10070, go #10071; make test 4 min 59 s, peak RSS 237,832 KiB, the clang
+  container 133.5 MiB sampled).
+- **Frames:** host, 422 as recorded (sm_atom 144, recorded); S3, the 418 of 1.0.0 as they were (sm_shift 128,
+  sm_rowf 144, do_sum_ 656) and sm_atom 96. No frame moved.
+- **S3 text: 241,853 B, +772 over 1.0.0's 241,081** (the stop +1 KB; 20,291 under decision 80's 262,144). bss 0. Host
+  text +1,424 B. The size-s3 container's peak 230,464 KiB.
+- **The device bench** (scripts/device.sh at 16,384 B, 08:35–08:53Z): DEVICE PASS, all 1,364 cases byte for byte as
+  the host (1.0.0's 1,359 and five CAS 027 rows in scripts/measure.py); the worst stack 11,360 masked (STU chain X^ 44
+  d, as at 1.0.0) plus interrupts 384, 11,744 of 12,288. The five rows take at most 4,752 B of arena and 2,560 B of
+  stack. The container's peak 783,944 KiB.
+- **For 1.0.1's notes (Not yet):** the 24's shape (#10004 (1)) and #10068's, sharper than 1.0.0's item: a missing value
+  at a function factor's zero only where the rational twin prints a row for nothing, to N at an N before the first term
+  that divides by the factor, and to ∞ from lo < 0 with q 0 at lo (with 1.0.0's negative-bound item, whose fix it
+  shares); the shift past a constant or a factor that is never 0 (#10004 (3)), 1.0.0's rows-for-nothing item less the
+  letter in a function.

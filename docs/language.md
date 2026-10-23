@@ -676,7 +676,9 @@ merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), wit
 X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`. A factor of the ratio that holds a
 letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
 0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
-the same, unless the answer itself has no value there. A factor that is never 0 (EXP, COSH, 2^Z) gets none.
+the same, unless the answer itself has no value there. A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
+its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
+`-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
 
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
 (SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.

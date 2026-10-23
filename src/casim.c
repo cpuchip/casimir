@@ -11992,7 +11992,9 @@ typedef struct {
     ref B;                              /* the ratio; 0 for a polynomial */
     ref q[SM_DEG + 1];                  /* q(var)'s coefficients, free of var */
     int d;
-    unsigned rowl;                      /* CAS 024: B's letters a term from lo divides by, whose L≠0 rows stand */
+    unsigned rowl;                      /* CAS 024: B's letters a term from lo divides by, whose L≠0 rows stand;
+                                           CAS 027: bits 26-30 the shift (two's complement), bit 31 a factor of
+                                           sm_atom's */
 } smgroup;
 
 typedef struct {
@@ -12481,7 +12483,7 @@ static int sm_powof(ctx *c, ref t, int L)
 /* CAS 026: g's power among t's factors, 0 when g isn't one (sm_powof for a factor that isn't a letter at a whole power:
    SIN(Z), and a letter's fraction powers). g is b^r (SQRT(Z) is Z^(1÷2)) or b itself, and a factor b^s is g^(s÷r),
    rounded down */
-static int sm_powf(ctx *c, ref t, ref g)
+static inline __attribute__((always_inline)) int sm_powf(ctx *c, ref t, ref g)
 {
     const node *x = nd(c, t);
     const ref *f = x->kind == K_MUL ? list(c, x->a) : &t;
@@ -12503,6 +12505,26 @@ static int sm_powf(ctx *c, ref t, ref g)
     return 0;
 }
 
+/* CAS 027: a factor f of B that holds a letter and isn't a letter at a whole power, as h^m (m whole, 0 < m <= SM_DEG):
+   the least s that clears q's negative powers of h (q(var+s)×B^s); -1 when f isn't such a factor, or is never 0 (EXP,
+   ALOG, COSH, a positive number to a power). Out of line: sm_shift's frame */
+static __attribute__((noinline)) int sm_atom(ctx *c, const smgroup *g, ref f)
+{
+    const node *x = nd(c, f);
+    ref h = f;
+    int m = 1, sl = 0;
+    if (x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q == 1) h = x->a, m = (int)val(c, x->b)->p;
+    if (m <= 0 || m > SM_DEG || !any_letter(c, h)) return -1;
+    x = nd(c, h);
+    if (x->kind == K_FN && (1u << x->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) return -1;
+    if (x->kind == K_POW && is_num(c, x->a) && val(c, x->a)->p > 0) return -1;
+    for (int j = 0; j <= g->d; j++) {
+        int e = sm_powf(c, g->q[j], h);
+        if (e < 0 && (-e + m - 1) / m > sl) sl = (-e + m - 1) / m;
+    }
+    return sl;
+}
+
 /* rule 4b, abacus #8349: a letter group q(var)×B^var whose q holds a negative power of B's letter L (K×X^(K-1): q is
    K÷X) is summed shifted, as q(var+s)×B^s×B^var over lo-s .. hi-s, with s the least that clears them; the answer then
    divides by no power of L, and needs no row for L = 0 that the sum doesn't. g->q becomes q(var+s)×B^s; returns s, 0
@@ -12514,6 +12536,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
     unsigned rl = 0;
     bool other = false;
     ref Bs;
+    int sl;
     if (!g->B) return 0;
     n = nd(c, g->B)->kind == K_MUL ? nd(c, g->B)->n : 1;
     /* CAS 024: each letter of B at a whole power m > 0 (Y^K×X^(K-1)'s X×Y too); any other factor than a number: no
@@ -12522,7 +12545,9 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
        powers in the answer at N = lo-1. For lo >= 0 that is the largest s_L <= lo (0 when none clears a power: today's
        forms); for lo < 0 and a finite hi, s = lo (X^(K+2)×Y^(K+1) from -1 is 0 at N = -2, X = 0). To ∞ there is no N
        power, so no shift. A letter whose s_L passes lo has a term that divides by it, and keeps its row. CAS 025
-       (abacus #9687): the rows are read past any other factor (SQRT(2), SIN(Z), Y^(-1)), which still stops the shift */
+       (abacus #9687): the rows are read past any other factor (SQRT(2), SIN(Z), Y^(-1)), which still stops the shift.
+       CAS 027: a factor sm_atom reads (SIN(Z), SQRT(Z), LN(Z)) is one more letter, h, where the shift clears it (a
+       whole lo, s <= lo); any other (SQRT(2), EXP(Z), Y^(-1)) still stops it */
     for (int i = 0; i < n; i++) {
         ref f = nd(c, g->B)->kind == K_MUL ? list(c, nd(c, g->B)->a)[i] : g->B;
         const node *x = nd(c, f);
@@ -12532,7 +12557,12 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
         else if (x->kind == K_POW && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26 && is_num(c, x->b) &&
                  val(c, x->b)->q == 1 && val(c, x->b)->p > 0 && val(c, x->b)->p <= SM_DEG)
             L = nd(c, x->a)->id, m = (int)val(c, x->b)->p;
-        else {
+        else if ((sl = sm_atom(c, g, f)) >= 0) {
+            nl++, rl |= 1u << 31;                  /* bit 31: B holds such a factor */
+            if (sl > s) s = sl;
+            if (sl <= low && sl > cap) cap = sl;
+            continue;
+        } else {
             /* L^m, m < 0: term K holds L^(e+m×K), so from some K on the terms from lo divide by L (to N, for N past
                it). Its row stands: B's own row (ABS(X÷Y)<1) has no value at L = 0, so it can't exclude it (abacus
                #9687 (2)) */
@@ -12542,8 +12572,8 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
             other = true;
             continue;
         }
-        int sl = 0, lp = SM_DEG * SM_DEG;
-        nl++;
+        int lp = SM_DEG * SM_DEG;
+        sl = 0, nl++;
         for (int j = 0; j <= g->d; j++) {
             int e = sm_powof(c, g->q[j], L);
             if (e < 0 && (-e + m - 1) / m > sl) sl = (-e + m - 1) / m;
@@ -12558,6 +12588,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
     g->rowl = rl;
     if (other) return 0;
     if (nl > 1) s = !whole ? 0 : low < 0 && !inf ? low : cap;
+    if (rl >> 31 && (!whole || s > low)) return 0;          /* past a factor only where the shift clears it */
     if (s == 0 || s > SM_DEG || s < -SM_DEG) return 0;
     Bs = power(c, g->B, sm_int(c, s));
     for (int i = 0; i <= g->d; i++) {
@@ -12572,6 +12603,7 @@ static __attribute__((noinline)) int sm_shift(ctx *c, smgroup *g, ref lo, bool i
         }
         g->q[i] = ib_canon(c, expand_fully(c, ib_canon(c, mul2(c, Bs, t))));
     }
+    g->rowl |= (unsigned)(s & 31) << 26;                /* the shift, for sm_rowf (bits 26-30) */
     return c->st == CASIM_OK ? s : 0;
 }
 
@@ -12766,7 +12798,7 @@ static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgr
             int p = is_k(c, g->q[j], 0, 1) ? e : sm_powf(c, g->q[j], h);
             if (p < e) e = p;
         }
-        if (mf > 0 && e + mf * (int)S->a >= 0) continue;
+        if (mf > 0 && e + mf * ((int)S->a - (((int)(g->rowl >> 26 & 31u) ^ 16) - 16)) >= 0) continue;
         /* the probe: a root or ABS of a letter is 0 where the letter is, so that letter is put to 0 (the answer may hold
            Z beside SQRT(Z)); any other factor is replaced by K, the sum's own letter, which is in no answer, put to 0 */
         if (x->kind == K_VAR) hl = x->id;

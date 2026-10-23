@@ -1235,6 +1235,26 @@ MUTANTS = {
     "factor026-not-asked": [("src/casim.c",
                              "    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */",
                              "    (void)sm_rowf;              /* referenced, or -Werror refuses the build and nothing is tested */")],
+    # CAS 027 (work/027-function-factor-shift.md; abacus #10004, #10068): the factor not read (sm_atom refusing every
+    # factor that holds a letter); rule 2 off (a shift past lo); rule 4 off (CAS 026's row test at the unshifted lo);
+    # the shift read from the wrong bits; a never-0 factor read as one with zeros (EXP(Z) shifted past, its X≠0
+    # dropped); sm_powf's floor read as a ceiling; the atom's s rounded down, so the shift doesn't clear the factor
+    "factor027-atom-off": [("src/casim.c", "    if (m <= 0 || m > SM_DEG || !any_letter(c, h)) return -1;",
+                            "    if (m <= 0 || m > SM_DEG || any_letter(c, h)) return -1;")],
+    "factor027-rule2-off": [("src/casim.c", "    if (rl >> 31 && (!whole || s > low)) return 0;",
+                             "    if (rl >> 31 && !whole) return 0;")],
+    "factor027-rule4-off": [("src/casim.c", "e + mf * ((int)S->a - (((int)(g->rowl >> 26 & 31u) ^ 16) - 16)) >= 0",
+                             "e + mf * (int)S->a >= 0")],
+    "factor027-shift-bits": [("src/casim.c", "(((int)(g->rowl >> 26 & 31u) ^ 16) - 16)",
+                              "(((int)(g->rowl >> 27 & 31u) ^ 16) - 16)")],
+    "factor027-never-zero-read": [("src/casim.c",
+                                   "    if (x->kind == K_FN && (1u << x->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) "
+                                   "return -1;\n", "")],
+    "factor027-powf-ceiling": [("src/casim.c", "            return t >= 0 ? t / u : -((-t + u - 1) / u);",
+                                "            return t >= 0 ? (t + u - 1) / u : -(-t / u);")],
+    "factor027-atom-s-floor": [("src/casim.c",
+                                "        int e = sm_powf(c, g->q[j], h);\n        if (e < 0 && (-e + m - 1) / m > sl) sl = (-e + m - 1) / m;",
+                                "        int e = sm_powf(c, g->q[j], h);\n        if (e < 0 && -e / m > sl) sl = -e / m;")],
 }
 
 
