@@ -1,0 +1,320 @@
+CAS 027's prototype p4 over 671b8bf (1.0.0's code): the 105 of 640 function-factor sums whose answer moves
+(work/027-function-factor-shift.md). Each: the sum (K from lo to hi, RAD), what moved, 1.0.0's answer, p4's.
+A value gained is at the factor's zeros (SIN and TAN at 0 and π, COS at π÷2, LN at 1, SQRT, ABS and Z^(1÷3) at 0),
+by the missing-value probe; a row dropped excluded a point where the sum has a value, which p4's answer gives.
+
+K×(SIN(Z)×Y)^K÷SIN(Z) 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×SIN(Z)÷(SIN(Z)-Y×SIN(Z)^2)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1
+  p4:    -Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1
+K×(SIN(Z)×Y)^K÷SIN(Z) 2..∞: value gained; dropped Z≠0
+  1.0.0: 2×Y^2×SIN(Z)^2÷(SIN(Z)-Y×SIN(Z)^2)-Y^3×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1
+  p4:    -2×Y^2×SIN(Z)÷(Y×SIN(Z)-1)-Y^3×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1
+K×SIN(Z)^(K-1) 1..∞: value gained; dropped Z≠0
+  1.0.0: SIN(Z)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; ABS(SIN(Z))<1
+  p4:    -1÷(SIN(Z)-1)-SIN(Z)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); ABS(SIN(Z))<1
+K×SIN(Z)^(K-1) 2..∞: value gained; dropped Z≠0
+  1.0.0: 2×SIN(Z)^2÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^2÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; ABS(SIN(Z))<1
+  p4:    -2×SIN(Z)÷(SIN(Z)-1)-SIN(Z)^2÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); ABS(SIN(Z))<1
+(K-1)×(SIN(Z)×Y)^K÷SIN(Z) 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×SIN(Z)÷(SIN(Z)-Y×SIN(Z)^2)+Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1
+  p4:    -Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1
+(K-1)×(SIN(Z)×Y)^K÷SIN(Z) 2..∞: value gained; dropped Z≠0
+  1.0.0: Y^2×SIN(Z)÷(Y×SIN(Z)-1)+2×Y^2×SIN(Z)^2÷(SIN(Z)-Y×SIN(Z)^2)-Y^3×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1
+  p4:    -Y^2×SIN(Z)÷(Y×SIN(Z)-1)-Y^3×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1
+(SIN(Z)×Y)^K×SIN(Z) -1..N: value gained
+  1.0.0: 1÷(Y-Y^2×SIN(Z))+SIN(Z)×(Y×SIN(Z))^(N+1)÷(Y×SIN(Z)-1); Y≠0; Y×SIN(Z)≠1
+  p4:    1÷(Y-Y^2×SIN(Z))-(Y×SIN(Z))^(N+2)÷(Y-Y^2×SIN(Z)); Y≠0; Y×SIN(Z)≠1
+K×(COS(Z)×Y)^K÷COS(Z) 1..∞: value gained
+  1.0.0: Y×COS(Z)÷(COS(Z)-Y×COS(Z)^2)-Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+  p4:    -Y÷(Y×COS(Z)-1)-Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+K×(COS(Z)×Y)^K÷COS(Z) 2..∞: value gained
+  1.0.0: 2×Y^2×COS(Z)^2÷(COS(Z)-Y×COS(Z)^2)-Y^3×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+  p4:    -2×Y^2×COS(Z)÷(Y×COS(Z)-1)-Y^3×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+K×COS(Z)^(K-1) 1..∞: value gained
+  1.0.0: COS(Z)÷(COS(Z)-COS(Z)^2)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; ABS(COS(Z))<1
+  p4:    -1÷(COS(Z)-1)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; ABS(COS(Z))<1
+K×COS(Z)^(K-1) 2..∞: value gained
+  1.0.0: 2×COS(Z)^2÷(COS(Z)-COS(Z)^2)-COS(Z)^2÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; ABS(COS(Z))<1
+  p4:    -2×COS(Z)÷(COS(Z)-1)-COS(Z)^2÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; ABS(COS(Z))<1
+(K-1)×(COS(Z)×Y)^K÷COS(Z) 1..∞: value gained
+  1.0.0: Y×COS(Z)÷(COS(Z)-Y×COS(Z)^2)+Y÷(Y×COS(Z)-1)-Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+  p4:    -Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+(K-1)×(COS(Z)×Y)^K÷COS(Z) 2..∞: value gained
+  1.0.0: Y^2×COS(Z)÷(Y×COS(Z)-1)+2×Y^2×COS(Z)^2÷(COS(Z)-Y×COS(Z)^2)-Y^3×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+  p4:    -Y^2×COS(Z)÷(Y×COS(Z)-1)-Y^3×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+(COS(Z)×Y)^K×COS(Z) -1..N: value gained
+  1.0.0: 1÷(Y-Y^2×COS(Z))+COS(Z)×(Y×COS(Z))^(N+1)÷(Y×COS(Z)-1); Y≠0; Y×COS(Z)≠1
+  p4:    1÷(Y-Y^2×COS(Z))-(Y×COS(Z))^(N+2)÷(Y-Y^2×COS(Z)); Y≠0; Y×COS(Z)≠1
+(SQRT(Z)×Y)^K×SQRT(Z) -1..N: value gained
+  1.0.0: 1÷(Y-Y^2×SQRT(Z))+SQRT(Z)×(Y×SQRT(Z))^(N+1)÷(Y×SQRT(Z)-1); Y≠0; Y×SQRT(Z)≠1
+  p4:    1÷(Y-Y^2×SQRT(Z))-(Y×SQRT(Z))^(N+2)÷(Y-Y^2×SQRT(Z)); Y≠0; Y×SQRT(Z)≠1
+(ABS(Z)×Y)^K×ABS(Z) -1..N: value gained
+  1.0.0: 1÷(Y-Y^2×ABS(Z))+ABS(Z)×(Y×ABS(Z))^(N+1)÷(Y×ABS(Z)-1); Y≠0; Y×ABS(Z)≠1
+  p4:    1÷(Y-Y^2×ABS(Z))-(Y×ABS(Z))^(N+2)÷(Y-Y^2×ABS(Z)); Y≠0; Y×ABS(Z)≠1
+(Z^(1÷3)×Y)^K×Z^(1÷3) -1..N: value gained
+  1.0.0: 1÷(Y-Y^2×Z^(1÷3))+Z^(1÷3)×(Y×Z^(1÷3))^(N+1)÷(Y×Z^(1÷3)-1); Y≠0; Y×Z^(1÷3)≠1
+  p4:    1÷(Y-Y^2×Z^(1÷3))-(Y×Z^(1÷3))^(N+2)÷(Y-Y^2×Z^(1÷3)); Y≠0; Y×Z^(1÷3)≠1
+K×SIN(Z)^(2×K-1)×Y^K 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×SIN(Z)^2÷(SIN(Z)-Y×SIN(Z)^3)-Y^2×SIN(Z)^3÷2÷(Y×SIN(Z)^2-Y^2×SIN(Z)^4÷2-1÷2); Z≠0; ABS(Y×SIN(Z)^2)<1
+  p4:    -Y×SIN(Z)÷(Y×SIN(Z)^2-1)-Y^2×SIN(Z)^3÷2÷(Y×SIN(Z)^2-Y^2×SIN(Z)^4÷2-1÷2); ABS(Y×SIN(Z)^2)<1
+SIN(Z)^(2×K-1)×Y^K 1..N: value gained; dropped Z≠0
+  1.0.0: -Y×SIN(Z)÷(Y×SIN(Z)^2-1)-(Y×SIN(Z)^2)^(N+1)÷(SIN(Z)-Y×SIN(Z)^3); Z≠0; Y×SIN(Z)^2≠1
+  p4:    Y×SIN(Z)×(Y×SIN(Z)^2)^N÷(Y×SIN(Z)^2-1)-Y×SIN(Z)÷(Y×SIN(Z)^2-1); Y×SIN(Z)^2≠1
+K×SIN(Z)^(2×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0,Z≠0
+  1.0.0: Y×SIN(Z)^2÷(Y×SIN(Z)^2-Y^2×SIN(Z)^4)-Y×SIN(Z)^2÷2÷(Y×SIN(Z)^2-Y^2×SIN(Z)^4÷2-1÷2); Y≠0; Z≠0; ABS(Y×SIN(Z)^2)<1
+  p4:    -1÷(Y×SIN(Z)^2-1)-Y×SIN(Z)^2÷2÷(Y×SIN(Z)^2-Y^2×SIN(Z)^4÷2-1÷2); ABS(Y×SIN(Z)^2)<1
+K×SIN(Z)^(3×K-1)×Y^K 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×SIN(Z)^3÷(SIN(Z)-Y×SIN(Z)^4)-Y^2×SIN(Z)^5÷2÷(Y×SIN(Z)^3-Y^2×SIN(Z)^6÷2-1÷2); Z≠0; ABS(Y×SIN(Z)^3)<1
+  p4:    -Y×SIN(Z)^2÷(Y×SIN(Z)^3-1)-Y^2×SIN(Z)^5÷2÷(Y×SIN(Z)^3-Y^2×SIN(Z)^6÷2-1÷2); ABS(Y×SIN(Z)^3)<1
+SIN(Z)^(3×K-1)×Y^K 1..N: value gained; dropped Z≠0
+  1.0.0: -Y×SIN(Z)^2÷(Y×SIN(Z)^3-1)-(Y×SIN(Z)^3)^(N+1)÷(SIN(Z)-Y×SIN(Z)^4); Z≠0; Y×SIN(Z)^3≠1
+  p4:    Y×SIN(Z)^2×(Y×SIN(Z)^3)^N÷(Y×SIN(Z)^3-1)-Y×SIN(Z)^2÷(Y×SIN(Z)^3-1); Y×SIN(Z)^3≠1
+K×SIN(Z)^(3×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0,Z≠0
+  1.0.0: Y×SIN(Z)^3÷(Y×SIN(Z)^2-Y^2×SIN(Z)^5)-Y×SIN(Z)^4÷2÷(Y×SIN(Z)^3-Y^2×SIN(Z)^6÷2-1÷2); Y≠0; Z≠0; ABS(Y×SIN(Z)^3)<1
+  p4:    -Y×SIN(Z)^4÷2÷(Y×SIN(Z)^3-Y^2×SIN(Z)^6÷2-1÷2)-SIN(Z)÷(Y×SIN(Z)^3-1); ABS(Y×SIN(Z)^3)<1
+K×COS(Z)^(2×K-1)×Y^K 1..∞: value gained
+  1.0.0: Y×COS(Z)^2÷(COS(Z)-Y×COS(Z)^3)-Y^2×COS(Z)^3÷2÷(Y×COS(Z)^2-Y^2×COS(Z)^4÷2-1÷2); ABS(Y×COS(Z)^2)<1
+  p4:    -Y×COS(Z)÷(Y×COS(Z)^2-1)-Y^2×COS(Z)^3÷2÷(Y×COS(Z)^2-Y^2×COS(Z)^4÷2-1÷2); ABS(Y×COS(Z)^2)<1
+COS(Z)^(2×K-1)×Y^K 1..N: value gained
+  1.0.0: -Y×COS(Z)÷(Y×COS(Z)^2-1)-(Y×COS(Z)^2)^(N+1)÷(COS(Z)-Y×COS(Z)^3); Y×COS(Z)^2≠1
+  p4:    Y×COS(Z)×(Y×COS(Z)^2)^N÷(Y×COS(Z)^2-1)-Y×COS(Z)÷(Y×COS(Z)^2-1); Y×COS(Z)^2≠1
+K×COS(Z)^(2×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0
+  1.0.0: Y×COS(Z)^2÷(Y×COS(Z)^2-Y^2×COS(Z)^4)-Y×COS(Z)^2÷2÷(Y×COS(Z)^2-Y^2×COS(Z)^4÷2-1÷2); Y≠0; ABS(Y×COS(Z)^2)<1
+  p4:    -1÷(Y×COS(Z)^2-1)-Y×COS(Z)^2÷2÷(Y×COS(Z)^2-Y^2×COS(Z)^4÷2-1÷2); ABS(Y×COS(Z)^2)<1
+K×COS(Z)^(3×K-1)×Y^K 1..∞: value gained
+  1.0.0: Y×COS(Z)^3÷(COS(Z)-Y×COS(Z)^4)-Y^2×COS(Z)^5÷2÷(Y×COS(Z)^3-Y^2×COS(Z)^6÷2-1÷2); ABS(Y×COS(Z)^3)<1
+  p4:    -Y×COS(Z)^2÷(Y×COS(Z)^3-1)-Y^2×COS(Z)^5÷2÷(Y×COS(Z)^3-Y^2×COS(Z)^6÷2-1÷2); ABS(Y×COS(Z)^3)<1
+COS(Z)^(3×K-1)×Y^K 1..N: value gained
+  1.0.0: -Y×COS(Z)^2÷(Y×COS(Z)^3-1)-(Y×COS(Z)^3)^(N+1)÷(COS(Z)-Y×COS(Z)^4); Y×COS(Z)^3≠1
+  p4:    Y×COS(Z)^2×(Y×COS(Z)^3)^N÷(Y×COS(Z)^3-1)-Y×COS(Z)^2÷(Y×COS(Z)^3-1); Y×COS(Z)^3≠1
+K×COS(Z)^(3×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0
+  1.0.0: Y×COS(Z)^3÷(Y×COS(Z)^2-Y^2×COS(Z)^5)-Y×COS(Z)^4÷2÷(Y×COS(Z)^3-Y^2×COS(Z)^6÷2-1÷2); Y≠0; ABS(Y×COS(Z)^3)<1
+  p4:    -Y×COS(Z)^4÷2÷(Y×COS(Z)^3-Y^2×COS(Z)^6÷2-1÷2)-COS(Z)÷(Y×COS(Z)^3-1); ABS(Y×COS(Z)^3)<1
+K×TAN(Z)^(2×K-1)×Y^K 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×TAN(Z)^2÷(TAN(Z)-Y×TAN(Z)^3)-Y^2×TAN(Z)^3÷2÷(Y×TAN(Z)^2-Y^2×TAN(Z)^4÷2-1÷2); Z≠0; ABS(Y×TAN(Z)^2)<1
+  p4:    -Y×TAN(Z)÷(Y×TAN(Z)^2-1)-Y^2×TAN(Z)^3÷2÷(Y×TAN(Z)^2-Y^2×TAN(Z)^4÷2-1÷2); ABS(Y×TAN(Z)^2)<1
+TAN(Z)^(2×K-1)×Y^K 1..N: value gained; dropped Z≠0
+  1.0.0: -Y×TAN(Z)÷(Y×TAN(Z)^2-1)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); Z≠0; Y×TAN(Z)^2≠1
+  p4:    Y×TAN(Z)×(Y×TAN(Z)^2)^N÷(Y×TAN(Z)^2-1)-Y×TAN(Z)÷(Y×TAN(Z)^2-1); Y×TAN(Z)^2≠1
+K×TAN(Z)^(2×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0,Z≠0
+  1.0.0: Y×TAN(Z)^2÷(Y×TAN(Z)^2-Y^2×TAN(Z)^4)-Y×TAN(Z)^2÷2÷(Y×TAN(Z)^2-Y^2×TAN(Z)^4÷2-1÷2); Y≠0; Z≠0; ABS(Y×TAN(Z)^2)<1
+  p4:    -1÷(Y×TAN(Z)^2-1)-Y×TAN(Z)^2÷2÷(Y×TAN(Z)^2-Y^2×TAN(Z)^4÷2-1÷2); ABS(Y×TAN(Z)^2)<1
+K×TAN(Z)^(3×K-1)×Y^K 1..∞: value gained; dropped Z≠0
+  1.0.0: Y×TAN(Z)^3÷(TAN(Z)-Y×TAN(Z)^4)-Y^2×TAN(Z)^5÷2÷(Y×TAN(Z)^3-Y^2×TAN(Z)^6÷2-1÷2); Z≠0; ABS(Y×TAN(Z)^3)<1
+  p4:    -Y×TAN(Z)^2÷(Y×TAN(Z)^3-1)-Y^2×TAN(Z)^5÷2÷(Y×TAN(Z)^3-Y^2×TAN(Z)^6÷2-1÷2); ABS(Y×TAN(Z)^3)<1
+TAN(Z)^(3×K-1)×Y^K 1..N: value gained; dropped Z≠0
+  1.0.0: -Y×TAN(Z)^2÷(Y×TAN(Z)^3-1)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); Z≠0; Y×TAN(Z)^3≠1
+  p4:    Y×TAN(Z)^2×(Y×TAN(Z)^3)^N÷(Y×TAN(Z)^3-1)-Y×TAN(Z)^2÷(Y×TAN(Z)^3-1); Y×TAN(Z)^3≠1
+K×TAN(Z)^(3×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0,Z≠0
+  1.0.0: Y×TAN(Z)^3÷(Y×TAN(Z)^2-Y^2×TAN(Z)^5)-Y×TAN(Z)^4÷2÷(Y×TAN(Z)^3-Y^2×TAN(Z)^6÷2-1÷2); Y≠0; Z≠0; ABS(Y×TAN(Z)^3)<1
+  p4:    -Y×TAN(Z)^4÷2÷(Y×TAN(Z)^3-Y^2×TAN(Z)^6÷2-1÷2)-TAN(Z)÷(Y×TAN(Z)^3-1); ABS(Y×TAN(Z)^3)<1
+K×LN(Z)^(2×K-1)×Y^K 1..∞: value gained
+  1.0.0: Y×LN(Z)^2÷(LN(Z)-Y×LN(Z)^3)-Y^2×LN(Z)^3÷2÷(Y×LN(Z)^2-Y^2×LN(Z)^4÷2-1÷2); Z≠0; ABS(Y×LN(Z)^2)<1
+  p4:    -Y×LN(Z)÷(Y×LN(Z)^2-1)-Y^2×LN(Z)^3÷2÷(Y×LN(Z)^2-Y^2×LN(Z)^4÷2-1÷2); Z≠0; ABS(Y×LN(Z)^2)<1
+LN(Z)^(2×K-1)×Y^K 1..N: value gained
+  1.0.0: -Y×LN(Z)÷(Y×LN(Z)^2-1)-(Y×LN(Z)^2)^(N+1)÷(LN(Z)-Y×LN(Z)^3); Z≠0; Y×LN(Z)^2≠1
+  p4:    Y×LN(Z)×(Y×LN(Z)^2)^N÷(Y×LN(Z)^2-1)-Y×LN(Z)÷(Y×LN(Z)^2-1); Z≠0; Y×LN(Z)^2≠1
+K×LN(Z)^(2×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0
+  1.0.0: Y×LN(Z)^2÷(Y×LN(Z)^2-Y^2×LN(Z)^4)-Y×LN(Z)^2÷2÷(Y×LN(Z)^2-Y^2×LN(Z)^4÷2-1÷2); Y≠0; Z≠0; ABS(Y×LN(Z)^2)<1
+  p4:    -1÷(Y×LN(Z)^2-1)-Y×LN(Z)^2÷2÷(Y×LN(Z)^2-Y^2×LN(Z)^4÷2-1÷2); Z≠0; ABS(Y×LN(Z)^2)<1
+K×LN(Z)^(3×K-1)×Y^K 1..∞: value gained
+  1.0.0: Y×LN(Z)^3÷(LN(Z)-Y×LN(Z)^4)-Y^2×LN(Z)^5÷2÷(Y×LN(Z)^3-Y^2×LN(Z)^6÷2-1÷2); Z≠0; ABS(Y×LN(Z)^3)<1
+  p4:    -Y×LN(Z)^2÷(Y×LN(Z)^3-1)-Y^2×LN(Z)^5÷2÷(Y×LN(Z)^3-Y^2×LN(Z)^6÷2-1÷2); Z≠0; ABS(Y×LN(Z)^3)<1
+LN(Z)^(3×K-1)×Y^K 1..N: value gained
+  1.0.0: -Y×LN(Z)^2÷(Y×LN(Z)^3-1)-(Y×LN(Z)^3)^(N+1)÷(LN(Z)-Y×LN(Z)^4); Z≠0; Y×LN(Z)^3≠1
+  p4:    Y×LN(Z)^2×(Y×LN(Z)^3)^N÷(Y×LN(Z)^3-1)-Y×LN(Z)^2÷(Y×LN(Z)^3-1); Z≠0; Y×LN(Z)^3≠1
+K×LN(Z)^(3×K-2)×Y^(K-1) 1..∞: value gained; dropped Y≠0
+  1.0.0: Y×LN(Z)^3÷(Y×LN(Z)^2-Y^2×LN(Z)^5)-Y×LN(Z)^4÷2÷(Y×LN(Z)^3-Y^2×LN(Z)^6÷2-1÷2); Y≠0; Z≠0; ABS(Y×LN(Z)^3)<1
+  p4:    -Y×LN(Z)^4÷2÷(Y×LN(Z)^3-Y^2×LN(Z)^6÷2-1÷2)-LN(Z)÷(Y×LN(Z)^3-1); Z≠0; ABS(Y×LN(Z)^3)<1
+K×(SIN(Z)×Y)^K÷Y 1..∞: dropped Y≠0
+  1.0.0: Y×SIN(Z)÷(Y-Y^2×SIN(Z))-Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1
+  p4:    -Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-SIN(Z)÷(Y×SIN(Z)-1); ABS(Y×SIN(Z))<1
+K×(SIN(Z)×Y)^K÷Y 2..∞: dropped Y≠0
+  1.0.0: 2×Y^2×SIN(Z)^2÷(Y-Y^2×SIN(Z))-Y^2×SIN(Z)^3÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1
+  p4:    -2×Y×SIN(Z)^2÷(Y×SIN(Z)-1)-Y^2×SIN(Z)^3÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1
+K×(COS(Z)×Y)^K÷Y 1..∞: dropped Y≠0
+  1.0.0: Y×COS(Z)÷(Y-Y^2×COS(Z))-Y×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y≠0; ABS(Y×COS(Z))<1
+  p4:    -Y×COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2)-COS(Z)÷(Y×COS(Z)-1); ABS(Y×COS(Z))<1
+K×(COS(Z)×Y)^K÷Y 2..∞: dropped Y≠0
+  1.0.0: 2×Y^2×COS(Z)^2÷(Y-Y^2×COS(Z))-Y^2×COS(Z)^3÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y≠0; ABS(Y×COS(Z))<1
+  p4:    -2×Y×COS(Z)^2÷(Y×COS(Z)-1)-Y^2×COS(Z)^3÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1
+K×(SQRT(Z)×Y)^K÷SQRT(Z) 1..∞: dropped Z≠0
+  1.0.0: Y×SQRT(Z)÷(SQRT(Z)-Y×Z)-Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Z≠0; ABS(Y×SQRT(Z))<1
+  p4:    -Y÷(Y×SQRT(Z)-1)-Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1
+K×(SQRT(Z)×Y)^K÷SQRT(Z) 2..∞: dropped Z≠0
+  1.0.0: 2×Y^2×Z÷(SQRT(Z)-Y×Z)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Z≠0; ABS(Y×SQRT(Z))<1
+  p4:    -2×Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1
+K×(SQRT(Z)×Y)^K÷Y 1..∞: dropped Y≠0
+  1.0.0: -Y×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)+Y×SQRT(Z)÷(Y-Y^2×SQRT(Z)); Y≠0; ABS(Y×SQRT(Z))<1
+  p4:    -Y×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-SQRT(Z)÷(Y×SQRT(Z)-1); ABS(Y×SQRT(Z))<1
+K×(SQRT(Z)×Y)^K÷Y 2..∞: dropped Y≠0
+  1.0.0: 2×Y^2×Z÷(Y-Y^2×SQRT(Z))-Y^2×Z^(3÷2)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y≠0; ABS(Y×SQRT(Z))<1
+  p4:    -2×Y×Z÷(Y×SQRT(Z)-1)-Y^2×Z^(3÷2)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1
+K×SQRT(Z)^(K-1) 1..N: dropped Z≠0
+  1.0.0: N×SQRT(Z)^(N+1)÷(Z-SQRT(Z))+SQRT(Z)÷(Z-2×SQRT(Z)+1)-SQRT(Z)÷(Z-SQRT(Z))-SQRT(Z)^(N+1)÷(Z-2×SQRT(Z)+1)+SQRT(Z)^(N+1)÷(Z-SQRT(Z)); Z≠0; SQRT(Z)≠1
+  p4:    -1÷(SQRT(Z)-1)+N×SQRT(Z)^N÷(SQRT(Z)-1)-SQRT(Z)×SQRT(Z)^N÷(Z-2×SQRT(Z)+1)+SQRT(Z)÷(Z-2×SQRT(Z)+1)+SQRT(Z)^N÷(SQRT(Z)-1); SQRT(Z)≠1
+K×SQRT(Z)^(K-1) 1..∞: dropped Z≠0
+  1.0.0: SQRT(Z)÷(Z-2×SQRT(Z)+1)-SQRT(Z)÷(Z-SQRT(Z)); Z≠0; ABS(SQRT(Z))<1
+  p4:    -1÷(SQRT(Z)-1)+SQRT(Z)÷(Z-2×SQRT(Z)+1); ABS(SQRT(Z))<1
+K×SQRT(Z)^(K-1) 2..N: dropped Z≠0
+  1.0.0: N×SQRT(Z)^(N+1)÷(Z-SQRT(Z))+Z÷(Z-2×SQRT(Z)+1)-2×Z÷(Z-SQRT(Z))-SQRT(Z)^(N+1)÷(Z-2×SQRT(Z)+1)+SQRT(Z)^(N+1)÷(Z-SQRT(Z)); Z≠0; SQRT(Z)≠1
+  p4:    N×SQRT(Z)^N÷(SQRT(Z)-1)+Z÷(Z-2×SQRT(Z)+1)-SQRT(Z)×SQRT(Z)^N÷(Z-2×SQRT(Z)+1)-2×SQRT(Z)÷(SQRT(Z)-1)+SQRT(Z)^N÷(SQRT(Z)-1); SQRT(Z)≠1
+K×SQRT(Z)^(K-1) 2..∞: dropped Z≠0
+  1.0.0: Z÷(Z-2×SQRT(Z)+1)-2×Z÷(Z-SQRT(Z)); Z≠0; ABS(SQRT(Z))<1
+  p4:    Z÷(Z-2×SQRT(Z)+1)-2×SQRT(Z)÷(SQRT(Z)-1); ABS(SQRT(Z))<1
+(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z) 1..∞: dropped Z≠0
+  1.0.0: Y×SQRT(Z)÷(SQRT(Z)-Y×Z)+Y÷(Y×SQRT(Z)-1)-Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Z≠0; ABS(Y×SQRT(Z))<1
+  p4:    -Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1
+(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z) 2..∞: dropped Z≠0
+  1.0.0: 2×Y^2×Z÷(SQRT(Z)-Y×Z)+Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Z≠0; ABS(Y×SQRT(Z))<1
+  p4:    -Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); ABS(Y×SQRT(Z))<1
+K×(ABS(Z)×Y)^K÷ABS(Z) 1..∞: dropped Z≠0
+  1.0.0: Y×ABS(Z)÷(ABS(Z)-Y×ABS(Z)^2)-Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Z≠0; ABS(Y×ABS(Z))<1
+  p4:    -Y÷(Y×ABS(Z)-1)-Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); ABS(Y×ABS(Z))<1
+K×(ABS(Z)×Y)^K÷ABS(Z) 2..∞: dropped Z≠0
+  1.0.0: 2×Y^2×ABS(Z)^2÷(ABS(Z)-Y×ABS(Z)^2)-Y^3×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Z≠0; ABS(Y×ABS(Z))<1
+  p4:    -2×Y^2×ABS(Z)÷(Y×ABS(Z)-1)-Y^3×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); ABS(Y×ABS(Z))<1
+K×(ABS(Z)×Y)^K÷Y 1..∞: dropped Y≠0
+  1.0.0: Y×ABS(Z)÷(Y-Y^2×ABS(Z))-Y×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Y≠0; ABS(Y×ABS(Z))<1
+  p4:    -Y×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2)-ABS(Z)÷(Y×ABS(Z)-1); ABS(Y×ABS(Z))<1
+K×(ABS(Z)×Y)^K÷Y 2..∞: dropped Y≠0
+  1.0.0: 2×Y^2×ABS(Z)^2÷(Y-Y^2×ABS(Z))-Y^2×ABS(Z)^3÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Y≠0; ABS(Y×ABS(Z))<1
+  p4:    -2×Y×ABS(Z)^2÷(Y×ABS(Z)-1)-Y^2×ABS(Z)^3÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); ABS(Y×ABS(Z))<1
+K×ABS(Z)^(K-1) 1..∞: dropped Z≠0
+  1.0.0: ABS(Z)÷(ABS(Z)-ABS(Z)^2)-ABS(Z)÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); Z≠0; ABS(ABS(Z))<1
+  p4:    -1÷(ABS(Z)-1)-ABS(Z)÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); ABS(ABS(Z))<1
+K×ABS(Z)^(K-1) 2..∞: dropped Z≠0
+  1.0.0: 2×ABS(Z)^2÷(ABS(Z)-ABS(Z)^2)-ABS(Z)^2÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); Z≠0; ABS(ABS(Z))<1
+  p4:    -2×ABS(Z)÷(ABS(Z)-1)-ABS(Z)^2÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); ABS(ABS(Z))<1
+(K-1)×(ABS(Z)×Y)^K÷ABS(Z) 1..∞: dropped Z≠0
+  1.0.0: Y×ABS(Z)÷(ABS(Z)-Y×ABS(Z)^2)+Y÷(Y×ABS(Z)-1)-Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Z≠0; ABS(Y×ABS(Z))<1
+  p4:    -Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); ABS(Y×ABS(Z))<1
+(K-1)×(ABS(Z)×Y)^K÷ABS(Z) 2..∞: dropped Z≠0
+  1.0.0: Y^2×ABS(Z)÷(Y×ABS(Z)-1)+2×Y^2×ABS(Z)^2÷(ABS(Z)-Y×ABS(Z)^2)-Y^3×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Z≠0; ABS(Y×ABS(Z))<1
+  p4:    -Y^2×ABS(Z)÷(Y×ABS(Z)-1)-Y^3×ABS(Z)^2÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); ABS(Y×ABS(Z))<1
+K×(Z^(1÷3)×Y)^K÷Z^(1÷3) 1..∞: dropped Z≠0
+  1.0.0: Y×Z^(1÷3)÷(Z^(1÷3)-Y×Z^(2÷3))-Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Z≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -Y÷(Y×Z^(1÷3)-1)-Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); ABS(Y×Z^(1÷3))<1
+K×(Z^(1÷3)×Y)^K÷Z^(1÷3) 2..∞: dropped Z≠0
+  1.0.0: 2×Y^2×Z^(2÷3)÷(Z^(1÷3)-Y×Z^(2÷3))-Y^3×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Z≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -2×Y^2×Z^(1÷3)÷(Y×Z^(1÷3)-1)-Y^3×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); ABS(Y×Z^(1÷3))<1
+K×(Z^(1÷3)×Y)^K÷Y 1..∞: dropped Y≠0
+  1.0.0: Y×Z^(1÷3)÷(Y-Y^2×Z^(1÷3))-Y×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Y≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -Y×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2)-Z^(1÷3)÷(Y×Z^(1÷3)-1); ABS(Y×Z^(1÷3))<1
+K×(Z^(1÷3)×Y)^K÷Y 2..∞: dropped Y≠0
+  1.0.0: -Y^2×Z÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2)+2×Y^2×Z^(2÷3)÷(Y-Y^2×Z^(1÷3)); Y≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -2×Y×Z^(2÷3)÷(Y×Z^(1÷3)-1)-Y^2×Z÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); ABS(Y×Z^(1÷3))<1
+K×Z^(1÷3)^(K-1) 1..∞: dropped Z≠0
+  1.0.0: Z^(1÷3)÷(Z^(1÷3)-Z^(2÷3))-Z^(1÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2); Z≠0; ABS(Z^(1÷3))<1
+  p4:    -1÷(Z^(1÷3)-1)-Z^(1÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2); ABS(Z^(1÷3))<1
+K×Z^(1÷3)^(K-1) 2..∞: dropped Z≠0
+  1.0.0: 2×Z^(2÷3)÷(Z^(1÷3)-Z^(2÷3))-Z^(2÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2); Z≠0; ABS(Z^(1÷3))<1
+  p4:    -2×Z^(1÷3)÷(Z^(1÷3)-1)-Z^(2÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2); ABS(Z^(1÷3))<1
+(K-1)×(Z^(1÷3)×Y)^K÷Z^(1÷3) 1..∞: dropped Z≠0
+  1.0.0: Y×Z^(1÷3)÷(Z^(1÷3)-Y×Z^(2÷3))+Y÷(Y×Z^(1÷3)-1)-Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Z≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); ABS(Y×Z^(1÷3))<1
+(K-1)×(Z^(1÷3)×Y)^K÷Z^(1÷3) 2..∞: dropped Z≠0
+  1.0.0: Y^2×Z^(1÷3)÷(Y×Z^(1÷3)-1)+2×Y^2×Z^(2÷3)÷(Z^(1÷3)-Y×Z^(2÷3))-Y^3×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Z≠0; ABS(Y×Z^(1÷3))<1
+  p4:    -Y^2×Z^(1÷3)÷(Y×Z^(1÷3)-1)-Y^3×Z^(2÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); ABS(Y×Z^(1÷3))<1
+K×SQRT(Z)^(3×K-1)×Y^K 1..∞: dropped Z≠0
+  1.0.0: Y×Z^(3÷2)÷(SQRT(Z)-Y×Z^2)-Y^2×Z^(5÷2)÷2÷(Y×Z^(3÷2)-Y^2×Z^3÷2-1÷2); Z≠0; ABS(Y×Z^(3÷2))<1
+  p4:    -Y×Z÷(Y×Z^(3÷2)-1)-Y^2×Z^(5÷2)÷2÷(Y×Z^(3÷2)-Y^2×Z^3÷2-1÷2); ABS(Y×Z^(3÷2))<1
+SQRT(Z)^(3×K-1)×Y^K 1..N: dropped Z≠0
+  1.0.0: -Y×Z÷(Y×Z^(3÷2)-1)-(Y×Z^(3÷2))^(N+1)÷(SQRT(Z)-Y×Z^2); Z≠0; Y×Z^(3÷2)≠1
+  p4:    Y×Z×(Y×Z^(3÷2))^N÷(Y×Z^(3÷2)-1)-Y×Z÷(Y×Z^(3÷2)-1); Y×Z^(3÷2)≠1
+K×SQRT(Z)^(3×K-2)×Y^(K-1) 1..∞: dropped Y≠0,Z≠0
+  1.0.0: Y×Z^(3÷2)÷(Y×Z-Y^2×Z^(5÷2))-Y×Z^2÷2÷(Y×Z^(3÷2)-Y^2×Z^3÷2-1÷2); Y≠0; Z≠0; ABS(Y×Z^(3÷2))<1
+  p4:    -Y×Z^2÷2÷(Y×Z^(3÷2)-Y^2×Z^3÷2-1÷2)-SQRT(Z)÷(Y×Z^(3÷2)-1); ABS(Y×Z^(3÷2))<1
+K×(Z^(1÷3))^(2×K-1)×Y^K 1..∞: dropped Z≠0
+  1.0.0: Y×Z^(2÷3)÷(Z^(1÷3)-Y×Z)-Y^2×Z÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); Z≠0; ABS(Y×Z^(2÷3))<1
+  p4:    -Y×Z^(1÷3)÷(Y×Z^(2÷3)-1)-Y^2×Z÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); ABS(Y×Z^(2÷3))<1
+(Z^(1÷3))^(2×K-1)×Y^K 1..N: dropped Z≠0
+  1.0.0: -Y×Z^(1÷3)÷(Y×Z^(2÷3)-1)-(Y×Z^(2÷3))^(N+1)÷(Z^(1÷3)-Y×Z); Z≠0; Y×Z^(2÷3)≠1
+  p4:    Y×Z^(1÷3)×(Y×Z^(2÷3))^N÷(Y×Z^(2÷3)-1)-Y×Z^(1÷3)÷(Y×Z^(2÷3)-1); Y×Z^(2÷3)≠1
+K×(Z^(1÷3))^(2×K-2)×Y^(K-1) 1..∞: dropped Y≠0,Z≠0
+  1.0.0: Y×Z^(2÷3)÷(Y×Z^(2÷3)-Y^2×Z^(4÷3))-Y×Z^(2÷3)÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); Y≠0; Z≠0; ABS(Y×Z^(2÷3))<1
+  p4:    -1÷(Y×Z^(2÷3)-1)-Y×Z^(2÷3)÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); ABS(Y×Z^(2÷3))<1
+K×ABS(Z)^(2×K-1)×Y^K 1..∞: dropped Z≠0
+  1.0.0: Y×ABS(Z)^2÷(ABS(Z)-Y×ABS(Z)^3)-Y^2×ABS(Z)^3÷2÷(Y×ABS(Z)^2-Y^2×ABS(Z)^4÷2-1÷2); Z≠0; ABS(Y×ABS(Z)^2)<1
+  p4:    -Y×ABS(Z)÷(Y×ABS(Z)^2-1)-Y^2×ABS(Z)^3÷2÷(Y×ABS(Z)^2-Y^2×ABS(Z)^4÷2-1÷2); ABS(Y×ABS(Z)^2)<1
+ABS(Z)^(2×K-1)×Y^K 1..N: dropped Z≠0
+  1.0.0: -Y×ABS(Z)÷(Y×ABS(Z)^2-1)-(Y×ABS(Z)^2)^(N+1)÷(ABS(Z)-Y×ABS(Z)^3); Z≠0; Y×ABS(Z)^2≠1
+  p4:    Y×ABS(Z)×(Y×ABS(Z)^2)^N÷(Y×ABS(Z)^2-1)-Y×ABS(Z)÷(Y×ABS(Z)^2-1); Y×ABS(Z)^2≠1
+K×ABS(Z)^(2×K-2)×Y^(K-1) 1..∞: dropped Y≠0,Z≠0
+  1.0.0: Y×ABS(Z)^2÷(Y×ABS(Z)^2-Y^2×ABS(Z)^4)-Y×ABS(Z)^2÷2÷(Y×ABS(Z)^2-Y^2×ABS(Z)^4÷2-1÷2); Y≠0; Z≠0; ABS(Y×ABS(Z)^2)<1
+  p4:    -1÷(Y×ABS(Z)^2-1)-Y×ABS(Z)^2÷2÷(Y×ABS(Z)^2-Y^2×ABS(Z)^4÷2-1÷2); ABS(Y×ABS(Z)^2)<1
+K×ABS(Z)^(3×K-1)×Y^K 1..∞: dropped Z≠0
+  1.0.0: Y×ABS(Z)^3÷(ABS(Z)-Y×ABS(Z)^4)-Y^2×ABS(Z)^5÷2÷(Y×ABS(Z)^3-Y^2×ABS(Z)^6÷2-1÷2); Z≠0; ABS(Y×ABS(Z)^3)<1
+  p4:    -Y×ABS(Z)^2÷(Y×ABS(Z)^3-1)-Y^2×ABS(Z)^5÷2÷(Y×ABS(Z)^3-Y^2×ABS(Z)^6÷2-1÷2); ABS(Y×ABS(Z)^3)<1
+ABS(Z)^(3×K-1)×Y^K 1..N: dropped Z≠0
+  1.0.0: -Y×ABS(Z)^2÷(Y×ABS(Z)^3-1)-(Y×ABS(Z)^3)^(N+1)÷(ABS(Z)-Y×ABS(Z)^4); Z≠0; Y×ABS(Z)^3≠1
+  p4:    Y×ABS(Z)^2×(Y×ABS(Z)^3)^N÷(Y×ABS(Z)^3-1)-Y×ABS(Z)^2÷(Y×ABS(Z)^3-1); Y×ABS(Z)^3≠1
+K×ABS(Z)^(3×K-2)×Y^(K-1) 1..∞: dropped Y≠0,Z≠0
+  1.0.0: Y×ABS(Z)^3÷(Y×ABS(Z)^2-Y^2×ABS(Z)^5)-Y×ABS(Z)^4÷2÷(Y×ABS(Z)^3-Y^2×ABS(Z)^6÷2-1÷2); Y≠0; Z≠0; ABS(Y×ABS(Z)^3)<1
+  p4:    -Y×ABS(Z)^4÷2÷(Y×ABS(Z)^3-Y^2×ABS(Z)^6÷2-1÷2)-ABS(Z)÷(Y×ABS(Z)^3-1); ABS(Y×ABS(Z)^3)<1
+K×SIN(Z)^(K-1) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    -1÷(SIN(Z)-1)+N×SIN(Z)^N÷(SIN(Z)-1)-SIN(Z)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2)+SIN(Z)^N÷(SIN(Z)-1)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠1
+K×SIN(Z)^(K-1) 2..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×SIN(Z)^N÷(SIN(Z)-1)-2×SIN(Z)÷(SIN(Z)-1)+SIN(Z)^N÷(SIN(Z)-1)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2)-SIN(Z)^2÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠1
+(K-1)×(SIN(Z)×Y)^K÷SIN(Z) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×SIN(Z))^N÷(Y×SIN(Z)-1)+Y^2×SIN(Z)×(Y×SIN(Z))^N÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y×SIN(Z)≠1
+K×COS(Z)^(K-1) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    -1÷(COS(Z)-1)+N×COS(Z)^N÷(COS(Z)-1)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)+COS(Z)^N÷(COS(Z)-1)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; COS(Z)≠1
+K×COS(Z)^(K-1) 2..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×COS(Z)^N÷(COS(Z)-1)-2×COS(Z)÷(COS(Z)-1)+COS(Z)^N÷(COS(Z)-1)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-COS(Z)^2÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; COS(Z)≠1
+(K-1)×(COS(Z)×Y)^K÷COS(Z) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×COS(Z))^N÷(Y×COS(Z)-1)+Y^2×COS(Z)×(Y×COS(Z))^N÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2)-Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y×COS(Z)≠1
+(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×SQRT(Z))^N÷(Y×SQRT(Z)-1)+Y^2×SQRT(Z)×(Y×SQRT(Z))^N÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y×SQRT(Z)≠1
+(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z) 2..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×SQRT(Z))^N÷(Y×SQRT(Z)-1)+Y^2×SQRT(Z)×(Y×SQRT(Z))^N÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y×SQRT(Z)≠1
+K×ABS(Z)^(K-1) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    -1÷(ABS(Z)-1)+N×ABS(Z)^N÷(ABS(Z)-1)-ABS(Z)÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2)+ABS(Z)^N÷(ABS(Z)-1)+ABS(Z)^(N+1)÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); ABS(Z)≠1
+K×ABS(Z)^(K-1) 2..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×ABS(Z)^N÷(ABS(Z)-1)-2×ABS(Z)÷(ABS(Z)-1)+ABS(Z)^N÷(ABS(Z)-1)+ABS(Z)^(N+1)÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2)-ABS(Z)^2÷2÷(ABS(Z)-ABS(Z)^2÷2-1÷2); ABS(Z)≠1
+(K-1)×(ABS(Z)×Y)^K÷ABS(Z) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×ABS(Z))^N÷(Y×ABS(Z)-1)+Y^2×ABS(Z)×(Y×ABS(Z))^N÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2)-Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Y×ABS(Z)≠1
+K×Z^(1÷3)^(K-1) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    -1÷(Z^(1÷3)-1)+N×(Z^(1÷3))^N÷(Z^(1÷3)-1)+Z^(1÷3)×(Z^(1÷3))^N÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)-Z^(1÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)+(Z^(1÷3))^N÷(Z^(1÷3)-1); Z^(1÷3)≠1
+(K-1)×(Z^(1÷3)×Y)^K÷Z^(1÷3) -1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    1÷(Z^(1÷3)-2×Y×Z^(2÷3)+Y^2×Z)-2÷(Y×Z^(2÷3)-Y^2×Z)-N×(Y×Z^(1÷3))^(N+2)÷(Y×Z^(2÷3)-Y^2×Z)-(Y×Z^(1÷3))^(N+2)÷(Z^(1÷3)-2×Y×Z^(2÷3)+Y^2×Z); Y≠0; Z≠0; Y×Z^(1÷3)≠1
+(K-1)×(Z^(1÷3)×Y)^K÷Z^(1÷3) 1..N: answered (was TOO_LONG)
+  1.0.0: TOO_LONG
+  p4:    N×Y×(Y×Z^(1÷3))^N÷(Y×Z^(1÷3)-1)+Y^2×Z^(1÷3)×(Y×Z^(1÷3))^N÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2)-Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Y×Z^(1÷3)≠1
+(SQRT(Z)×Y)^K -1..N: form only
+  1.0.0: 1÷(Y×SQRT(Z)-Y^2×Z)+(Y×SQRT(Z))^(N+1)÷(Y×SQRT(Z)-1); Y≠0; Z≠0; Y×SQRT(Z)≠1
+  p4:    1÷(Y×SQRT(Z)-Y^2×Z)-(Y×SQRT(Z))^(N+2)÷(Y×SQRT(Z)-Y^2×Z); Y≠0; Z≠0; Y×SQRT(Z)≠1
+(Y÷SQRT(Z))^K -1..N: form only
+  1.0.0: SQRT(Z)÷(Y-Y^2÷SQRT(Z))+(Y÷SQRT(Z))^(N+1)÷(Y÷SQRT(Z)-1); Y≠0; Z≠0; Y÷SQRT(Z)≠1
+  p4:    -SQRT(Z)×(Y÷SQRT(Z))^(N+2)÷(Y-Y^2÷SQRT(Z))+SQRT(Z)÷(Y-Y^2÷SQRT(Z)); Y≠0; Z≠0; Y÷SQRT(Z)≠1
+(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z) -1..N: form only
+  1.0.0: 1÷(SQRT(Z)-2×Y×Z+Y^2×Z^(3÷2))-2÷(Y×Z-Y^2×Z^(3÷2))-N×(Y×SQRT(Z))^(N+1)÷(SQRT(Z)-Y×Z)+Y×(Y×SQRT(Z))^(N+1)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y≠0; Z≠0; Y×SQRT(Z)≠1
+  p4:    1÷(SQRT(Z)-2×Y×Z+Y^2×Z^(3÷2))-2÷(Y×Z-Y^2×Z^(3÷2))-N×(Y×SQRT(Z))^(N+2)÷(Y×Z-Y^2×Z^(3÷2))-(Y×SQRT(Z))^(N+2)÷(SQRT(Z)-2×Y×Z+Y^2×Z^(3÷2)); Y≠0; Z≠0; Y×SQRT(Z)≠1
+(ABS(Z)×Y)^K -1..N: form only
+  1.0.0: 1÷(Y×ABS(Z)-Y^2×ABS(Z)^2)+(Y×ABS(Z))^(N+1)÷(Y×ABS(Z)-1); Y≠0; Z≠0; Y×ABS(Z)≠1
+  p4:    1÷(Y×ABS(Z)-Y^2×ABS(Z)^2)-(Y×ABS(Z))^(N+2)÷(Y×ABS(Z)-Y^2×ABS(Z)^2); Y≠0; Z≠0; Y×ABS(Z)≠1
+(Z^(1÷3)×Y)^K -1..N: form only
+  1.0.0: 1÷(Y×Z^(1÷3)-Y^2×Z^(2÷3))+(Y×Z^(1÷3))^(N+1)÷(Y×Z^(1÷3)-1); Y≠0; Z≠0; Y×Z^(1÷3)≠1
+  p4:    1÷(Y×Z^(1÷3)-Y^2×Z^(2÷3))-(Y×Z^(1÷3))^(N+2)÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)); Y≠0; Z≠0; Y×Z^(1÷3)≠1
+(Y÷Z^(1÷3))^K -1..N: form only
+  1.0.0: Z^(1÷3)÷(Y-Y^2÷Z^(1÷3))+(Y÷Z^(1÷3))^(N+1)÷(Y÷Z^(1÷3)-1); Y≠0; Z≠0; Y÷Z^(1÷3)≠1
+  p4:    -Z^(1÷3)×(Y÷Z^(1÷3))^(N+2)÷(Y-Y^2÷Z^(1÷3))+Z^(1÷3)÷(Y-Y^2÷Z^(1÷3)); Y≠0; Z≠0; Y÷Z^(1÷3)≠1
+(SIN(Z)×Y)^K -1..N: still missing; form only
+  1.0.0: 1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)+(Y×SIN(Z))^(N+1)÷(Y×SIN(Z)-1); Y≠0; Z≠0; Y×SIN(Z)≠1
+  p4:    1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; Z≠0; Y×SIN(Z)≠1
+(COS(Z)×Y)^K -1..N: still missing; form only
+  1.0.0: 1÷(Y×COS(Z)-Y^2×COS(Z)^2)+(Y×COS(Z))^(N+1)÷(Y×COS(Z)-1); Y≠0; Y×COS(Z)≠1
+  p4:    1÷(Y×COS(Z)-Y^2×COS(Z)^2)-(Y×COS(Z))^(N+2)÷(Y×COS(Z)-Y^2×COS(Z)^2); Y≠0; Y×COS(Z)≠1
