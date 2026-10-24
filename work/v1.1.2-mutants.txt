@@ -1,0 +1,32 @@
+# The mutant count at the v1.1.2 tag: all 456 caught at the tag's tree, from one run of every mutant (2026-10-24,
+# lepton, claim #10530).
+#
+# The tree: a worktree at f59feca (src, scripts, the Makefile and the tests 8462e77's, CAS 030 as accepted) with the
+# version text, in place by 18:51:47Z, committed as 4625452, the commit v1.1.2 tags. The README's code size (387,349 B,
+# from scripts/device.sh --build at 16,384 B, 18:55:26Z to 18:55:56Z) went in at 19:11:53Z, during the run; no check
+# reads the README (the scripts, tests and Makefile name it in comments only). The core was built at CORE_PIN by the
+# control: make test, all green, 20 tests, 118,439 checks, "Casimir 1.1.2" (18:55:56Z to 19:00:19Z).
+#
+# The run (19:00:19Z to 21:22:20Z, 6 shards of 76, scripts/mutants.py on copies of that worktree):
+#   456 of 456 caught; none survived, none not built, none not tested.
+#   CAS 030's six row030-* are among them: row030-inf-kept, row030-whole-kept, row030-any-fn, row030-any-arg,
+#     row030-giveway-off, row030-giveway-always; and the two of CAS 026's it re-anchored, factor026-row-off and
+#     factor026-hole-kept.
+#   CAS 029's sum-positive-base-hole, which survived the first run at 1.1.1, is caught by work/029-examples.txt's rows.
+#   The six whose only catcher is a developer test, caught by build/series_test, as at 1.1.1:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers, ser-root-of-negative,
+#     ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s: 1,673,956
+# KiB, at 19:12:17Z. The control's largest process: 238,436 KiB. The device build's container (casim-device-*, --memory
+# 8g), its cgroup's memory.peak: 846,004,224 B. The clang check's containers (casim-clang-*, --memory 2g), logged as
+# docker reported them: seven, the control's (18:58:06Z to 18:58:11Z) and six in the run (20:45:10Z to 20:53:08Z), never
+# two at once, each up 5 to 6 s. Their memory wasn't sampled.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 16 KiB at most, /dev/shm 272 KiB at most. du doesn't see a deleted
+# file held open.
+# The copies on disk (build/mutants): 1,615 MiB at most.
+# Host memory in use (free, every 10 s): 22,528 MiB at most. It counts every tenant of the box, so it doesn't attribute
+# this run's use.

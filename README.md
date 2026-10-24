@@ -148,12 +148,11 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 456 deliberate faults, each of which the tests
-  must catch. `make test` caught all 450 at 1.1.1's tree (work/v1.1.1-mutants.txt), the five new on CAS 029's sum
-  code among them (work/029-quotient-ratio.md), as it caught all 445 at 1.1.0's tree (work/v1.1.0-mutants.txt), all
-  435 at 1.0.1's tree (work/v1.0.1-mutants.txt) and all 428 of 1.0.0-rc7's at rc7's tree (work/rc7-mutants.txt). At
-  1.1.1 one survived at first: CAS 029's rule took over the case that had caught it, and three rows now reach it. At
-  1.1.2 it catches the six new on CAS 030's rows (work/030-factor-row-to-n.md); the other 450 were last run at
-  1.1.1's tree.
+  must catch. `make test` caught all 456 at 1.1.2's tree (work/v1.1.2-mutants.txt), the six new on CAS 030's rows
+  among them (work/030-factor-row-to-n.md), as it caught all 450 at 1.1.1's tree (work/v1.1.1-mutants.txt), all 445 at
+  1.1.0's tree (work/v1.1.0-mutants.txt), all 435 at 1.0.1's tree (work/v1.0.1-mutants.txt) and all 428 of
+  1.0.0-rc7's at rc7's tree (work/rc7-mutants.txt). At 1.1.1 one survived at first: CAS 029's rule took over the case
+  that had caught it, and three rows now reach it.
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
