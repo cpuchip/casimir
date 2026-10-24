@@ -689,8 +689,14 @@ the same, unless the answer itself has no value there. A factor that is never 0 
 its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
 `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
 
+A quotient of powers in K is read as its ratio (CAS 029): canon reads Σ X^K÷Y^K as Σ X^K×Y^(-K), and prints that
+spelling's answer, the answer to Σ (X÷Y)^K. A typed divisor keeps its zeros wherever canon's power of its base falls in
+K, since the ratio then holds the base at a negative power. So X^(2×K)÷X^K, which canon makes X^K, is NO_CLOSED_FORM:
+its terms are 0÷0 at X = 0, where X^K's have a value. So is X^K÷Y^(-K), whose divisor has no value at Y = 0 while
+(X×Y)^K has one.
+
 NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and Σ 1÷K^2, any other function of K
-(SIN(K), LN(K)), a hole canon would lose (K÷K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.
+(SIN(K), LN(K)), a hole canon would lose (K÷K, X^(2×K)÷X^K), or a rational term with a symbolic LO. BAD_ARG: a constant bound that isn't a whole number (1.5, π), -∞, or K in a bound.
 
 | Command | Prints |
 |---|---|
@@ -708,6 +714,7 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 | `casim sum "(-1)^K" K 0 ∞ RAD` | `UNDEFINED` |
 | `casim sum "X^K" K 0 N RAD` | `-1÷(X-1)+X^(N+1)÷(X-1); X≠1` |
 | `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
+| `casim sum "X^K÷Y^K" K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |
 
 ### Fractions and →DEC (CAS 019)
 

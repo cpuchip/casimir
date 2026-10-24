@@ -63,8 +63,9 @@
 | `casim sum 'K×X^(K-1)' K 1 N RAD` | `-1÷(X-1)+N×X^N÷(X-1)-X÷2÷(X-X^2÷2-1÷2)+X^N÷(X-1)+X^(N+1)÷2÷(X-X^2÷2-1÷2); X≠1` |
 
 # - Out of scope, ruled (#9560, on the follow-up list): a ratio with a letter at a negative power isn't shifted, so its
-#   row for nothing is today's; a quotient of two letter powers isn't read as one ratio (a refusal)
+#   row for nothing is today's. A quotient of two letter powers was a refusal here; CAS 029 reads it as one ratio, with
+#   the answer canon's spelling X^K×Y^(-K) has (work/029-quotient-ratio.md)
 | Command | Prints |
 |---|---|
 | `casim sum '(X÷Y)^K÷X' K 1 N RAD` | `-1÷(X-Y)-(X÷Y)^(N+1)÷(X-X^2÷Y); X≠0; Y≠0; X÷Y≠1` |
-| `casim sum 'X^K÷Y^K' K 0 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum 'X^K÷Y^K' K 0 N RAD` | `-1÷(X÷Y-1)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |

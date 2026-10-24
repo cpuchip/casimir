@@ -1,0 +1,53 @@
+# CAS 029's examples (work/029-quotient-ratio.md; ruled abacus #10313): a quotient of powers in K read as one ratio.
+# A typed divisor's b^u (b free of K) is kept where canon's power of b falls in K, so the ratio holds b at a negative
+# power. Each row is run by scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and
+# through the value check's build (CAS 022 rule 5). scripts/sum-values.py judges seeded quotients byte for byte
+# against canon's spelling and by value against the typed terms.
+
+# - Each kind (abacus #10275's family): letters, a constant in either part, an offset, a K factor, a function letter,
+#   two divisors, a sum over one divisor, a quotient beside another term, to N and to ∞:
+
+| Command | Prints |
+|---|---|
+| `casim sum 'X^K÷Y^K' K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |
+| `casim sum 'X^K÷Y^K' K 0 ∞ RAD` | `-1÷(X÷Y-1); Y≠0; ABS(X÷Y)<1` |
+| `casim sum 'X^(2×K)÷Y^K' K 0 N RAD` | `-1÷(X^2÷Y-1)+(X^2÷Y)^(N+1)÷(X^2÷Y-1); Y≠0; X^2÷Y≠1` |
+| `casim sum '1÷Y^K' K 1 N RAD` | `1÷(Y-1)+(1÷Y)^(N+1)÷(1÷Y-1); Y≠1` |
+| `casim sum '2^K÷X^K' K 1 N RAD` | `2÷(X-2)+(2÷X)^(N+1)÷2÷(1÷X-1÷2); X≠2` |
+| `casim sum 'X^K÷(2×Y)^K' K 1 N RAD` | `-X÷(X-2×Y)+2×(X÷2÷Y)^(N+1)÷(X÷Y-2); Y≠0; X÷2÷Y≠1` |
+| `casim sum 'X^(K+1)÷Y^K' K 1 N RAD` | `X×(X÷Y)^(N+1)÷(X÷Y-1)-X^2÷(X-Y); Y≠0; X÷Y≠1` |
+| `casim sum 'K×X^K÷Y^K' K 0 ∞ RAD` | `-X÷2÷(X-Y÷2-X^2÷2÷Y); Y≠0; ABS(X÷Y)<1` |
+| `casim sum 'SIN(Z)^K÷Y^K' K 1 N RAD` | `SIN(Z)÷(Y-SIN(Z))+(SIN(Z)÷Y)^(N+1)÷(SIN(Z)÷Y-1); Y≠0; SIN(Z)÷Y≠1` |
+| `casim sum '1÷(X^K×Y^K)' K 1 ∞ RAD` | `1÷(X×Y-1); X≠0; Y≠0; ABS(1÷X÷Y)<1` |
+| `casim sum '(X^K+1)÷Y^K' K 0 N RAD` | `-1÷(1÷Y-1)-1÷(X÷Y-1)+(1÷Y)^(N+1)÷(1÷Y-1)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; Y≠1; X÷Y≠1` |
+| `casim sum 'X^K÷X^(2×K)' K 1 N RAD` | `1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1` |
+| `casim sum 'X^K÷Y^K+1' K 1 N RAD` | `N-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |
+
+# - Canon's own spelling prints the same line, byte for byte (the build's claim; h029 checks it):
+
+| Command | Prints |
+|---|---|
+| `casim sum 'X^K×Y^(-K)' K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |
+| `casim sum 'X^(-K)×2^K' K 1 N RAD` | `2÷(X-2)+(2÷X)^(N+1)÷2÷(1÷X-1÷2); X≠2` |
+
+# - abacus's edges (#10313): a fall from a power of the same letter, and a divisor whose base is a sum:
+
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K÷Y^(2×K)' K 1 N RAD` | `1÷(Y-1)+(1÷Y)^(N+1)÷(1÷Y-1); Y≠1` |
+| `casim sum 'X^K÷(Y-1)^K' K 1 N RAD` | `X÷(Y-X×Y÷(Y-1)+X÷(Y-1)-1)+(X÷(Y-1))^(N+1)÷(X÷(Y-1)-1); X÷(Y-1)≠1` |
+
+# - Still refused (#10313 ruling 2): canon cancelling to a power that doesn't fall (Y^K÷Y^K is 1, X^(2×K)÷X^K is X^K,
+#   whose values at the letter's 0 the typed terms don't have), a divisor falling in K, and the twin's own refusals.
+#   K^2×X^K÷Y^K is canon's spelling's status at each arena: TOO_LONG at the calculator's 16,384 B, NO_ROOM at the CLI's
+#   8,800 (where the twin K^2×(X÷Y)^K, a different tree, is TOO_LONG):
+
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K÷Y^K' K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum 'X^(2×K)÷X^K' K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum 'X^K÷Y^(-K)' K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim sum 'X^(-K)÷Y^(-K)' K 1 N RAD` | `NO_CLOSED_FORM` |
+| `casim --arena 16384 sum 'K^2×X^K÷Y^K' K 1 N RAD` | `TOO_LONG` |
+| `casim sum 'K^2×X^K÷Y^K' K 1 N RAD` | `NO_ROOM` |
+| `casim sum 'X^K÷(K×Y^K)' K 1 N RAD` | `NO_CLOSED_FORM` |

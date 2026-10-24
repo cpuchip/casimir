@@ -1277,6 +1277,19 @@ MUTANTS = {
     "cplx028-after-the-roots": [("src/casim.c", "    while (at < w->n && w->o[at] != ':') at++;", "    at = w->n;")],
     "cplx028-bit-ignored": [("src/casim.c", "    bool note = (nr || f->n >= 3) && !(c->nm & NM_CX);",
                              "    bool note = (nr || f->n >= 3);")],
+    # CAS 029 (work/029-quotient-ratio.md): the quotient refused as at 1.1.0; a power rising in K taken as a fall (canon's
+    # X^K for X^(2×K)÷X^K); a fall looked for in a product only, not beside another term (X^K÷Y^K+1); only a product's
+    # first factor looked at; a fall of any base taken for the divisor's (X^(-K)÷Y^(-K))
+    "quot029-held-off": [("src/casim.c", "    return ib_den(c, t, b) || (!contains(c, b, var) && sm_fall(c, t, b, var));",
+                          "    return ib_den(c, t, b) || (0 && !contains(c, b, var) && sm_fall(c, t, b, var));")],
+    "quot029-rising-kept": [("src/casim.c", "        h = sm_poly(c, nd(c, t)->b, var, &lin) && pdeg(lin) == 1 && lin[1].p < 0;",
+                             "        h = sm_poly(c, nd(c, t)->b, var, &lin) && pdeg(lin) == 1 && lin[1].p != 0;")],
+    "quot029-no-sums": [("src/casim.c", "    else if (x->kind == K_ADD || x->kind == K_MUL)\n        for (int i = 0; i < nd(c, t)->n && !h; i++) h = sm_fall(",
+                         "    else if (x->kind == K_MUL)\n        for (int i = 0; i < nd(c, t)->n && !h; i++) h = sm_fall(")],
+    "quot029-first-only": [("src/casim.c", "        for (int i = 0; i < nd(c, t)->n && !h; i++) h = sm_fall(",
+                            "        for (int i = 0; i < 1 && !h; i++) h = sm_fall(")],
+    "quot029-any-base": [("src/casim.c", "    if (x->kind == K_POW && cmp(c, x->a, b) == 0 && contains(c, x->b, var))\n        h = sm_poly(",
+                          "    if (x->kind == K_POW && contains(c, x->b, var))\n        h = sm_poly(")],
 }
 
 

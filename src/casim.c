@@ -12087,6 +12087,31 @@ static void sm_read(ctx *c, smsum *S, const char *eqn, const char *lo, const cha
     if (c->st == CASIM_OK) S->e = expand_fully(c, S->f);
 }
 
+static bool sm_poly(ctx *c, ref t, int var, rat **lin);
+
+/* CAS 029: whether b is the base of a power falling in var anywhere in t (canon's Y^(-K) for a typed ÷Y^K): the ratio
+   then holds b at a negative power, so where b = 0 the answer has no value or its row b≠0 excludes it (abacus #10313) */
+static __attribute__((noinline)) bool sm_fall(ctx *c, ref t, ref b, int var)
+{
+    const node *x = nd(c, t);
+    bool h = false;
+    rat *lin;
+    if (!enter(c)) return false;
+    if (x->kind == K_POW && cmp(c, x->a, b) == 0 && contains(c, x->b, var))
+        h = sm_poly(c, nd(c, t)->b, var, &lin) && pdeg(lin) == 1 && lin[1].p < 0;
+    else if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < nd(c, t)->n && !h; i++) h = sm_fall(c, list(c, nd(c, t)->a)[i], b, var);
+    c->depth--;
+    return h;
+}
+
+/* rule 3, CAS 029: ib_den, or b's power in t falls in var. A cancel to a rising power (X^(2×K)÷X^K, X^K in canon) and a
+   divisor falling in var (X^K÷Y^(-K)) still refuse. Out of line: sm_keeps's frame (a call in its loop took it 80 -> 96) */
+static __attribute__((noinline)) bool sm_held(ctx *c, ref t, ref b, int var)
+{
+    return ib_den(c, t, b) || (!contains(c, b, var) && sm_fall(c, t, b, var));
+}
+
 /* rule 3: ib_keeps, but a positive constant to a power is never 0 either (2^K, as EXP(K)) */
 static bool sm_keeps(ctx *c, ref d, ref t, int var)
 {
@@ -12098,7 +12123,7 @@ static bool sm_keeps(ctx *c, ref d, ref t, int var)
         if (nd(c, f)->kind == K_POW) b = nd(c, f)->a;
         if (nd(c, b)->kind == K_FN && (nd(c, b)->id == F_EXP || nd(c, b)->id == F_ALOG)) continue;
         if (!contains(c, b, var) && const_sign(c, b) > 0) continue;
-        if (!ib_den(c, t, b)) return false;
+        if (!sm_held(c, t, b, var)) return false;
     }
     return c->st == CASIM_OK;
 }

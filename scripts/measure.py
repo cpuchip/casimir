@@ -428,6 +428,15 @@ def all_cases():
             ("shift (SIN(Z)×Y)^K×SIN(Z) from -1 to N", "(SIN(Z)×Y)^K×SIN(Z)", "-1|N"),
             ("shift K×SIN(Z)^(K-1) from 1 to N", "K×SIN(Z)^(K-1)", "1|N")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 029 (work/029-quotient-ratio.md): a quotient of powers in K read as one ratio, to N and to ∞, beside another
+    # term, with a function letter; and one the rule still refuses (canon's cancel to X^K)
+    for name, expr, repl in [
+            ("quot X^K÷Y^K from 1 to N", "X^K÷Y^K", "1|N"),
+            ("quot K×X^K÷Y^K from 0 to ∞", "K×X^K÷Y^K", "0|∞"),
+            ("quot (X^K+1)÷Y^K from 0 to N", "(X^K+1)÷Y^K", "0|N"),
+            ("quot SIN(Z)^K÷Y^K from 1 to N", "SIN(Z)^K÷Y^K", "1|N"),
+            ("quot X^(2×K)÷X^K refused", "X^(2×K)÷X^K", "1|N")]:
+        rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [

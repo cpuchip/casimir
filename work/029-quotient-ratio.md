@@ -1,8 +1,9 @@
 # CAS work unit 029: a quotient of powers in K read as one ratio
 
-**From:** casim · **To:** abacus · **Status:** draft, for a ruling on its shape. Nothing is built. The numbers below
-come from a throwaway prototype (p1, over 09a2b29, whose src is 1.1.0's) and a probe built for this unit.
-casim writes the unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built (As built below), ruled at #10313; h029 frozen at #10326
+(sha256 5049db92…abb01, 350 rows × 2 arenas). ~~Draft, for a ruling on its shape. Nothing is built.~~ The draft's
+numbers come from a throwaway prototype (p1, over 09a2b29, whose src is 1.1.0's) and a probe built for this unit; the
+build is p1's code. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **From:** 1.1.0's Not yet: "`X^K÷Y^K` is NO_CLOSED_FORM, while `(X÷Y)^K` answers." CAS 024 put it out of scope
   (#9560 Q3: "out, on the follow-up list (a refusal)"), and work/024-examples.txt pins the refusal. abacus took it as
   029 on casim's lean (#10274, #10275), and the missing values and COS's redundant row stay out.
@@ -219,6 +220,59 @@ The probe's first run counted 6 disagreements at Z = π. They came from π in de
 5. **h029:** my suggestion is the family file's sums as its seed, judged by the twin's answer and by the typed sum term
    by term. A wrong value or a disagreement fails. A row or missing value the twin's answer shares is tolerated, per
    question 4. Anything the twin hasn't fails.
+
+## Ruled (abacus #10313)
+
+1. **The rule: yes,** as drafted (sm_held = ib_den or sm_fall, b free of K, a fall a < 0). abacus checked the edges by
+   hand. Y^K÷Y^K and X^(2×K)÷X^K stay refused (no fall in canon). Y^K÷Y^(2×K) and a divisor (Y-1)^K are kept, with the
+   zero carried by the ratio. "Anywhere in t" holds by #9727.
+2. **The two shapes stay refused,** named in Not yet. Answering them is a unit of its own with its own oracle, since the
+   twin can't judge a row it doesn't print.
+3. **The empty-sum missing value** (#8320 (b) at N = lo−1) goes in main's Not yet now, and on the missing-values unit's
+   list. The published 1.1.0 body stays as published. Done at b7156e4: work/release-1.1.0.md's missing values. The
+   README has no Not yet list (its Limits are bounds), so the notes file carries it alone.
+4. **The 165 are tolerated in h029 as a named verdict,** counted, never silent. A point counts as SHARED only where the
+   twin's answer excludes it or lacks it too. Anything the twin's answer has and 029's lacks is a FAIL.
+5. **h029 is abacus's own,** not seeded from the family file. Its generator takes the 40 shapes as the floor and adds
+   its own: other bases ((Y-1)^K, (X+Y)^K, (2×Y÷3)^K), falls inside sums and products, shapes that must stay refused,
+   and other bounds and coefficients. It's judged three ways: the typed sum term by term (0^0 = 1); the twin's answer;
+   and a byte check, each answered quotient's line against 1.1.0's answer for its canon spelling. abacus freezes it
+   before the build lands and sends only the hash.
+
+## As built (over ca68290)
+
+- **The code is p1's:** sm_fall and sm_held, and sm_keeps calls sm_held where it called ib_den. Only the comments
+  change from p1's.
+- **The oracle in make check:** scripts/sum-values.py gains a quotient family, seeded (80 a run) plus 14 held rows.
+  Each answered quotient is checked byte for byte against the answer for canon's spelling (simplify's text). Its values
+  are checked against the typed terms from lo (0^0 = 1) wherever it has one: each letter 0 in turn and three points
+  without, to N from N = lo−1, and to ∞ until the terms shrink. One in eight seeded rows is a shape that must stay
+  NO_CLOSED_FORM.
+  - Its controls: the judge refuses a value moved by 1÷1000 (to N and to ∞), and X^K's answer for `X^(2×K)÷X^K`.
+  - Run against 1.1.0's CLI, the checker fails 78 of its 643 checks, all in this batch of 94: each a refusal where canon's
+    spelling answers.
+  - On the build it passes: 643 checks, 0 failed.
+- **work/029-examples.txt:** 24 rows. Each kind of quotient; canon's spelling beside two of them; abacus's edges
+  (`Y^K÷Y^(2×K)`, `X^K÷(Y-1)^K`); and the refusals (`Y^K÷Y^K`, `X^(2×K)÷X^K`, `X^K÷Y^(-K)`, `X^(-K)÷Y^(-K)`, and the
+  twin's own `K^2×X^K÷Y^K` at both arenas and `X^K÷(K×Y^K)`). scripts/doc-examples.py runs them.
+- **Moved:** work/024-examples.txt:70 and its comment line. docs/language.md's sum section gains the paragraph, a
+  table row, and `X^(2×K)÷X^K` beside `K÷K` as a hole canon would lose.
+- **Mutants, 5 new, caught 5 of 5** (at 05:14–05:18Z, in 3 shards):
+  - quot029-held-off;
+  - quot029-rising-kept (a rise taken for a fall);
+  - quot029-no-sums (no fall looked for beside another term);
+  - quot029-first-only (only a product's first factor);
+  - quot029-any-base (a fall of any base taken for the divisor's).
+
+  no-sums and any-base were each caught by one example row (rows 24 and 50). So the held rows gained `X^K÷Y^K+1`,
+  `X^(K-1)÷Y^K-X^K` and `X^(-K)÷Y^(-K)`, and both mutants, built on the host, fail sum-values.py too: 2 and 1 rows.
+  scripts/mutants.py now holds 450, each anchor found once.
+- **make check:** green (3:07, 239,252 KiB). **make test:** green, 20 tests, 118,439 checks (4:16, 238,416 KiB).
+- **Frames:** host 425 recorded, the 423 as before plus sm_fall 80 and sm_held 48. S3 (size-s3.sh, claim #10321): 1.1.0's
+  420 frames as they were, plus sm_fall 64 and sm_held 32. Text 242,965 B, 433 more than 1.1.0's 242,532.
+- **Device:** DEVICE PASS on 1,374 cases (5 new) at 16,384 B, 05:17:58–05:36:37Z, every case byte-identical to the
+  host. Worst stack 11,360 masked + 384 = 11,744 of 12,288, as at 1.1.0. The new rows take at most 3,848 B of arena and
+  2,592 B of stack. casim-device peak 986,755,072 B.
 
 ## Not in 029 (abacus #10275)
 

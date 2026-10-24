@@ -372,7 +372,9 @@ sm_atom	144
 sm_bound	64
 sm_cmpabs	80
 sm_den	112
+sm_fall	80
 sm_groups.constprop	192
+sm_held	48
 sm_keeps	80
 sm_letter	16
 sm_lit	48

@@ -774,6 +774,124 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f):
                 return f"at Z = {z}, Y = {y}: {why}", named
     return ("" if judged else "no point judged"), named
 
+
+def gen_quot(rnd):
+    """CAS 029 (abacus #10313): a quotient of powers in K, n÷d, typed as a user would. n = q(K) × c^K × X^(a×K+e);
+    d = C^K × Y^(b×K+f), with X^(a2×K) in d a quarter of the time (a2 > a, so X's power still falls in canon) and W^K a
+    fifth of the time; lo from -2 to 2, to N and to ∞. One in eight is a shape the rule must refuse: canon cancelling to
+    a power rising in K (X^(2×K)÷X^K), or a divisor falling in K (X^K÷Y^(-K))"""
+    lo = rnd.choice((-2, -1, 0, 0, 1, 1, 2))
+    hi = INF if rnd.random() < 0.3 else "N"
+    if rnd.random() < 0.125:
+        a = rnd.choice((1, 2))
+        s = rnd.choice((f"X^({a + 1}×K)÷X^({a}×K)" if a > 1 else "X^(2×K)÷X^K", "X^K÷Y^(-K)", f"X^({a}×K)÷Y^(-{a}×K)"))
+        return s, lo, hi, "RAD", ("QUOT", True)
+
+    def pw(L, m, e=0):
+        ex = ("K" if m == 1 else f"{m}×K") + (f"+{e}" if e > 0 else f"{e}" if e < 0 else "")
+        return f"{L}^K" if ex == "K" else f"{L}^({ex})"
+    a, e = rnd.choice((1, 1, 2, -1)), rnd.choice((0, 0, 1, -1))
+    b, f = rnd.choice((1, 1, 2)), rnd.choice((0, 0, 1, -1, 2))
+    c, C = rnd.choice((F(1), F(1), F(2), F(1, 2), F(-1))), rnd.choice((F(1), F(1), F(3), F(-2)))
+    co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 0, 1)))] + [rand_frac(rnd)]
+    num = ([f"({poly_text(co)})"] if len(co) > 1 or co[0] != 1 else []) + ([f"{ft(c)}^K"] if c != 1 else []) + \
+        [pw("X", a, e)]
+    den = ([f"{ft(C)}^K"] if C != 1 else []) + [pw("Y", b, f)]
+    if rnd.random() < 0.25:
+        den.append(pw("X", max(a, 0) + rnd.choice((1, 2))))
+    if rnd.random() < 0.2:
+        den.append("W^K")
+    d = den[0] if len(den) == 1 else f"({'×'.join(den)})"
+    return f"{'×'.join(num)}÷{d}", lo, hi, "RAD", ("QUOT", False)
+
+
+def quot_claim(answer, rows, n=None):
+    """the answer's value at N = n, or None where it has none, or where a row with a value is false (#9727)"""
+    def v(t):
+        return value(sub(t, "N", n) if n is not None else t)
+    for r in rows:
+        m = re.fullmatch(r"(.+?)(≠|<|>)(.+)", r)
+        try:
+            a, b = v(m.group(1)), v(m.group(3))
+        except (ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+            continue
+        if not {"≠": a != b, "<": a < b, ">": a > b}[m.group(2)]:
+            return None
+    try:
+        return v(answer)
+    except (ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
+        return None
+
+
+def judge_quot_values(summand, lo, hi, out):
+    """'' when out has no wrong value for the typed quotient: wherever out has a value (each letter 0 in turn, and three
+    points without), the typed terms from lo have values (0^0 = 1) and sum to it: to N from N = lo-1, to ∞ until 8
+    terms in a row are below 10^-65 (terms that don't shrink in 3,000 are no value)"""
+    parts = out.split("; ")
+    answer, rows = parts[0], parts[1:]
+    if answer in (INF, NINF):
+        return ""
+    letters = [L for L in "XYWZ" if re.search(rf"(?<![A-Z]){L}(?![A-Z])", summand)]
+    grid = (F(1, 2), F(-1, 3), F(2), F(-3, 2))
+    pts = [{**{M: grid[(i + j) % 4] for j, M in enumerate(letters)}, L: F(0)} for i, L in enumerate(letters)]
+    pts += [{M: grid[(i + 2 * j) % 4] for j, M in enumerate(letters)} for i in range(3)]
+    for pt in pts:
+        def at(text):
+            for L, x in pt.items():
+                text = sub(text, L, ft(x))
+            return text
+        A, R, S = at(answer), [at(r) for r in rows], at(summand)
+        where = ", ".join(f"{L}={ft(x)}" for L, x in pt.items())
+        if hi == INF:
+            got = quot_claim(A, R)
+            if got is None:
+                continue
+            run, k, small = D(0), lo, 0
+            while k < lo + 3000 and not (k > lo + 20 and small >= 8):
+                t = term(S, k, "RAD")
+                if t is None:
+                    return f"{out} at {where}: a value where term {k} has none"
+                run += t
+                small = small + 1 if abs(t) < D(10) ** -65 else 0
+                k += 1
+            if small < 8:
+                return f"{out} at {where}: a value where the terms don't shrink"
+            if not close(got, run):
+                return f"{out} at {where} is {got:.25} for {run:.25}"
+            continue
+        run, none = D(0), None
+        for n in range(lo - 1, lo + 12):
+            if n >= lo and none is None:
+                t = term(S, n, "RAD")
+                if t is None:
+                    none = n
+                else:
+                    run += t
+            got = quot_claim(A, R, n)
+            if got is None:
+                continue
+            if none is not None:
+                return f"{out} at {where}, N={n}: a value where term {none} has none"
+            if not close(got, run):
+                return f"{out} at {where}, N={n} is {got:.25} for {run:.25}"
+    return ""
+
+
+def judge_quot(summand, lo, hi, out, refuse):
+    """'' when out is right for a typed quotient (CAS 029, abacus #10313): a shape the rule refuses is NO_CLOSED_FORM;
+    any other is, byte for byte, the answer for canon's own spelling (simplify's text), with no wrong value for the typed
+    quotient (judge_quot_values)"""
+    if refuse:
+        return "" if out == "NO_CLOSED_FORM" else f"{out} for NO_CLOSED_FORM: the rule must refuse it"
+    canon = subprocess.run([CLI, "simplify", summand, "RAD"], stdout=subprocess.PIPE, text=True,
+                           encoding="utf-8").stdout.strip()
+    want = run_sum(canon, lo, hi)
+    if out != want:
+        return f"{out} is not {want}, the answer for canon's spelling {canon}"
+    if out in STATUS or not out:
+        return "" if out in ("TOO_LONG", "NO_ROOM") else f"{out}, as canon's spelling {canon}: the rule takes it"
+    return judge_quot_values(summand, lo, hi, out)
+
 FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
             (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
@@ -991,15 +1109,36 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
+    # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
+    if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \
+            not judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1)+1÷1000; Y≠0; X÷Y≠1") or \
+            not judge_quot_values("X^(2×K)÷X^K", 1, "N", "-X÷(X-1)+X^(N+1)÷(X-1); X≠1") or \
+            not judge_quot_values("X^K÷Y^K", 0, INF, "-1÷(X÷Y-1)+1÷1000; Y≠0; ABS(X÷Y)<1"):
+        print("FAIL scripts/sum-values.py: its quotient judge accepts a planted answer or refuses the right one")
+        sys.exit(1)
+    rnd5, n5 = random.Random(20261024), 80
+    held5 = [("X^K÷Y^K", 0, "N", False), ("X^K÷Y^K", 1, INF, False), ("1÷Y^K", 1, "N", False),
+             ("X^(K-1)÷Y^(K+2)", 1, "N", False), ("K×X^K÷Y^K", -1, INF, False), ("(X^K+1)÷Y^K", 0, "N", False),
+             ("2^K÷(3×Y)^K", -2, "N", False), ("SIN(Z)^K÷Y^K", 1, "N", False), ("Y^K÷SIN(Z)^K", 0, INF, False),
+             ("X^K÷Y^K+1", 1, "N", False), ("X^(K-1)÷Y^K-X^K", 0, INF, False),
+             ("X^(2×K)÷X^K", 1, "N", True), ("X^K÷Y^(-K)", 0, "N", True), ("X^(-K)÷Y^(-K)", 1, "N", True)]
+    cases5 = [gen_quot(rnd5) for _ in range(n5)] + [(s, lo, hi, "RAD", ("QUOT", r)) for s, lo, hi, r in held5]
+    for summand, lo, hi, angle, truth in cases5:
+        out = run_sum(summand, lo, hi, angle)
+        why = judge_quot(summand, lo, hi, out, truth[1])
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
           f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
           f"N = -1, {n_fn} with no row for a letter in a function) and {n4} with a function factor (CAS 026; and "
           f"{len(held4)} held; {n4named} with a named letter row, {n4miss} and {n4neg} with the missing values of the "
-          f"24's shape and of #10068's, CAS 027) at "
+          f"24's shape and of #10068's, CAS 027), {n5} typed quotients (CAS 029; and {len(held5)} held) at "
           f"{ARENA} B, {soft} NO_ROOM, TOO_LONG or DECIMAL_FORM; {rows} example rows by value\nchecks: "
-          f"{n_cases + len(cases2) + len(cases3) + len(cases4) + rows} failed: {failed + rfailed}")
+          f"{n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases5) + rows} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 
