@@ -1,8 +1,10 @@
 # CAS work unit 030: a function factor's row to N, as a letter's
 
-**From:** casim · **To:** abacus · **Status:** draft, for a ruling on its rule. Nothing is built. The numbers come from a
-throwaway prototype (p1, over 9a390b0, whose src is 33b265d's, CAS 029 as accepted) and a probe built for this unit.
-casim writes the unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built (As built below), ruled at #10394; h030 frozen at #10409
+(sha256 b44a4d40…aac1, 520 rows × 2 arenas, RAD, DEG and GRAD). ~~Draft, for a ruling on its rule. Nothing is built.~~
+The draft's numbers come from a throwaway prototype (p1, over 9a390b0, whose src is 33b265d's, CAS 029 as accepted)
+and a probe built for this unit; the build is p1's code. casim writes the unit; abacus writes the hidden set and the
+Accepted section.
 - **From:** the 24, named in 1.0.1's, 1.1.0's and 1.1.1's Not yet, first in abacus's order after 029 (#10275). The
   framing went to abacus at #10358, with three options: (a) keep them named, (b′) the factor's row to N, giving way at
   the cap, and (c) a form that ties the factor's power to N. **Michael ruled (b′)** (2026-10-24, in casim's session:
@@ -226,6 +228,74 @@ the factor isn't one of the ratio's.
    together. That is a domain ruling (Michael's?).
 4. **h030:** yours. The family file is here as a floor only.
 5. **The oracle and the mutants** as above.
+
+## Ruled (abacus #10394)
+
+1. **The list: yes,** as drafted: SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter. ASIN, ATAN, SINH, TANH, ASINH
+   and ATANH are left to the letter's row.
+2. **The rest stays named:** one Not yet item each for polynomial factors, a function of anything but a letter, and
+   the 13 at the cap, with the draft's examples.
+3. **The factor outside the ratio** widens Not yet's empty-sum item; it isn't 030. No domain ruling is needed: every
+   judge the house runs (probe-nv, h027, h029) takes an answer to N as claiming N = lo−1, the empty sum. That
+   convention is why the 24 are missing values, and it stands.
+4. **h030 is abacus's,** frozen before the build: the family as a floor, with DEG and GRAD. The build doc says whether
+   the "no value at the factor's zero" test probes the zero by mode or by the factor's own value (angle-free).
+5. **The oracle and the 6 mutants: yes.** abacus's byte shape: every moved line is 33b265d's line plus exactly one row,
+   `F(Z)≠0` for the sum's own factor. Every other line stays byte for byte, and a line with that row past 191 B stays
+   as it was.
+
+## As built (over abd1c9f)
+
+- **The code** is p1's (the draft's two hunks above), with sm_rowf's CAS 026 header comment saying what 030 keeps.
+- **By mode or by value (ruling 4):** by the factor's own value, so no mode enters. sm_rowf's probe replaces the factor
+  by K, the sum's own letter, and puts K to 0 (`ib_replace`, then `ib_at`): it asks whether the answer has a value
+  where the factor is 0, not at any Z. The row is the factor's own text in RAD, DEG and GRAD alike. Measured on the
+  build: `(Y÷SIN(Z))^K`, `K×COS(Z)^(K-1)`, `TAN(Z)^(2×K-1)×Y^K` and `(Y÷ACOS(Z))^K` each gain the same one row in all
+  three modes. casim's exact zeros are the calculator's: SIN(180) and COS(90) are 0 in DEG, SIN(200) and COS(100) in
+  GRAD, and ACOS(1) is 0 in each.
+- **The oracle (scripts/sum-values.py):**
+  - judge_letter4 takes the angle mode. It uses the mode's zeros (SIN and TAN at 0 and 180 in DEG, 0 and 200 in GRAD;
+    COS at 90 and 100) and off points at the angles RAD's stand for (40, −23 and 74 in DEG; 45, −25 and 83 in GRAD).
+  - For ROW030's factors, the 24's shape to N is a failure, unless the line with `F≠0` would pass 191 B. That case is
+    named "missing cap". The 24's shape stays named for every other factor.
+  - value() reads TAN, ATAN, ASIN and ACOS in the mode, and LOG, SINH, TANH, ASINH, ACOSH and ATANH.
+  - A seeded CAS 030 family (gen_letter5: 80 a run, seed 20261030) takes ROW030's factors twice as often as the four 0
+    only at their letter's 0 and SIN(2×Z). It draws lo −2 to 2, to N four times in five, in each mode. To ∞, ACOS,
+    ASIN and ATAN are RAD's: in DEG their values are angles (ATAN(7÷10) is 35), past the judge's 3÷4 at every point.
+  - 18 held rows: the 24's shapes in each mode, LOG, ACOS, ACOSH, the cap, ASIN, SINH, SIN(2×Z) in GRAD, and the 12's
+    shape in DEG.
+  - Planted first: 1.1.1's answers for the 24's shape, refused (in RAD and DEG, at GRAD's COS zero 100, and CAS 027's
+    w5); the build's taken; the cap's line taken and named. CAS 027's w5 is taken with its row now, and its "missing N"
+    check moves to SIN(2×Z), which 030 leaves named.
+  - On the build: 741 checks, 0 failed. Its control on 33b265d's CLI: 30 failed (RAD 15, DEG 9, GRAD 6), every one
+    the 24's shape, across all seven factors.
+- **Examples:** work/030-examples.txt, 30 rows: each factor of the list, the three modes, the cap at both arenas,
+  what stays (the four, SIN(2×Z), Z^2+1), a whole hi, to ∞, and the outside-the-ratio class. work/027-examples.txt:52
+  moves, with its comment. docs/language.md's factor sentence gets 030's. scripts/doc-examples.py takes the file.
+- **Bench:** scripts/measure.py gains 5 rows ("row …": RAD, GRAD, DEG, the cap, ASIN's none). The bench is 1,379 cases.
+- **Mutants:** 6 new and 2 re-anchored, each caught.
+  - row030-inf-kept: by work/026-examples.txt:35.
+  - row030-whole-kept: by work/030-examples.txt:59–60.
+  - row030-any-fn: by work/030-examples.txt:47–50.
+  - row030-any-arg: by work/030-examples.txt:51.
+  - row030-giveway-off: by 026's and 027's lines at the cap (026-examples.txt:36, 027-examples.txt:36) and 030's.
+  - row030-giveway-always: by work/027-examples.txt:53 and 030's first rows.
+  - factor026-hole-kept: by three golden lines (corpus.txt:10839, 10840 and 10842).
+  - factor026-row-off didn't build in the first run: its re-anchor left `op` set but unused, which -Werror refuses.
+    It voids `op` too now. Run again alone (claim #10436, 15:02:50–15:06:12Z, host tree 270,564 KiB), it was caught by
+    29 rows of 025's, 026's, 027's and 030's that print a factor's row.
+
+  456 in all, the 8 above caught on this tree.
+- **make test:** green, 20 tests, 118,439 checks, 4:39.82, 238,320 KiB. **make check:** green, 205.40 s, 239,288 KiB,
+  and again after sm_rowf's header comment (the one change after make test and the bench): 202.07 s, 238,700 KiB.
+- **Frames:** host 425 as recorded, plus sm_rput 80 (recorded: 426). S3: 33b265d's 422 unchanged, plus sm_rput 48.
+  Text 243,222 B (+257).
+- **DEVICE PASS:** 1,379 cases at 16,384 B, byte-identical to the host. Worst stack 11,360 + 384 = 11,744 of 12,288, as
+  at 1.1.1. The new rows take at most 4,312 B of arena and 2,608 B of stack.
+- **Claim #10413** (go #10414), 14:30:29–15:01:28Z, released at #10436:
+  - host tree peak 611,392 KiB;
+  - casim-device 882,020,352 B;
+  - one casim-clang (make test's); the mutant shards started none.
 
 ## Not in 030
 

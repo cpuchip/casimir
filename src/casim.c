@@ -12814,7 +12814,8 @@ static void sm_row(ctx *c, smrow *rows, int *n, ref l, char op, ref r, int lette
 /* CAS 026 (decision 90): a factor of a group's B that holds a letter and isn't a letter at a whole power (SIN(Z),
    SQRT(Z), ABS(Z), LN(Z)). Where a term from a whole lo divides by it, the sum has no value where it is 0 (every Z with
    SIN(Z) = 0), and the row is on the factor, unless the answer itself has no value there (the factor's own probe, as
-   the letters'). EXP, ALOG, COSH and a positive number to a power are never 0. Its own frame, called per group in a
+   the letters'; to N, CAS 030 keeps it there too for SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter, below).
+   EXP, ALOG, COSH and a positive number to a power are never 0. Its own frame, called per group in a
    loop of its own, so do_sum_'s doesn't move */
 static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgroup *g, ref sum, smrow *rows, int *n)
 {
@@ -12828,6 +12829,7 @@ static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgr
         ref f = nd(c, B)->kind == K_MUL ? list(c, nd(c, B)->a)[i] : B, h = f;
         const node *x;
         int mf = 1, e = SM_DEG * SM_DEG, hl = -1;
+        char op = '!';
         size_t mark;
         if (nd(c, f)->kind == K_POW && is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->q == 1)
             h = nd(c, f)->a, mf = (int)val(c, nd(c, f)->b)->p;
@@ -12858,12 +12860,22 @@ static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgr
         mark = c->used;
         ib_at(c, hl >= 0 ? sum : ib_replace(c, sum, h, S->var), hl >= 0 ? hl : S->var, small(c, C_0));
         if (c->st == CASIM_UNDEFINED) {
-            c->st = CASIM_OK;                                       /* the answer has no value there already */
-            compact(c, mark, sum);
-            continue;
+            c->st = CASIM_OK;
+            /* the answer has no value there already, but to N the sum has one at an N before the first term that
+               divides (the empty sum; a whole hi has none). Where the factor is 0 away from its letter's 0, the row is
+               kept, as the letters' (CAS 030), one that gives way at the cap ('?', sm_rput): SIN, COS and TAN of a
+               letter (π, π÷2), LN, LOG, ACOS and ACOSH (1). Of anything else the real zeros aren't known here (Z^2+1
+               has none) */
+            if (S->inf || S->ihi || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||
+                !((1u << x->id) & (1u << F_SIN | 1u << F_COS | 1u << F_TAN | 1u << F_LN | 1u << F_LOG |
+                                   1u << F_ACOS | 1u << F_ACOSH))) {
+                compact(c, mark, sum);
+                continue;
+            }
+            op = '?';
         }
         if (c->st == CASIM_OK) compact(c, mark, sum);
-        sm_row(c, rows, n, h, '!', small(c, C_0), x->kind == K_VAR ? x->id : 26);
+        sm_row(c, rows, n, h, op, small(c, C_0), x->kind == K_VAR ? x->id : 26);
     }
 }
 
@@ -12923,15 +12935,33 @@ static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, s
     }
 }
 
+/* rows_put for a sum's rows, each '?' row a ≠ row that gives way (CAS 030): where the line with them passes the cap,
+   the rows are put again without them, as CAS 028's note gives way. Out of line, so do_sum_'s frame doesn't move */
+static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int n)
+{
+    size_t at = w->n;
+    bool full = w->full;
+    unsigned opt = 0;
+    int k = 0;
+    for (int i = 0; i < n; i++)
+        if (rows[i].op == '?') rows[i].op = '!', opt |= 1u << i;
+    rows_put(c, w, rows, n, true);
+    if (full || !w->full || !opt || c->st != CASIM_OK) return;
+    for (int i = 0; i < n; i++)
+        if (!(opt >> i & 1u)) rows[k++] = rows[i];
+    w->n = at, w->full = false, w->o[at] = '\0';
+    rows_put(c, w, rows, k, true);
+}
+
 /* the answer (∞ or -∞ when dir), then its rows after "; " (CANCEL's) */
-static casim_status sm_print(ctx *c, ref sum, int dir, const smrow *rows, int n, char *out, size_t ocap)
+static casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n, char *out, size_t ocap)
 {
     out_t w = {out, ocap, 0, false};
     if (c->st != CASIM_OK || (!dir && !n)) return finish(c, dir ? SPARE : sum, out, ocap);
     if (ocap == 0) return CASIM_TOO_LONG;
     if (dir) puts_(&w, dir > 0 ? "\xe2\x88\x9e" : "-\xe2\x88\x9e");
     else print(c, &w, sum);
-    rows_put(c, &w, rows, n, true);
+    sm_rput(c, &w, rows, n);
     if (c->st == CASIM_OK && w.full) c->st = CASIM_TOO_LONG;
     if (c->st != CASIM_OK) {
         out[0] = '\0';

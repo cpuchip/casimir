@@ -685,7 +685,10 @@ merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), wit
 X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`. A factor of the ratio that holds a
 letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
 0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
-the same, unless the answer itself has no value there. A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
+the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter keep the
+row even there, as a letter's (CAS 030): Σ (Y÷SIN(Z))^K from 1 to N has no value at Z = π, where the empty sum (N = 0)
+is 0, so it prints `Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that row would pass 191 bytes, the row gives way.
+A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
 its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
 `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
 

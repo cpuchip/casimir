@@ -49,5 +49,6 @@
 #   q 0 at lo, where the sum is 0 (1.0.0's negative-bound row for nothing, (K+1)×X^(K+1)×Y^K from -1)
 | Command | Prints |
 |---|---|
-| `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; Y÷SIN(Z)≠1` |
+#   CAS 030 (work/030-factor-row-to-n.md): the 24's shape now prints the factor's row, as its twin prints X≠0
+| `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1` |
 | `casim sum '(K+1)×SIN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1` |

@@ -1216,10 +1216,10 @@ MUTANTS = {
     # where the answer has no value already: the 8 to N go TOO_LONG); rule 3's off (EXP(Z)≠0); a fraction power read
     # whole only (SQRT(Z)^(3×K-1)'s Z^(3÷2)); a negative fraction power read as a positive one ((Y÷SQRT(Z))^K); a root
     # probed by replacement, its bare Z left free; the merged root's letter path off; the factor rows not asked at all
-    "factor026-row-off": [("src/casim.c", "        sm_row(c, rows, n, h, '!', small(c, C_0), x->kind == K_VAR ? x->id : 26);",
-                           "        (void)rows, (void)n;")],
-    "factor026-hole-kept": [("src/casim.c", "            compact(c, mark, sum);\n            continue;\n",
-                             "            compact(c, mark, sum);\n")],
+    "factor026-row-off": [("src/casim.c", "        sm_row(c, rows, n, h, op, small(c, C_0), x->kind == K_VAR ? x->id : 26);",
+                           "        (void)rows, (void)n, (void)op;")],
+    "factor026-hole-kept": [("src/casim.c", "                compact(c, mark, sum);\n                continue;\n",
+                             "                compact(c, mark, sum);\n")],
     "factor026-never-zero-off": [("src/casim.c",
                                   "        if (x->kind == K_FN && (1u << x->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) continue;",
                                   "")],
@@ -1290,6 +1290,21 @@ MUTANTS = {
                             "        for (int i = 0; i < 1 && !h; i++) h = sm_fall(")],
     "quot029-any-base": [("src/casim.c", "    if (x->kind == K_POW && cmp(c, x->a, b) == 0 && contains(c, x->b, var))\n        h = sm_poly(",
                           "    if (x->kind == K_POW && contains(c, x->b, var))\n        h = sm_poly(")],
+    # CAS 030 (work/030-factor-row-to-n.md): the factor's row kept to ∞ too; at a whole hi too; for any function of a
+    # letter (ASIN's, redundant with Z≠0); for the listed functions of anything (SIN(2×Z)); never giving way (the cap's
+    # lines go TOO_LONG); always giving way (the 24's rows left out)
+    "row030-inf-kept": [("src/casim.c", "            if (S->inf || S->ihi || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||",
+                         "            if (S->ihi || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||")],
+    "row030-whole-kept": [("src/casim.c", "            if (S->inf || S->ihi || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||",
+                           "            if (S->inf || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||")],
+    "row030-any-fn": [("src/casim.c", "                !((1u << x->id) & (1u << F_SIN | 1u << F_COS | 1u << F_TAN | 1u << F_LN | 1u << F_LOG |\n"
+                       "                                   1u << F_ACOS | 1u << F_ACOSH))) {", "                0) {")],
+    "row030-any-arg": [("src/casim.c", "            if (S->inf || S->ihi || x->kind != K_FN || nd(c, x->a)->kind != K_VAR ||",
+                        "            if (S->inf || S->ihi || x->kind != K_FN ||")],
+    "row030-giveway-off": [("src/casim.c", "        if (rows[i].op == '?') rows[i].op = '!', opt |= 1u << i;",
+                            "        if (rows[i].op == '?') rows[i].op = '!';")],
+    "row030-giveway-always": [("src/casim.c", "    if (full || !w->full || !opt || c->st != CASIM_OK) return;",
+                               "    if (full || !opt || c->st != CASIM_OK) return;")],
 }
 
 

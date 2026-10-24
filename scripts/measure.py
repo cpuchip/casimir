@@ -437,6 +437,15 @@ def all_cases():
             ("quot SIN(Z)^K÷Y^K from 1 to N", "SIN(Z)^K÷Y^K", "1|N"),
             ("quot X^(2×K)÷X^K refused", "X^(2×K)÷X^K", "1|N")]:
         rows.append((name, expr, "K", "RAD", "sum", repl, "35"))
+    # CAS 030 (work/030-factor-row-to-n.md): a function factor's row to N, as a letter's, in each angle mode; one that
+    # gives way at the cap; and a factor 0 only at its letter's 0, left to that row
+    for name, expr, repl, angle in [
+            ("row (Y÷SIN(Z))^K from 1 to N", "(Y÷SIN(Z))^K", "1|N", "RAD"),
+            ("row (Y÷COS(Z))^K from 1 to N, GRAD", "(Y÷COS(Z))^K", "1|N", "GRAD"),
+            ("row TAN(Z)^(3×K-1)×Y^K from 0 to N, DEG", "TAN(Z)^(3×K-1)×Y^K", "0|N", "DEG"),
+            ("row K×SIN(Z)^(K-1) from -1 to N, at the cap", "K×SIN(Z)^(K-1)", "-1|N", "RAD"),
+            ("row (Y÷ASIN(Z))^K from 1 to N, none", "(Y÷ASIN(Z))^K", "1|N", "RAD")]:
+        rows.append((name, expr, "K", angle, "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [

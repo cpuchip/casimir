@@ -386,6 +386,7 @@ sm_rational	640
 sm_read	64
 sm_row.part.0	112
 sm_rowf	240
+sm_rput	80
 sm_shift	176
 sm_split.constprop	128
 sm_term	144
