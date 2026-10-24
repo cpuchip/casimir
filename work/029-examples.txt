@@ -51,3 +51,14 @@
 | `casim --arena 16384 sum 'K^2×X^K÷Y^K' K 1 N RAD` | `TOO_LONG` |
 | `casim sum 'K^2×X^K÷Y^K' K 1 N RAD` | `NO_ROOM` |
 | `casim sum 'X^K÷(K×Y^K)' K 1 N RAD` | `NO_CLOSED_FORM` |
+
+# - A positive constant whose power rises in K, in a typed divisor: rule 3 keeps it as never 0 (CAS 017), not CAS 029's
+#   fall, since canon writes 1÷2^(-K) as 2^K. The 450 at 1.1.1's tree found no row reaching that rule: sm_held keeps
+#   1÷2^K, the case that had caught it, by its fall too (sum-positive-base-hole survived; work/v1.1.1-mutants.txt). As
+#   1.1.0 printed them:
+
+| Command | Prints |
+|---|---|
+| `casim sum '1÷2^(-K)' K 1 N RAD` | `2^(N+1)-2` |
+| `casim sum 'X^K÷2^(-K)' K 0 N RAD` | `-1÷2÷(X-1÷2)+(2×X)^(N+1)÷2÷(X-1÷2); X≠1÷2` |
+| `casim sum 'K÷2^(1-K)' K 1 N RAD` | `-2^(N+1)÷2+N×2^(N+1)÷2+1` |

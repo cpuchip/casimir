@@ -1,0 +1,42 @@
+# The mutant count at the v1.1.1 tag: all 450 caught at the tag's tree, from one run of every mutant on the version
+# commit's tree and one rerun at the tag's (2026-10-24, lepton, claims #10365 and #10501).
+#
+# The trees: a worktree at 9a390b0 with the version text, in place by 13:46:30Z and committed unchanged at 14:06:13Z as
+# bb74460; then 751b23c, the commit v1.1.1 tags, which is bb74460 plus three rows in work/029-examples.txt and nothing
+# else (src, scripts, the Makefile and the tests are bb74460's). The core was built at CORE_PIN 38d1931 by the first
+# control: make test, all green, 20 tests, 118,439 checks, "Casimir 1.1.1" (13:47:19Z to 13:52:35Z).
+#
+# The run at bb74460's tree (13:52:35Z to 16:13:53Z, 6 shards of 75, scripts/mutants.py on copies of that worktree):
+#   449 of 450 caught; 1 survived; none not built, none not tested.
+#   SURVIVED sum-positive-base-hole: rule 3's "a positive constant to a power is never 0" (sm_keeps) taken out. At
+#     1.1.0 smcheck_check caught it with 1÷2^K. CAS 029's sm_held keeps 1÷2^K by its fall too (canon's 2^(-K)), so no
+#     check reached the rule where it alone keeps a sum: a positive constant whose power rises in K. Built on the host,
+#     the mutant prints NO_CLOSED_FORM for 1÷2^(-K) from 1 to N, X^K÷2^(-K) from 0 to N, K÷2^(1-K) from 1 to N and
+#     1÷4^(-K÷2) from 1 to N, where 1.1.1 and 1.1.0 answer. A gap in the checks since CAS 029; the code is right.
+#   The fix (751b23c): the first three of those, pinned in work/029-examples.txt as 1.1.0 printed them.
+#   CAS 029's five quot029-* are among the 449: quot029-any-base, quot029-first-only, quot029-held-off,
+#     quot029-no-sums, quot029-rising-kept.
+#   The six whose only catcher is a developer test, caught by build/series_test, as at 1.1.0:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers, ser-root-of-negative,
+#     ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# The rerun at 751b23c's tree (claim #10501): the control, make test, all green, 20 tests, 118,439 checks, "Casimir
+# 1.1.1" (16:18:03Z to 16:20:10Z); then sum-positive-base-hole alone (16:20:10Z to 16:21:50Z), caught by
+# work/029-examples.txt:62, 63 and 64, the three rows.
+# So at the tag's tree all 450 are caught: the one here, and the 449 caught at bb74460's tree, whose code and checks
+# the tag's tree has unchanged. It only adds rows, and a row can't uncatch a mutant; the control shows the rows pass on
+# the unchanged code.
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s: 1,754,740
+# KiB, at 13:54:11Z. The control's largest process: 238,828 KiB. The rerun: 324,792 KiB; its make test 237,908 KiB.
+# The clang check's containers (casim-clang-*, --memory 2g), logged as docker reported them: eight, the control's
+# (13:50:21Z to 13:50:26Z) and seven in the run (15:02:49Z to 15:46:29Z), never two at once, each up 5 to 6 s. The
+# rerun started none: its clang check's target was up to date. Their memory wasn't sampled.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 16 KiB at most, /dev/shm 296 KiB at most. du doesn't see a deleted
+# file held open.
+# The copies on disk (build/mutants): 1,882 MiB at most.
+# Host memory in use (free, every 10 s): 23,310 MiB at most. It counts every tenant of the box, so it doesn't attribute
+# this run's use.
