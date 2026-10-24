@@ -103,3 +103,24 @@
 |---|---|
 | `casim --arena 4096 sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |
 | `casim --arena 4096 sum 'K×COSH(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |
+
+# - Where the cancelled line, with its rows, would pass 191 B, the line before the cancel instead (abacus #10595): canon's
+#   spelling of the cancelled form is the longer for these polynomial factors, and each line is as 8462e77 printed it,
+#   where the cancelled one is TOO_LONG
+
+| Command | Prints |
+|---|---|
+| `casim sum '(K+1)×(Z-1)^K×Y^K' K -1 ∞ RAD` | `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; Z-1≠0; ABS(Y×(Z-1))<1` |
+| `casim sum '(K+1)×((Z-1)×Y)^K' K -1 ∞ RAD` | `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; -Y+Y×Z≠0; ABS(-Y+Y×Z)<1` |
+| `casim sum '(K+1)×(Z+1)^K×Y^K' K -1 ∞ RAD` | `Y×Z÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3)+Y÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3); Y≠0; Z+1≠0; ABS(Y×(Z+1))<1` |
+| `casim sum '(K+1)×(Z+1)^K×Y^(K+1)' K -1 ∞ RAD` | `Y^2×Z÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3)+Y^2÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3); Y≠0; Z+1≠0; ABS(Y×(Z+1))<1` |
+| `casim sum '(K+1)×(1-Z)^K×Y^K' K -1 ∞ RAD` | `-Y×Z÷(Y-2×Y^2+Y^3-Y×Z+4×Y^2×Z-2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y-2×Y^2+Y^3-Y×Z+4×Y^2×Z-2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; Z-1≠0; ABS(-Y×(Z-1))<1` |
+
+# - The compact gives the rows and the fit test the cancel's room back. Without it, at 8,800 B the line the cancel brings
+#   under the cap (TOO_LONG at 8462e77) runs out of room in the fit test and gives way, TOO_LONG; and at 4,096 B the
+#   SQRT(5)÷3 sum beside ACOS loses its value at ACOS(Z) = 0, giving way to the line before the cancel
+
+| Command | Prints |
+|---|---|
+| `casim sum '(K+1)×(Z-2)^K×Y^K' K -1 ∞ RAD` | `1÷4÷(Y-Z÷8+Y^2-Y×Z+Y×Z^2÷4-3×Y^2×Z÷2+3×Y^2×Z^2÷4-Y^2×Z^3÷8+1÷4)-Z÷8÷(Y-Z÷8+Y^2-Y×Z+Y×Z^2÷4-3×Y^2×Z÷2+3×Y^2×Z^2÷4-Y^2×Z^3÷8+1÷4); Y≠0; Z-2≠0; ABS(Y×(Z-2))<1` |
+| `casim --arena 4096 sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |

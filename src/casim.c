@@ -12949,8 +12949,12 @@ static ref sm_cancel1(ctx *c, ref t)
 /* CAS 031: each term of the answer through sm_cancel1, the sum made once and compacted, so the rows get the cancel's
    room back (without it, three sums to ∞ that are TOO_LONG went NO_ROOM at 16,384 B). Where the cancel runs out of
    room, the answer as it was and the arena as it was: taylor_drop's rewind, which drops the constants cached since.
-   The terms are kept in the arena, not on the stack (a 64-term array made the frame 288 B on the S3) */
-static __attribute__((noinline)) ref sm_cancel(ctx *c, ref sum)
+   So too where the cancelled line, with its rows, would pass out (sm_fits): canon's spelling of the cancelled form can
+   be the longer, and an answer that fit isn't lost to TOO_LONG (abacus #10595). The terms are kept in the arena, not
+   on the stack (a 64-term array made the frame 288 B on the S3) */
+static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgroup *G, int ng, ref r, size_t ocap);
+
+static __attribute__((noinline)) ref sm_cancel(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, size_t ocap)
 {
     size_t mark = c->used;
     int n = nd(c, sum)->kind == K_ADD ? nd(c, sum)->n : 1;
@@ -12966,6 +12970,7 @@ static __attribute__((noinline)) ref sm_cancel(ctx *c, ref sum)
         ref *t = (ref *)(void *)nd(c, room);
         r = compact(c, mark, n == 1 ? t[0] : add(c, t, n));
     }
+    if (c->st == CASIM_OK && r != sum && !sm_fits(c, S, G, ng, r, ocap)) r = sum;   /* abacus #10595 */
     if (c->st == CASIM_NO_ROOM) {
         c->st = CASIM_OK;
         r = sum;
@@ -12976,7 +12981,8 @@ static __attribute__((noinline)) ref sm_cancel(ctx *c, ref sum)
 
 /* rule 4b: each letter group's rows. Finite: where B is 1 (k×L^m = 1 solved for L, else B ≠ 1). At ∞: where it
    converges, |B| < 1 (|L| < or > |k|^(-1/m), else ABS(B) < 1) */
-static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, smrow *rows, int *n)
+static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum,
+                                                          smrow *rows, int *n)
 {
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
@@ -13049,7 +13055,8 @@ static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int
 }
 
 /* the answer (∞ or -∞ when dir), then its rows after "; " (CANCEL's) */
-static casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n, char *out, size_t ocap)
+static inline __attribute__((always_inline)) casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n,
+                                                                   char *out, size_t ocap)
 {
     out_t w = {out, ocap, 0, false};
     if (c->st != CASIM_OK || (!dir && !n)) return finish(c, dir ? SPARE : sum, out, ocap);
@@ -13064,6 +13071,25 @@ static casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n, char 
     }
     out[w.n] = '\0';
     return CASIM_OK;
+}
+
+/* CAS 031: whether r's line, with its rows, fits ocap, as sm_print would put it (abacus #10595). Put into the arena and
+   dropped; no room for it is no fit, so the cancel gives way. sm_rows and sm_print are always inline, so do_sum_ holds
+   them as it did before this second caller */
+static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgroup *G, int ng, ref r, size_t ocap)
+{
+    size_t mark = c->used;
+    ref room = grab(c, SM_ROWS * sizeof(smrow) + ocap + 1);
+    int n = 0;
+    casim_status st = CASIM_NO_ROOM;
+    if (room) {
+        smrow *rows = (smrow *)(void *)nd(c, room);
+        sm_rows(c, S, G, ng, r, rows, &n);
+        st = sm_print(c, r, 0, rows, n, (char *)(rows + SM_ROWS), ocap);
+    }
+    c->st = CASIM_OK;
+    taylor_drop(c, mark);
+    return st != CASIM_TOO_LONG && st != CASIM_NO_ROOM;
 }
 
 /* closed: rule 7's sum was past out, so a closed form instead (rule 4b), its rows saying where it holds; *direct when
@@ -13147,7 +13173,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
     }
     if (c.st == CASIM_OK && !dir) sum = expand_fully(&c, ib_canon(&c, sum));
     if (c.st == CASIM_OK && !dir && T) sum = ib_canon(&c, add2(&c, sum, T));
-    if (c.st == CASIM_OK && !dir) sum = sm_cancel(&c, sum);          /* CAS 031: the common factor, before the rows */
+    if (c.st == CASIM_OK && !dir) sum = sm_cancel(&c, &S, G, ng, sum, ocap);   /* CAS 031: the common factor */
     if (c.st == CASIM_OK) sm_rows(&c, &S, G, ng, dir ? small(&c, C_0) : sum, rows, &nrows);
     return sm_print(&c, sum, dir, rows, nrows, out, ocap);
 }

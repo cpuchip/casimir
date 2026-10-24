@@ -1,6 +1,7 @@
 # CAS work unit 031: the closed form's common factor, cancelled
 
-**From:** casim · **To:** abacus · **Status:** built (As built below), ruled at #10576; h031 frozen at #10576 (sha256
+**From:** casim · **To:** abacus · **Status:** built again (As built, After #10595), after d3a1ef8 was not accepted
+for one class (#10595); ruled at #10576; h031 frozen at #10576 (sha256
 ac8964c5…8ff1, 397 sums at 16,384 B and 65,536 B). ~~Draft, for h031. Nothing is built.~~ Michael ruled the cancel (card
 cas-031-cancel, abacus #10524 (3)). The draft's numbers come from a throwaway prototype, p031e, over f59feca. Its src
 is 8462e77's, CAS 030 as accepted. The build is p031e's code. casim writes the unit; abacus writes the hidden set and
@@ -246,4 +247,47 @@ with the two give-way rows, green, 136 s, 239,744 KiB (973 doc commands). make t
 - **The S3 bench** (scripts/device.sh at 16,384 B, /dev/ttyACM2, 20:13–20:32Z): DEVICE PASS, all 1,384 cases byte for
   byte as the host, the five cancel rows among them. The worst stack is 11,360 masked (STU chain X^ 44 d, as at
   8462e77) plus interrupts 400: 11,760 of 12,288. The container's peak was 893,075,456 B.
+
+### After #10595: a cancelled line past the cap
+
+d3a1ef8 was not accepted for one class (h031, 12 runs, 6 sums): an answer at 8462e77 became TOO_LONG. Five polynomial
+factors from -1 to ∞, `(K+1)×(Z-1)^K×Y^K`, `(K+1)×((Z-1)×Y)^K`, `(K+1)×(Z+1)^K×Y^K`, `(K+1)×(Z+1)^K×Y^(K+1)` and
+`(K+1)×(1-Z)^K×Y^K`, printed lines of 187 to 191 B at 8462e77, and canon's spelling of the cancelled form passes 191.
+The draft's "every moved answer is shorter" held on my sets, which had no such sum; it isn't a rule of the cancel. The
+draft's give-way ("where the cancel runs out of room, the answer is the one before it") now covers the cap too, as
+abacus asked:
+- **sm_fits** (new, noinline) puts the cancelled answer's line, with its rows, as sm_print would, into the arena, and
+  drops it. Where that is TOO_LONG, or runs out of room, sm_cancel gives way: the answer before it, and its own rows.
+- **sm_rows and sm_print** are always inline now. sm_fits is their second caller, and do_sum_ holds them inline as it
+  did. Its frame stays 816 on the host. A first form that moved the rows and the print into a helper beside do_sum_ took
+  do_sum_ to 736, and was dropped.
+- sm_cancel takes S, G, ng and ocap for it: 208 → 240 B on the host. sm_fits is 304 B.
+- The cost is a second rows and print for each answer the cancel moves.
+
+Measured:
+- **The fix against d3a1ef8:** on the grid, the 640, the 42 and the family, at 4,096, 8,800, 16,384 and 65,536 B (13,568
+  calls), 0 moved.
+- **A polynomial family** (c31/poly31.txt: eight polynomial factors × eight shapes from -2..0, to N and to ∞, 128 sums
+  at 16,384 and 65,536 B): d3a1ef8 lost an answer in exactly the 10 calls of abacus's five sums, and nothing else. The
+  fix prints 8462e77's line in all 10, and differs from d3a1ef8 nowhere else.
+- **work/031-examples.txt:** the five, each as 8462e77 printed it, and two rows for the compact (69 rows).
+- **scripts/mutants.py:** cancel-long-kept, the fit test's give-way taken out (464 in all).
+- **Mutants** (claim #10605, 21:41–21:54Z, the nine with the `cancel-` prefix): cancel-long-kept caught by the five
+  rows; the others as at d3a1ef8, except **cancel-no-compact, which survived.** The fit test had taken over its
+  catching case, the mirror lesson again: without the compact, the three refusals at 16,384 B run out of room in
+  sm_fits and give way to their TOO_LONG, so they print the same with the compact or without it. A search of the build
+  against the mutant's CLI (the grid, the 640, the 42, the polynomial family and the 030 family, at 3,072 to 16,384 B,
+  19,360 calls) found five calls where the compact still matters. Three are lines the cancel brings under the cap that
+  8462e77 prints TOO_LONG, `(K+1)×(Z-2)^K×Y^K` and two like it from -1 to ∞ at 8,800 B, which give way without the
+  room. The other two are the SQRT(5)÷3 sums beside ACOS from 1 and 2 to ∞ at 4,096 B, which lose their value. One of
+  each is pinned (work/031-examples.txt:125 and 126); rerun alone, it is caught by them (22:14–22:16Z). The three
+  polynomial lines agree with 1÷(1-(Z-2)×Y)^2 and its kin at generic points, and their factor row excludes the factor's
+  zero, where the sum has no value. cancel-rewind-keeps-cache survives, as named.
+- **Frames:** host 429 as recorded (sm_cancel 240, sm_fits 304, sm_pw 96; do_sum_ 816 as before). S3 (size-s3): 423 as
+  at 8462e77, plus sm_cancel 176, sm_fits 176 and sm_pw 64; no frame moved. S3 text 246,335 B, +3,113 over 8462e77's
+  243,222 (d3a1ef8: +1,534; the always-inline print and rows are in sm_fits too).
+- **The S3 bench** (claim #10605, 21:54–22:12Z): DEVICE PASS, all 1,384 cases byte for byte as the host; worst stack
+  11,760 of 12,288 (masked 11,360, as at 8462e77). The container's peak was 701,145,088 B.
+- make test: green, 20 tests, 118,439 checks, 4:19, 240,860 KiB, before the two compact rows (test rows only). make
+  check on the tree with them: green, 132 s, 239,360 KiB (980 doc commands).
 

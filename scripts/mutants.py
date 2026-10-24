@@ -1323,6 +1323,10 @@ MUTANTS = {
     "cancel-no-compact": [("src/casim.c", "        r = compact(c, mark, n == 1 ? t[0] : add(c, t, n));",
                            "        r = n == 1 ? t[0] : add(c, t, n);")],
     "cancel-rewind-keeps-cache": [("src/casim.c", "    if (r == sum) taylor_drop(c, mark);", "    if (r == sum) c->used = mark;")],
+    # abacus #10595: the cancelled line kept where it passes out (the five polynomial factors from -1 go TOO_LONG)
+    "cancel-long-kept": [("src/casim.c",
+                          "    if (c->st == CASIM_OK && r != sum && !sm_fits(c, S, G, ng, r, ocap)) r = sum;   /* abacus #10595 */",
+                          "    if (c->st == CASIM_OK && r != sum && !sm_fits(c, S, G, ng, r, ocap)) (void)0;   /* abacus #10595 */")],
 }
 
 

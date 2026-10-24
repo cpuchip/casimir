@@ -370,10 +370,11 @@ sm_add	112
 sm_anti	224
 sm_atom	144
 sm_bound	64
-sm_cancel	208
+sm_cancel	240
 sm_cmpabs	80
 sm_den	112
 sm_fall	80
+sm_fits	304
 sm_groups.constprop	192
 sm_held	48
 sm_keeps	80
