@@ -25,7 +25,7 @@ None.
 - Frame and symbol gates: no frame over 1 KiB, no `pow` linked, and every function's frame against the recorded table. No frame moved from 1.1.1. The new function, sm_rput, takes 80 B on the host and 48 B on the S3.
 - Value checks beside the corpus judge Taylor polynomials, limits, integrals and sums against independent constructions: power series over fractions, numeric derivatives at 90 digits, and sums added term by term at 60 digits. New in 1.1.2: a function factor's family in each angle mode (80 a run, and 18 held), judged at the mode's own zeros, where a missing value of the shape CAS 030 rows is a failure unless its row would pass the cap; and TAN and the inverse functions read in the mode.
 - CI on every push: `make check` under gcc and clang, `make test`, CMake under gcc and clang, WebAssembly, and the ESP-IDF component for the ESP32-S3.
-- [to come: the 456 planted mutants, run at this tag's tree after the version commit]
+- 456 planted mutants, each a fault the checks must catch: all 456 are caught at this tag's tree (work/v1.1.2-mutants.txt), CAS 030's six among them.
 - Hidden sets kept by the project's reviewer, independent of this repository, rerun at each unit's acceptance. At CAS 030's: its own, 1,040 runs in RAD, DEG and GRAD, judged by the byte shape (1.1.1's line plus exactly one row, the factor's own, within 191 B), at the mode's own zeros, and by value; and the earlier units' sets.
 - On the ESP32-S3, every one of the bench's 1,379 cases is byte-identical to the host:
   - with a 16,384 B arena, the size the calculator runs it with;
