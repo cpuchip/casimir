@@ -34,7 +34,8 @@
 |---|---|
 | `casim sum 'K×SIN(Z)^(K-1)' K 0 ∞ RAD` | `-1÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(SIN(Z))<1` |
 | `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1` |
-| `casim sum 'K×(EXP(Z)×X)^K÷X' K 1 ∞ RAD` | `X×EXP(Z)÷(X-X^2×EXP(Z))-X×EXP(Z)^2÷2÷(X×EXP(Z)-X^2×EXP(Z)^2÷2-1÷2); X≠0; ABS(X×EXP(Z))<1` |
+#   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `X×EXP(Z)÷(X-X^2×EXP(Z))-X×EXP(Z)^2÷2÷(X×EXP(Z)-X^2×EXP(Z)^2÷2-1÷2); X≠0; ABS(X×EXP(Z))<1`
+| `casim sum 'K×(EXP(Z)×X)^K÷X' K 1 ∞ RAD` | `-X×EXP(Z)^2÷2÷(X×EXP(Z)-X^2×EXP(Z)^2÷2-1÷2)-EXP(Z)÷(X×EXP(Z)-1); ABS(X×EXP(Z))<1` |
 
 # - Rule 4: CAS 026's row test reads the shifted lo. Two letters from -1 to N shift by lo, -1 (#9572), so q gains
 #   SIN(Z)^(-1); read at the unshifted lo it asked for SIN(Z)≠0, a row for nothing (prototype p1 printed it). 1.0.0
@@ -51,4 +52,5 @@
 |---|---|
 #   CAS 030 (work/030-factor-row-to-n.md): the 24's shape now prints the factor's row, as its twin prints X≠0
 | `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1` |
-| `casim sum '(K+1)×SIN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1` |
+#   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1`
+| `casim sum '(K+1)×SIN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |

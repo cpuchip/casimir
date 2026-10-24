@@ -1305,6 +1305,24 @@ MUTANTS = {
                             "        if (rows[i].op == '?') rows[i].op = '!';")],
     "row030-giveway-always": [("src/casim.c", "    if (full || !w->full || !opt || c->st != CASIM_OK) return;",
                                "    if (full || !opt || c->st != CASIM_OK) return;")],
+    # CAS 031 (work/031-common-factor-cancel.md): the cancel off; k as the numerator's power, not the least (P÷b^k then
+    # has b at a negative power, and the 0÷0 is back); only the numerator's first factor; only the answer's first term;
+    # NO_ROOM kept, not given way; no compact (the three sums whose rows need the room go NO_ROOM at 16,384 B); the
+    # give-way's rewind without dropping the constants cached since (no case known to reach it)
+    "cancel-off": [("src/casim.c", "        moved = moved || v != u;", "        moved = false;")],
+    "cancel-numerator-power": [("src/casim.c", "                rat r = {-(pn < pc ? pn : pc), 1};",
+                                "                rat r = {-pn, 1};")],
+    "cancel-first-base": [("src/casim.c", "        for (int i = 0; i < nn && c->st == CASIM_OK; i++) {",
+                           "        for (int i = 0; i < nn && i < 1 && c->st == CASIM_OK; i++) {")],
+    "cancel-first-term": [("src/casim.c",
+                           "        ref u = nd(c, sum)->kind == K_ADD ? list(c, nd(c, sum)->a)[i] : sum, v = sm_cancel1(c, u);",
+                           "        ref u = nd(c, sum)->kind == K_ADD ? list(c, nd(c, sum)->a)[i] : sum, v = i ? u : sm_cancel1(c, u);")],
+    "cancel-keeps-no-room": [("src/casim.c", "    if (c->st == CASIM_NO_ROOM) {\n        c->st = CASIM_OK;\n        r = sum;\n    }\n"
+                              "    if (r == sum) taylor_drop(c, mark);",
+                              "    if (0) {\n        c->st = CASIM_OK;\n        r = sum;\n    }\n    if (r == sum) taylor_drop(c, mark);")],
+    "cancel-no-compact": [("src/casim.c", "        r = compact(c, mark, n == 1 ? t[0] : add(c, t, n));",
+                           "        r = n == 1 ? t[0] : add(c, t, n);")],
+    "cancel-rewind-keeps-cache": [("src/casim.c", "    if (r == sum) taylor_drop(c, mark);", "    if (r == sum) c->used = mark;")],
 }
 
 

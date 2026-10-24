@@ -446,6 +446,16 @@ def all_cases():
             ("row K×SIN(Z)^(K-1) from -1 to N, at the cap", "K×SIN(Z)^(K-1)", "-1|N", "RAD"),
             ("row (Y÷ASIN(Z))^K from 1 to N, none", "(Y÷ASIN(Z))^K", "1|N", "RAD")]:
         rows.append((name, expr, "K", angle, "sum", repl, "35"))
+    # CAS 031 (work/031-common-factor-cancel.md): the closed form's common factor cancelled, to ∞ from a negative lo in
+    # two angle modes, past a constant beside the factor, a line it brings under the cap, and one whose rows need the
+    # cancel's room back (the compact)
+    for name, expr, repl, angle in [
+            ("cancel (K+1)×SIN(Z)^(K+1)×Y^K from -1 to ∞", "(K+1)×SIN(Z)^(K+1)×Y^K", "-1|∞", "RAD"),
+            ("cancel (K+1)×COS(Z)^(K+1)×Y^K from -1 to ∞, GRAD", "(K+1)×COS(Z)^(K+1)×Y^K", "-1|∞", "GRAD"),
+            ("cancel K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z) from 1 to ∞", "K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)", "1|∞", "RAD"),
+            ("cancel K×EXP(Z)^(K-1) from 1 to N, under the cap", "K×EXP(Z)^(K-1)", "1|N", "RAD"),
+            ("cancel (K+1)×(Z^2-1)^(K+1)×Y^K from -2 to ∞, compacted", "(K+1)×(Z^2-1)^(K+1)×Y^K", "-2|∞", "RAD")]:
+        rows.append((name, expr, "K", angle, "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [

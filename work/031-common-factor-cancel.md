@@ -1,6 +1,7 @@
 # CAS work unit 031: the closed form's common factor, cancelled
 
-**From:** casim · **To:** abacus · **Status:** Draft, for h031. Nothing is built. Michael ruled the cancel (card
+**From:** casim · **To:** abacus · **Status:** built (As built below), ruled at #10576; h031 frozen at #10576 (sha256
+ac8964c5…8ff1, 397 sums at 16,384 B and 65,536 B). ~~Draft, for h031. Nothing is built.~~ Michael ruled the cancel (card
 cas-031-cancel, abacus #10524 (3)). The draft's numbers come from a throwaway prototype, p031e, over f59feca. Its src
 is 8462e77's, CAS 030 as accepted. The build is p031e's code. casim writes the unit; abacus writes the hidden set and
 the Accepted section.
@@ -169,6 +170,10 @@ differs. It has the grid's 35, the 640's 31 (27 of fn-rows-all, 4 of fn-pow-rows
 
 ## Asked
 
+Ruled at #10576: (1) as it prints; (2) they stand, under CAS 026's rule (h031 checks that the sum has no value where
+they exclude); (3) yes, the old line in a comment; (4) the seven, and cancel-rewind-keeps-cache named as cx-bit-in-33
+is if it survives; (5) Michael's, on the board after acceptance.
+
 1. **`ABS(Z)≠0`.** `(1+K)×(ABS(Z)×X×Y)^K` from -1 to ∞ printed `Z≠0` and prints `ABS(Z)≠0`, which excludes the same
    point. It's CAS 026's factor row, which the answer's new value at 0 no longer skips; the letter's row goes because
    the answer has a value at 0. Lean: as it prints. Making it `Z≠0` would mean a rule for one spelling of one factor.
@@ -196,3 +201,49 @@ differs. It has the grid's 35, the 640's 31 (27 of fn-rows-all, 4 of fn-pow-rows
 
 Not in this unit: a cancel across two denominators (a term n×P^(-1)×Q^(-1)), and a power of N (`(X×Y)^(N+1)` over a
 sum holding X). sm_pw reads only whole powers, so `-N×(X×Y)^(N+1)÷(X^2-X^3×Y)` keeps its X^2 (work/024-examples.txt:27).
+
+## As built
+
+The build is p031e's three functions with their comments written for the unit, and sm_cancel's last steps put as one
+compact call; it prints what p031e prints, byte for byte, on the grid, the 640, the 42 with SQRT(5)÷3 and the family
+(6,784 calls at both arenas). Beside the code:
+- **The 12 doc rows** are pinned as they now print, each under a comment with the line it printed (#10576 (3)).
+- **work/031-examples.txt** (62 rows, scripts/doc-examples.py): the grid's 35, the 14 with SQRT(5)÷3, the four lines
+  that were TOO_LONG, the three refusals at 16,384 B (TOO_LONG, the compact's row), four rows for #10576 (1) and (2)
+  (SIN(Z)≠0, COS(Z)≠0, ABS(Z)≠0, and EXP(Z), which gets none), and two at 4,096 B where the cancel itself runs out of
+  room and gives way (`K×EXP(Z)^(K-1)` from 1 to N, which answers at 8,800 B, and its COSH twin: TOO_LONG, as at
+  8462e77).
+- **sum-values:** judge_letter4 refuses #10068's shape (the 12's: to ∞ from lo < 0, the term at lo 0) where it named
+  it ("missing ∞"), and a CAS 031 block judges it: 5 planted answers (1.1.2's lines for SIN in RAD, COS in GRAD, TAN
+  and SIN(2×Z) in DEG, LN from -2) refused and the build's taken; 45 held rows (the grid's five shapes for ROW030's
+  factors and SIN(2×Z), and the five planted sums); and 60 seeded (gen_letter6, seed 20261031: gen_letter4's sums from
+  -3..-1 to ∞ with q 0 at lo, any of the 18 factors, in each angle mode for SIN, COS, TAN and SIN(2×Z)). CAS 027's
+  block takes n5 with the build's line. 846 checks, 0 failed; on 8462e77's CLI, 47 failed, every one the 12's shape (the
+  45 held and 2 of the seeded). Across the 18 factors × three of the shapes, 8462e77 fails exactly SIN, COS, TAN, LN,
+  LOG, ACOS, ACOSH and SIN(2×Z), the build none.
+- **docs/language.md:** a sentence after CAS 027's, with the twin's line.
+- **scripts/measure.py:** five bench rows (cancel …): SIN to ∞ from -1, COS in GRAD, SQRT(5)÷3 beside SIN, a line
+  brought under the cap, and a compacted one.
+- **scripts/mutants.py:** the seven of §Asked (4), 463 in all.
+- **tests/frames:** sm_cancel 208 and sm_pw 96; the other 426 as recorded.
+
+make check: green, 219 s, 241,084 KiB (971 doc commands, golden 10,822, sum values 846); again on the tree as committed,
+with the two give-way rows, green, 136 s, 239,744 KiB (973 doc commands). make test: green, 20 tests, 118,439 checks,
+4:50, 239,720 KiB (claim #10578), on the tree before the two rows, which are test rows only.
+
+- **Mutants** (claim #10578, 2 shards, 19:57–20:13Z): the seven, and CAS 010's cancel-zero-numerator, which the shard
+  filter's `cancel-` prefix took in too (caught by tests/golden/corpus.txt:7844). Five of the seven were caught at
+  once, by the re-pinned doc rows and work/031-examples.txt. Two survived:
+  - **cancel-keeps-no-room:** no check reached the give-way. A search of the build against the mutant's CLI (the
+    grid, the 640, the 42 and the family, at 3,072 to 12,288 B, 13,568 calls) found it at 4,096 B only, on four sums,
+    where the build prints TOO_LONG and the mutant NO_ROOM. Two of them are pinned above (work/031-examples.txt:104 and
+    105); rerun alone, it is caught by them (20:34–20:36Z).
+  - **cancel-rewind-keeps-cache:** the same search found no input where it differs from the build. It is named, as
+    cx-bit-in-33 is (#10576 (4)): the rewind it removes keeps c->small and c->pi out of freed room, and no known case
+    makes a cached constant first inside a cancel that then gives way.
+- **Frames:** host 428 as recorded (sm_cancel 208, sm_pw 96 new). S3 (size-s3): 423 as at 8462e77, plus sm_cancel 160
+  and sm_pw 64; no frame moved. S3 text 244,756 B, +1,534 over 8462e77's 243,222.
+- **The S3 bench** (scripts/device.sh at 16,384 B, /dev/ttyACM2, 20:13–20:32Z): DEVICE PASS, all 1,384 cases byte for
+  byte as the host, the five cancel rows among them. The worst stack is 11,360 masked (STU chain X^ 44 d, as at
+  8462e77) plus interrupts 400: 11,760 of 12,288. The container's peak was 893,075,456 B.
+

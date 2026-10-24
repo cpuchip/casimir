@@ -680,13 +680,14 @@ def fzeros(fac, angle):
     return ZEROS_IN.get((fac, angle), zeros), offs
 
 
-def letter_sum(rnd, fac, los, p_inf):
-    """q(K) × F^(m×K+g) × Y^(b×K+f) for gen_letter4 and gen_letter5, in gen_letter4's order of draws"""
+def letter_sum(rnd, fac, los, p_inf, zero_at_lo=False):
+    """q(K) × F^(m×K+g) × Y^(b×K+f) for gen_letter4, gen_letter5 and gen_letter6, in gen_letter4's order of draws
+    (zero_at_lo: q is always 0 at lo, its draw still made)"""
     m, b = rnd.choice((1, 1, 2, 3, -1)), rnd.choice((1, 1, 2))
     g, f = rnd.choice((0, -1, -1, -2, 1)), rnd.choice((0, 0, -1, 1))
     co = [rand_frac(rnd, True) for _ in range(rnd.choice((0, 0, 1)))] + [rand_frac(rnd)]
     lo = rnd.choice(los)
-    if rnd.random() < 0.3:          # q × (K - lo): a zero coefficient where the term divides (#9563)
+    if rnd.random() < 0.3 or zero_at_lo:    # q × (K - lo): a zero coefficient where the term divides (#9563)
         co = [(co[i - 1] if i else 0) - lo * (co[i] if i < len(co) else 0) for i in range(len(co) + 1)]
 
     def pw(base, m, e):
@@ -718,6 +719,15 @@ def gen_letter5(rnd):
     return summand, lo, hi, "RAD" if hi == INF and fac in ("ACOS(Z)", "ASIN(Z)", "ATAN(Z)") else angle, truth
 
 
+def gen_letter6(rnd):
+    """CAS 031: the 12's shape, gen_letter4's sums from lo -3..-1 to ∞ with q 0 at lo (the term at lo is 0), F any of
+    F026's and F030's, SIN's, COS's, TAN's and SIN(2×Z)'s in each angle mode"""
+    fac = rnd.choice(sorted(F026) + sorted(F030))
+    summand, lo, hi, truth = letter_sum(rnd, fac, (-3, -2, -1, -1), 1.0, zero_at_lo=True)
+    angle = rnd.choice(("RAD", "DEG", "GRAD"))
+    return summand, lo, hi, angle if fac in ("SIN(Z)", "COS(Z)", "TAN(Z)", "SIN(2×Z)") else "RAD", truth
+
+
 def judge_letter4(summand, lo, hi, out, fac, B, b, f, angle="RAD"):
     """('' when out ('answer; rows') is right, what it names). At each zero of F (F put to 0, Z there elsewhere, Y at
     1÷3 and -1÷4): where a term from lo has no value, the answer must not claim one (a value, and no row with a value
@@ -730,7 +740,8 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f, angle="RAD"):
     zeros) the rational twin's row for nothing (#10068), named "missing ∞" (abacus's judge also asks that 1.0.0 missed
     each). A row whose zero set is F's reads as F's row (Z^(2÷3)≠0 as Z^(1÷3)≠0). CAS 030: for ROW030's factors the
     24's shape is a missing row, but where the line with F≠0 would pass 191 B, which gives way ("missing cap"); F's
-    zeros and the values are the angle mode's"""
+    zeros and the values are the angle mode's. CAS 031: #10068's shape (the 12's) is refused, no longer named: the
+    closed form's common factor is cancelled, so the answer has the sum's value there"""
     if out in STATUS or not out or out.startswith("DECIMAL_FORM"):
         return f"{out} for an answer with rows", []
     parts = out.split("; ")
@@ -794,7 +805,8 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f, angle="RAD"):
                                         f"the 24's shape, with no {fac}≠0 (CAS 030)"), named
                             kind = "missing cap"        # the row gives way at the cap
                     elif n is None and lo < 0 and term(sub(sub(summand, "Z", offs[0]), "Y", "(1÷3)"), lo, angle) == 0:
-                        kind = "missing ∞"              # #10068: to ∞ from lo < 0, q 0 at lo
+                        return (f"no value where {fac} = 0 (Z = {z}, Y = {y}, N = {n}) and the sum has one: the 12's "
+                                f"shape, to ∞ from lo < 0 with its term at lo 0 (CAS 031)"), named
                     else:
                         return f"no value where {fac} = 0 (Z = {z}, Y = {y}, N = {n}) and the sum has one", named
                     if kind not in named:
@@ -1145,14 +1157,14 @@ def main():
               (w5, w5o.replace("; Z≠0; ", "; Z≠0; SIN(Z)≠0; ")), (v5, av5),
               (z5, "1÷2÷(Y×Z^(2÷3)-Y^2×Z^(4÷3)÷2-1÷2); Y≠0; Z^(2÷3)≠0; ABS(Y×Z^(2÷3))<1"),
               (s4, f"{a4}; SIN(Z)^2≠0; ABS(Y×SIN(Z))<1"), (k5, f"{ak5}; Y≠0; ABS(Y×SIN(Z))<1"),
-              (n5, "Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1")]
+              # (CAS 031: n5, the 12's shape, has its value at π now; 1.1.2's line is refused below)
+              (n5, "-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1")]
     refuses5 = [(s5, "Y×SIN(Z)÷(SIN(Z)-Y×SIN(Z)^2)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Z≠0; ABS(Y×SIN(Z))<1"),
                 (t5, "-Y×SIN(Z)÷(Y×SIN(Z)^2-1)-(Y×SIN(Z)^2)^(N+1)÷(SIN(Z)-Y×SIN(Z)^3); Z≠0; Y×SIN(Z)^2≠1"),
                 (s5, a5.replace("; ", "+(0)^ABS(SIN(Z))÷1000; ", 1)), (s4, f"{a4}; Z^2≠0; ABS(Y×SIN(Z))<1"),
                 (k5, f"({ak5})×SIN(Z)÷SIN(Z); Y≠0; ABS(Y×SIN(Z))<1")]
     if any(judge_letter4(*t[:3], out, *t[3:])[0] for t, out in takes5) or \
             "missing N" not in judge_letter4(*v5[:3], av5, *v5[3:])[1] or \
-            "missing ∞" not in judge_letter4(*n5[:3], takes5[-1][1], *n5[3:])[1] or \
             any(not judge_letter4(*t[:3], out, *t[3:])[0] for t, out in refuses5):
         print("FAIL scripts/sum-values.py: its CAS 027 judge accepts a planted answer or refuses a right one")
         sys.exit(1)
@@ -1239,6 +1251,46 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 031 (work/031-common-factor-cancel.md): the closed form's common factor is cancelled, so the 12's shape (to ∞
+    # from lo < 0, the term at lo 0) has the sum's value at F's zero. Planted first: 1.1.2's lines, 0÷0 there (SIN in
+    # RAD, COS in GRAD, TAN and SIN(2×Z) in DEG, LN from -2), refused; the build's taken
+    n7 = ("(K+1)×SIN(Z)^(K+1)×Y^K", -1, INF, "SIN(Z)", "SIN(Z)^(1)×Y^(1)", 1, 0)
+    c7 = ("(K+1)×COS(Z)^(K+1)×Y^K", -1, INF, "COS(Z)", "COS(Z)^(1)×Y^(1)", 1, 0)
+    t7 = ("(K+1)×TAN(Z)^(K+2)×Y^K", -1, INF, "TAN(Z)", "TAN(Z)^(1)×Y^(1)", 1, 0)
+    l7 = ("(K+2)×LN(Z)^(K+2)×Y^K", -2, INF, "LN(Z)", "LN(Z)^(1)×Y^(1)", 1, 0)
+    d7 = ("(K+1)×SIN(2×Z)^(K+1)×Y^K", -1, INF, "SIN(2×Z)", "SIN(2×Z)^(1)×Y^(1)", 1, 0)
+    takes7 = [(n7, "-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1", "RAD"),
+              (c7, "-COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y≠0; ABS(Y×COS(Z))<1", "GRAD"),
+              (t7, "-TAN(Z)^2÷2÷(Y×TAN(Z)-Y^2×TAN(Z)^2÷2-1÷2); Y≠0; ABS(Y×TAN(Z))<1", "DEG"),
+              (l7, "LN(Z)÷(Y-2×Y^2×LN(Z)+Y^3×LN(Z)^2); Y≠0; Z≠0; ABS(Y×LN(Z))<1", "RAD"),
+              (d7, "-SIN(2×Z)÷2÷(Y×SIN(2×Z)-Y^2×SIN(2×Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(2×Z))<1", "DEG")]
+    refuses7 = [(n7, "Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1", "RAD"),
+                (c7, "Y×COS(Z)^2÷(Y×COS(Z)-2×Y^2×COS(Z)^2+Y^3×COS(Z)^3); Y≠0; ABS(Y×COS(Z))<1", "GRAD"),
+                (t7, "Y×TAN(Z)^3÷(Y×TAN(Z)-2×Y^2×TAN(Z)^2+Y^3×TAN(Z)^3); Y≠0; Z≠0; ABS(Y×TAN(Z))<1", "DEG"),
+                (l7, "Y×LN(Z)^3÷(Y^2×LN(Z)^2-2×Y^3×LN(Z)^3+Y^4×LN(Z)^4); Y≠0; Z≠0; ABS(Y×LN(Z))<1", "RAD"),
+                (d7, "Y×SIN(2×Z)^2÷(Y×SIN(2×Z)-2×Y^2×SIN(2×Z)^2+Y^3×SIN(2×Z)^3); Y≠0; Z≠0; ABS(Y×SIN(2×Z))<1",
+                 "DEG")]
+    if any(judge_letter4(*t[:3], out, *t[3:], angle=a)[0] for t, out, a in takes7) or \
+            any(not judge_letter4(*t[:3], out, *t[3:], angle=a)[0] for t, out, a in refuses7):
+        print("FAIL scripts/sum-values.py: its CAS 031 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    # held: the grid of the 12 (abacus #10515), five shapes for each factor whose zero isn't its letter's 0, in RAD
+    rnd7, n7s = random.Random(20261031), 60
+    held7 = [(sh.replace("F", fac), lo, INF, fac, f"{fac}^(1)×Y^(1)", 1, 0, "RAD")
+             for fac in ROW030 + ("SIN(2×Z)",)
+             for sh, lo in (("(K+1)×F^(K+1)×Y^K", -1), ("(K+1)×F^(K+2)×Y^K", -1), ("(K+2)×F^(K+2)×Y^K", -2),
+                            ("(K+3)×F^(K+3)×Y^K", -3), ("(K+1)×F^(K+1)×Y^(K+1)", -1))]
+    held7 += [(*t, a) for t, _, a in takes7]
+    cases7 = [gen_letter6(rnd7) for _ in range(n7s)] + [(s, lo, hi, a, ("LETTER4", *t)) for s, lo, hi, *t, a in held7]
+    for summand, lo, hi, angle, truth in cases7:
+        out = run_sum(summand, lo, hi, angle)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why, named_rows = judge_letter4(summand, lo, hi, out, *truth[1:], angle=angle)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
     # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
     if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \
@@ -1261,16 +1313,17 @@ def main():
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
+    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases5) + rows
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
           f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
           f"N = -1, {n_fn} with no row for a letter in a function) and {n4} with a function factor (CAS 026; and "
           f"{len(held4)} held; {n4named} with a named letter row, {n4miss} and {n4neg} with the missing values of the "
           f"24's shape and of #10068's, CAS 027), {n6} with CAS 030's factors in each angle mode (and {len(held6)} "
-          f"held; {n6cap} where the row gives way at the cap, {n6miss} with the 24's shape named), {n5} typed quotients "
+          f"held; {n6cap} where the row gives way at the cap, {n6miss} with the 24's shape named), {n7s} of the 12's "
+          f"shape (CAS 031; and {len(held7)} held), {n5} typed quotients "
           f"(CAS 029; and {len(held5)} held) at {ARENA} B, {soft} NO_ROOM, TOO_LONG or DECIMAL_FORM; {rows} example "
-          f"rows by value\nchecks: {n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases5) + rows} "
-          f"failed: {failed + rfailed}")
+          f"rows by value\nchecks: {checks} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)
 
 

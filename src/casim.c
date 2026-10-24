@@ -12001,7 +12001,8 @@ casim_status casim_limit(const char *eqn, int var, const char *point, const char
 /* ---- sums (unit CAS 018, work/018-sums.md) ----
    Σ f for var = lo..hi. Integer bounds at most 64 terms apart are summed term by term (rule 7). Otherwise, terms
    coef × var^j × B^var by an antidifference, checked exactly (rule 4), and the rest through partfrac, as text, then
-   telescoped (rule 5); to ∞, group by group (rule 8). */
+   telescoped (rule 5); to ∞, group by group (rule 8). Each term of the closed form then loses the monomial it shares
+   with its denominator, before the rows (CAS 031, sm_cancel). */
 
 #define SM_DEG 12                       /* var's highest power in a group */
 #define SM_TERMS 6                      /* rational terms, each through partfrac */
@@ -12879,6 +12880,100 @@ static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgr
     }
 }
 
+/* CAS 031: b's whole power in the product t (a factor b^k, k a whole number; b itself, 1), else 0 */
+static long sm_pw(ctx *c, ref t, ref b)
+{
+    const node *x = nd(c, t);
+    int n = x->kind == K_MUL ? x->n : 1;
+    for (int i = 0; i < n; i++) {
+        ref f = x->kind == K_MUL ? list(c, x->a)[i] : t;
+        const node *y = nd(c, f);
+        if (y->kind == K_POW && is_num(c, y->b) && val(c, y->b)->q == 1 && cmp(c, y->a, b) == 0)
+            return val(c, y->b)->p;
+        if (cmp(c, f, b) == 0) return 1;
+    }
+    return 0;
+}
+
+/* CAS 031: a term n×P^(-1) of the closed form, P a sum, loses the monomial n and P share. For each base b that n holds
+   at a positive whole power, b^k comes out, k the least of n's power and b's least whole power over P's terms (0 where
+   a term lacks it), and P÷b^k is expanded. n×P^(-1) is (n÷b^k)×(P÷b^k)^(-1) wherever b ≠ 0; at b = 0 the first is
+   0÷0 and the second may have a value, the sum's (the 12 of 1.1.2's Not yet: the term at lo is 0, and the answer had
+   no value at the factor's zero). Where the sum has none there, a term divides by b, and the rows exclude it */
+static ref sm_cancel1(ctx *c, ref t)
+{
+    const node *x = nd(c, t);
+    ref P = 0, numr = small(c, C_1), cut = small(c, C_1);
+    bool any = false;
+    if (x->kind != K_MUL) return t;
+    for (int i = 0; i < x->n; i++) {
+        ref f = list(c, nd(c, t)->a)[i];
+        const node *y = nd(c, f);
+        if (!P && y->kind == K_POW && nd(c, y->a)->kind == K_ADD && is_num(c, y->b) && val(c, y->b)->q == 1 &&
+            val(c, y->b)->p == -1)
+            P = y->a;
+        else
+            numr = mul2(c, numr, f);
+    }
+    if (!P || c->st != CASIM_OK) return t;
+    /* the candidate bases: the numerator's factors at a positive whole power */
+    {
+        const node *z = nd(c, numr);
+        int nn = z->kind == K_MUL ? z->n : 1;
+        for (int i = 0; i < nn && c->st == CASIM_OK; i++) {
+            ref f = z->kind == K_MUL ? list(c, nd(c, numr)->a)[i] : numr, b = f;
+            long pn, pc = 1L << 30;
+            if (is_num(c, f)) continue;
+            if (nd(c, f)->kind == K_POW && is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->q == 1) b = nd(c, f)->a;
+            if (is_num(c, b)) continue;
+            pn = sm_pw(c, numr, b);
+            for (int j = 0; j < nd(c, P)->n && pc > 0; j++) {
+                long q = sm_pw(c, list(c, nd(c, P)->a)[j], b);
+                if (q < pc) pc = q;
+            }
+            if (pn > 0 && pc > 0) {
+                rat r = {-(pn < pc ? pn : pc), 1};
+                cut = mul2(c, cut, power(c, b, num(c, &r)));
+                any = true;
+            }
+        }
+    }
+    if (!any || c->st != CASIM_OK) return t;
+    {
+        rat m1 = {-1, 1};
+        ref Q = expand_fully(c, ib_canon(c, mul2(c, P, cut)));
+        return ib_canon(c, mul2(c, mul2(c, numr, cut), power(c, Q, num(c, &m1))));
+    }
+}
+
+/* CAS 031: each term of the answer through sm_cancel1, the sum made once and compacted, so the rows get the cancel's
+   room back (without it, three sums to ∞ that are TOO_LONG went NO_ROOM at 16,384 B). Where the cancel runs out of
+   room, the answer as it was and the arena as it was: taylor_drop's rewind, which drops the constants cached since.
+   The terms are kept in the arena, not on the stack (a 64-term array made the frame 288 B on the S3) */
+static __attribute__((noinline)) ref sm_cancel(ctx *c, ref sum)
+{
+    size_t mark = c->used;
+    int n = nd(c, sum)->kind == K_ADD ? nd(c, sum)->n : 1;
+    ref room = grab(c, (size_t)n * sizeof(ref)), r;
+    bool moved = false;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        ref u = nd(c, sum)->kind == K_ADD ? list(c, nd(c, sum)->a)[i] : sum, v = sm_cancel1(c, u);
+        if (c->st == CASIM_OK) ((ref *)(void *)nd(c, room))[i] = v;
+        moved = moved || v != u;
+    }
+    r = sum;
+    if (c->st == CASIM_OK && moved) {
+        ref *t = (ref *)(void *)nd(c, room);
+        r = compact(c, mark, n == 1 ? t[0] : add(c, t, n));
+    }
+    if (c->st == CASIM_NO_ROOM) {
+        c->st = CASIM_OK;
+        r = sum;
+    }
+    if (r == sum) taylor_drop(c, mark);
+    return r;
+}
+
 /* rule 4b: each letter group's rows. Finite: where B is 1 (k×L^m = 1 solved for L, else B ≠ 1). At ∞: where it
    converges, |B| < 1 (|L| < or > |k|^(-1/m), else ABS(B) < 1) */
 static void sm_rows(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, smrow *rows, int *n)
@@ -13052,6 +13147,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
     }
     if (c.st == CASIM_OK && !dir) sum = expand_fully(&c, ib_canon(&c, sum));
     if (c.st == CASIM_OK && !dir && T) sum = ib_canon(&c, add2(&c, sum, T));
+    if (c.st == CASIM_OK && !dir) sum = sm_cancel(&c, sum);          /* CAS 031: the common factor, before the rows */
     if (c.st == CASIM_OK) sm_rows(&c, &S, G, ng, dir ? small(&c, C_0) : sum, rows, &nrows);
     return sm_print(&c, sum, dir, rows, nrows, out, ocap);
 }

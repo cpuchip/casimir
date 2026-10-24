@@ -1,0 +1,105 @@
+# CAS 031's examples (work/031-common-factor-cancel.md; Michael's card cas-031-cancel, abacus #10524 (3), ruled #10576):
+# the closed form's common factor, cancelled. Each term n×P^(-1) of a sum's closed form, P a sum, loses the monomial n
+# and P share, before the rows; where the cancel runs out of room the answer is the one before it. Each row is run by
+# scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the value check's build
+# (CAS 022 rule 5). scripts/sum-values.py judges the 12's shapes at the factor's zeros.
+
+# - The 12 (1.1.2's Not yet: to ∞ from a negative lo, where the term at lo is 0) and the grid round them: every term is 0
+#   at the factor's zero (SIN's and TAN's 0 and π, COS's π÷2, LN's, LOG's, ACOS's and ACOSH's 1), so the sum is 0 there,
+#   and the answer was 0÷0. Now it has the value, and no row excludes the point
+
+| Command | Prints |
+|---|---|
+| `casim sum '(K+1)×SIN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum '(K+1)×SIN(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum '(K+2)×SIN(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `SIN(Z)÷(Y-2×Y^2×SIN(Z)+Y^3×SIN(Z)^2); Y≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum '(K+3)×SIN(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `SIN(Z)÷(Y^2-2×Y^3×SIN(Z)+Y^4×SIN(Z)^2); Y≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum '(K+1)×SIN(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1` |
+| `casim sum '(K+1)×COS(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y≠0; ABS(Y×COS(Z))<1` |
+| `casim sum '(K+1)×COS(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-COS(Z)^2÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y≠0; ABS(Y×COS(Z))<1` |
+| `casim sum '(K+2)×COS(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `COS(Z)÷(Y-2×Y^2×COS(Z)+Y^3×COS(Z)^2); Y≠0; ABS(Y×COS(Z))<1` |
+| `casim sum '(K+3)×COS(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `COS(Z)÷(Y^2-2×Y^3×COS(Z)+Y^4×COS(Z)^2); Y≠0; ABS(Y×COS(Z))<1` |
+| `casim sum '(K+1)×COS(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); ABS(Y×COS(Z))<1` |
+| `casim sum '(K+1)×TAN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-TAN(Z)÷2÷(Y×TAN(Z)-Y^2×TAN(Z)^2÷2-1÷2); Y≠0; ABS(Y×TAN(Z))<1` |
+| `casim sum '(K+1)×TAN(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-TAN(Z)^2÷2÷(Y×TAN(Z)-Y^2×TAN(Z)^2÷2-1÷2); Y≠0; ABS(Y×TAN(Z))<1` |
+| `casim sum '(K+2)×TAN(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `TAN(Z)÷(Y-2×Y^2×TAN(Z)+Y^3×TAN(Z)^2); Y≠0; ABS(Y×TAN(Z))<1` |
+| `casim sum '(K+3)×TAN(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `TAN(Z)÷(Y^2-2×Y^3×TAN(Z)+Y^4×TAN(Z)^2); Y≠0; ABS(Y×TAN(Z))<1` |
+| `casim sum '(K+1)×TAN(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×TAN(Z)÷2÷(Y×TAN(Z)-Y^2×TAN(Z)^2÷2-1÷2); ABS(Y×TAN(Z))<1` |
+| `casim sum '(K+1)×LN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-LN(Z)÷2÷(Y×LN(Z)-Y^2×LN(Z)^2÷2-1÷2); Y≠0; Z≠0; ABS(Y×LN(Z))<1` |
+| `casim sum '(K+1)×LN(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-LN(Z)^2÷2÷(Y×LN(Z)-Y^2×LN(Z)^2÷2-1÷2); Y≠0; Z≠0; ABS(Y×LN(Z))<1` |
+| `casim sum '(K+2)×LN(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `LN(Z)÷(Y-2×Y^2×LN(Z)+Y^3×LN(Z)^2); Y≠0; Z≠0; ABS(Y×LN(Z))<1` |
+| `casim sum '(K+3)×LN(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `LN(Z)÷(Y^2-2×Y^3×LN(Z)+Y^4×LN(Z)^2); Y≠0; Z≠0; ABS(Y×LN(Z))<1` |
+| `casim sum '(K+1)×LN(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×LN(Z)÷2÷(Y×LN(Z)-Y^2×LN(Z)^2÷2-1÷2); Z≠0; ABS(Y×LN(Z))<1` |
+| `casim sum '(K+1)×LOG(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-LOG(Z)÷2÷(Y×LOG(Z)-Y^2×LOG(Z)^2÷2-1÷2); Y≠0; Z≠0; ABS(Y×LOG(Z))<1` |
+| `casim sum '(K+1)×LOG(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-LOG(Z)^2÷2÷(Y×LOG(Z)-Y^2×LOG(Z)^2÷2-1÷2); Y≠0; Z≠0; ABS(Y×LOG(Z))<1` |
+| `casim sum '(K+2)×LOG(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `LOG(Z)÷(Y-2×Y^2×LOG(Z)+Y^3×LOG(Z)^2); Y≠0; Z≠0; ABS(Y×LOG(Z))<1` |
+| `casim sum '(K+3)×LOG(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `LOG(Z)÷(Y^2-2×Y^3×LOG(Z)+Y^4×LOG(Z)^2); Y≠0; Z≠0; ABS(Y×LOG(Z))<1` |
+| `casim sum '(K+1)×LOG(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×LOG(Z)÷2÷(Y×LOG(Z)-Y^2×LOG(Z)^2÷2-1÷2); Z≠0; ABS(Y×LOG(Z))<1` |
+| `casim sum '(K+1)×ACOS(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-ACOS(Z)÷2÷(Y×ACOS(Z)-Y^2×ACOS(Z)^2÷2-1÷2); Y≠0; ABS(Y×ACOS(Z))<1` |
+| `casim sum '(K+1)×ACOS(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-ACOS(Z)^2÷2÷(Y×ACOS(Z)-Y^2×ACOS(Z)^2÷2-1÷2); Y≠0; ABS(Y×ACOS(Z))<1` |
+| `casim sum '(K+2)×ACOS(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `ACOS(Z)÷(Y-2×Y^2×ACOS(Z)+Y^3×ACOS(Z)^2); Y≠0; ABS(Y×ACOS(Z))<1` |
+| `casim sum '(K+3)×ACOS(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `ACOS(Z)÷(Y^2-2×Y^3×ACOS(Z)+Y^4×ACOS(Z)^2); Y≠0; ABS(Y×ACOS(Z))<1` |
+| `casim sum '(K+1)×ACOS(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×ACOS(Z)÷2÷(Y×ACOS(Z)-Y^2×ACOS(Z)^2÷2-1÷2); ABS(Y×ACOS(Z))<1` |
+| `casim sum '(K+1)×ACOSH(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-ACOSH(Z)÷2÷(Y×ACOSH(Z)-Y^2×ACOSH(Z)^2÷2-1÷2); Y≠0; ABS(Y×ACOSH(Z))<1` |
+| `casim sum '(K+1)×ACOSH(Z)^(K+2)×Y^K' K -1 ∞ RAD` | `-ACOSH(Z)^2÷2÷(Y×ACOSH(Z)-Y^2×ACOSH(Z)^2÷2-1÷2); Y≠0; ABS(Y×ACOSH(Z))<1` |
+| `casim sum '(K+2)×ACOSH(Z)^(K+2)×Y^K' K -2 ∞ RAD` | `ACOSH(Z)÷(Y-2×Y^2×ACOSH(Z)+Y^3×ACOSH(Z)^2); Y≠0; ABS(Y×ACOSH(Z))<1` |
+| `casim sum '(K+3)×ACOSH(Z)^(K+3)×Y^K' K -3 ∞ RAD` | `ACOSH(Z)÷(Y^2-2×Y^3×ACOSH(Z)+Y^4×ACOSH(Z)^2); Y≠0; ABS(Y×ACOSH(Z))<1` |
+| `casim sum '(K+1)×ACOSH(Z)^(K+1)×Y^(K+1)' K -1 ∞ RAD` | `-Y×ACOSH(Z)÷2÷(Y×ACOSH(Z)-Y^2×ACOSH(Z)^2÷2-1÷2); ABS(Y×ACOSH(Z))<1` |
+
+# - Past a constant beside the factor (1.1.2's Not yet): the sum at the factor's zero is its term at 1, Y×SQRT(5)÷3,
+#   or 0 from 2, and the answer had no value there. SIN's and TAN's Z≠0 goes, a row for nothing (Z = 0 is their zero);
+#   LN's and LOG's stays (the sum has no value at Z = 0)
+
+| Command | Prints |
+|---|---|
+| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^2×SIN(Z)÷6÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 2 ∞ RAD` | `-10×Y^2×SIN(Z)÷3÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^3×SIN(Z)^2×SQRT(5)÷18÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×COS(Z)×SQRT(5)-3)-5×Y^2×COS(Z)÷6÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 2 ∞ RAD` | `-10×Y^2×COS(Z)÷3÷(Y×COS(Z)×SQRT(5)-3)-5×Y^3×COS(Z)^2×SQRT(5)÷18÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^2×TAN(Z)÷6÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 2 ∞ RAD` | `-10×Y^2×TAN(Z)÷3÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^3×TAN(Z)^2×SQRT(5)÷18÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LN(Z)×SQRT(5)-3)-5×Y^2×LN(Z)÷6÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 2 ∞ RAD` | `-10×Y^2×LN(Z)÷3÷(Y×LN(Z)×SQRT(5)-3)-5×Y^3×LN(Z)^2×SQRT(5)÷18÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^2×LOG(Z)÷6÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 2 ∞ RAD` | `-10×Y^2×LOG(Z)÷3÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^3×LOG(Z)^2×SQRT(5)÷18÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOS(Z)÷3÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^3×ACOS(Z)^2×SQRT(5)÷18÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^2×ACOSH(Z)÷6÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOSH(Z)÷3÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^3×ACOSH(Z)^2×SQRT(5)÷18÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
+
+# - Lines that were TOO_LONG now fit (191 B): the cancel only shortens a line
+
+| Command | Prints |
+|---|---|
+| `casim sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `-1÷(EXP(Z)-1)-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-EXP(Z)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1` |
+| `casim sum 'K×EXP(Z)^(K-1)' K 2 N RAD` | `-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-2×EXP(Z)÷(EXP(Z)-1)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^2÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1` |
+| `casim sum '(K-1)×(EXP(Z)×Y)^K÷EXP(Z)' K 1 N RAD` | `-N×(Y×EXP(Z))^(N+1)÷(EXP(Z)-Y×EXP(Z)^2)+Y×(Y×EXP(Z))^(N+1)÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2)-Y^2×EXP(Z)÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2); Y×EXP(Z)≠1` |
+| `casim sum '(K-1)×(COSH(Z)×Y)^K÷COSH(Z)' K 1 N RAD` | `-N×(Y×COSH(Z))^(N+1)÷(COSH(Z)-Y×COSH(Z)^2)+Y×(Y×COSH(Z))^(N+1)÷2÷(Y×COSH(Z)-Y^2×COSH(Z)^2÷2-1÷2)-Y^2×COSH(Z)÷2÷(Y×COSH(Z)-Y^2×COSH(Z)^2÷2-1÷2); Y×COSH(Z)≠1` |
+
+# - Where the cancel takes room the rows then need, the answer is compacted first: these three are TOO_LONG at
+#   16,384 B, as before the cancel (without the compact, NO_ROOM)
+
+| Command | Prints |
+|---|---|
+| `casim --arena 16384 sum '(K+1)×(Z-1)^(K+1)×Y^K' K -2 ∞ RAD` | `TOO_LONG` |
+| `casim --arena 16384 sum '(K+1)×(Z^2+1)^(K+1)×Y^K' K -2 ∞ RAD` | `TOO_LONG` |
+| `casim --arena 16384 sum '(K+1)×(Z^2-1)^(K+1)×Y^K' K -2 ∞ RAD` | `TOO_LONG` |
+
+# - The rows come from the new answer, by CAS 026's and CAS 030's rules unchanged (#10576 (1) and (2)): where the answer
+#   now has a value at the factor's zero and a term divides by it (here the term at -1), the factor's row stands
+#   (SIN(Z)≠0, COS(Z)≠0, ABS(Z)≠0), and SIN's and ABS's letter row Z≠0 goes. EXP(Z) is never 0, so it has none
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+K)×(SIN(Z)×X×Y)^K' K -1 ∞ RAD` | `-1÷2÷(X×Y×SIN(Z)-X^2×Y^2×SIN(Z)^2÷2-1÷2); X≠0; Y≠0; SIN(Z)≠0; ABS(X×Y×SIN(Z))<1` |
+| `casim sum '(1+K)×(COS(Z)×X×Y)^K' K -1 ∞ RAD` | `-1÷2÷(X×Y×COS(Z)-X^2×Y^2×COS(Z)^2÷2-1÷2); X≠0; Y≠0; COS(Z)≠0; ABS(X×Y×COS(Z))<1` |
+| `casim sum '(1+K)×(ABS(Z)×X×Y)^K' K -1 ∞ RAD` | `-1÷2÷(X×Y×ABS(Z)-X^2×Y^2×ABS(Z)^2÷2-1÷2); X≠0; Y≠0; ABS(Z)≠0; ABS(X×Y×ABS(Z))<1` |
+| `casim sum '(1+K)×(EXP(Z)×X×Y)^K' K -1 ∞ RAD` | `-1÷2÷(X×Y×EXP(Z)-X^2×Y^2×EXP(Z)^2÷2-1÷2); X≠0; Y≠0; ABS(X×Y×EXP(Z))<1` |
+
+# - Where the cancel itself runs out of room, it gives way: the answer is the one before it, here 8462e77's TOO_LONG at
+#   4,096 B (at 8,800 B the cancel fits and the first line answers, above). Without the give-way, NO_ROOM
+
+| Command | Prints |
+|---|---|
+| `casim --arena 4096 sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |
+| `casim --arena 4096 sum 'K×COSH(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |

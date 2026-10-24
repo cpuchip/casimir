@@ -691,6 +691,11 @@ is 0, so it prints `Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that 
 A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
 its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
 `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
+Each term of the closed form loses the monomial it shares with its denominator, before the rows (CAS 031): Σ
+(K+1)×X^(K+1)×Y^K from -1 to ∞ prints `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1`, which is 0 at X = 0, as the sum
+is, where the shared X made it 0÷0, and Σ (K+1)×SIN(Z)^(K+1)×Y^K from -1 to ∞ has the sum's 0 at Z = π the same way.
+The rows come from that answer: a letter's row the 0÷0 called for goes, and a factor's row where a term divides
+stands, as Σ (1+K)×(SIN(Z)×X×Y)^K from -1 prints `SIN(Z)≠0`.
 
 A quotient of powers in K is read as its ratio (CAS 029): canon reads Σ X^K÷Y^K as Σ X^K×Y^(-K), and prints that
 spelling's answer, the answer to Σ (X÷Y)^K. A typed divisor keeps its zeros wherever canon's power of its base falls in

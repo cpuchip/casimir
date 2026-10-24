@@ -24,7 +24,8 @@
 | `casim sum 'Y^K×X^(K-1)' K 0 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+1)÷(X-X^2×Y); X≠0; X×Y≠1` |
 | `casim sum 'X^(K-1)×Y^(K-2)' K 1 N RAD` | `1÷(Y-X×Y^2)-(X×Y)^N÷(Y-X×Y^2); Y≠0; X×Y≠1` |
 | `casim sum 'X^(K-1)×Y^(K-1)×W^(K-2)' K 1 N RAD` | `1÷(W-W^2×X×Y)-(W×X×Y)^N÷(W-W^2×X×Y); W≠0; W×X×Y≠1` |
-| `casim sum '(K-1)×X^(K-2)×Y^K' K 1 N RAD` | `-N×(X×Y)^(N+1)÷(X^2-X^3×Y)+X×Y÷(X^2-X^3×Y)+X×Y^2÷(X-2×X^2×Y+X^3×Y^2)-Y×(X×Y)^(N+1)÷(X-2×X^2×Y+X^3×Y^2)-Y÷(X-X^2×Y); X≠0; X×Y≠1` |
+#   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `-N×(X×Y)^(N+1)÷(X^2-X^3×Y)+X×Y÷(X^2-X^3×Y)+X×Y^2÷(X-2×X^2×Y+X^3×Y^2)-Y×(X×Y)^(N+1)÷(X-2×X^2×Y+X^3×Y^2)-Y÷(X-X^2×Y); X≠0; X×Y≠1`
+| `casim sum '(K-1)×X^(K-2)×Y^K' K 1 N RAD` | `-N×(X×Y)^(N+1)÷(X^2-X^3×Y)-Y×(X×Y)^(N+1)÷(X-2×X^2×Y+X^3×Y^2)-Y^2÷2÷(X×Y-X^2×Y^2÷2-1÷2); X≠0; X×Y≠1` |
 
 # - Condition 1: no shift without a negative power (and never a negative one)
 | Command | Prints |
@@ -43,7 +44,8 @@
 | `casim sum 'X^K×Y^K' K -1 N RAD` | `1÷(X×Y-X^2×Y^2)-(X×Y)^(N+2)÷(X×Y-X^2×Y^2); X≠0; Y≠0; X×Y≠1` |
 | `casim sum 'X^(K+1)×Y^(K+2)' K -2 N RAD` | `1÷(X-X^2×Y)-(X×Y)^(N+3)÷(X-X^2×Y); X≠0; X×Y≠1` |
 | `casim sum 'X^(K+3)×Y^(K+1)' K -2 ∞ RAD` | `X÷(Y-X×Y^2); Y≠0; ABS(X×Y)<1` |
-| `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1` |
+#   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1`
+| `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1` |
 | `casim sum 'K^2×X^(K+2)×Y^(2×K)' K -1 ∞ RAD` | `X÷(Y^2-X×Y^4)+X^2÷2÷(X×Y^2-X^2×Y^4÷2-1÷2)-2×X^3×Y^2÷3÷(X×Y^2-X^2×Y^4+X^3×Y^6÷3-1÷3); Y≠0; ABS(X×Y^2)<1` |
 
 # - After h024 (abacus #9594, its R083): to ∞ as to N, a letter a term from lo divides by keeps its row, though the
@@ -54,7 +56,8 @@
 | `casim sum 'K×(X×Y)^K÷Y' K 0 ∞ RAD` | `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1` |
 | `casim sum 'K×(X×Y)^K÷X' K 0 ∞ RAD` | `-Y÷2÷(X×Y-X^2×Y^2÷2-1÷2); X≠0; ABS(X×Y)<1` |
 | `casim sum 'K×(X×Y)^K÷Y' K 0 N RAD` | `-N×(X×Y)^(N+1)÷(Y-X×Y^2)+X×(X×Y)^(N+1)÷2÷(X×Y-X^2×Y^2÷2-1÷2)-X÷2÷(X×Y-X^2×Y^2÷2-1÷2)-(X×Y)^(N+1)÷(Y-X×Y^2); Y≠0; X×Y≠1` |
-| `casim sum 'K×X^(K-1)' K 0 ∞ RAD` | `X÷(X-2×X^2+X^3); X≠0; ABS(X)<1` |
+#   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `X÷(X-2×X^2+X^3); X≠0; ABS(X)<1`
+| `casim sum 'K×X^(K-1)' K 0 ∞ RAD` | `-1÷2÷(X-X^2÷2-1÷2); X≠0; ABS(X)<1` |
 
 # - Rule 3: one letter is 018's, unchanged (K×X^(K-2) from 1 keeps its shift by 2 and its X≠0)
 | Command | Prints |
