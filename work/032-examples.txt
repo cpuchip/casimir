@@ -1,0 +1,79 @@
+# CAS 032's examples (work/032-redundant-row.md; Michael's (b), card cas-032-rows, abacus #10706; h032's reading
+# #10639): a letter's row that another row says, left out. A letter's row L≠0 goes where a kept row has a value at
+# L = 0 and is false there, its other letters in a sum, a product or a whole power; a '?' row (CAS 030's) says it only
+# on a line that keeps that row. Each row is run by scripts/doc-examples.py, and again with the series route compiled
+# out (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - The redundant row (1.2.0's Not yet) and its kin: a ratio that is 1 at its letter's 0 (COS, EXP, COSH, Z^2+1), a
+#   monomial's ABS row, and CAS 026's factor row, which is false at Y = 0 for every Z
+
+| Command | Prints |
+|---|---|
+| `casim sum 'COS(Z)^K' K 1 N RAD` | `-COS(Z)÷(COS(Z)-1)+COS(Z)^(N+1)÷(COS(Z)-1); COS(Z)≠1` |
+| `casim sum 'COS(Z)^K' K 1 ∞ RAD` | `-COS(Z)÷(COS(Z)-1); ABS(COS(Z))<1` |
+| `casim sum 'K×COS(Z)^(K-1)' K 1 N RAD` | `-1÷(COS(Z)-1)+N×COS(Z)^N÷(COS(Z)-1)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)+COS(Z)^N÷(COS(Z)-1)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); COS(Z)≠1` |
+| `casim sum 'EXP(Z)^K' K 0 N RAD` | `-1÷(EXP(Z)-1)+EXP(Z)^(N+1)÷(EXP(Z)-1); EXP(Z)≠1` |
+| `casim sum 'COSH(Z)^K' K 1 N RAD` | `-COSH(Z)÷(COSH(Z)-1)+COSH(Z)^(N+1)÷(COSH(Z)-1); COSH(Z)≠1` |
+| `casim sum '(Z^2+1)^K' K 0 N RAD` | `-1÷Z^2+(Z^2+1)^(N+1)÷Z^2; Z^2+1≠1` |
+| `casim sum 'X^(-K)' K 0 ∞ RAD` | `-1÷(1÷X-1); ABS(X)>1` |
+| `casim sum '(1+Z×(Y-1)^2)^K' K 0 N RAD` | `-1÷(Z-2×Y×Z+Y^2×Z)+(Z-2×Y×Z+Y^2×Z+1)^(N+1)÷(Z-2×Y×Z+Y^2×Z); Z-2×Y×Z+Y^2×Z+1≠1` |
+| `casim sum '(1+Z×Y^2)^K' K 0 N RAD` | `-1÷Y^2÷Z+(Y^2×Z+1)^(N+1)÷Y^2÷Z; Y^2×Z+1≠1` |
+
+# - CAS 030's own: SIN(Z)≠0 and TAN(Z)≠0 say Z≠0 where the line keeps them
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
+| `casim sum '(Y÷TAN(Z))^K' K 1 N RAD` | `-Y÷(Y-TAN(Z))+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); TAN(Z)≠0; Y÷TAN(Z)≠1` |
+| `casim sum '(Y÷SIN(Z))^K' K 1 N DEG` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
+
+# - A line within its row of the cap (1.2.0's Not yet): the letter's 7 B make room for the '?' row, so Z = π is
+#   excluded at N = -2, where the sum is 0; and two TOO_LONG lines answer
+
+| Command | Prints |
+|---|---|
+| `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; SIN(Z)≠1` |
+| `casim sum 'K×COS(Z)^(K-1)' K -1 N RAD` | `1÷(COS(Z)-2×COS(Z)^2+COS(Z)^3)-1÷(COS(Z)^2-COS(Z)^3)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); COS(Z)≠0; COS(Z)≠1` |
+| `casim sum 'K×TAN(Z)^(K-1)' K -2 N RAD` | `1÷(TAN(Z)^2-2×TAN(Z)^3+TAN(Z)^4)-2÷(TAN(Z)^3-TAN(Z)^4)-N×TAN(Z)^(N+1)÷(TAN(Z)-TAN(Z)^2)-TAN(Z)^(N+1)÷(TAN(Z)-TAN(Z)^2)+TAN(Z)^(N+1)÷2÷(TAN(Z)-TAN(Z)^2÷2-1÷2); TAN(Z)≠0; TAN(Z)≠1` |
+| `casim sum 'SIN(Z)^(K-2)×Y^K+COS(Z)^K' K -2 N RAD` | `1÷(COS(Z)^2-COS(Z)^3)+1÷(Y^2×SIN(Z)^4-Y^3×SIN(Z)^5)+COS(Z)^(N+1)÷(COS(Z)-1)-(Y×SIN(Z))^(N+3)÷(Y^2×SIN(Z)^4-Y^3×SIN(Z)^5); Y≠0; COS(Z)≠0; SIN(Z)≠0; COS(Z)≠1; Y×SIN(Z)≠1` |
+| `casim sum 'K×COSH(Z)^(K-1)' K 1 N RAD` | `-1÷(COSH(Z)-1)-N×COSH(Z)^(N+1)÷(COSH(Z)-COSH(Z)^2)-COSH(Z)÷2÷(COSH(Z)-COSH(Z)^2÷2-1÷2)-COSH(Z)^(N+1)÷(COSH(Z)-COSH(Z)^2)+COSH(Z)^(N+1)÷2÷(COSH(Z)-COSH(Z)^2÷2-1÷2); COSH(Z)≠1` |
+| `casim --arena 16384 sum 'K×COSH(Z)^(K-1)' K 1 N RAD` | `-1÷(COSH(Z)-1)-N×COSH(Z)^(N+1)÷(COSH(Z)-COSH(Z)^2)-COSH(Z)÷2÷(COSH(Z)-COSH(Z)^2÷2-1÷2)-COSH(Z)^(N+1)÷(COSH(Z)-COSH(Z)^2)+COSH(Z)^(N+1)÷2÷(COSH(Z)-COSH(Z)^2÷2-1÷2); COSH(Z)≠1` |
+
+# - Where the '?' row gives way, the row it says comes back: the line is CAS 030's give-way line byte for byte (with
+#   the row it says and without the rows it gives up, 196 B)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K' K -2 N RAD` | `4÷(COS(Z)^2-COS(Z)^3÷2)+SIN(Z)^2÷4÷(Y^2-2×Y^3÷SIN(Z))+2×(COS(Z)÷2)^(N+1)÷(COS(Z)-2)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; Z≠0; COS(Z)÷2≠1; 2×Y÷SIN(Z)≠1` |
+| `casim sum '(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K' K -1 N RAD` | `2÷(COS(Z)-COS(Z)^2÷2)+SIN(Z)÷2÷(Y-2×Y^2÷SIN(Z))+2×(COS(Z)÷2)^(N+1)÷(COS(Z)-2)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; Z≠0; COS(Z)÷2≠1; 2×Y÷SIN(Z)≠1` |
+| `casim --arena 8800 sum '(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K' K -2 N RAD` | `4÷(COS(Z)^2-COS(Z)^3÷2)+SIN(Z)^2÷4÷(Y^2-2×Y^3÷SIN(Z))+2×(COS(Z)÷2)^(N+1)÷(COS(Z)-2)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; Z≠0; COS(Z)÷2≠1; 2×Y÷SIN(Z)≠1` |
+
+# - Said by two rows, a '?' row that gives way and a row that stays: the one that stays says it, so it goes, and the
+#   '?' rows still give way
+
+| Command | Prints |
+|---|---|
+| `casim sum 'SIN(Z)^(K-2)×(2×Y)^K+COS(Z)^K' K -3 N RAD` | `1÷(COS(Z)^3-COS(Z)^4)+1÷8÷(Y^3×SIN(Z)^5-2×Y^4×SIN(Z)^6)+COS(Z)^(N+1)÷(COS(Z)-1)-(2×Y×SIN(Z))^(N+4)÷8÷(Y^3×SIN(Z)^5-2×Y^4×SIN(Z)^6); Y≠0; COS(Z)≠1; 2×Y×SIN(Z)≠1` |
+| `casim sum 'SIN(Z)^(K-2)×(2×Y)^K+COS(Z)^K' K -2 N RAD` | `1÷(COS(Z)^2-COS(Z)^3)+1÷4÷(Y^2×SIN(Z)^4-2×Y^3×SIN(Z)^5)+COS(Z)^(N+1)÷(COS(Z)-1)-(2×Y×SIN(Z))^(N+3)÷4÷(Y^2×SIN(Z)^4-2×Y^3×SIN(Z)^5); Y≠0; COS(Z)≠1; 2×Y×SIN(Z)≠1` |
+| `casim sum 'SIN(Z)^(K-2)×(2×Y)^K+COS(Z)^K' K -1 N RAD` | `1÷(COS(Z)-COS(Z)^2)+1÷2÷(Y×SIN(Z)^3-2×Y^2×SIN(Z)^4)+COS(Z)^(N+1)÷(COS(Z)-1)-(2×Y×SIN(Z))^(N+2)÷2÷(Y×SIN(Z)^3-2×Y^2×SIN(Z)^4); Y≠0; COS(Z)≠1; 2×Y×SIN(Z)≠1` |
+| `casim sum 'SIN(Z)^(-K)+COS(Z)^K' K 1 N RAD` | `1÷(SIN(Z)-1)-COS(Z)÷(COS(Z)-1)+COS(Z)^(N+1)÷(COS(Z)-1)+(1÷SIN(Z))^(N+1)÷(1÷SIN(Z)-1); SIN(Z)≠0; 1÷SIN(Z)≠1; COS(Z)≠1` |
+
+# - Rows that say nothing (abacus #10635 (1), #10637): a row whose other letter is under a division, a root or a
+#   function has no value at L = 0 for some value of it, or is out of the rule's reach, and the letter's row stays.
+#   Z÷(Y-1)+1≠1 has no value at Y = 1, SQRT(Y)×Z+1≠1 for Y < 0, Z×TAN(Y)+1≠1 at Y = π÷2, Z×LN(Y)+1≠1 for Y ≤ 0;
+#   Z×ABS(Y)+1≠1 and COS(Y×Z)≠1 have a value everywhere but are out of reach (h032's reading: lawful, unchanged). Where
+#   Y is in a polynomial place the same rows say Y≠0
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+Z÷Y)^K' K 0 N RAD` | `-Y÷Z+Y×(Z÷Y+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷Y+1≠1` |
+| `casim sum '(1+Z÷(Y-1))^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z≠0; Z÷(Y-1)+1≠1` |
+| `casim sum '(1+Z×SQRT(Y))^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Z≠0; SQRT(Y)×Z+1≠1` |
+| `casim sum '(1+Z×TAN(Y))^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1` |
+| `casim sum '(1+Z×LN(Y))^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y≠0; Z≠0; Z×LN(Y)+1≠1` |
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z≠0; Z×ABS(Y)+1≠1` |
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); Y≠0; Z≠0; ABS(Z×ABS(Y)+1)<1` |
+| `casim sum 'COS(Y×Z)^K' K 0 N RAD` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); Y≠0; Z≠0; COS(Y×Z)≠1` |
+| `casim sum '(1+Y^(-1)×Z)^K' K 0 ∞ RAD` | `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1` |
+| `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); Z≠0; Y÷SIN(2×Z)≠1` |
+| `casim sum 'X^K÷Y^K' K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |

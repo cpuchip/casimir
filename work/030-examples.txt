@@ -10,31 +10,41 @@
 
 | Command | Prints |
 |---|---|
-| `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1` |
-| `casim sum 'K×COS(Z)^(K-1)' K 0 N RAD` | `-1÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; COS(Z)≠0; COS(Z)≠1` |
-| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 0 N RAD` | `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); Z≠0; TAN(Z)≠0; Y×TAN(Z)^2≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1`
+| `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-1÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; COS(Z)≠0; COS(Z)≠1`
+| `casim sum 'K×COS(Z)^(K-1)' K 0 N RAD` | `-1÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); COS(Z)≠0; COS(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); Z≠0; TAN(Z)≠0; Y×TAN(Z)^2≠1`
+| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 0 N RAD` | `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); TAN(Z)≠0; Y×TAN(Z)^2≠1` |
 | `casim sum 'LN(Z)^(3×K-1)×Y^K' K 0 N RAD` | `1÷(LN(Z)-Y×LN(Z)^4)-(Y×LN(Z)^3)^(N+1)÷(LN(Z)-Y×LN(Z)^4); Z≠0; LN(Z)≠0; Y×LN(Z)^3≠1` |
 | `casim sum '(Y÷LOG(Z))^K' K 1 N RAD` | `-Y÷(Y-LOG(Z))+(Y÷LOG(Z))^(N+1)÷(Y÷LOG(Z)-1); Z≠0; LOG(Z)≠0; Y÷LOG(Z)≠1` |
 | `casim sum '(Y÷ACOS(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOS(Z)-1)+(Y÷ACOS(Z))^(N+1)÷(Y÷ACOS(Z)-1); ACOS(Z)≠0; Y÷ACOS(Z)≠1` |
 | `casim sum '(Y÷ACOSH(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOSH(Z)-1)+(Y÷ACOSH(Z))^(N+1)÷(Y÷ACOSH(Z)-1); ACOSH(Z)≠0; Y÷ACOSH(Z)≠1` |
-| `casim sum '(SIN(Z)×Y)^K' K -1 N RAD` | `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; Z≠0; SIN(Z)≠0; Y×SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; Z≠0; SIN(Z)≠0; Y×SIN(Z)≠1`
+| `casim sum '(SIN(Z)×Y)^K' K -1 N RAD` | `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; SIN(Z)≠0; Y×SIN(Z)≠1` |
 
 # - The row is the factor's own text in every angle mode (the test puts the factor to 0, not Z to a zero): SIN's zero in
 #   DEG is 180, COS's in GRAD 100:
 
 | Command | Prints |
 |---|---|
-| `casim sum '(Y÷SIN(Z))^K' K 1 N DEG` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1`
+| `casim sum '(Y÷SIN(Z))^K' K 1 N DEG` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
 | `casim sum '(Y÷COS(Z))^K' K 1 N GRAD` | `-Y÷(Y-COS(Z))+(Y÷COS(Z))^(N+1)÷(Y÷COS(Z)-1); COS(Z)≠0; Y÷COS(Z)≠1` |
-| `casim sum 'TAN(Z)^(3×K-1)×Y^K' K 0 N DEG` | `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); Z≠0; TAN(Z)≠0; Y×TAN(Z)^3≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); Z≠0; TAN(Z)≠0; Y×TAN(Z)^3≠1`
+| `casim sum 'TAN(Z)^(3×K-1)×Y^K' K 0 N DEG` | `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); TAN(Z)≠0; Y×TAN(Z)^3≠1` |
 
 # - The row gives way at the cap: each line is 33b265d's, and with its row it would pass 191 B (184 + 12, 181 + 12,
 #   178 + 14). The missing value stays, named:
+#   CAS 032 (work/032-redundant-row.md): the first two no longer give way. Their Z≠0, which SIN(Z)≠0 says, is left
+#   out, and the row fits in its 7 B (189 B); the third has no letter's row to leave out and still gives way.
 
 | Command | Prints |
 |---|---|
-| `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1` |
-| `casim --arena 16384 sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row, so CAS 030's `SIN(Z)≠0` fits; it printed `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1`
+| `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row, so CAS 030's `SIN(Z)≠0` fits; it printed `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1`
+| `casim --arena 16384 sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; SIN(Z)≠1` |
 | `casim sum '(K-1)×(COS(Z)×Y)^K÷COS(Z)' K 0 N RAD` | `-1÷(COS(Z)-Y×COS(Z)^2)-N×(Y×COS(Z))^(N+1)÷(COS(Z)-Y×COS(Z)^2)+Y×(Y×COS(Z))^(N+1)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2)-Y÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y×COS(Z)≠1` |
 | `casim sum 'K×ACOSH(Z)^(K-1)' K 0 N RAD` | `-1÷2÷(ACOSH(Z)-ACOSH(Z)^2÷2-1÷2)-N×ACOSH(Z)^(N+1)÷(ACOSH(Z)-ACOSH(Z)^2)-ACOSH(Z)^(N+1)÷(ACOSH(Z)-ACOSH(Z)^2)+ACOSH(Z)^(N+1)÷2÷(ACOSH(Z)-ACOSH(Z)^2÷2-1÷2); ACOSH(Z)≠1` |
 

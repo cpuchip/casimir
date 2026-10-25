@@ -687,7 +687,7 @@ letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN
 0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
 the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter keep the
 row even there, as a letter's (CAS 030): Σ (Y÷SIN(Z))^K from 1 to N has no value at Z = π, where the empty sum (N = 0)
-is 0, so it prints `Z≠0; SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that row would pass 191 bytes, the row gives way.
+is 0, so it prints `SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that row would pass 191 bytes, the row gives way.
 A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
 its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
 `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
@@ -696,7 +696,12 @@ Each term of the closed form loses the monomial it shares with its denominator, 
 is, where the shared X made it 0÷0, and Σ (K+1)×SIN(Z)^(K+1)×Y^K from -1 to ∞ has the sum's 0 at Z = π the same way.
 The rows come from that answer: a letter's row the 0÷0 called for goes, and a factor's row where a term divides
 stands, as Σ (1+K)×(SIN(Z)×X×Y)^K from -1 prints `SIN(Z)≠0`. Where the cancelled line would pass 191 bytes, the line
-before the cancel is printed instead, so no answer is lost to TOO_LONG.
+before the cancel is printed instead, so no answer is lost to TOO_LONG. A letter's row is left out where a kept row is
+false at every point with that letter at 0 (CAS 032): Σ COS(Z)^K from 1 to N prints `COS(Z)≠1` alone, as COS(0) is 1,
+and Σ (Y÷SIN(Z))^K's `SIN(Z)≠0` says `Z≠0` (above). So Σ EXP(X)^K prints `EXP(X)≠1` alone, though `X≠0` names the
+same point more plainly. A row says it only where its other letters are in a sum, a product or a whole power, so that
+it is false there whatever they are: `Z÷Y+1≠1` has no value at Y = 0 and says nothing. A row that gives way at the cap
+says it only on a line that keeps that row.
 
 A quotient of powers in K is read as its ratio (CAS 029): canon reads Σ X^K÷Y^K as Σ X^K×Y^(-K), and prints that
 spelling's answer, the answer to Σ (X÷Y)^K. A typed divisor keeps its zeros wherever canon's power of its base falls in

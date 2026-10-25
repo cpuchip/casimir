@@ -44,7 +44,8 @@
 | `casim sum 'K×(2×Y)^K÷Y' K 0 ∞ RAD` | `-1÷2÷(Y-Y^2-1÷4); Y≠0; ABS(Y)<1÷2` |
 | `casim sum '((1÷2)×X^(-2))^(K+1)' K 0 ∞ RAD` | `1÷2÷(X^2-1÷2); ABS(X)>SQRT(1÷2)` |
 | `casim sum 'X^(-K)' K 1 ∞ RAD` | `1÷(X-1); ABS(X)>1` |
-| `casim sum 'X^(-K)' K 0 ∞ RAD` | `-1÷(1÷X-1); X≠0; ABS(X)>1` |
+#   CAS 032 (work/032-redundant-row.md): `X≠0` left out, said by a kept row; it printed `-1÷(1÷X-1); X≠0; ABS(X)>1`
+| `casim sum 'X^(-K)' K 0 ∞ RAD` | `-1÷(1÷X-1); ABS(X)>1` |
 | `casim sum '(X÷Y)^K÷Y' K 0 N RAD` | `-1÷(X-Y)+(X÷Y)^(N+1)÷(X-Y); Y≠0; X÷Y≠1` |
 | `casim sum 'K×(SQRT(2)×Y)^K÷Y' K 0 N RAD` | `-N×(Y×SQRT(2))^(N+1)÷(Y-Y^2×SQRT(2))-(Y×SQRT(2))^(N+1)÷(Y-Y^2×SQRT(2))-(Y×SQRT(2))^(N+1)×SQRT(2)÷2÷(Y^2-Y×SQRT(2)+1÷2)+SQRT(2)÷2÷(Y^2-Y×SQRT(2)+1÷2); Y≠0; Y×SQRT(2)≠1` |
 | `casim sum '(X÷Y)^K÷Y' K A ∞ RAD` | `-(X÷Y)^A÷(X-Y); Y≠0; ABS(X÷Y)<1` |

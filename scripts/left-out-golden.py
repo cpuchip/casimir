@@ -6,7 +6,7 @@ and every after is its before with ", n CPLX" right after the status. n is judge
 the same input solved with CASIM_COMPLEX (model 33 read as 35, which ignores the bit) counts n more roots, with their
 multiplicities, than the before. Every solve line not listed that is SOLVED or PARTIAL has n = 0, or a line that the
 note would take past 191 B (abacus #10148). The check's control: a before list with one line left at its after must
-fail the hash.
+fail the hash. Later units' moves (LATER: CAS 032's) are put back first.
     scripts/left-out-golden.py [CLI]"""
 import hashlib
 import os
@@ -18,6 +18,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-028.txt")
 CLI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "casim")
+LATER = [os.path.join(GOLDEN, "moved", "cas-032.txt")]
 BASE = "c96b328"
 MODEL = {"1": "STU", "33": "35", "35": "35"}
 bad = 0
@@ -29,11 +30,11 @@ def fail(msg):
     print("FAIL scripts/left-out-golden.py: " + msg)
 
 
-def moved():
+def moved(path=MOVED):
     """the list's sections (the corpus's moves, →DEC's): inputs (the first ten fields) -> (before, after), each
     [status, text]; and the header's sha256 for each file"""
     sections, lines, sha = [{}], [], {}
-    for ln in open(MOVED, encoding="utf-8").read().split("\n"):
+    for ln in open(path, encoding="utf-8").read().split("\n"):
         if ln.startswith("# " + BASE + " ") and " sha256 " in ln:
             name, _, h = ln[len("# " + BASE + " "):].split(" ")
             sha[name] = h
@@ -73,9 +74,15 @@ def noted(b, n):
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after), each line judged: its sha256"""
     out, hit = [], set()
+    later = {}
+    for path in LATER:                                  # a later unit's moves, at their before first
+        (c_mv, d_mv), _ = moved(path)
+        later.update(c_mv if name == "corpus.txt" else d_mv)
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if ln and not ln.startswith("#") and key in later:
+            f = f[:10] + later[key][0][:2]
         if ln and not ln.startswith("#") and key in mv:
             b, a = mv[key]
             hit.add(key)

@@ -71,8 +71,10 @@
 
 | Command | Prints |
 |---|---|
-| `casim sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `-1÷(EXP(Z)-1)-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-EXP(Z)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1` |
-| `casim sum 'K×EXP(Z)^(K-1)' K 2 N RAD` | `-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-2×EXP(Z)÷(EXP(Z)-1)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^2÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-1÷(EXP(Z)-1)-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-EXP(Z)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1`
+| `casim sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `-1÷(EXP(Z)-1)-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-EXP(Z)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); EXP(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-2×EXP(Z)÷(EXP(Z)-1)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^2÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); Z≠0; EXP(Z)≠1`
+| `casim sum 'K×EXP(Z)^(K-1)' K 2 N RAD` | `-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)-2×EXP(Z)÷(EXP(Z)-1)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^2÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); EXP(Z)≠1` |
 | `casim sum '(K-1)×(EXP(Z)×Y)^K÷EXP(Z)' K 1 N RAD` | `-N×(Y×EXP(Z))^(N+1)÷(EXP(Z)-Y×EXP(Z)^2)+Y×(Y×EXP(Z))^(N+1)÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2)-Y^2×EXP(Z)÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2); Y×EXP(Z)≠1` |
 | `casim sum '(K-1)×(COSH(Z)×Y)^K÷COSH(Z)' K 1 N RAD` | `-N×(Y×COSH(Z))^(N+1)÷(COSH(Z)-Y×COSH(Z)^2)+Y×(Y×COSH(Z))^(N+1)÷2÷(Y×COSH(Z)-Y^2×COSH(Z)^2÷2-1÷2)-Y^2×COSH(Z)÷2÷(Y×COSH(Z)-Y^2×COSH(Z)^2÷2-1÷2); Y×COSH(Z)≠1` |
 
@@ -98,10 +100,13 @@
 
 # - Where the cancel itself runs out of room, it gives way: the answer is the one before it, here 8462e77's TOO_LONG at
 #   4,096 B (at 8,800 B the cancel fits and the first line answers, above). Without the give-way, NO_ROOM
+#   (CAS 032, work/032-redundant-row.md: the line before the cancel now fits without its Z≠0, which EXP(Z)≠1 says, so
+#   the first row below answers with it, the uncancelled form, where it was TOO_LONG.)
 
 | Command | Prints |
 |---|---|
-| `casim --arena 4096 sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |
+#   CAS 032 (work/032-redundant-row.md): the letter's row a kept row says is left out, so the line fits; it printed `TOO_LONG`
+| `casim --arena 4096 sum 'K×EXP(Z)^(K-1)' K 1 N RAD` | `-N×EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)÷(EXP(Z)-EXP(Z)^2)-EXP(Z)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2)-EXP(Z)^(N+1)÷(EXP(Z)-EXP(Z)^2)+EXP(Z)^(N+1)÷2÷(EXP(Z)-EXP(Z)^2÷2-1÷2); EXP(Z)≠1` |
 | `casim --arena 4096 sum 'K×COSH(Z)^(K-1)' K 1 N RAD` | `TOO_LONG` |
 
 # - Where the cancelled line, with its rows, would pass 191 B, the line before the cancel instead (abacus #10595): canon's
@@ -111,7 +116,8 @@
 | Command | Prints |
 |---|---|
 | `casim sum '(K+1)×(Z-1)^K×Y^K' K -1 ∞ RAD` | `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; Z-1≠0; ABS(Y×(Z-1))<1` |
-| `casim sum '(K+1)×((Z-1)×Y)^K' K -1 ∞ RAD` | `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; -Y+Y×Z≠0; ABS(-Y+Y×Z)<1` |
+#   CAS 032 (work/032-redundant-row.md): `Y≠0` left out, said by a kept row; it printed `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; -Y+Y×Z≠0; ABS(-Y+Y×Z)<1`
+| `casim sum '(K+1)×((Z-1)×Y)^K' K -1 ∞ RAD` | `-Y×Z÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y+2×Y^2+Y^3-Y×Z-4×Y^2×Z+2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); -Y+Y×Z≠0; ABS(-Y+Y×Z)<1` |
 | `casim sum '(K+1)×(Z+1)^K×Y^K' K -1 ∞ RAD` | `Y×Z÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3)+Y÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3); Y≠0; Z+1≠0; ABS(Y×(Z+1))<1` |
 | `casim sum '(K+1)×(Z+1)^K×Y^(K+1)' K -1 ∞ RAD` | `Y^2×Z÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3)+Y^2÷(Y-2×Y^2+Y^3+Y×Z-4×Y^2×Z-2×Y^2×Z^2+3×Y^3×Z+3×Y^3×Z^2+Y^3×Z^3); Y≠0; Z+1≠0; ABS(Y×(Z+1))<1` |
 | `casim sum '(K+1)×(1-Z)^K×Y^K' K -1 ∞ RAD` | `-Y×Z÷(Y-2×Y^2+Y^3-Y×Z+4×Y^2×Z-2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3)+Y÷(Y-2×Y^2+Y^3-Y×Z+4×Y^2×Z-2×Y^2×Z^2-3×Y^3×Z+3×Y^3×Z^2-Y^3×Z^3); Y≠0; Z-1≠0; ABS(-Y×(Z-1))<1` |

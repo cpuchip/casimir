@@ -1,0 +1,25 @@
+# The golden lines CAS 032 (a letter's row that another row says: work/032-redundant-row.md) moved. Each line's
+# inputs, then its status and answer before (2a9c354, 1.2.0's src) and after. Putting every before back gives
+# 2a9c354's files byte for byte (their sha256 below), and every after is its before less one or more L≠0 rows, each
+# said by a kept row (scripts/said-golden.py, in make check).
+# 2a9c354 corpus.txt sha256 1a7da4a03cdc6dc3cba0b6c92dd07c615b54ab2e09c3c95ebb4bd2b21a348498
+# 2a9c354 decimal.txt sha256 d4ccd39683afebbb4833b2f008afacd792bee284ec7ae35fb0e1c885b58710f4
+sum	35	10	1	35	65536	65536	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1
+sum	35	10	1	35	8800	192	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1
+sum	35	10	1	35	8800	65536	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1
+# Under →DEC (CASIM_PRINT_DECIMAL), tests/golden/decimal.txt:
+sum	35	10	1	35	65536	65536	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1
+sum	35	10	1	35	8800	192	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1
+sum	35	10	1	35	8800	65536	EXP(X)^K	0	N
+  before	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1
+  after	OK	-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1

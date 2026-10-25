@@ -89,7 +89,8 @@
 | `casim sum "X^K+2^K" K 0 ∞ RAD` | `∞; ABS(X)<1` |
 | `casim sum "X^K+(-2)^K" K 0 ∞ RAD` | `UNDECIDED` |
 | `casim sum "X^K+(1÷2)^K" K 0 ∞ RAD` | `-1÷(X-1)+2; ABS(X)<1` |
-| `casim sum "EXP(X)^K" K 0 N RAD` | `-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `X≠0` left out, said by a kept row; it printed `-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); X≠0; EXP(X)≠1`
+| `casim sum "EXP(X)^K" K 0 N RAD` | `-1÷(EXP(X)-1)+EXP(X)^(N+1)÷(EXP(X)-1); EXP(X)≠1` |
 | `casim sum "EXP(X×K)" K 0 ∞ RAD` | `NO_CLOSED_FORM` |
 | `casim sum "X^K" K 1 3 RAD` | `X+X^2+X^3` |
 | `casim sum "X^K" K 1 64 RAD` | `-X÷(X-1)+X^65÷(X-1); X≠1` |

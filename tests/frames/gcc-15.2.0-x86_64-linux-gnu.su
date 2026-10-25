@@ -374,6 +374,7 @@ sm_cancel	240
 sm_cmpabs	80
 sm_den	112
 sm_fall	80
+sm_false0	80
 sm_fits	304
 sm_groups.constprop	192
 sm_held	48
@@ -390,10 +391,12 @@ sm_read	64
 sm_row.part.0	112
 sm_rowf	240
 sm_rput	80
+sm_said	128
 sm_shift	176
 sm_split.constprop	128
 sm_term	144
 sm_typed_ok	64
+sm_whole	48
 small	64
 solve_	16
 sort	112

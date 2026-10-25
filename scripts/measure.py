@@ -456,6 +456,16 @@ def all_cases():
             ("cancel K×EXP(Z)^(K-1) from 1 to N, under the cap", "K×EXP(Z)^(K-1)", "1|N", "RAD"),
             ("cancel (K+1)×(Z^2-1)^(K+1)×Y^K from -2 to ∞, compacted", "(K+1)×(Z^2-1)^(K+1)×Y^K", "-2|∞", "RAD")]:
         rows.append((name, expr, "K", angle, "sum", repl, "35"))
+    # CAS 032 (work/032-redundant-row.md): a letter's row another row says, left out: by a ratio's row, by a '?' row in
+    # DEG, with room made for the '?' rows, a line where the '?' row gives way and the row it said comes back, and a
+    # row that says nothing (its other letter under a division)
+    for name, expr, repl, angle in [
+            ("said COS(Z)^K from 1 to N", "COS(Z)^K", "1|N", "RAD"),
+            ("said (Y÷SIN(Z))^K from 1 to N, DEG", "(Y÷SIN(Z))^K", "1|N", "DEG"),
+            ("said SIN(Z)^(K-2)×Y^K+COS(Z)^K from -2 to N, room made", "SIN(Z)^(K-2)×Y^K+COS(Z)^K", "-2|N", "RAD"),
+            ("said (2×Y÷SIN(Z))^K+(COS(Z)÷2)^K from -2 to N, given way", "(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K", "-2|N", "RAD"),
+            ("said (1+Z÷(Y-1))^K from 0 to N, kept", "(1+Z÷(Y-1))^K", "0|N", "RAD")]:
+        rows.append((name, expr, "K", angle, "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [

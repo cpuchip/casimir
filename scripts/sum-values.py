@@ -719,6 +719,42 @@ def gen_letter5(rnd):
     return summand, lo, hi, "RAD" if hi == INF and fac in ("ACOS(Z)", "ASIN(Z)", "ATAN(Z)") else angle, truth
 
 
+def gen_said(rnd):
+    """CAS 032: a sum whose answer has no value at Z = 0, and whether a kept row says Z≠0 by the rule (work/032-
+    redundant-row.md, h032's reading #10639): a ratio that is 1 at Z = 0 (its ≠1 and ABS rows are false there), Y÷F
+    with F(Z)≠0 kept, and 1+Z×G with G Y's polynomial (says it to N) or Y under a division, a root or a function
+    (doesn't: no value at Z = 0 for some Y, or out of the rule's reach). To ∞, 1+Z×G's row is ABS(Z×G+1)<1, which holds
+    Y inside ABS: out of the rule's reach, so Z≠0 stays (lawful, unchanged)"""
+    kind = rnd.choice(("ratio", "over", "poly", "nonpoly"))
+    q = rnd.choice(("", "K×", "(K+1)×", "2×"))
+    if kind == "ratio":
+        f = rnd.choice(("COS(Z)", "EXP(Z)", "COSH(Z)", "(Z^2+1)", "(SIN(Z)+1)", "COS(2×Z)", "(1÷COSH(Z))"))
+        return f"{q}{f}^K", rnd.choice((0, 1)), rnd.choice(("N", INF)), True
+    if kind == "over":
+        return f"(Y÷{rnd.choice(('SIN(Z)', 'TAN(Z)'))})^K", 1, "N", True
+    g = rnd.choice(("Y", "Y^2", "(Y-1)^2", "(Y+2)", "3×Y") if kind == "poly" else
+                   ("Y^(-1)", "(Y-1)^(-1)", "SQRT(Y)", "TAN(Y)", "LN(Y)", "ABS(Y)", "EXP(Y)", "SIN(Y)"))
+    hi = rnd.choice(("N", INF))
+    return f"(1+Z×{g})^K", 0, hi, kind == "poly" and hi == "N"
+
+
+def judge_said(summand, lo, hi, out, said, angle="RAD"):
+    """'' when out keeps Z≠0 just where no kept row says it (NOT_SAID: a row the rule drops, kept; a drop beyond the rule:
+    one it doesn't allow), and to N, the first part is the running sum at generic Y and Z"""
+    rows = out.split("; ")[1:]
+    if said and "Z≠0" in rows:
+        return f"{out}: NOT_SAID, Z≠0 kept beside a row that says it (CAS 032)"
+    if not said and "Z≠0" not in rows:
+        return f"{out}: Z≠0 dropped though no row says it by the rule (CAS 032)"
+    if hi == "N":
+        pt = {"Y": "1÷5", "Z": "7÷10"}
+        s, o = summand, out.split("; ")[0]
+        for L, v in pt.items():
+            s, o = sub(s, L, v), sub(o, L, v)
+        return judge_n(s, lo, o, angle, points=8)
+    return ""
+
+
 def gen_letter6(rnd):
     """CAS 031: the 12's shape, gen_letter4's sums from lo -3..-1 to ∞ with q 0 at lo (the term at lo is 0), F any of
     F026's and F030's, SIN's, COS's, TAN's and SIN(2×Z)'s in each angle mode"""
@@ -1291,6 +1327,33 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 032 (work/032-redundant-row.md): a letter's row that a kept row says is left out, by the rule and no further
+    # (h032's reading, #10639). Planted first: 1.2.0's line with Z≠0 beside COS(Z)≠1 (NOT_SAID), and a line that drops
+    # Z≠0 beside Z÷(Y-1)+1≠1, which has no value at Y = 1, refused; the build's taken
+    takes8 = [("COS(Z)^K", 1, "N", "-COS(Z)÷(COS(Z)-1)+COS(Z)^(N+1)÷(COS(Z)-1); COS(Z)≠1", True),
+              ("(1+Z×(Y-1)^(-1))^K", 0, "N", "1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z≠0; Z÷(Y-1)+1≠1",
+               False)]
+    refuses8 = [("COS(Z)^K", 1, "N", "-COS(Z)÷(COS(Z)-1)+COS(Z)^(N+1)÷(COS(Z)-1); Z≠0; COS(Z)≠1", True),
+                ("(1+Z×(Y-1)^(-1))^K", 0, "N", "1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z÷(Y-1)+1≠1", False)]
+    if any(judge_said(s8, lo, hi, out, said) for s8, lo, hi, out, said in takes8) or \
+            any(not judge_said(s8, lo, hi, out, said) for s8, lo, hi, out, said in refuses8):
+        print("FAIL scripts/sum-values.py: its CAS 032 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd8, n8 = random.Random(20261032), 60
+    held8 = [("COS(Z)^K", 1, "N", True), ("K×COS(Z)^(K-1)", 1, "N", True), ("EXP(Z)^K", 0, INF, True),
+             ("(Y÷SIN(Z))^K", 1, "N", True), ("(1+Z×Y^2)^K", 0, "N", True), ("(1+Z÷Y)^K", 0, "N", False),
+             ("(1+Z×SQRT(Y))^K", 0, "N", False), ("(1+Z×ABS(Y))^K", 0, "N", False), ("COS(Y×Z)^K", 1, "N", False),
+             ("(1+Z×Y)^K", 0, INF, False)]
+    cases8 = [gen_said(rnd8) for _ in range(n8)] + held8
+    for summand, lo, hi, said in cases8:
+        out = run_sum(summand, lo, hi)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why = judge_said(summand, lo, hi, out, said)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} RAD: {why}")
     # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
     # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
     if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \
@@ -1313,7 +1376,7 @@ def main():
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
-    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases5) + rows
+    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases8) + len(cases5) + rows
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
           f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
@@ -1321,7 +1384,8 @@ def main():
           f"{len(held4)} held; {n4named} with a named letter row, {n4miss} and {n4neg} with the missing values of the "
           f"24's shape and of #10068's, CAS 027), {n6} with CAS 030's factors in each angle mode (and {len(held6)} "
           f"held; {n6cap} where the row gives way at the cap, {n6miss} with the 24's shape named), {n7s} of the 12's "
-          f"shape (CAS 031; and {len(held7)} held), {n5} typed quotients "
+          f"shape (CAS 031; and {len(held7)} held), {n8} with a letter's row another row may say (CAS 032; and "
+          f"{len(held8)} held), {n5} typed quotients "
           f"(CAS 029; and {len(held5)} held) at {ARENA} B, {soft} NO_ROOM, TOO_LONG or DECIMAL_FORM; {rows} example "
           f"rows by value\nchecks: {checks} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)

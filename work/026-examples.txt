@@ -33,7 +33,8 @@
 | Command | Prints |
 |---|---|
 | `casim sum 'SIN(Z)^K×Y^K' K -1 ∞ RAD` | `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; Z≠0; ABS(Y×SIN(Z))<1` |
-| `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1` |
+#   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row, so CAS 030's `SIN(Z)≠0` fits; it printed `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); Z≠0; SIN(Z)≠1`
+| `casim sum 'K×SIN(Z)^(K-1)' K -1 N RAD` | `1÷(SIN(Z)-2×SIN(Z)^2+SIN(Z)^3)-1÷(SIN(Z)^2-SIN(Z)^3)-N×SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)-SIN(Z)^(N+1)÷(SIN(Z)-SIN(Z)^2)+SIN(Z)^(N+1)÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; SIN(Z)≠1` |
 | `casim sum 'K×(SQRT(Z)×Y)^K÷SQRT(Z)' K 0 N RAD` | `-N×(Y×SQRT(Z))^(N+1)÷(SQRT(Z)-Y×Z)+Y×(Y×SQRT(Z))^(N+1)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-(Y×SQRT(Z))^(N+1)÷(SQRT(Z)-Y×Z); Z≠0; Y×SQRT(Z)≠1` |
 | `casim sum 'K×(EXP(Z)×Y)^K÷EXP(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×EXP(Z)-Y^2×EXP(Z)^2÷2-1÷2); ABS(Y×EXP(Z))<1` |
 | `casim sum 'K×(COSH(Z)×Y)^K÷COSH(Z)' K 0 ∞ RAD` | `-Y÷2÷(Y×COSH(Z)-Y^2×COSH(Z)^2÷2-1÷2); ABS(Y×COSH(Z))<1` |

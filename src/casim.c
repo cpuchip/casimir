@@ -13036,6 +13036,95 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
     }
 }
 
+/* ---- CAS 032: a letter's row that another row says (work/032-redundant-row.md; Michael's (b), abacus #10706) ----
+   A letter's row L≠0 is left out of a sum's line where a kept row is false at every point with L = 0 (COS(Z)≠1 at
+   Z = 0, ABS(X)>1 at X = 0): it excludes nothing the other doesn't. A '?' row (CAS 030's) says it only where the line
+   keeps that row. The kept rows keep their order and text */
+
+/* whether every letter of r but L is in a polynomial place (a sum, a product, a whole power not below 0), so that r at
+   L = 0 is one constant whatever their values (abacus #10635 (1): canon reads 0÷Y as 0, which has no value at Y = 0) */
+static bool sm_whole(ctx *c, ref r, int L)
+{
+    const node *x = nd(c, r);
+    bool other = false, ok = true;
+    for (int l = 0; l < 26 && !other; l++) other = l != L && contains(c, r, l);
+    if (!other || x->kind == K_VAR) return true;
+    if (!enter(c)) return false;
+    if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n && ok; i++) ok = sm_whole(c, list(c, x->a)[i], L);
+    else
+        ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q == 1 && val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);
+    c->depth--;
+    return ok;
+}
+
+/* whether row r is false wherever L is 0: its l there a constant with a value, equal to r's r for a ≠ row, not below it
+   for <, not above it for >. A row with no value at L = 0 says nothing (CAS 025's ruling). The probe is given back,
+   and its status too (no room for it, or no value, is no say), as sm_fits' is */
+static __attribute__((noinline)) bool sm_false0(ctx *c, const smrow *r, int L)
+{
+    size_t mark = c->used;
+    bool free = true, said = false;
+    ref v, d;
+    if (!contains(c, r->l, L) || !sm_whole(c, r->l, L)) return false;
+    v = ib_at(c, r->l, L, small(c, C_0));
+    for (int l = 0; l < 26 && c->st == CASIM_OK && free; l++) free = !contains(c, v, l);
+    if (c->st == CASIM_OK && free) {
+        d = ib_canon(c, add2(c, v, ib_neg(c, r->r)));
+        if (c->st == CASIM_OK) {
+            bool zero = is_k(c, d, 0, 1);
+            int s = zero ? 0 : const_sign(c, d);
+            said = r->op == '<' ? zero || s > 0 : r->op == '>' ? zero || s < 0 : zero;
+        }
+    }
+    said = said && c->st == CASIM_OK;
+    c->st = CASIM_OK;
+    taylor_drop(c, mark);
+    return said;
+}
+
+/* rows less the letters' rows a kept row says (hard: a row that stays; soft: only a '?' row). For soft, the line with
+   the '?' rows and without the rows they say is put into w and rewound: where it fits they go, and where it passes the
+   cap they stay, so sm_rput's give-way puts CAS 030's line as it was. Its own frame, so sm_rput's doesn't move */
+static __attribute__((noinline)) int sm_said(ctx *c, out_t *w, smrow *rows, int n)
+{
+    unsigned hard = 0, soft = 0;
+    int k = 0;
+    for (int i = 0; i < n && c->st == CASIM_OK; i++) {
+        const node *x = nd(c, rows[i].l);
+        if (rows[i].op == '<' || rows[i].op == '>' || x->kind != K_VAR || x->id >= 26 || !is_k(c, rows[i].r, 0, 1))
+            continue;
+        for (int j = 0; j < n && !(hard >> i & 1u) && c->st == CASIM_OK; j++)
+            if (j != i && sm_false0(c, &rows[j], x->id)) {
+                if (rows[j].op == '?') soft |= 1u << i;
+                else hard |= 1u << i;
+            }
+    }
+    soft &= ~hard;
+    if (soft && !w->full && c->st == CASIM_OK) {
+        size_t at = w->n, mark = c->used;
+        ref room = grab(c, (size_t)n * sizeof *rows);
+        if (room) {
+            smrow *t = (smrow *)(void *)nd(c, room);
+            int m = 0;
+            for (int i = 0; i < n; i++)
+                if (!((hard | soft) >> i & 1u)) {
+                    t[m] = rows[i];
+                    if (t[m].op == '?') t[m].op = '!';
+                    m++;
+                }
+            rows_put(c, w, t, m, true);
+            if (w->full) soft = 0;
+            w->n = at, w->full = false, w->o[at] = '\0';
+        }
+        if (c->st == CASIM_NO_ROOM) c->st = CASIM_OK, soft = 0;
+        taylor_drop(c, mark);
+    } else soft = 0;
+    for (int i = 0; i < n; i++)
+        if (!((hard | soft) >> i & 1u)) rows[k++] = rows[i];
+    return k;
+}
+
 /* rows_put for a sum's rows, each '?' row a ≠ row that gives way (CAS 030): where the line with them passes the cap,
    the rows are put again without them, as CAS 028's note gives way. Out of line, so do_sum_'s frame doesn't move */
 static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int n)
@@ -13044,6 +13133,7 @@ static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int
     bool full = w->full;
     unsigned opt = 0;
     int k = 0;
+    n = sm_said(c, w, rows, n);                                 /* CAS 032 */
     for (int i = 0; i < n; i++)
         if (rows[i].op == '?') rows[i].op = '!', opt |= 1u << i;
     rows_put(c, w, rows, n, true);

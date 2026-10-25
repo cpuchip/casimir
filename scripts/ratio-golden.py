@@ -4,7 +4,7 @@ tests/golden/moved/cas-024.txt lists, and no others: with each listed line put b
 →DEC's file are CAS 023's 305bd84 byte for byte (the sha256s in the list's header), each listed line's after is the
 file's, and every after keeps its before's status, and its rows are its before's less one or more L≠0 rows (the shift
 clears them; the answer's form changes with it). The check's control: a before list with one line left at its after
-must fail the hash. Later units' moves (LATER: CAS 028's) are put back first.
+must fail the hash. Later units' moves (LATER: CAS 028's and 032's) are put back first.
     scripts/ratio-golden.py"""
 import hashlib
 import os
@@ -13,7 +13,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-024.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-028.txt")]
+LATER = [os.path.join(GOLDEN, "moved", "cas-028.txt"), os.path.join(GOLDEN, "moved", "cas-032.txt")]
 BASE = "305bd84"
 
 

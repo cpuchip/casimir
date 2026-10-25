@@ -1327,6 +1327,23 @@ MUTANTS = {
     "cancel-long-kept": [("src/casim.c",
                           "    if (c->st == CASIM_OK && r != sum && !sm_fits(c, S, G, ng, r, ocap)) r = sum;   /* abacus #10595 */",
                           "    if (c->st == CASIM_OK && r != sum && !sm_fits(c, S, G, ng, r, ocap)) (void)0;   /* abacus #10595 */")],
+    # CAS 032 (work/032-redundant-row.md): no row says a letter's row; a row says it at canon's L = 0 though another
+    # letter is under a division or a function (abacus #10635 (1): Z÷(Y-1)+1≠1, Z×ABS(Y)+1≠1, h032's "beyond the
+    # rule"); a row with no value at L = 0 says it; > read as <; a '?' row says nothing, or says it on a line that
+    # passes the cap (its give-way loses the row it said)
+    "said-off": [("src/casim.c", "    n = sm_said(c, w, rows, n);                                 /* CAS 032 */",
+                  "    (void)sm_said;                                              /* CAS 032 */")],
+    "said-generic": [("src/casim.c", "    if (!contains(c, r->l, L) || !sm_whole(c, r->l, L)) return false;",
+                      "    if (!contains(c, r->l, L) || (0 && !sm_whole(c, r->l, L))) return false;")],
+    "said-whole-negpow": [("src/casim.c", "val(c, x->b)->q == 1 && val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);",
+                           "val(c, x->b)->q == 1 && val(c, x->b)->p >= -9 && sm_whole(c, x->a, L);")],
+    "said-whole-fn": [("src/casim.c", "        ok = x->kind == K_POW && is_num(c, x->b)",
+                       "        ok = x->kind == K_FN ? true : x->kind == K_POW && is_num(c, x->b)")],
+    "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
+    "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : zero;", "r->op == '>' ? zero || s > 0 : zero;")],
+    "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
+                         "                if (rows[j].op == '?') (void)0;")],
+    "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
 }
 
 
