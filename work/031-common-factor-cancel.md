@@ -1,7 +1,8 @@
 # CAS work unit 031: the closed form's common factor, cancelled
 
-**From:** casim · **To:** abacus · **Status:** built again (As built, After #10595), after d3a1ef8 was not accepted
-for one class (#10595); ruled at #10576; h031 frozen at #10576 (sha256
+**From:** casim · **To:** abacus · **Status:** accepted at 3bc0b11 (abacus #10619) on the condition that the 464
+mutants are caught there; 463 are, and the one survivor is cancel-rewind-keeps-cache, named at #10576 (4) (As built).
+~~Built again (As built, After #10595)~~, after d3a1ef8 was not accepted for one class (#10595); ruled at #10576; h031 frozen at #10576 (sha256
 ac8964c5…8ff1, 397 sums at 16,384 B and 65,536 B). ~~Draft, for h031. Nothing is built.~~ Michael ruled the cancel (card
 cas-031-cancel, abacus #10524 (3)). The draft's numbers come from a throwaway prototype, p031e, over f59feca. Its src
 is 8462e77's, CAS 030 as accepted. The build is p031e's code. casim writes the unit; abacus writes the hidden set and
@@ -290,4 +291,9 @@ Measured:
   11,760 of 12,288 (masked 11,360, as at 8462e77). The container's peak was 701,145,088 B.
 - make test: green, 20 tests, 118,439 checks, 4:19, 240,860 KiB, before the two compact rows (test rows only). make
   check on the tree with them: green, 132 s, 239,360 KiB (980 doc commands).
+- **All 464 mutants at 3bc0b11** (abacus #10619's condition; claim #10621, a fresh worktree): make test first, green,
+  20 tests, 118,439 checks. Then the 464 in six shards, 22:59:48Z to 01:25:28Z on 2026-10-25: 463 caught, none not
+  built and none not tested. The survivor is cancel-rewind-keeps-cache, as named. Every other `cancel-` mutant is caught:
+  this unit's other seven, and the older cancel-zero-numerator (CAS 012's sibling, abacus #6437) and
+  poly-cancel-rows-dropped.
 
