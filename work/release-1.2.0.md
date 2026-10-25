@@ -25,7 +25,7 @@ None.
 - Frame and symbol gates: no frame over 1 KiB, no `pow` linked, and every function's frame against the recorded table. No frame moved from 1.1.2. The new functions take 240 B (sm_cancel), 304 B (sm_fits) and 96 B (sm_pw) on the host, and 176, 176 and 64 B on the S3.
 - Value checks beside the corpus judge Taylor polynomials, limits, integrals and sums against independent constructions: power series over fractions, numeric derivatives at 90 digits, and sums added term by term at 60 digits. New in 1.2.0: sums of the shape CAS 031 fixes (to ∞ from a negative lo, the term at lo 0), 60 a run (SIN, COS, TAN and SIN(2×Z) in each angle mode) and 45 held, judged at the factor's zeros, where no value is a failure.
 - CI on every push: `make check` under gcc and clang, `make test`, CMake under gcc and clang, WebAssembly, and the ESP-IDF component for the ESP32-S3.
-- [to come: the 464 planted mutants, run at this tag's tree after the version commit]
+- 464 planted mutants, each a fault the checks must catch: 463 are caught at this tag's tree (work/v1.2.0-mutants.txt), seven of the eight new on CAS 031's cancel among them. The eighth, cancel-rewind-keeps-cache, is named: no input is known where it differs from the build.
 - Hidden sets kept by the project's reviewer, independent of this repository, rerun at each unit's acceptance. At CAS 031's: its own, 794 runs at two arenas, judged by value at the letters' and the factors' zeros, by the rows, and by the give-way at the cap; and the earlier units' sets.
 - On the ESP32-S3, every one of the bench's 1,384 cases is byte-identical to the host:
   - with a 16,384 B arena, the size the calculator runs it with;

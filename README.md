@@ -148,13 +148,13 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 464 deliberate faults, each of which the tests must
-  catch, but one named. At CAS 031's accepted tree (3bc0b11) `make test` caught 463 of the 464, seven of the eight new
-  on CAS 031's cancel among them (work/031-common-factor-cancel.md). The eighth, cancel-rewind-keeps-cache, is the one
-  named: it survives because no input is known where it differs. It caught all 456 at 1.1.2's tree
-  (work/v1.1.2-mutants.txt), as it caught all 450 at 1.1.1's tree (work/v1.1.1-mutants.txt), all 445 at 1.1.0's tree
-  (work/v1.1.0-mutants.txt), all 435 at 1.0.1's tree (work/v1.0.1-mutants.txt) and all 428 of 1.0.0-rc7's at rc7's tree
-  (work/rc7-mutants.txt). At 1.1.1 one survived at first: CAS 029's rule took over the case that had caught it, and
-  three rows now reach it.
+  catch, but one named. At 1.2.0's tree `make test` caught 463 of the 464 (work/v1.2.0-mutants.txt), as at CAS 031's
+  accepted tree (3bc0b11), seven of the eight new on CAS 031's cancel among them (work/031-common-factor-cancel.md). The
+  eighth, cancel-rewind-keeps-cache, is the one named: it survives because no input is known where it differs. It caught
+  all 456 at 1.1.2's tree (work/v1.1.2-mutants.txt), as it caught all 450 at 1.1.1's tree (work/v1.1.1-mutants.txt), all
+  445 at 1.1.0's tree (work/v1.1.0-mutants.txt), all 435 at 1.0.1's tree (work/v1.0.1-mutants.txt) and all 428 of
+  1.0.0-rc7's at rc7's tree (work/rc7-mutants.txt). At 1.1.1 one survived at first: CAS 029's rule took over the case
+  that had caught it, and three rows now reach it.
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its
