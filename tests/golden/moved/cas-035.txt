@@ -1,0 +1,212 @@
+# The golden lines CAS 035 (the typed text's domain: work/035-typed-domain.md) moved. Each line's inputs, then its
+# status and answer before (cda0fcb, 4c0523b's src) and after. Putting every before back gives cda0fcb's files byte
+# for byte (their sha256 below), and every after is a refusal (UNDEFINED, IMPROPER, BAD_ARG) where the before was a
+# value or UNDECIDED: the typed input has no real value there (scripts/typed-golden.py, in make check). The corpus:
+# 34 inputs, each where the line appears; →DEC's below.
+# cda0fcb corpus.txt sha256 d8170d2661e608f33a909b7482e25369a67c875b7e5891fa4f1e9304649fb882
+# cda0fcb decimal.txt sha256 a8f1bfb0976e9d4f0116d00e527322797669473794dbc6aa582e5e3da7f55924
+defint	1	23	2	1	8800	65536	((7)×((2)×(2)))+((ACOS(π))×(X))	-1	π
+  before	OK	28×π-ACOS(π)÷2+π^2×ACOS(π)÷2+28
+  after	UNDEFINED	
+defint	1	23	1	1	8800	65536	(COS(-4))-(((π)÷(Y))÷(ACOS(2)))	0.5	π
+  before	OK	-0.5×COS(-4)+π×COS(-4)+π÷2÷Y÷ACOS(2)-π^2÷Y÷ACOS(2)
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	((X)+(ASIN(1E3)))+(X)	π÷4	3
+  before	OK	3×ASIN(1000)-π^2÷16-π×ASIN(1000)÷4+9
+  after	UNDEFINED	
+defint	1	23	1	1	8800	65536	(SQRT((1.5)÷(-4)))-(((3)+(7))÷(Y))	1	2
+  before	OK	-10÷Y+SQRT(-0.375)
+  after	UNDEFINED	
+defint	33	23	1	33	65536	65536	ASIN(1.5)	π÷4	π
+  before	OK	3×π×ASIN(1.5)÷4
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	(SINH(ASIN(2)))-(((0.5)×(7))^((-4)+(Y)))	1	1
+  before	OK	0
+  after	UNDEFINED	
+defint	33	23	0	33	65536	65536	(SIN((0.5)^(-4)))÷((ASIN(1.5))-((π)÷(0.5)))	0	-2
+  before	OK	SIN(16)÷(π-0.5×ASIN(1.5))
+  after	UNDEFINED	
+defint	33	23	0	33	8800	65536	((SQRT(Y))^((-4)^(0.5)))+(Y)	0	-2
+  before	OK	-2×Y-2×SQRT(Y)^SQRT(-4)
+  after	UNDEFINED	
+defint	33	23	2	33	65536	65536	((ASIN(-4))÷((2)÷(Y)))×((ATAN(1.5))-((3)×(-4)))	0	3
+  before	OK	3×Y×ASIN(-4)×(ATAN(1.5)+12)÷2
+  after	UNDEFINED	
+defint	1	23	0	1	65536	65536	((SIN(2))÷(7))-(ASIN(1E3))	π÷4	2
+  before	OK	2×SIN(2)÷7-2×ASIN(1000)-π×SIN(2)÷28+π×ASIN(1000)÷4
+  after	UNDEFINED	
+defint	33	23	1	33	65536	65536	((X)÷(3))+(EXP(ASIN(-4)))	0.5	-2
+  before	OK	-2.5×EXP(ASIN(-4))+0.625
+  after	UNDEFINED	
+defint	1	23	1	1	65536	65536	SQRT((ACOS(7))+(Y))	0	-2
+  before	OK	-2×SQRT(Y+ACOS(7))
+  after	UNDEFINED	
+defint	35	23	0	35	8800	65536	((ASIN(7))÷(2))^(((2)+(Y))×(1.5))	π÷4	2
+  before	OK	2×(ASIN(7)÷2)^(1.5×Y+3)-π×(ASIN(7)÷2)^(1.5×Y+3)÷4
+  after	UNDEFINED	
+defint	33	23	1	33	8800	65536	ATAN(((π)÷(3))-(ASIN(3)))	1	3
+  before	OK	2×ATAN(π÷3-ASIN(3))
+  after	UNDEFINED	
+defint	35	23	2	35	8800	65536	COS(ASIN(ABS(1E3)))	1	2
+  before	OK	COS(ASIN(1000))
+  after	UNDEFINED	
+defint	35	23	2	35	8800	65536	(0.5)÷(SQRT(LN(Y)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+defint	35	23	1	35	8800	65536	(ASIN((1E3)+(2)))^(Y)	-1	3
+  before	OK	4×ASIN(1002)^Y
+  after	UNDEFINED	
+defint	35	23	1	35	8800	65536	(((0.5)×(2))+((π)+(0.5)))×(((3)+(-4))^(0.5))	0.5	1
+  before	OK	0.5×(π+1.5)×SQRT(-1)
+  after	UNDEFINED	
+defint	35	23	0	35	8800	65536	((TANH(3))÷((7)-(3)))^(((1.5)+(1.5))÷(LN(-4)))	0.5	2
+  before	OK	1.5×(TANH(3)÷4)^(3÷LN(-4))
+  after	UNDEFINED	
+defint	35	23	2	35	65536	65536	(SQ((2)^(2)))÷(((π)×(1.5))-((-4)^(0.5)))	0	-2
+  before	OK	-64÷3÷(π-2×SQRT(-4)÷3)
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	(((1.5)×(7))÷((1E3)-(-4)))+(ACOS(7))	0.5	3
+  before	OK	2.5×ACOS(7)+105÷4016
+  after	UNDEFINED	
+defint	33	23	1	33	8800	65536	((3)-((1.5)+(1.5)))÷(((X)×(-4))÷(-4))	0	3
+  before	OK	0
+  after	IMPROPER	
+defint	35	23	1	35	8800	65536	EXP((ACOS(Y))×((1.5)+(π)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+defint	33	23	1	33	8800	65536	SINH(((Y)÷(1E3))^((3)÷(Y)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+limit	33	23	1	33	65536	65536	(SIN(K×(1÷X)))×(LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	1	23	1	1	8800	65536	2×X+1-LN(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	0	35	65536	65536	(TAN((1÷X)))×(X×LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	1	35	8800	65536	(SQRT(X))÷(2×X+1)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	2	35	65536	65536	(EXP((1÷X))-1)×(X×LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	33	23	2	33	8800	65536	EXP(X)-X×LN(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	33	23	1	33	65536	65536	LN(X)-SQRT(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	1	23	1	1	8800	65536	(SQRT(4+X))×(LN(1+X))	-2	-
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	1	35	65536	65536	ATAN(X)+1+SQRT(1+X)-1	-2	-
+  before	OK	ATAN(-2)+SQRT(-1)
+  after	UNDEFINED	
+limit	1	23	0	1	65536	65536	EXP(X)+LN(1+X)	-2	+
+  before	UNDECIDED	
+  after	UNDEFINED	
+# Under →DEC (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL): 34 inputs
+defint	1	23	2	1	8800	65536	((7)×((2)×(2)))+((ACOS(π))×(X))	-1	π
+  before	OK	28×π-0.5×ACOS(π)+π^2×ACOS(π)÷2+28
+  after	UNDEFINED	
+defint	1	23	1	1	8800	65536	(COS(-4))-(((π)÷(Y))÷(ACOS(2)))	0.5	π
+  before	OK	-0.5×COS(-4)+π×COS(-4)+π÷2÷Y÷ACOS(2)-π^2÷Y÷ACOS(2)
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	((X)+(ASIN(1E3)))+(X)	π÷4	3
+  before	OK	3×ASIN(1000)-π^2÷16-π×ASIN(1000)÷4+9
+  after	UNDEFINED	
+defint	1	23	1	1	8800	65536	(SQRT((1.5)÷(-4)))-(((3)+(7))÷(Y))	1	2
+  before	OK	-10÷Y+SQRT(-0.375)
+  after	UNDEFINED	
+defint	33	23	1	33	65536	65536	ASIN(1.5)	π÷4	π
+  before	OK	3×π×ASIN(1.5)÷4
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	(SINH(ASIN(2)))-(((0.5)×(7))^((-4)+(Y)))	1	1
+  before	OK	0
+  after	UNDEFINED	
+defint	33	23	0	33	65536	65536	(SIN((0.5)^(-4)))÷((ASIN(1.5))-((π)÷(0.5)))	0	-2
+  before	OK	SIN(16)÷(π-0.5×ASIN(1.5))
+  after	UNDEFINED	
+defint	33	23	0	33	8800	65536	((SQRT(Y))^((-4)^(0.5)))+(Y)	0	-2
+  before	OK	-2×Y-2×SQRT(Y)^SQRT(-4)
+  after	UNDEFINED	
+defint	33	23	2	33	65536	65536	((ASIN(-4))÷((2)÷(Y)))×((ATAN(1.5))-((3)×(-4)))	0	3
+  before	OK	1.5×Y×ASIN(-4)×(ATAN(1.5)+12)
+  after	UNDEFINED	
+defint	1	23	0	1	65536	65536	((SIN(2))÷(7))-(ASIN(1E3))	π÷4	2
+  before	OK	2×SIN(2)÷7-2×ASIN(1000)-π×SIN(2)÷28+π×ASIN(1000)÷4
+  after	UNDEFINED	
+defint	33	23	1	33	65536	65536	((X)÷(3))+(EXP(ASIN(-4)))	0.5	-2
+  before	OK	-2.5×EXP(ASIN(-4))+0.625
+  after	UNDEFINED	
+defint	1	23	1	1	65536	65536	SQRT((ACOS(7))+(Y))	0	-2
+  before	OK	-2×SQRT(Y+ACOS(7))
+  after	UNDEFINED	
+defint	35	23	0	35	8800	65536	((ASIN(7))÷(2))^(((2)+(Y))×(1.5))	π÷4	2
+  before	OK	2×(0.5×ASIN(7))^(1.5×Y+3)-π×(0.5×ASIN(7))^(1.5×Y+3)÷4
+  after	UNDEFINED	
+defint	33	23	1	33	8800	65536	ATAN(((π)÷(3))-(ASIN(3)))	1	3
+  before	OK	2×ATAN(π÷3-ASIN(3))
+  after	UNDEFINED	
+defint	35	23	2	35	8800	65536	COS(ASIN(ABS(1E3)))	1	2
+  before	OK	COS(ASIN(1000))
+  after	UNDEFINED	
+defint	35	23	2	35	8800	65536	(0.5)÷(SQRT(LN(Y)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+defint	35	23	1	35	8800	65536	(ASIN((1E3)+(2)))^(Y)	-1	3
+  before	OK	4×ASIN(1002)^Y
+  after	UNDEFINED	
+defint	35	23	1	35	8800	65536	(((0.5)×(2))+((π)+(0.5)))×(((3)+(-4))^(0.5))	0.5	1
+  before	OK	0.5×(π+1.5)×SQRT(-1)
+  after	UNDEFINED	
+defint	35	23	0	35	8800	65536	((TANH(3))÷((7)-(3)))^(((1.5)+(1.5))÷(LN(-4)))	0.5	2
+  before	OK	1.5×(0.25×TANH(3))^(3÷LN(-4))
+  after	UNDEFINED	
+defint	35	23	2	35	65536	65536	(SQ((2)^(2)))÷(((π)×(1.5))-((-4)^(0.5)))	0	-2
+  before	OK	-64÷3÷(π-2×SQRT(-4)÷3)
+  after	UNDEFINED	
+defint	35	23	1	35	65536	65536	(((1.5)×(7))÷((1E3)-(-4)))+(ACOS(7))	0.5	3
+  before	OK	2.5×ACOS(7)+105÷4016
+  after	UNDEFINED	
+defint	33	23	1	33	8800	65536	((3)-((1.5)+(1.5)))÷(((X)×(-4))÷(-4))	0	3
+  before	OK	0
+  after	IMPROPER	
+defint	35	23	1	35	8800	65536	EXP((ACOS(Y))×((1.5)+(π)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+defint	33	23	1	33	8800	65536	SINH(((Y)÷(1E3))^((3)÷(Y)))	1	1
+  before	OK	0
+  after	BAD_ARG	
+limit	33	23	1	33	65536	65536	(SIN(K×(1÷X)))×(LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	1	23	1	1	8800	65536	2×X+1-LN(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	0	35	65536	65536	(TAN((1÷X)))×(X×LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	1	35	8800	65536	(SQRT(X))÷(2×X+1)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	2	35	65536	65536	(EXP((1÷X))-1)×(X×LN(X))	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	33	23	2	33	8800	65536	EXP(X)-X×LN(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	33	23	1	33	65536	65536	LN(X)-SQRT(X)	-∞	
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	1	23	1	1	8800	65536	(SQRT(4+X))×(LN(1+X))	-2	-
+  before	UNDECIDED	
+  after	UNDEFINED	
+limit	35	23	1	35	65536	65536	ATAN(X)+1+SQRT(1+X)-1	-2	-
+  before	OK	ATAN(-2)+SQRT(-1)
+  after	UNDEFINED	
+limit	1	23	0	1	65536	65536	EXP(X)+LN(1+X)	-2	+
+  before	UNDECIDED	
+  after	UNDEFINED	

@@ -5,7 +5,8 @@ tests/golden/moved/cas-032.txt lists, and no others: with each listed line put b
 file's. Every after keeps its before's status, its first part and its kept rows in order, and drops one or more L≠0
 rows. Each dropped row is judged apart from the code that drops it: a kept row has a value at L = 0 and is false
 there, at generic values of the other letters and at special ones (0, ±1, ±2, ½, ±π÷2, π), one letter at a time
-(abacus #10635 (1)). The check's control: a before list with one line left at its after must fail the hash.
+(abacus #10635 (1)). The check's control: a before list with one line left at its after must fail the hash. Later
+units' moves (LATER: CAS 035's) are put back first.
     scripts/said-golden.py"""
 import decimal
 import hashlib
@@ -17,6 +18,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-032.txt")
+LATER = [os.path.join(GOLDEN, "moved", "cas-035.txt")]
 BASE = "2a9c354"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
 sv = importlib.util.module_from_spec(_spec)
@@ -28,11 +30,11 @@ ROW = re.compile(r"^(.*?)(≠|<|>)(.*)$")
 NOVALUE = (ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError, ValueError)
 
 
-def moved():
+def moved(path=MOVED):
     """the list's sections (the corpus's moves, →DEC's): inputs (the first ten fields) -> (before, after), each
     [status, text]; and the header's sha256 for each file"""
     sections, lines, sha = [{}], [], {}
-    for ln in open(MOVED, encoding="utf-8").read().split("\n"):
+    for ln in open(path, encoding="utf-8").read().split("\n"):
         if ln.startswith("# " + BASE + " ") and " sha256 " in ln:
             name, _, h = ln[len("# " + BASE + " "):].split(" ")
             sha[name] = h
@@ -43,7 +45,7 @@ def moved():
     for i in range(0, len(lines), 3):
         (s, inp), (_, b), (_, a) = lines[i:i + 3]
         if not b.startswith("  before\t") or not a.startswith("  after\t"):
-            sys.exit(f"FAIL scripts/said-golden.py: {MOVED} is not inputs, before, after at {inp}")
+            sys.exit(f"FAIL scripts/said-golden.py: {path} is not inputs, before, after at {inp}")
         sections[s][inp] = (b.split("\t")[1:3], a.split("\t")[1:3])
     return sections, sha
 
@@ -75,9 +77,15 @@ def says(row, L):
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after): (failures, its sha256)"""
     bad, out, hit = 0, [], set()
+    later = {}
+    for path in LATER:                                  # a later unit's moves, at their before first
+        (c_mv, d_mv), _ = moved(path)
+        later.update(c_mv if name == "corpus.txt" else d_mv)
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if ln and not ln.startswith("#") and key in later:
+            f = f[:10] + later[key][0][:2]
         if ln and not ln.startswith("#") and key in mv:
             b, a = mv[key]
             hit.add(key)
