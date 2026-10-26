@@ -3,12 +3,12 @@
 #   dependencies:
 #     casim:
 #       git: https://github.com/cpuchip/casimir.git
-#       version: main          # or a release tag (v1.2.0, ...)
+#       version: main          # or a release tag (v1.3.0, ...)
 # ESP-IDF names a component after its directory: a git dependency is checked out under its key (casim); a path
 # dependency must point at a directory named casim (device/CMakeLists.txt links the repository in that way).
 # Intel's decimal library is fetched at configure time by URL and SHA-256 (cmake/intel-dfp.cmake), so the first build
 # needs the network, or -DCASIM_INTEL_TARBALL=<a local copy>.
-version: "1.2.0"
+version: "1.3.0"
 description: "Casimir: exact computer algebra in portable C11 (derivatives, integrals, solving, factoring); no heap"
 url: https://github.com/cpuchip/casimir
 license: MIT
