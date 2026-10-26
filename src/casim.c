@@ -6468,15 +6468,20 @@ static int interval_walk(ctx *c, ref r, int var, const bound *A, const bound *B)
 #ifndef TD_EDGE_STRICT
 #define TD_EDGE_STRICT 1        /* a two-sided limit with no real value on one side is UNDEFINED (abacus #11402) */
 #endif
-typedef struct {                        /* the lists' room is in the arena, sized by a counting walk (cap 0) */
+#define TD_SMALL 8                      /* a list this long is the caller's own (no arena: CAS 033's 2,048 B example) */
+typedef struct {                        /* the raw list, sized by a counting walk (cap 0), in the arena past TD_SMALL */
     ref *u, *e;
     char *k;
     int n, cap, skip;                   /* skip: a closed sum's K, whose conditions sm_typed_ok reads (else -1) */
+    ref su[TD_SMALL], se[TD_SMALL];
+    char sk[TD_SMALL];
 } tdset;
 typedef struct {
     ref *u;
     char *k;
     int n, cap;
+    ref su[TD_SMALL];
+    char sk[TD_SMALL];
 } tdc;
 
 static ref ib_canon(ctx *c, ref r);
@@ -6627,17 +6632,17 @@ static bool td_raw(ctx *c, ref raw, tdset *T, int skip)
     td_walk(c, raw, T);
     if (c->st != CASIM_OK || !T->n) return false;
     T->cap = T->n, T->n = 0;
-    if (!td_room(c, T->cap, 2, &T->u, &T->e, &T->k)) return false;
+    if (T->cap <= TD_SMALL) T->u = T->su, T->e = T->se, T->k = T->sk;
+    else if (!td_room(c, T->cap, 2, &T->u, &T->e, &T->k)) return false;
     td_walk(c, raw, T);
     return c->st == CASIM_OK;
 }
 
-/* raw entry r of T canonical into D (its own room, 8: a product's factors) */
+/* raw entry r of T canonical into D (D's own TD_SMALL: a product's factors) */
 static bool td_entry(ctx *c, const tdset *T, int r, tdc *D, int pv)
 {
-    tdset one = {T->u + r, T->e + r, T->k + r, 1, 1, -1};
-    D->n = 0, D->cap = 8;
-    if (!td_room(c, D->cap, 1, &D->u, NULL, &D->k)) return false;
+    tdset one = {T->u + r, T->e + r, T->k + r, 1, 1, -1, {0}, {0}, {0}};
+    D->n = 0, D->cap = TD_SMALL, D->u = D->su, D->k = D->sk;
     td_canon(c, &one, D, pv);
     return c->st == CASIM_OK;
 }
@@ -6731,13 +6736,10 @@ static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A, 
         if (c->st == CASIM_OK) td_drop(c, mark0);               /* nothing to hold: the arena back */
         return IV_OK;
     }
-    pr = grab(c, sizeof *P);
-    if (!pr) return c->st = CASIM_NO_ROOM, IV_OK;
-    P = (tdc *)(void *)nd(c, pr), P->n = 0, P->cap = 8 * T.n, held = pr;
-    if (!td_room(c, P->cap, 1, &P->u, NULL, &P->k)) return IV_OK;
+    P = NULL, pr = 0;
     for (int r = 0; r < T.n && c->st == CASIM_OK && !fail; r++) {
     size_t mark = c->used;
-    int was = P->n;
+    int was = P ? P->n : 0;
     if (!td_entry(c, &T, r, &D, -1)) return IV_OK;
     for (int i = 0; i < D.n && c->st == CASIM_OK && !fail; i++) {
         ref u = D.u[i];
@@ -6747,7 +6749,14 @@ static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A, 
         if (!contains(c, u, var)) {
             int s = any_letter(c, u) ? 2 : td_const(c, u, k);
             if (s == 1) fail = true;
-            else if (s == 2) P->u[P->n] = u, P->k[P->n++] = k;  /* for the answer's gate (D's size: room) */
+            else if (s == 2) {                                  /* held for the answer's gate */
+                if (!P && (pr = grab(c, sizeof *P)) != 0) {
+                    P = (tdc *)(void *)nd(c, pr), held = pr;
+                    P->n = 0, P->cap = TD_SMALL;
+                }
+                if (!P || P->n == P->cap) return c->st = CASIM_NO_ROOM, IV_OK;
+                P->su[P->n] = u, P->sk[P->n++] = k;
+            }
             continue;
         }
         if (k == 't') {
@@ -6786,10 +6795,10 @@ static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A, 
         default: break;
         }
     }
-    if (c->st == CASIM_OK && P->n == was) td_drop(c, mark);       /* nothing held from it */
+    if (c->st == CASIM_OK && (P ? P->n : 0) == was) td_drop(c, mark);     /* nothing held from it */
     }
     if (fail && c->st == CASIM_OK) c->st = CASIM_UNDEFINED;
-    if (c->st == CASIM_OK && !P->n) td_drop(c, mark0), held = 0;
+    if (c->st == CASIM_OK && (!P || !P->n)) td_drop(c, mark0), held = 0;
     return iv | (int)held << 8;                         /* the held conditions' ref beside the IV code */
 }
 
@@ -6799,7 +6808,7 @@ static __attribute__((noinline)) void td_defint_gate(ctx *c, ref r, ref held, in
 {
     const tdc *P = (const tdc *)(const void *)nd(c, held);
     for (int i = 0; i < P->n && c->st == CASIM_OK; i++)
-        if (!td_gated(c, r, P->u[i], P->k[i], var)) c->st = any_letter(c, P->u[i]) ? CASIM_BAD_ARG : CASIM_UNDECIDED;
+        if (!td_gated(c, r, P->su[i], P->sk[i], var)) c->st = any_letter(c, P->su[i]) ? CASIM_BAD_ARG : CASIM_UNDECIDED;
 }
 
 /* a bound: parsed as subst parses its replacement (its SYNTAX offset counted after eqn and what came before it, as
@@ -12262,6 +12271,21 @@ static __attribute__((noinline)) int td_mixed(ctx *c, ref g, lwalk *L, int side,
         return lm_sgn(c, r.v) == 1 ? 0 : 2;
     }
     e = ib_at(c, g, L->var, L->a);
+    if (c->st == CASIM_UNDEFINED) {
+        /* no value at the point itself (K+SIN(X)÷X at 0): its limit there, from each side asked, decides */
+        lwalk M = *L;
+        lv r;
+        ref v = 0;
+        c->st = CASIM_OK;
+        for (int j = 0; j < (side ? 1 : 2) && c->st == CASIM_OK; j++) {
+            M.side = side ? side : j ? -1 : 1, M.steps = 0, M.lt = false, M.C.n = 0;
+            r = lm_walk(c, g, &M);
+            if (c->st != CASIM_OK || r.k != L_FIN || (v && cmp(c, ib_canon(c, v), ib_canon(c, r.v)) != 0))
+                return c->st = CASIM_OK, 2;
+            v = r.v;
+        }
+        e = ib_canon(c, v);
+    }
     if (c->st != CASIM_OK) return 2;
     if (any_letter(c, e)) {
         cd_note(c, &L->C, e, '>', L->var);
@@ -12296,22 +12320,14 @@ static void td_limit_one(ctx *c, const tdc *Dp, lwalk *L, int inf, int *sidep, b
 static __attribute__((noinline)) int td_limit(ctx *c, lwalk *L, int inf, int side)
 {
     ref raw = parse(c);                                 /* the text again, as typed: canon took its place */
-    tdset T, one;
+    tdset T;
     tdc D;
     bool fail = false, unk = false;
-    T.n = T.cap = 0, T.skip = -1, one.skip = -1;
-    td_walk(c, raw, &T);
-    if (c->st != CASIM_OK || !T.n) return side;
-    T.cap = T.n, T.n = 0;
-    if (!td_room(c, T.cap, 2, &T.u, &T.e, &T.k)) return side;
-    td_walk(c, raw, &T);
+    if (!td_raw(c, raw, &T, -1)) return side;
     for (int r = 0; r < T.n && c->st == CASIM_OK; r++) {
         size_t mark = c->used;
         int notes = L->C.n;
-        one.u = T.u + r, one.e = T.e + r, one.k = T.k + r, one.n = one.cap = 1;
-        D.n = 0, D.cap = 8;
-        if (!td_room(c, D.cap, 1, &D.u, NULL, &D.k)) return side;
-        td_canon(c, &one, &D, L->var);
+        if (!td_entry(c, &T, r, &D, L->var)) return side;
         td_limit_one(c, &D, L, inf, &side, &fail, &unk);
         if (c->st == CASIM_OK && L->C.n == notes) td_drop(c, mark);   /* nothing points into it */
     }
@@ -13825,6 +13841,20 @@ static __attribute__((noinline)) void td_row1(ctx *c, smrow *rows, int *n, ref e
     sm_row(c, rows, n, e, op, small(c, C_0), nd(c, e)->kind == K_VAR ? nd(c, e)->id : 26);
 }
 
+/* whether a row already there says the condition (and its probe needn't run): u≠0 for u≠0 (CAS 033's Y-1≠0, the
+   letters' Y≠0), LN(u)≠0 or LOG(u)≠0 for u≠1 */
+static bool td_said(ctx *c, const smrow *rows, int n, ref u, char k)
+{
+    for (int i = 0; i < n && (k == '!' || k == 'n'); i++) {
+        const node *x = nd(c, rows[i].l);
+        if (rows[i].op != '!' || !is_k(c, rows[i].r, 0, 1)) continue;
+        if (k == '!' ? cmp(c, rows[i].l, u) == 0
+                     : x->kind == K_FN && (x->id == F_LN || x->id == F_LOG) && cmp(c, x->a, u) == 0)
+            return true;
+    }
+    return false;
+}
+
 /* a condition's rows */
 static __attribute__((noinline)) void td_rows(ctx *c, smrow *rows, int *n, ref u, char k)
 {
@@ -13863,7 +13893,7 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
             int st;
             if (c->st != CASIM_OK) break;
             if (any_letter(c, v)) {
-                if (!gate || !td_gated(c, sum, v, k, S->var)) td_rows(c, rows, n, v, k);
+                if (!td_said(c, rows, *n, v, k) && (!gate || !td_gated(c, sum, v, k, S->var))) td_rows(c, rows, n, v, k);
                 continue;
             }
             st = td_const(c, v, k);
