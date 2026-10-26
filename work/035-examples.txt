@@ -141,3 +141,17 @@
 | `casim --cap 192 sum '(18+12×K)÷(K^4+6×K^3+9×K^2)' K 1 31 RAD` | `145920565÷53712384` |
 | `casim --cap 192 sum '(7÷2+K)^(-2)-4÷(5÷2+K)^2-2÷(5÷2+K)+2÷(9÷2+K)+3÷(9÷2+K)^2' K 1 ∞ RAD` | `-1972÷1323` |
 | `casim --arena 4096 sum '(Y÷TAN(Z))^K+COS(Z)^K' K -1 N RAD` | `1÷(COS(Z)-COS(Z)^2)+TAN(Z)÷(Y-Y^2÷TAN(Z))+COS(Z)^(N+1)÷(COS(Z)-1)+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); Y≠0; COS(Z)≠0; TAN(Z)≠0; COS(Z)≠1; Y÷TAN(Z)≠1` |
+
+# - Pins after 1.4.0's mutant run (abacus #11540): older checks that CAS 035's typed rows now stand beside, each where
+#   it alone decides the line. A limit's hole that shows only in its value (CAS 023 site 6: (K^2)^X at -1 is 1÷K^2);
+#   f's constant divisor EXP(K^K), whose row says K^K has a value (site 7); defint's interval check, which answers
+#   IMPROPER before the typed walk meets a constant with no value, as 1.3.0 does
+
+| Command | Prints |
+|---|---|
+| `casim limit '(K^2)^X' X -1 '' RAD` | `1÷K^2; K≠0` |
+| `casim limit 'K^X' X 0.5 '' RAD` | `SQRT(K); K>0` |
+| `casim limit '1÷(X×EXP(K^K))' X ∞ '' RAD` | `0; EXP(K^K)≠0` |
+| `casim defint 'X^(-2)×ACOS(3)' X 0 1 RAD` | `IMPROPER` |
+| `casim defint 'SQRT(X)+ASIN(2)' X -1 1 RAD` | `IMPROPER` |
+| `casim defint '1÷X÷ACOS(π)' X -1 1 RAD` | `IMPROPER` |
