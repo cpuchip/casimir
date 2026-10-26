@@ -6461,7 +6461,7 @@ static int interval_walk(ctx *c, ref r, int var, const bound *A, const bound *B)
     return st;
 }
 
-/* ---- CAS 035 PROTOTYPE (throwaway, casim scratch): the typed text's domain ----
+/* ---- CAS 035: the typed text's domain (work/035-typed-domain.md; Michael's cas-wrong-widen (1)) ----
    td_walk lists each typed part's condition on its argument, as typed; td_canon makes each canonical, once. Kinds:
    '!' u≠0, 'n' u≠1 (a divisor LN(u) or LOG(u)), '>' u>0, 'g' u≥0, '1' u≥1, 'a' ABS(u)≤1, 'h' ABS(u)<1, 't' COS(u)≠0;
    'p' a power, decided by its exponent once canonical */
@@ -6717,22 +6717,23 @@ static bool td_holds(ctx *c, ref r, ref u, char k)
 
 /* defint: each condition over the interval (IV_*), as pow_hits and tan_hits test canon's; a condition in another
    letter only is IV_LETTER (BAD_ARG, abacus #11402 (2)) */
-static __attribute__((noinline)) int td_defint(ctx *c, ref raw, int var, const bound *A, const bound *B, ref *held)
+static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A, const bound *B)
 {
+    ref raw = parse(c);                                 /* the text again, as typed (c->s is eqn) */
     tdset T;
     tdc D, *P;
     bool fail = false;
     ref pr;
     size_t mark0 = c->used;
     int iv = IV_OK;
-    *held = 0;
+    ref held = 0;
     if (!td_raw(c, raw, &T, -1)) {
         if (c->st == CASIM_OK) td_drop(c, mark0);               /* nothing to hold: the arena back */
         return IV_OK;
     }
     pr = grab(c, sizeof *P);
     if (!pr) return c->st = CASIM_NO_ROOM, IV_OK;
-    P = (tdc *)(void *)nd(c, pr), P->n = 0, P->cap = 8 * T.n, *held = pr;
+    P = (tdc *)(void *)nd(c, pr), P->n = 0, P->cap = 8 * T.n, held = pr;
     if (!td_room(c, P->cap, 1, &P->u, NULL, &P->k)) return IV_OK;
     for (int r = 0; r < T.n && c->st == CASIM_OK && !fail; r++) {
     size_t mark = c->used;
@@ -6788,8 +6789,8 @@ static __attribute__((noinline)) int td_defint(ctx *c, ref raw, int var, const b
     if (c->st == CASIM_OK && P->n == was) td_drop(c, mark);       /* nothing held from it */
     }
     if (fail && c->st == CASIM_OK) c->st = CASIM_UNDEFINED;
-    if (c->st == CASIM_OK && !P->n) td_drop(c, mark0), *held = 0;
-    return iv;
+    if (c->st == CASIM_OK && !P->n) td_drop(c, mark0), held = 0;
+    return iv | (int)held << 8;                         /* the held conditions' ref beside the IV code */
 }
 
 /* defint's answer r: a held condition its answer doesn't show is BAD_ARG for a letter's (abacus #11402 (2)), UNDECIDED
@@ -6826,7 +6827,6 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     ctx c;
     ref n = SPARE, F = SPARE, f, a, b;
     bound ba, bb;
-    ref held = 0;                                                       /* CAS 035 prototype */
     int chars = 0, iv;
     size_t ocap = cap < SLOT ? cap : SLOT;
     if (cap) out[0] = '\0';
@@ -6850,10 +6850,10 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
     ba.q = is_num(&c, a) ? val(&c, a) : NULL, bb.q = is_num(&c, b) ? val(&c, b) : NULL;
     iv = abn_cmp(&ba.v, &bb.v) <= 0 ? interval_walk(&c, f, var, &ba, &bb) : interval_walk(&c, f, var, &bb, &ba);
-    if (iv == IV_OK && c.st == CASIM_OK)                               /* CAS 035 prototype: the typed integrand */
-        iv = abn_cmp(&ba.v, &bb.v) <= 0 ? td_defint(&c, n, var, &ba, &bb, &held) : td_defint(&c, n, var, &bb, &ba, &held);
+    if (iv == IV_OK && c.st == CASIM_OK)                               /* CAS 035: the typed integrand */
+        iv = abn_cmp(&ba.v, &bb.v) <= 0 ? td_defint(&c, var, &ba, &bb) : td_defint(&c, var, &bb, &ba);
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
-    if (iv != IV_OK) return c.st = iv == IV_LETTER ? CASIM_BAD_ARG : CASIM_IMPROPER, finish(&c, SPARE, out, ocap);
+    if ((iv & 255) != IV_OK) return c.st = (iv & 255) == IV_LETTER ? CASIM_BAD_ARG : CASIM_IMPROPER, finish(&c, SPARE, out, ocap);
     c.sub_var = var;
     c.sub_val = b;
     b = check_rewrite(&c, F);                                           /* F(hi) */
@@ -6861,7 +6861,7 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     a = check_rewrite(&c, F);                                           /* F(lo) */
     c.sub_val = 0, c.sub_var = -1;
     b = add2(&c, b, neg(&c, a));
-    if (held && c.st == CASIM_OK) b = ib_canon(&c, b), td_defint_gate(&c, b, held, var);   /* CAS 035 prototype */
+    if (iv >> 8 && c.st == CASIM_OK) b = ib_canon(&c, b), td_defint_gate(&c, b, (ref)(iv >> 8), var);    /* CAS 035 */
     return finish(&c, b, out, ocap);
 }
 
@@ -9275,23 +9275,6 @@ typedef struct {
     int n;
 } cdset;
 
-/* CAS 035: the conditions on one e as flags, so two on the same e are both kept (CAS 023's '!' and '>' are the
-   flags ≠0 and >0 alone, written as before): TD_NZ e ≠ 0, TD_POS e > 0, TD_NN e ≥ 0, TD_LE1 ABS(e) ≤ 1, TD_LT1
-   ABS(e) < 1; other sets are 0x60 | flags */
-enum { TD_NZ = 1, TD_POS = 2, TD_NN = 4, TD_LE1 = 8, TD_LT1 = 16 };
-
-static int td_flags(char op) { return op == '!' ? TD_NZ : op == '>' ? TD_POS : op & 0x1F; }
-
-static char td_op(int f)
-{
-    if (f & TD_POS) f &= ~(TD_NZ | TD_NN);                      /* > says ≠ and ≥ */
-    if ((f & TD_NZ) && (f & TD_NN)) f = (f & ~(TD_NZ | TD_NN)) | TD_POS;
-    if (f & TD_LT1) f &= ~TD_LE1;
-    return f == TD_NZ ? '!' : f == TD_POS ? '>' : (char)(0x60 | f);
-}
-
-static char td_cdmerge(char o, char op) { return td_op(td_flags(o) | td_flags(op)); }
-
 /* e ≠ 0 ('!') or e > 0 ('>'), e free of var and holding a letter, kept once */
 static __attribute__((noinline)) void cd_note(ctx *c, cdset *S, ref e, char op, int var)
 {
@@ -9300,7 +9283,7 @@ static __attribute__((noinline)) void cd_note(ctx *c, cdset *S, ref e, char op, 
     if (c->st != CASIM_OK || contains(c, e, var) || !any_letter(c, e)) return;
     for (int i = 0; i < S->n; i++)
         if (cmp(c, S->e[i], e) == 0) {
-            S->op[i] = td_cdmerge(S->op[i], op);       /* CAS 035: both kept (> where it was > or ≠, as before) */
+            if (op == '>') S->op[i] = '>';
             return;
         }
     if (S->n == CD_MAX) {
@@ -9421,18 +9404,6 @@ static __attribute__((noinline)) void rows_put(ctx *c, out_t *w, const smrow *ro
     }
 }
 
-static void td_row1(ctx *c, smrow *rows, int *n, ref e, char op);
-
-/* CAS 035's sets of conditions in CAS 023's set, as rows (out of line: cd_print's frame stays) */
-static __attribute__((noinline)) void td_cdrow(ctx *c, smrow *rows, int *n, ref e, char op)
-{
-    int f = td_flags(op);
-    if (f & TD_POS) td_row1(c, rows, n, e, '>');
-    else if (f & TD_NN) td_row1(c, rows, n, e, 'g');
-    else if (f & TD_NZ) td_row1(c, rows, n, e, '!');
-    if (f & (TD_LE1 | TD_LT1)) sm_row(c, rows, n, fn(c, F_ABS, e), f & TD_LT1 ? '<' : 'l', small(c, C_1), 26);
-}
-
 /* the conditions as rows into w, after the answer */
 static __attribute__((noinline)) void cd_print(ctx *c, out_t *w, const cdset *S, bool lead)
 {
@@ -9440,7 +9411,6 @@ static __attribute__((noinline)) void cd_print(ctx *c, out_t *w, const cdset *S,
     int n = 0;
     for (int i = 0; i < S->n && c->st == CASIM_OK; i++)
         if (S->op[i] == '>') cd_gt(c, rows, &n, S->e[i]);
-        else if (S->op[i] != '!') td_cdrow(c, rows, &n, S->e[i], S->op[i]);     /* CAS 035's ≥ and ABS(e)≤1 */
         else cd_ne(c, rows, &n, S->e[i]);
     rows_put(c, w, rows, n, lead);
 }
@@ -12254,15 +12224,23 @@ static __attribute__((noinline)) lv limit_ser(ctx *c, ref f, ref a, int side, bo
     return up;
 }
 
-/* CAS 035 prototype: a letter's condition into limit's conditions, by its kind */
-static __attribute__((noinline)) void td_note(ctx *c, lwalk *L, ref u, char k)
+/* a condition as CAS 023's set holds one (e ≠ 0 or e > 0), for limit: u ≥ 0 as u > 0 and ABS(u) ≤ 1 as 1-u^2 > 0 (which
+   cd_gt writes ABS(u)<1 for a letter): stricter at the edge, as CAS 023 writes SQRT(Y)'s Y>0, so cd_note's merge and
+   cd_print stay as they are (an op of CAS 035's own moved cd_print's frame on the S3) */
+static ref td_g023(ctx *c, ref u, char k)
 {
-    ref e = k == 'n' || k == '1' ? ib_canon(c, add2(c, u, small(c, C_M1))) : k == 't' ? ib_canon(c, fn(c, F_COS, u)) : u;
-    cd_note(c, &L->C, e, k == '!' || k == 'n' || k == 't' ? '!' : k == '>' ? '>' : td_op(k == 'a' ? TD_LE1 : k == 'h' ? TD_LT1 : TD_NN),
-            L->var);
+    if (k == 'a' || k == 'h') return ib_canon(c, add2(c, small(c, C_1), ib_neg(c, power(c, u, small(c, C_2)))));
+    return k == '!' || k == '>' || k == 'g' ? u : td_g(c, u, k);
 }
 
-/* CAS 035 prototype: a condition g (> 0, or ≥ 0 for k's that allow 0) holding var and another letter, near the point:
+/* CAS 035: a condition in another letter only into limit's conditions (CAS 023's set), by its kind */
+static __attribute__((noinline)) void td_note(ctx *c, lwalk *L, ref u, char k)
+{
+    ref e = td_g023(c, u, k);
+    cd_note(c, &L->C, e, k == '!' || k == 'n' || k == 't' ? '!' : '>', L->var);
+}
+
+/* CAS 035: a condition g (> 0, or ≥ 0 for k's that allow 0) holding var and another letter, near the point:
    0 it holds (rows noted for the letters), 1 a side asked has no value for any letter's value, 2 not decided. At ∞,
    g's limit; at a finite point, g there, and where that is 0 for every letter, the first derivative not 0 there: its
    sign on each side is the condition's (an odd one gives the two sides opposite signs, so one side has none) */
@@ -12286,7 +12264,7 @@ static __attribute__((noinline)) int td_mixed(ctx *c, ref g, lwalk *L, int side,
     e = ib_at(c, g, L->var, L->a);
     if (c->st != CASIM_OK) return 2;
     if (any_letter(c, e)) {
-        cd_note(c, &L->C, e, k == '>' || k == 'h' ? '>' : td_op(TD_NN), L->var);
+        cd_note(c, &L->C, e, '>', L->var);
         return 0;
     }
     if (!is_k(c, e, 0, 1)) {
@@ -12313,7 +12291,7 @@ static __attribute__((noinline)) int td_mixed(ctx *c, ref g, lwalk *L, int side,
 
 static void td_limit_one(ctx *c, const tdc *Dp, lwalk *L, int inf, int *sidep, bool *failp, bool *unkp);
 
-/* CAS 035 prototype: limit's typed check, before the walk: c->st UNDEFINED where a side asked has no real value,
+/* CAS 035: limit's typed check, before the walk: c->st UNDEFINED where a side asked has no real value,
    UNDECIDED where that isn't decided, a letter's condition noted; the side to take (the domain convention) */
 static __attribute__((noinline)) int td_limit(ctx *c, lwalk *L, int inf, int side)
 {
@@ -13858,7 +13836,7 @@ static __attribute__((noinline)) void td_rows(ctx *c, smrow *rows, int *n, ref u
     else if (k == 't') sm_row(c, rows, n, ib_canon(c, fn(c, F_COS, u)), '!', small(c, C_0), L);
 }
 
-/* CAS 035 prototype: the typed summand's conditions as rows (gate: the answer's first part, none when it diverges);
+/* CAS 035: the typed summand's conditions as rows (gate: the answer's first part, none when it diverges);
    direct: summed term by term, a condition in K decided at each K, as each term is */
 static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bool gate, smrow *rows, int *n,
                                              bool direct)
@@ -13939,7 +13917,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
         }
         if (S.ilo && S.ihi && (uint64_t)S.b - (uint64_t)S.a < SM_DIRECT && !closed)
             return *direct = true, sum = sm_direct(&c, &S), td_sum(&c, &S, sum, true, rows, &nrows, true),
-                   sm_print(&c, sum, 0, rows, nrows, out, ocap);                    /* CAS 035 prototype */
+                   sm_print(&c, sum, 0, rows, nrows, out, ocap);                    /* CAS 035 */
         if (r == 0 && !sm_typed_ok(&c, S.raw, S.f, var) && c.st == CASIM_OK) c.st = CASIM_NO_CLOSED_FORM;
         ng = nr = 0;
         if (c.st == CASIM_OK) sm_split(&c, S.e, var, G, &ng, R, &nr);
@@ -13983,7 +13961,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
     if (c.st == CASIM_OK && !dir && T) sum = ib_canon(&c, add2(&c, sum, T));
     if (c.st == CASIM_OK && !dir) sum = sm_cancel(&c, &S, G, ng, sum, ocap);   /* CAS 031: the common factor */
     if (c.st == CASIM_OK) sm_rows(&c, &S, G, ng, dir ? small(&c, C_0) : sum, rows, &nrows);
-    if (c.st == CASIM_OK) td_sum(&c, &S, sum, !dir, rows, &nrows, false);           /* CAS 035 prototype */
+    if (c.st == CASIM_OK) td_sum(&c, &S, sum, !dir, rows, &nrows, false);           /* CAS 035 */
     return sm_print(&c, sum, dir, rows, nrows, out, ocap);
 }
 
