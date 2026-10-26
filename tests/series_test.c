@@ -76,7 +76,7 @@ static const struct {
     {CASIM_TAYLOR, "1÷(" Z "×10^20+X)", "0", "1", "UNDEFINED"},    /* a divisor's leading coefficient undecided */
     {CASIM_TAYLOR, "X÷(" Z "+X)", "0", "1", "1"},                  /* the same, under a numerator (CAS 022) */
     {CASIM_LIMIT, "SQRT(X)", "0", "+", "0"},                      /* t^(1÷2): Puiseux, no series */
-    {CASIM_LIMIT, "(-2-X)^(1÷3)", "0", "", ""},                   /* a fractional power of a negative base */
+    {CASIM_LIMIT, "(-2-X)^(1÷3)", "0", "", "UNDEFINED"},          /* a fractional power of a negative base (CAS 035) */
     {CASIM_TAYLOR, N42("X÷X") P42, "0", "1", "UNDEFINED"},        /* rule 7 ran out (the depth guard): no series */
     {CASIM_LIMIT, "(1÷X^2-1÷SIN(X)^2)×K×ABS(X)÷X", "0", "", ""},  /* the sides -K÷3 and K÷3: apart unless K is 0 */
     {CASIM_TAYLOR, "EXP(SIN(X)-X+X^3÷6-X^5÷120+X^7÷5040)", "0", "1", "=1"},       /* 4 terms cancel: P = 4 is short */
