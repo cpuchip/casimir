@@ -59,8 +59,7 @@ it hides no value. `Y^2+2` and `Y^4+1` are the same.
   its edges; 8,992 calls at 2 to 4 arenas): 12 calls move, all the class's own (`(1+Z÷Y)^K`, `(1+Y^(-1)×Z)^K` and
   `(1+Z÷(Y-1))^K` to ∞). The golden corpus: 0 of 10,822 move, and 0 of 10,788 under →DEC. One doc row moves
   (work/032-examples.txt's `(1+Y^(-1)×Z)^K` from 0 to ∞, pinned again with its old line).
-- **Frames (host):** 434 recorded; sm_rowd_ 112 and sm_rowd 8 are new, and none moved (sm_rows' probe of B sits in
-  do_sum_ and sm_fits, whose frames don't move).
+- **Frames (host):** 436 recorded; sm_rowd_ 112, sm_rowd.isra 8, sm_holeb 80 and sm_rowfd 80 are new, and none moved.
 
 ## Asked
 
@@ -69,7 +68,21 @@ where the row costs the cap and to hold d as printed (#10872 (1), (2)).
 
 ## As built
 
-The build is p033c's code with its comments in house style.
+The build is p033c's code with its comments in house style, and with a fix the S3 asked for. At 41eb154 (pushed before
+its S3 frames were measured, my miss; abacus #11066) do_sum_'s S3 frame moved 656 → 672, while the host table didn't
+move. Bisected on the S3 (each variant through scripts/size-s3.sh):
+- part 1 out of line (sm_holeb) alone: still 672; the divisor walk present but never called: 656;
+- one call site kept for do_sum_ (sm_rowfd wraps sm_rowf and sm_rowd): 672; `cold` or `noipa` on the walk: 672;
+  `-fno-ipa-ra` on both trees: 656 against 672, so not IPA register allocation;
+- the walk with recursion and sm_row only: 656; with the probe: 672; the probe's `sum` alone: 656; its `S->var` alone:
+  672.
+So the walk reading S was what moved do_sum_. sm_rowd now reads `S->var` once and passes an int down, and do_sum_ is 656
+again. The build's lines are 41eb154's byte for byte (the earlier sets, the family, a 14-divisor family to 2,048 B;
+11,860 calls).
+- **Frames (S3), against fde2bc3's 429:** none moved; new sm_rowd_ 64, sm_rowd.isra 32, sm_holeb 48, sm_rowfd 48.
+  Text 248,362 B (fde2bc3: 247,580).
+- **Mutants re-anchored by the fix:** div-letter-off and div-first-term (CAS 033's own), and factor026-not-asked
+  (CAS 026's: sm_rowf is called from sm_rowfd now; it still takes the factor rows away, caught by 104 doc checks).
 - **work/033-examples.txt:** 19 rows: the four and their kin, to N, the answer's own hole, and the divisors that get
   no row.
 - **scripts/sum-values.py:** a CAS 033 block, 60 seeded sums (seed 20261033) and 8 held, judged at each divisor's exact

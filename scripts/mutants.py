@@ -1233,9 +1233,10 @@ MUTANTS = {
                                  "        else if (0 && nd(c, x->a)->kind == K_VAR && ((x->kind == K_POW")],
     "factor026-letter-off": [("src/casim.c", "        if (x->kind == K_VAR && (mf < 0 || S->a < 0)) continue;",
                               "        if (x->kind == K_VAR) continue;")],
-    "factor026-not-asked": [("src/casim.c",
-                             "    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */",
-                             "    (void)sm_rowf;              /* referenced, or -Werror refuses the build and nothing is tested */")],
+    "factor026-not-asked": [("src/casim.c",   # CAS 033 re-anchored it: sm_rowf is called from sm_rowfd now
+                             "    sm_rowf(c, S, g, sum, rows, n);\n    if (c->st == CASIM_OK) sm_rowd(c, S, g, sum, rows, n);",
+                             "    (void)sm_rowf;              /* referenced, or -Werror refuses the build and nothing is tested */\n"
+                             "    if (c->st == CASIM_OK) sm_rowd(c, S, g, sum, rows, n);")],
     # CAS 027 (work/027-function-factor-shift.md; abacus #10004, #10068): the factor not read (sm_atom refusing every
     # factor that holds a letter); rule 2 off (a shift past lo); rule 4 off (CAS 026's row test at the unshifted lo);
     # the shift read from the wrong bits; a never-0 factor read as one with zeros (EXP(Z) shifted past, its X≠0
@@ -1348,16 +1349,16 @@ MUTANTS = {
     # CAS 033 (work/033-divisor-rows.md): to ∞, no letter's row from B's own probe; no divisor rows; a divisor row where
     # the answer has no value there already (p033b: lines go TOO_LONG); a row for a factor that is never 0 (EXP);
     # a sum inside B walked only as far as its first term
-    "div-letter-off": [("src/casim.c", "            if (!hole && S->inf && c->st == CASIM_OK) {     /* CAS 033: to ∞, B itself at L = 0 (abacus #10829) */",
-                        "            if (0) {     /* CAS 033: to ∞, B itself at L = 0 (abacus #10829) */")],
+    "div-letter-off": [("src/casim.c", "            if (!hole && S->inf && c->st == CASIM_OK) hole = sm_holeb(c, B, l, mark, sum);   /* CAS 033 */",
+                        "            if (0) hole = sm_holeb(c, B, l, mark, sum);   /* CAS 033 */")],
     "div-rows-off": [("src/casim.c", "    if (S->inf && g->B && nd(c, g->B)->kind != K_MUL",
                       "    if (0 && S->inf && g->B && nd(c, g->B)->kind != K_MUL")],
     "div-no-probe": [("src/casim.c", "            if (!none) sm_row(c, rows, n, x->a, '!', small(c, C_0), 26);",
                       "            if (none || !none) sm_row(c, rows, n, x->a, '!', small(c, C_0), 26);")],
     "div-never-kept": [("src/casim.c", "        if (!never) {\n            size_t mark = c->used;",
                         "        if (never || !never) {\n            size_t mark = c->used;")],
-    "div-first-term": [("src/casim.c", "        for (int i = 0; i < x->n && c->st == CASIM_OK; i++) sm_rowd_(c, S, sum, list(c, x->a)[i], rows, n);",
-                        "        for (int i = 0; i < x->n && i < 1 && c->st == CASIM_OK; i++) sm_rowd_(c, S, sum, list(c, x->a)[i], rows, n);")],
+    "div-first-term": [("src/casim.c", "        for (int i = 0; i < x->n && c->st == CASIM_OK; i++) sm_rowd_(c, var, sum, list(c, x->a)[i], rows, n);",
+                        "        for (int i = 0; i < x->n && i < 1 && c->st == CASIM_OK; i++) sm_rowd_(c, var, sum, list(c, x->a)[i], rows, n);")],
 }
 
 
