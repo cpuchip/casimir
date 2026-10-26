@@ -18,6 +18,8 @@ Casimir 1.1.2: sum's answer to N excludes a function factor's zero by its row, a
 
 None.
 
+**Found after this release, on 25 Oct 2026.** Summed from 0 to ∞, `(Z÷Y+1)^K` prints `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1`. Every term from K = 1 has no value at Y = 0, so neither has the sum, while the answer does: it reads 0 there, and no row excludes the point (a row with no value there doesn't exclude it). `(Z÷(Y-1)+1)^K` at Y = 1, `(Z÷Y^2+1)^K` at Y = 0, and `(Z÷SIN(Y)+1)^K` wherever SIN(Y) is 0 do the same to ∞. Summed to N, none of them has a value where the sum has none. The project's reviewer found it while testing a later unit. The fix is CAS 033, in the release after 1.2.0, which adds the rows.
+
 ## How it's tested (at this tag)
 
 - `make test`: 20 programs with 118,439 checks. They read every answer back through an independent evaluator (the calculator firmware's core) and compare values.
