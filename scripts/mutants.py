@@ -906,7 +906,8 @@ MUTANTS = {
     "sum-shift-bounds": [("src/casim.c", "        lo = sh ? add2(c, S->lo, sm_int(c, -sh)) : S->lo;", "        lo = S->lo;")],
     "sum-shift-binom": [("src/casim.c", "            for (int r = 1; r <= j - i; r++) w /= r;", "")],
     # CAS 018 rule 4b's cold review
-    "sum-4b-no-hole-row": [("src/casim.c", "            hole = c->st == CASIM_UNDEFINED;", "            hole = false;")],
+    "sum-4b-no-hole-row": [("src/casim.c", "            ib_at(c, sum, l, small(c, C_0));\n            hole = c->st == CASIM_UNDEFINED;",
+                            "            ib_at(c, sum, l, small(c, C_0));\n            hole = false;")],   # CAS 033 re-anchored it
     "sum-4b-pole-as-swing": [("src/casim.c", "    swung = c.st == CASIM_OK;", "    swung = true;")],
     # abacus #8359: a search that ran out is NO_ROOM
     "noroom-ranout-ignored": [("src/casim.c", "c.st = B.ranout ? CASIM_NO_ROOM : CASIM_NOT_INTEGRABLE;",
@@ -1344,6 +1345,19 @@ MUTANTS = {
     "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
                          "                if (rows[j].op == '?') (void)0;")],
     "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
+    # CAS 033 (work/033-divisor-rows.md): to ∞, no letter's row from B's own probe; no divisor rows; a divisor row where
+    # the answer has no value there already (p033b: lines go TOO_LONG); a row for a factor that is never 0 (EXP);
+    # a sum inside B walked only as far as its first term
+    "div-letter-off": [("src/casim.c", "            if (!hole && S->inf && c->st == CASIM_OK) {     /* CAS 033: to ∞, B itself at L = 0 (abacus #10829) */",
+                        "            if (0) {     /* CAS 033: to ∞, B itself at L = 0 (abacus #10829) */")],
+    "div-rows-off": [("src/casim.c", "    if (S->inf && g->B && nd(c, g->B)->kind != K_MUL",
+                      "    if (0 && S->inf && g->B && nd(c, g->B)->kind != K_MUL")],
+    "div-no-probe": [("src/casim.c", "            if (!none) sm_row(c, rows, n, x->a, '!', small(c, C_0), 26);",
+                      "            if (none || !none) sm_row(c, rows, n, x->a, '!', small(c, C_0), 26);")],
+    "div-never-kept": [("src/casim.c", "        if (!never) {\n            size_t mark = c->used;",
+                        "        if (never || !never) {\n            size_t mark = c->used;")],
+    "div-first-term": [("src/casim.c", "        for (int i = 0; i < x->n && c->st == CASIM_OK; i++) sm_rowd_(c, S, sum, list(c, x->a)[i], rows, n);",
+                        "        for (int i = 0; i < x->n && i < 1 && c->st == CASIM_OK; i++) sm_rowd_(c, S, sum, list(c, x->a)[i], rows, n);")],
 }
 
 

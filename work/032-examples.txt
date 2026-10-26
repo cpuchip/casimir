@@ -74,6 +74,7 @@
 | `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z≠0; Z×ABS(Y)+1≠1` |
 | `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); Y≠0; Z≠0; ABS(Z×ABS(Y)+1)<1` |
 | `casim sum 'COS(Y×Z)^K' K 0 N RAD` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); Y≠0; Z≠0; COS(Y×Z)≠1` |
-| `casim sum '(1+Y^(-1)×Z)^K' K 0 ∞ RAD` | `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1` |
+#   CAS 033 (work/033-divisor-rows.md): `Y≠0` added, where B has no value and the answer had one; it printed `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1`
+| `casim sum '(1+Y^(-1)×Z)^K' K 0 ∞ RAD` | `-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1` |
 | `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); Z≠0; Y÷SIN(2×Z)≠1` |
 | `casim sum 'X^K÷Y^K' K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |

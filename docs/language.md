@@ -701,7 +701,11 @@ false at every point with that letter at 0 (CAS 032): Σ COS(Z)^K from 1 to N pr
 and Σ (Y÷SIN(Z))^K's `SIN(Z)≠0` says `Z≠0` (above). So Σ EXP(X)^K prints `EXP(X)≠1` alone, though `X≠0` names the
 same point more plainly. A row says it only where its other letters are in a sum, a product or a whole power, so that
 it is false there whatever they are: `Z÷Y+1≠1` has no value at Y = 0 and says nothing. A row that gives way at the cap
-says it only on a line that keeps that row.
+says it only on a line that keeps that row. To ∞, a divisor inside the ratio gets its row (CAS 033): Σ (Z÷Y+1)^K
+from 0 is `-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1`, since every term from K = 1 has no value at Y = 0 while the closed form,
+having cancelled the Y, has one; `(Z÷(Y-1)+1)^K` prints `Y-1≠0` and `(Z÷SIN(Y)+1)^K` `SIN(Y)≠0`, the divisor as the
+summand reads it. Where the answer itself has no value there, it shows the hole, and the row is left out. A divisor that
+is never 0 (EXP, COSH, 2^Y) gets none; a polynomial with no real zero gets its row all the same (`Y^2+1≠0`).
 
 A quotient of powers in K is read as its ratio (CAS 029): canon reads Σ X^K÷Y^K as Σ X^K×Y^(-K), and prints that
 spelling's answer, the answer to Σ (X÷Y)^K. A typed divisor keeps its zeros wherever canon's power of its base falls in

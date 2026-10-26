@@ -1,0 +1,47 @@
+# CAS 033's examples (work/033-divisor-rows.md; Michael's card cas-wrong-033, abacus #10951): a divisor inside the
+# ratio, to ∞. Where B holds a letter under a division inside a sum, every term from K = 1 has no value where the
+# divisor is 0, and so has the sum; the closed form can cancel the divisor, and the answer had a value there (1.0.0 to
+# 1.2.0's known wrong answer, found 25 Oct 2026). Each row is run by scripts/doc-examples.py, and again with the series
+# route compiled out (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - The four (abacus #10829): a letter's row where B itself has no value at the letter's 0 (sm_rows' probe of B), and
+#   the divisor's row d≠0, d as canon reads the summand, where the answer has a value with d at 0 (sm_rowd)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Z÷Y+1)^K' K 0 ∞ RAD` | `-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1` |
+| `casim sum '(Z÷Y^2+1)^K' K 0 ∞ RAD` | `-Y^2÷Z; Y≠0; Z≠0; ABS(Z÷Y^2+1)<1` |
+| `casim sum '(Z÷(Y-1)+1)^K' K 0 ∞ RAD` | `1÷Z-Y÷Z; Z≠0; Y-1≠0; ABS(Z÷(Y-1)+1)<1` |
+| `casim sum '(Z÷SIN(Y)+1)^K' K 0 ∞ RAD` | `-SIN(Y)÷Z; Z≠0; SIN(Y)≠0; ABS(Z÷SIN(Y)+1)<1` |
+| `casim sum '(Z÷SIN(Y)+1)^K' K 0 ∞ DEG` | `-SIN(Y)÷Z; Z≠0; SIN(Y)≠0; ABS(Z÷SIN(Y)+1)<1` |
+| `casim sum '(Z÷(Y^2-1)+1)^K' K 0 ∞ RAD` | `1÷Z-Y^2÷Z; Z≠0; Y^2-1≠0; ABS(Z÷(Y^2-1)+1)<1` |
+| `casim sum 'K×(Z÷COS(Y)+1)^K' K 0 ∞ RAD` | `COS(Y)^2÷Z^2+COS(Y)÷Z; Z≠0; COS(Y)≠0; ABS(Z÷COS(Y)+1)<1` |
+
+# - To N each keeps the divisor in its answer, so it has no value where the sum has none, and nothing moves
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Z÷Y+1)^K' K 0 N RAD` | `-Y÷Z+Y×(Z÷Y+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷Y+1≠1` |
+| `casim sum '(Z÷(Y-1)+1)^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z≠0; Z÷(Y-1)+1≠1` |
+| `casim sum '(Z÷SIN(Y)+1)^K' K 0 N RAD` | `-SIN(Y)÷Z+SIN(Y)×(Z÷SIN(Y)+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷SIN(Y)+1≠1` |
+
+# - The answer's own hole: where the answer has no value with d at 0, no row (CAS 026's factor probe). Without the
+#   probe the first line would go TOO_LONG (188 + 9 B)
+
+| Command | Prints |
+|---|---|
+| `casim sum 'K×(Z÷(Y-1)+1)^K' K 1 ∞ RAD` | `1÷Z^2+1÷Z-1÷2÷(Y-Y^2÷2-1÷2)+1÷(Y-1)-2÷(Z-Y×Z)-2×Y÷Z^2-Y÷Z+Y÷(Y-Y^2÷2-1÷2)-Y÷(Y-1)+4×Y÷(Z-Y×Z)+Y^2÷Z^2-Y^2÷2÷(Y-Y^2÷2-1÷2)-2×Y^2÷(Z-Y×Z); Z≠0; ABS(Z÷(Y-1)+1)<1` |
+| `casim sum '(K+1)×(Z÷(Y+2)+1)^K' K 1 ∞ RAD` | `4÷Z^2-4÷Z+1÷(Y+Y^2÷4+1)-4÷(Y+2)+4÷(Z+Y×Z÷2)+4×Y÷Z^2-2×Y÷Z+Y÷(Y+Y^2÷4+1)-2×Y÷(Y+2)+4×Y÷(Z+Y×Z÷2)+Y^2÷Z^2+Y^2÷4÷(Y+Y^2÷4+1)+Y^2÷(Z+Y×Z÷2); Z≠0; ABS(Z÷(Y+2)+1)<1` |
+| `casim sum '(Z÷(Y-1)+1)^(2×K)' K 0 ∞ RAD` | `-1÷2÷(Z÷(Y-1)-Z^2÷4÷(Y-Y^2÷2-1÷2)); Z≠0; ABS((Z÷(Y-1)+1)^2)<1` |
+| `casim sum '(X+Z÷(Y+2))^K' K 1 ∞ RAD` | `-X÷(X+Z÷(Y+2)-1)-Z÷2÷(X-Y÷2+X×Y÷2+Y×Z÷2÷(Y+2)+Z÷(Y+2)-1); ABS(X+Z÷(Y+2))<1` |
+| `casim sum '(Z÷LN(Y)+2)^K' K -1 ∞ RAD` | `-1÷3÷(Z÷LN(Y)+Z^2÷3÷LN(Y)^2+2÷3); Y≠0; Z÷LN(Y)+2≠0; ABS(Z÷LN(Y)+2)<1` |
+
+# - Never 0, no row: EXP, ALOG, COSH, and a positive number to a power. A polynomial casim doesn't solve gets its row
+#   as written, true where it has no real zero (Y^2+1≠0 excludes no point: named under Not yet's rows for nothing)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Z÷EXP(Y)+1)^K' K 0 ∞ RAD` | `-EXP(Y)÷Z; Z≠0; ABS(Z÷EXP(Y)+1)<1` |
+| `casim sum '(Z÷COSH(Y)+1)^K' K 0 ∞ RAD` | `-COSH(Y)÷Z; Z≠0; ABS(Z÷COSH(Y)+1)<1` |
+| `casim sum '(Z÷2^Y+1)^K' K 0 ∞ RAD` | `-2^Y÷Z; Z≠0; ABS(Z×2^(-Y)+1)<1` |
+| `casim sum '(Z÷(Y^2+1)+1)^K' K 0 ∞ RAD` | `-1÷Z-Y^2÷Z; Z≠0; Y^2+1≠0; ABS(Z÷(Y^2+1)+1)<1` |

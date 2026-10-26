@@ -755,6 +755,57 @@ def judge_said(summand, lo, hi, out, said, angle="RAD"):
     return ""
 
 
+DIV033 = {"Y": [("Y", "0")], "Y^2": [("Y", "0")], "(2×Y)": [("Y", "0")], "(Y-1)": [("Y", "1")], "(Y+2)": [("Y", "-2")],
+          "(Y^2-1)": [("Y", "1"), ("Y", "-1")], "SIN(Y)": [("SIN(Y)", "π")], "COS(Y)": [("COS(Y)", "π÷2")],
+          "LN(Y)": [("LN(Y)", "1")], "(X×Y)": [("Y", "0")], "(Y^2+1)": [], "EXP(Y)": []}
+
+
+def gen_div(rnd):
+    """CAS 033: B holding Y under a division inside a sum, to ∞: (summand, lo, the divisor's zeros). A zero is the
+    letter's value, or for a function of Y the point where it is 0 (π for SIN, π÷2 for COS, 1 for LN)"""
+    d = rnd.choice(sorted(DIV033))
+    sh = rnd.choice(("(Z÷D+1)^K", "(Z÷D+2)^K", "(2×Z÷D-1)^K", "(X+Z÷D)^K", "K×(Z÷D+1)^K", "(Z÷D+1)^(K+1)",
+                     "(K+1)×(Z÷D+1)^K"))
+    return sh.replace("D", d), rnd.choice((-1, 0, 1)), d
+
+
+def judge_div(summand, lo, out, d):
+    """'' when out has no value at the divisor's zeros, or a row with a value there excludes them: there every term from
+    K = 1 has no value, so the sum has none. A function's zero is put in exactly (SIN(π) is 1E-60 in Decimal)"""
+    if out in STATUS or out in (INF, NINF) or not out:
+        return ""
+    parts = out.split("; ")
+    for at, v in DIV033[d]:
+        pt = {"X": "1÷3", "Z": "7÷10", "Y": v}
+
+        def val(t):
+            if at != "Y":
+                t = t.replace(at, "(0)")
+            for L, x in pt.items():
+                t = sub(t, L, x)
+            y = value(t)
+            if not y.is_finite() or abs(y) > D(10) ** 25:
+                raise ZeroDivisionError(t)
+            return y
+        try:
+            val(parts[0])
+        except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError):
+            continue
+        excluded = False
+        for r in parts[1:]:
+            m = re.match(r"^(.*?)(≠|<|>)(.*)$", r)
+            try:
+                a, b = val(m.group(1)), val(m.group(3))
+            except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError):
+                continue
+            if (abs(a - b) <= TOL) if m.group(2) == "≠" else (a >= b - TOL if m.group(2) == "<" else a <= b + TOL):
+                excluded = True
+                break
+        if not excluded:
+            return f"{out}: a value where {at} is 0 (Y = {v}), where the sum has none (CAS 033)"
+    return ""
+
+
 def gen_letter6(rnd):
     """CAS 031: the 12's shape, gen_letter4's sums from lo -3..-1 to ∞ with q 0 at lo (the term at lo is 0), F any of
     F026's and F030's, SIN's, COS's, TAN's and SIN(2×Z)'s in each angle mode"""
@@ -1354,6 +1405,34 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} RAD: {why}")
+    # CAS 033 (work/033-divisor-rows.md): to ∞, B holding Y under a division inside a sum has no value where the
+    # divisor is 0, and the answer mustn't have one there unless a row excludes the point. Planted first: 1.2.0's
+    # lines for abacus's four (#10829), refused; the build's taken
+    takes9 = [("(Z÷Y+1)^K", 0, "-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1", "Y"),
+              ("(Z÷(Y-1)+1)^K", 0, "1÷Z-Y÷Z; Z≠0; Y-1≠0; ABS(Z÷(Y-1)+1)<1", "(Y-1)"),
+              ("(Z÷SIN(Y)+1)^K", 0, "-SIN(Y)÷Z; Z≠0; SIN(Y)≠0; ABS(Z÷SIN(Y)+1)<1", "SIN(Y)")]
+    refuses9 = [("(Z÷Y+1)^K", 0, "-Y÷Z; Z≠0; ABS(Z÷Y+1)<1", "Y"),
+                ("(Z÷(Y-1)+1)^K", 0, "1÷Z-Y÷Z; Z≠0; ABS(Z÷(Y-1)+1)<1", "(Y-1)"),
+                ("(Z÷Y^2+1)^K", 0, "-Y^2÷Z; Z≠0; ABS(Z÷Y^2+1)<1", "Y^2"),
+                ("(Z÷SIN(Y)+1)^K", 0, "-SIN(Y)÷Z; Z≠0; ABS(Z÷SIN(Y)+1)<1", "SIN(Y)")]
+    if any(judge_div(s9, lo, out, d) for s9, lo, out, d in takes9) or \
+            any(not judge_div(s9, lo, out, d) for s9, lo, out, d in refuses9):
+        print("FAIL scripts/sum-values.py: its CAS 033 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd9, n9 = random.Random(20261033), 60
+    held9 = [("(Z÷Y+1)^K", 0, "Y"), ("(Z÷Y^2+1)^K", 0, "Y^2"), ("(Z÷(Y-1)+1)^K", 0, "(Y-1)"),
+             ("(Z÷SIN(Y)+1)^K", 0, "SIN(Y)"), ("(Z÷(Y^2-1)+1)^K", 0, "(Y^2-1)"), ("K×(Z÷COS(Y)+1)^K", 0, "COS(Y)"),
+             ("K×(Z÷(Y-1)+1)^K", 1, "(Y-1)"), ("(Z÷LN(Y)+2)^K", -1, "LN(Y)")]
+    cases9 = [gen_div(rnd9) for _ in range(n9)] + held9
+    for summand, lo, d in cases9:
+        out = run_sum(summand, lo, INF)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why = judge_div(summand, lo, out, d)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} ∞ RAD: {why}")
     # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
     # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
     if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \
@@ -1376,7 +1455,7 @@ def main():
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
-    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases8) + len(cases5) + rows
+    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases8) + len(cases9) + len(cases5) + rows
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
           f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
@@ -1385,7 +1464,7 @@ def main():
           f"24's shape and of #10068's, CAS 027), {n6} with CAS 030's factors in each angle mode (and {len(held6)} "
           f"held; {n6cap} where the row gives way at the cap, {n6miss} with the 24's shape named), {n7s} of the 12's "
           f"shape (CAS 031; and {len(held7)} held), {n8} with a letter's row another row may say (CAS 032; and "
-          f"{len(held8)} held), {n5} typed quotients "
+          f"{len(held8)} held), {n9} with a divisor inside the ratio (CAS 033; and {len(held9)} held), {n5} typed quotients "
           f"(CAS 029; and {len(held5)} held) at {ARENA} B, {soft} NO_ROOM, TOO_LONG or DECIMAL_FORM; {rows} example "
           f"rows by value\nchecks: {checks} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)

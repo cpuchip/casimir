@@ -12880,6 +12880,46 @@ static __attribute__((noinline)) void sm_rowf(ctx *c, const smsum *S, const smgr
     }
 }
 
+/* ---- CAS 033: a divisor inside the ratio, to ∞ (work/033-divisor-rows.md; Michael's card cas-wrong-033) ----
+   Σ (Z÷Y+1)^K from 0 to ∞ was -Y÷Z: the closed form cancels the divisor, so the answer had a value (0) at Y = 0, where
+   every term from K = 1 has none and so has the sum (abacus #10829). To ∞, for each divisor d inside B that holds a
+   letter and isn't a letter (a letter's is sm_rows' probe of B), the row d≠0, d as canon reads the summand, before the
+   closed form and its cancel. Never 0, no row: EXP, ALOG, COSH and a positive number to a power */
+static void sm_rowd_(ctx *c, const smsum *S, ref sum, ref r, smrow *rows, int *n)
+{
+    const node *x = nd(c, r);
+    if (c->st != CASIM_OK || !any_letter(c, r) || !enter(c)) return;
+    if (x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->p < 0 && any_letter(c, x->a) && nd(c, x->a)->kind != K_VAR) {
+        const node *h = nd(c, x->a);
+        bool never = (h->kind == K_FN && (1u << h->id) & (1u << F_EXP | 1u << F_ALOG | 1u << F_COSH)) ||
+                     (h->kind == K_POW && is_num(c, h->a) && val(c, h->a)->p > 0);
+        /* as CAS 026's factor probe: the row only where the answer has a value with d at 0 (d put to K, the sum's own
+           letter, at 0); where it has none, its own hole shows it and the row would cost bytes (4 lines went TOO_LONG
+           without it) */
+        if (!never) {
+            size_t mark = c->used;
+            bool none;
+            ib_at(c, ib_replace(c, sum, x->a, S->var), S->var, small(c, C_0));
+            none = c->st == CASIM_UNDEFINED;
+            if (none) c->st = CASIM_OK;
+            if (c->st == CASIM_OK) compact(c, mark, sum);
+            if (!none) sm_row(c, rows, n, x->a, '!', small(c, C_0), 26);
+        }
+    }
+    if (x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < x->n && c->st == CASIM_OK; i++) sm_rowd_(c, S, sum, list(c, x->a)[i], rows, n);
+    else if (x->kind == K_POW) {
+        sm_rowd_(c, S, sum, x->a, rows, n);
+        sm_rowd_(c, S, sum, x->b, rows, n);
+    } else if (x->kind == K_FN) sm_rowd_(c, S, sum, x->a, rows, n);
+    c->depth--;
+}
+
+static __attribute__((noinline)) void sm_rowd(ctx *c, const smsum *S, const smgroup *g, ref sum, smrow *rows, int *n)
+{
+    if (S->inf && g->B && nd(c, g->B)->kind != K_MUL && nd(c, g->B)->kind != K_POW) sm_rowd_(c, S, sum, g->B, rows, n);
+}
+
 /* CAS 031: b's whole power in the product t (a factor b^k, k a whole number; b itself, 1), else 0 */
 static long sm_pw(ctx *c, ref t, ref b)
 {
@@ -12985,6 +13025,7 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
                                                           smrow *rows, int *n)
 {
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowf(c, S, &G[gi], sum, rows, n);   /* CAS 026 */
+    for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) sm_rowd(c, S, &G[gi], sum, rows, n);   /* CAS 033 */
     for (int gi = 0; gi < ng && c->st == CASIM_OK; gi++) {
         ref B = G[gi].B, one = small(c, C_1);
         rat k, t;
@@ -13013,6 +13054,12 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
             hole = c->st == CASIM_UNDEFINED;
             if (hole) c->st = CASIM_OK;
             if (c->st == CASIM_OK) compact(c, mark, sum);
+            if (!hole && S->inf && c->st == CASIM_OK) {     /* CAS 033: to ∞, B itself at L = 0 (abacus #10829) */
+                ib_at(c, B, l, small(c, C_0));
+                hole = c->st == CASIM_UNDEFINED;
+                if (hole) c->st = CASIM_OK;
+                if (c->st == CASIM_OK) compact(c, mark, sum);
+            }
             if (hole) sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);
         }
         if (!sm_mono(c, B, &k, &L, &m)) {

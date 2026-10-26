@@ -466,6 +466,15 @@ def all_cases():
             ("said (2×Y÷SIN(Z))^K+(COS(Z)÷2)^K from -2 to N, given way", "(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K", "-2|N", "RAD"),
             ("said (1+Z÷(Y-1))^K from 0 to N, kept", "(1+Z÷(Y-1))^K", "0|N", "RAD")]:
         rows.append((name, expr, "K", angle, "sum", repl, "35"))
+    # CAS 033 (work/033-divisor-rows.md): to ∞, a divisor inside the ratio: a letter's row from B's own probe, a
+    # polynomial's and a function's row in two angle modes, and one the answer's own hole leaves out (near the cap)
+    for name, expr, repl, angle in [
+            ("div (Z÷Y+1)^K from 0 to ∞", "(Z÷Y+1)^K", "0|∞", "RAD"),
+            ("div (Z÷(Y-1)+1)^K from 0 to ∞", "(Z÷(Y-1)+1)^K", "0|∞", "RAD"),
+            ("div (Z÷SIN(Y)+1)^K from 0 to ∞, DEG", "(Z÷SIN(Y)+1)^K", "0|∞", "DEG"),
+            ("div K×(Z÷COS(Y)+1)^K from 0 to ∞", "K×(Z÷COS(Y)+1)^K", "0|∞", "RAD"),
+            ("div K×(Z÷(Y-1)+1)^K from 1 to ∞, its own hole", "K×(Z÷(Y-1)+1)^K", "1|∞", "RAD")]:
+        rows.append((name, expr, "K", angle, "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [

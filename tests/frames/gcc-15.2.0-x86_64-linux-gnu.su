@@ -389,6 +389,8 @@ sm_q	112
 sm_rational	640
 sm_read	64
 sm_row.part.0	112
+sm_rowd	8
+sm_rowd_	112
 sm_rowf	240
 sm_rput	80
 sm_said	128
