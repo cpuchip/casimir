@@ -236,7 +236,7 @@ MUTANTS = {
         ("src/casim.c", "per = abn_from_int(c->angle == CASIM_DEG ? 180 : 200);", "per = abn_from_int(c->angle == CASIM_DEG ? 360 : 400);"),
     ],
     "defint-lo-minus-hi": [
-        ("src/casim.c", "    return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);", "    return finish(&c, add2(&c, a, neg(&c, b)), out, ocap);"),
+        ("src/casim.c", "    b = add2(&c, b, neg(&c, a));", "    b = add2(&c, a, neg(&c, b));"),     # CAS 035: the answer, then its gate
     ],
     "defint-fraction-edge-ignored": [
         ("src/casim.c", "    if (ex->q != 1 && abn_cmp(&umin, &z) < 0) return IV_IMPROPER;",
@@ -1347,7 +1347,7 @@ MUTANTS = {
     "said-whole-fn": [("src/casim.c", "        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */",
                        "        ok = true;     /* CAS 034 */")],
     "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
-    "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : zero;", "r->op == '>' ? zero || s > 0 : zero;")],
+    "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : r->op == 'g'", "r->op == '>' ? zero || s > 0 : r->op == 'g'")],
     "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
                          "                if (rows[j].op == '?') (void)0;")],
     "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
