@@ -1379,6 +1379,42 @@ MUTANTS = {
                           "        ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q <= 2 && "
                           "val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);")],
     "total034-atan-out": [("src/casim.c", "1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH)", "1u << F_TANH | 1u << F_ASINH)")],
+    # CAS 035 (work/035-typed-domain.md; abacus #11402, #11436): each op's typed walk off; the sum's term-by-term one off;
+    # ≥ written > and > written ≥; the interval gate always dropping a row; the ≠ probe always finding the answer without
+    # value; defint's letter conditions let through; limit's side sign flipped; a two-sided edge taking the side with
+    # values (TD_EDGE_STRICT 0); a constant condition ignored; sm_said reading a ≥ row as a letter's ≠ (the prototype's
+    # bug); rows_put letting ≥ say ≠; sm_fits not counting the new rows; ABS(u)≠0 kept; a typed SGN of a constant left
+    # undecided; a condition with a removable hole at the point refused
+    "td035-sum-off": [("src/casim.c", "    if (c.st == CASIM_OK) td_sum(&c, &S, sum, !dir, rows, &nrows, false);           /* CAS 035 */",
+                       "    (void)0;                                                                         /* CAS 035 */")],
+    "td035-direct-off": [("src/casim.c", "sum = sm_direct(&c, &S), td_sum(&c, &S, sum, true, rows, &nrows, true),",
+                          "sum = sm_direct(&c, &S),")],
+    "td035-defint-off": [("src/casim.c", "td_defint(&c, var, &ba, &bb) : td_defint(&c, var, &bb, &ba);", "IV_OK : IV_OK;")],
+    "td035-limit-off": [("src/casim.c", "(void)td_limit(&c, &L, inf, side);", "(void)0;")],
+    "td035-ge-as-gt": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
+                        "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k == 'g' ? '>' : k);")],
+    "td035-gt-as-ge": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
+                        "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k == '>' ? 'g' : k);")],
+    "td035-gate-drops": [("src/casim.c", "    if (k != '!' && k != 'n') return td_holds(c, r, u, k);", "    if (k != '!' && k != 'n') return true;")],
+    "td035-probe-none": [("src/casim.c", "    ib_at(c, ib_replace(c, r, u, var), var, small(c, k == 'n' ? C_1 : C_0));",
+                          "    c->st = CASIM_UNDEFINED;")],
+    "td035-defint-letter": [("src/casim.c", "        if (!td_gated(c, r, P->su[i], P->sk[i], var)) c->st",
+                             "        if (0 && !td_gated(c, r, P->su[i], P->sk[i], var)) c->st")],
+    "td035-side-flip": [("src/casim.c", "            if (!td_ok(k, s)) bad |= 1 << j;", "            if (!td_ok(k, -s)) bad |= 1 << j;")],
+    "td035-edge-domain": [("src/casim.c", "#define TD_EDGE_STRICT 1", "#define TD_EDGE_STRICT 0")],
+    "td035-const-ignored": [("src/casim.c", "    s = lm_sgn(c, td_g(c, u, k));", "    return 0;")],
+    "td035-said-ge": [("src/casim.c", "        if ((rows[i].op != '!' && rows[i].op != '?') || x->kind != K_VAR",
+                       "        if (rows[i].op == '<' || rows[i].op == '>' || x->kind != K_VAR")],
+    "td035-ge-says-ne": [("src/casim.c", "            said = said || ((rows[j].op == '<' || rows[j].op == '>') && cmp(c, rows[j].l, rows[i].l) == 0 &&",
+                          "            said = said || ((rows[j].op != '!') && cmp(c, rows[j].l, rows[i].l) == 0 &&")],
+    "td035-fits-blind": [("src/casim.c", "        if (c->st == CASIM_OK) td_sum(c, S, r, true, rows, &n, false);      /* CAS 035's rows count (abacus #11436) */",
+                          "        (void)0;                                                             /* CAS 035's rows count (abacus #11436) */")],
+    "td035-abs-kept": [("src/casim.c", "                   (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))",
+                        "                   (0 && nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))")],
+    "td035-sgn-undecided": [("src/casim.c", "        u = small(c, s > 0 ? C_1 : s < 0 ? C_M1 : C_0);         /* a typed SGN is opaque (CAS 003): its sign here */",
+                             "        (void)0;                                                /* a typed SGN is opaque (CAS 003): its sign here */")],
+    "td035-hole-refused": [("src/casim.c", "    if (c->st == CASIM_UNDEFINED) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)",
+                            "    if (0) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)")],
 }
 
 
