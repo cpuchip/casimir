@@ -1390,7 +1390,7 @@ MUTANTS = {
     "td035-direct-off": [("src/casim.c", "sum = sm_direct(&c, &S), td_sum(&c, &S, sum, true, rows, &nrows, true),",
                           "sum = sm_direct(&c, &S),")],
     "td035-defint-off": [("src/casim.c", "td_defint(&c, var, &ba, &bb) : td_defint(&c, var, &bb, &ba);", "IV_OK : IV_OK;")],
-    "td035-limit-off": [("src/casim.c", "(void)td_limit(&c, &L, inf, side);", "(void)0;")],
+    "td035-limit-off": [("src/casim.c", "if (c.st == CASIM_OK) (void)td_limit(&c, &L, inf, side);", "if (c.st == CASIM_OK) (void)0;")],
     "td035-ge-as-gt": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
                         "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k == 'g' ? '>' : k);")],
     "td035-gt-as-ge": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
@@ -1439,6 +1439,9 @@ MUTANTS = {
                           "    ref a = 0, b = 0;")],
     "td035-orders-one": [("src/casim.c", "#define TD_ORDERS 3", "#define TD_ORDERS 1")],
     "td035-complete-trusted": [("src/casim.c", "    return ok ? 0 : 2;\n}", "    return 0;\n}")],
+    # the series route's answer printed without the typed text's rows (the walk's arena, with them, dropped)
+    "td035-series-drops": [("src/casim.c", "        else (void)td_limit(&c, &L, inf, side);         /* CAS 035: the typed text's rows went with the walk's arena */",
+                            "        else (void)0;         /* CAS 035: the typed text's rows went with the walk's arena */")],
 }
 
 

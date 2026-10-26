@@ -12684,6 +12684,7 @@ static __attribute__((noinline)) casim_status do_limit(const char *eqn, int var,
         L.C.n = 0;                      /* CAS 023: the walk's conditions went with it */
         r = limit_ser(&c, f, L.a, side, inf);
         if (c.st != CASIM_OK || r.k == L_UND) c.st = was, r = lm(L_UND, 0);
+        else (void)td_limit(&c, &L, inf, side);         /* CAS 035: the typed text's rows went with the walk's arena */
     }
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
     if (L.lt && r.k != L_UND) {

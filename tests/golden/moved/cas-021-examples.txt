@@ -2,8 +2,9 @@
 # prints with the series route compiled out (CASIM_SER=0, build/casim-ser0). Every other row prints its doc answer both
 # ways (scripts/doc-examples.py, in make check), so a fault in today's routes stays seen where the series route would
 # answer in its place. Rule 1: a row moves only from NO_ROOM or UNDECIDED, or from a DECIMAL_FORM whose exact run was
-# NO_ROOM. 12 rows: language.md's three series examples, six of 016's, one of 019's, and two of CAS 023's (the route's
-# answers: SQRT(X^2+1)÷(K×X) at ∞, where the walk refuses ∞ times a letter, and a sum the walk runs out on at 12,288).
+# NO_ROOM. 15 rows: language.md's three series examples, six of 016's, one of 019's, two of CAS 023's (the route's
+# answers: SQRT(X^2+1)÷(K×X) at ∞, where the walk refuses ∞ times a letter, and a sum the walk runs out on at 12,288),
+# and three of CAS 035's (the route's answers at 8,800 B with the typed text's rows noted again after it).
 docs/language.md	taylor 'EXP(SIN(X))' X 0 8 RAD
   off	NO_ROOM
 docs/language.md	taylor 'ABS(X)^2' X 0 2 RAD
@@ -27,4 +28,10 @@ work/019-examples.txt	--arena 8800 --cap 192 taylor "(SQRT(1+X))×(EXP(X))" X 0 
 work/023-examples.txt	limit 'SQRT(X^2+1)÷(K×X)' X ∞ '' RAD
   off	UNDECIDED
 work/023-examples.txt	--arena 12288 limit '(1÷X^2-1÷SIN(X)^2)+SIN(K×X)÷(K×X)' X 0 '' RAD
+  off	NO_ROOM
+work/035-examples.txt	--arena 8800 limit '1÷X^2-1÷SIN(X)^2+SQRT(Y)^2' X 0 '' RAD
+  off	NO_ROOM
+work/035-examples.txt	--arena 8800 limit '1÷X^2-1÷SIN(X)^2+SIN(K×X)÷SIN(K×X)' X 0 '' RAD
+  off	NO_ROOM
+work/035-examples.txt	--arena 8800 limit '1÷X^2-1÷SIN(X)^2+EXP(LN(X×Y))' X 0 + RAD
   off	NO_ROOM
