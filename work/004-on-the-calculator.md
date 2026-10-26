@@ -22,11 +22,11 @@ and integrals stay later units.
 
 1. **Equations keep their meaning.** An equation's stamp (unit 031) decides its grouping.
    - STU: powers right to left, and implied × already written into the stored text.
-   - 33s and 35s: powers left to right.
+   - Model 33 and model 35: powers left to right.
    - Casimir must parse a stored equation as its stamp says. Today casim's core pin (f839cb9) predates 031.
    - **Repin first** to a core with 031's stamps (the current head), and take the stamp as an input. Propose how:
      an argument, or a parse entry that reads the stamp.
-   - **A test:** 2^3^2 stamped STU differentiates and simplifies as 2^(3^2), and stamped 35s as (2^3)^2.
+   - **A test:** 2^3^2 stamped STU differentiates and simplifies as 2^(3^2), and stamped model 35 as (2^3)^2.
 2. **Results are printed for STU,** whose list they go into. Where STU's right-to-left powers would read a printed
    power differently from what Casimir meant, parentheses make it unambiguous. Re-parsing a result under STU's
    stamp must give back the same tree (a test over every hidden case).
@@ -40,7 +40,7 @@ and integrals stay later units.
      Babal).
 4. **The keys, STU only** (soroban proposes the layout).
    - A CAS menu reachable from an equation in the list (EQN), with D/DX, SIMP, EXPND, COLCT and SUBST. Propose its
-     key, and whether it is a soft-key page of EQN or its own menu. In 33s and 35s modes the menu doesn't exist (as
+     key, and whether it is a soft-key page of EQN or its own menu. In the model 33 and model 35 modes the menu doesn't exist (as
      GRAPH, decision 58's rule).
    - D/DX and COLCT prompt for the variable, as SOLVE's prompt does.
    - SUBST prompts for the variable, then takes the replacement typed in the equation editor.
@@ -65,11 +65,11 @@ and integrals stay later units.
   to casim's host CLI at the same pin. TOO_LONG and the refusals are identical too.
 - **The stamp tests (rule 1) and the round trip (rule 2).**
 - **app_test:** the menu, each prompt, the inserted equation, UNDO, a refusal leaving everything as it was, and the
-  menu's absence in 33s and 35s modes.
+  menu's absence in the model 33 and model 35 modes.
 - **Mutants:**
   - the stamp ignored (STU's 2^3^2 read left to right);
   - the result replacing the original;
-  - the menu reachable in 35s mode;
+  - the menu reachable in model 35 mode;
   - TOO_LONG truncated instead of refused.
 - **The S3:**
   - flash, arena, stack and the internal RAM diff;
