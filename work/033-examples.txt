@@ -45,3 +45,11 @@
 | `casim sum '(Z÷COSH(Y)+1)^K' K 0 ∞ RAD` | `-COSH(Y)÷Z; Z≠0; ABS(Z÷COSH(Y)+1)<1` |
 | `casim sum '(Z÷2^Y+1)^K' K 0 ∞ RAD` | `-2^Y÷Z; Z≠0; ABS(Z×2^(-Y)+1)<1` |
 | `casim sum '(Z÷(Y^2+1)+1)^K' K 0 ∞ RAD` | `-1÷Z-Y^2÷Z; Z≠0; Y^2+1≠0; ABS(Z÷(Y^2+1)+1)<1` |
+
+# - A pin for CAS 025's ratio025-negpow-row-off, whose rows CAS 033's probe of B now puts back to ∞ (the 477's run at
+#   63b9215 found it surviving). Where a letter at a negative power has its row from the terms that divide, no probe of
+#   the answer runs; the mutant's probe needs room, and at 2,048 B it has none (NO_ROOM)
+
+| Command | Prints |
+|---|---|
+| `casim --arena 2048 sum '(X÷Y)^K÷Y' K -2 N RAD` | `Y÷(X^2-X^3÷Y)+(X÷Y)^(N+1)÷(X-Y); X≠0; Y≠0; X÷Y≠1` |
