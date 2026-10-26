@@ -71,7 +71,7 @@
 | `casim sum 'K×SIN(Z)^(K-1)' K 0 70 RAD` | `-1÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2)+71×SIN(Z)^70÷(SIN(Z)-1)+SIN(Z)^71÷2÷(SIN(Z)-SIN(Z)^2÷2-1÷2); SIN(Z)≠0; SIN(Z)≠1` |
 #   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `Y×SIN(Z)^2÷(Y×SIN(Z)-2×Y^2×SIN(Z)^2+Y^3×SIN(Z)^3); Y≠0; Z≠0; ABS(Y×SIN(Z))<1`
 | `casim sum '(K+1)×SIN(Z)^(K+1)×Y^K' K -1 ∞ RAD` | `-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |
-| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 1 ∞ RAD` | `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1` |
+| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 1 ∞ RAD` | `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
 
 # - Not CAS 030's (abacus #10394 (3)): a factor outside the ratio. At its zero every term has no value, and so has the
 #   answer, but the empty sum is 0; Not yet's empty-sum item names it. The same with a letter:

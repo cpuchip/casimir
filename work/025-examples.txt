@@ -49,8 +49,8 @@
 | `casim sum '(X÷Y)^K÷Y' K 0 N RAD` | `-1÷(X-Y)+(X÷Y)^(N+1)÷(X-Y); Y≠0; X÷Y≠1` |
 | `casim sum 'K×(SQRT(2)×Y)^K÷Y' K 0 N RAD` | `-N×(Y×SQRT(2))^(N+1)÷(Y-Y^2×SQRT(2))-(Y×SQRT(2))^(N+1)÷(Y-Y^2×SQRT(2))-(Y×SQRT(2))^(N+1)×SQRT(2)÷2÷(Y^2-Y×SQRT(2)+1÷2)+SQRT(2)÷2÷(Y^2-Y×SQRT(2)+1÷2); Y≠0; Y×SQRT(2)≠1` |
 | `casim sum '(X÷Y)^K÷Y' K A ∞ RAD` | `-(X÷Y)^A÷(X-Y); Y≠0; ABS(X÷Y)<1` |
-| `casim sum 'K×(π×Y)^K÷Y' K 0 3 RAD` | `π+2×Y×π^2+3×Y^2×π^3` |
-| `casim sum 'K×Y^K÷Y' K 0 3 RAD` | `2×Y+3×Y^2+1` |
+| `casim sum 'K×(π×Y)^K÷Y' K 0 3 RAD` | `π+2×Y×π^2+3×Y^2×π^3; Y≠0` |
+| `casim sum 'K×Y^K÷Y' K 0 3 RAD` | `2×Y+3×Y^2+1; Y≠0` |
 #   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `Y÷(Y-2×Y^2+Y^3); Y≠0; ABS(Y)<1`
 | `casim sum 'K×Y^K÷Y' K 0 ∞ RAD` | `-1÷2÷(Y-Y^2÷2-1÷2); Y≠0; ABS(Y)<1` |
 
@@ -65,11 +65,11 @@
 | Command | Prints |
 |---|---|
 #   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `X×Y×SQRT(2)÷(X-X^2×Y×SQRT(2))-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2)+Y×SQRT(2)÷(X×Y×SQRT(2)-1); X≠0; ABS(X×Y×SQRT(2))<1`
-| `casim sum '(K-1)×(SQRT(2)×X×Y)^K÷X' K 1 ∞ RAD` | `-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2); ABS(X×Y×SQRT(2))<1` |
-| `casim sum '(K-1)×(X×Y)^K÷X' K 1 ∞ RAD` | `-X×Y^2÷2÷(X×Y-X^2×Y^2÷2-1÷2); ABS(X×Y)<1` |
+| `casim sum '(K-1)×(SQRT(2)×X×Y)^K÷X' K 1 ∞ RAD` | `-X×Y^2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2); X≠0; ABS(X×Y×SQRT(2))<1` |
+| `casim sum '(K-1)×(X×Y)^K÷X' K 1 ∞ RAD` | `-X×Y^2÷2÷(X×Y-X^2×Y^2÷2-1÷2); X≠0; ABS(X×Y)<1` |
 #   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `-N×(Y×π)^(N+1)÷(Y-Y^2×π)+Y×π÷(Y-Y^2×π)-Y×π^2÷2÷(Y×π-Y^2×π^2÷2-1÷2)+π×(Y×π)^(N+1)÷2÷(Y×π-Y^2×π^2÷2-1÷2)+π÷(Y×π-1); Y≠0; Y×π≠1`
 | `casim sum '(K-1)×(π×Y)^K÷Y' K 1 N RAD` | `-N×(Y×π)^(N+1)÷(Y-Y^2×π)-Y×π^2÷2÷(Y×π-Y^2×π^2÷2-1÷2)+π×(Y×π)^(N+1)÷2÷(Y×π-Y^2×π^2÷2-1÷2); Y≠0; Y×π≠1` |
-| `casim sum 'K×(SIN(Z)×Y)^K÷Y' K 1 ∞ RAD` | `-Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-SIN(Z)÷(Y×SIN(Z)-1); ABS(Y×SIN(Z))<1` |
+| `casim sum 'K×(SIN(Z)×Y)^K÷Y' K 1 ∞ RAD` | `-Y×SIN(Z)^2÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-SIN(Z)÷(Y×SIN(Z)-1); Y≠0; ABS(Y×SIN(Z))<1` |
 | `casim sum '(X÷Y)^K÷X' K 1 N RAD` | `-1÷(X-Y)-(X÷Y)^(N+1)÷(X-X^2÷Y); X≠0; Y≠0; X÷Y≠1` |
 #   CAS 031 (work/031-common-factor-cancel.md): the common factor cancelled; it printed `X^2×Y÷(X×Y-2×X^2×Y^2+X^3×Y^3); X≠0; Y≠0; ABS(X×Y)<1`
 | `casim sum '(K+1)×X^(K+1)×Y^K' K -1 ∞ RAD` | `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1` |

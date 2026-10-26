@@ -45,7 +45,7 @@
 #   row), a factor that is a sum (NO_CLOSED_FORM, as 0c84d44), and 025's letter rows
 | Command | Prints |
 |---|---|
-| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 1 ∞ RAD` | `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1` |
+| `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 1 ∞ RAD` | `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
 | `casim sum 'K×((Z^2+1)×Y)^K÷(Z^2+1)' K 0 ∞ RAD` | `NO_CLOSED_FORM` |
 | `casim sum 'K×(SIN(Z)×Y)^K÷Y' K 0 ∞ RAD` | `-SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y≠0; ABS(Y×SIN(Z))<1` |
 | `casim sum 'K×(SQRT(2)×X×Y)^K÷Y' K 0 ∞ RAD` | `-X×SQRT(2)÷2÷(X×Y×SQRT(2)-X^2×Y^2-1÷2); Y≠0; ABS(X×Y×SQRT(2))<1` |

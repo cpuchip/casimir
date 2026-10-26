@@ -52,20 +52,20 @@
 
 | Command | Prints |
 |---|---|
-| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^2×SIN(Z)÷6÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 2 ∞ RAD` | `-10×Y^2×SIN(Z)÷3÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^3×SIN(Z)^2×SQRT(5)÷18÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×COS(Z)×SQRT(5)-3)-5×Y^2×COS(Z)÷6÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 2 ∞ RAD` | `-10×Y^2×COS(Z)÷3÷(Y×COS(Z)×SQRT(5)-3)-5×Y^3×COS(Z)^2×SQRT(5)÷18÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^2×TAN(Z)÷6÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 2 ∞ RAD` | `-10×Y^2×TAN(Z)÷3÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^3×TAN(Z)^2×SQRT(5)÷18÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LN(Z)×SQRT(5)-3)-5×Y^2×LN(Z)÷6÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 2 ∞ RAD` | `-10×Y^2×LN(Z)÷3÷(Y×LN(Z)×SQRT(5)-3)-5×Y^3×LN(Z)^2×SQRT(5)÷18÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^2×LOG(Z)÷6÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 2 ∞ RAD` | `-10×Y^2×LOG(Z)÷3÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^3×LOG(Z)^2×SQRT(5)÷18÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOS(Z)÷3÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^3×ACOS(Z)^2×SQRT(5)÷18÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^2×ACOSH(Z)÷6÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
-| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOSH(Z)÷3÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^3×ACOSH(Z)^2×SQRT(5)÷18÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^2×SIN(Z)÷6÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); SIN(Z)≠0; ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×SIN(Z))^K÷SIN(Z)' K 2 ∞ RAD` | `-10×Y^2×SIN(Z)÷3÷(Y×SIN(Z)×SQRT(5)-3)-5×Y^3×SIN(Z)^2×SQRT(5)÷18÷(Y×SIN(Z)×SQRT(5)-5×Y^2×SIN(Z)^2÷6-3÷2); SIN(Z)≠0; ABS(Y×SIN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×COS(Z)×SQRT(5)-3)-5×Y^2×COS(Z)÷6÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); COS(Z)≠0; ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×COS(Z))^K÷COS(Z)' K 2 ∞ RAD` | `-10×Y^2×COS(Z)÷3÷(Y×COS(Z)×SQRT(5)-3)-5×Y^3×COS(Z)^2×SQRT(5)÷18÷(Y×COS(Z)×SQRT(5)-5×Y^2×COS(Z)^2÷6-3÷2); COS(Z)≠0; ABS(Y×COS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^2×TAN(Z)÷6÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); TAN(Z)≠0; ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×TAN(Z))^K÷TAN(Z)' K 2 ∞ RAD` | `-10×Y^2×TAN(Z)÷3÷(Y×TAN(Z)×SQRT(5)-3)-5×Y^3×TAN(Z)^2×SQRT(5)÷18÷(Y×TAN(Z)×SQRT(5)-5×Y^2×TAN(Z)^2÷6-3÷2); TAN(Z)≠0; ABS(Y×TAN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LN(Z)×SQRT(5)-3)-5×Y^2×LN(Z)÷6÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; Z≠1; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LN(Z))^K÷LN(Z)' K 2 ∞ RAD` | `-10×Y^2×LN(Z)÷3÷(Y×LN(Z)×SQRT(5)-3)-5×Y^3×LN(Z)^2×SQRT(5)÷18÷(Y×LN(Z)×SQRT(5)-5×Y^2×LN(Z)^2÷6-3÷2); Z≠0; Z≠1; ABS(Y×LN(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^2×LOG(Z)÷6÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; Z≠1; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×LOG(Z))^K÷LOG(Z)' K 2 ∞ RAD` | `-10×Y^2×LOG(Z)÷3÷(Y×LOG(Z)×SQRT(5)-3)-5×Y^3×LOG(Z)^2×SQRT(5)÷18÷(Y×LOG(Z)×SQRT(5)-5×Y^2×LOG(Z)^2÷6-3÷2); Z≠0; Z≠1; ABS(Y×LOG(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ACOS(Z)≠0; ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOS(Z)÷3÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^3×ACOS(Z)^2×SQRT(5)÷18÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ACOS(Z)≠0; ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^2×ACOSH(Z)÷6÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ACOSH(Z)≠0; ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
+| `casim sum 'K×(SQRT(5)÷3×Y×ACOSH(Z))^K÷ACOSH(Z)' K 2 ∞ RAD` | `-10×Y^2×ACOSH(Z)÷3÷(Y×ACOSH(Z)×SQRT(5)-3)-5×Y^3×ACOSH(Z)^2×SQRT(5)÷18÷(Y×ACOSH(Z)×SQRT(5)-5×Y^2×ACOSH(Z)^2÷6-3÷2); ACOSH(Z)≠0; ABS(Y×ACOSH(Z)×SQRT(5)÷3)<1` |
 
 # - Lines that were TOO_LONG now fit (191 B): the cancel only shortens a line
 
@@ -129,4 +129,4 @@
 | Command | Prints |
 |---|---|
 | `casim sum '(K+1)×(Z-2)^K×Y^K' K -1 ∞ RAD` | `1÷4÷(Y-Z÷8+Y^2-Y×Z+Y×Z^2÷4-3×Y^2×Z÷2+3×Y^2×Z^2÷4-Y^2×Z^3÷8+1÷4)-Z÷8÷(Y-Z÷8+Y^2-Y×Z+Y×Z^2÷4-3×Y^2×Z÷2+3×Y^2×Z^2÷4-Y^2×Z^3÷8+1÷4); Y≠0; Z-2≠0; ABS(Y×(Z-2))<1` |
-| `casim --arena 4096 sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
+| `casim --arena 4096 sum 'K×(SQRT(5)÷3×Y×ACOS(Z))^K÷ACOS(Z)' K 1 ∞ RAD` | `-Y×SQRT(5)÷(Y×ACOS(Z)×SQRT(5)-3)-5×Y^2×ACOS(Z)÷6÷(Y×ACOS(Z)×SQRT(5)-5×Y^2×ACOS(Z)^2÷6-3÷2); ACOS(Z)≠0; ABS(Y×ACOS(Z)×SQRT(5)÷3)<1` |
