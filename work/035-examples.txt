@@ -84,3 +84,27 @@
 | `casim limit 'LN(K+SIN(X)÷X)' X 0 '' RAD` | `LN(K+1); K>-1` |
 | `casim limit 'SQRT(K)^2×SIN(K×X)÷(K×X)' X 0 '' RAD` | `K; K>0` |
 | `casim limit 'X×SQRT(-1)' X 1 '' RAD` | `UNDEFINED` |
+
+# - limit, a divisor holding the variable and another letter (abacus #11460, #11461): a point hole needs nothing, but
+#   where a letter's value makes the divisor 0 for every X near the point the text has no value there, so that value's
+#   row (SIN(K×X) is 0 for every X at K = 0); a divisor no letter's value can make 0 everywhere needs none; where that
+#   isn't decided, UNDECIDED (Y×SIN(X)-SIN(Y×X) is 0 for every X at Y = 1 and at Y = -1)
+
+| Command | Prints |
+|---|---|
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 1 '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X ∞ '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X -∞ '' RAD` | `1; K≠0` |
+| `casim limit '(EXP(Y×X)-1)÷(EXP(Y×X)-1)' X 0 - RAD` | `1; Y≠0` |
+| `casim limit 'LN(1+Y×X)÷LN(1+Y×X)' X 1 '' RAD` | `1; Y>-1; Y≠0` |
+| `casim limit '((X+1)^Y-1)÷((X+1)^Y-1)' X 0 '' RAD` | `1; Y≠0` |
+| `casim limit 'SIN((Y-1)×X)÷SIN((Y-1)×X)' X 0 '' RAD` | `1; Y≠1` |
+| `casim limit 'X×(SIN(Y×X)+Y)÷(SIN(Y×X)+Y)' X 0 '' RAD` | `0; Y≠0` |
+| `casim limit '(X×Y+X×Z)÷(X×Y+X×Z)' X 1 '' RAD` | `1; Y+Z≠0` |
+| `casim limit '(SIN(Y×X)+1)÷(SIN(Y×X)+1)' X 0 '' RAD` | `1` |
+| `casim limit '(X+Y)÷(X+Y)' X 1 '' RAD` | `1` |
+| `casim limit '(SIN(X+Y)-SIN(Y))÷(SIN(X+Y)-SIN(Y))' X 1 '' RAD` | `1` |
+| `casim limit '(Y×X+X^2)÷(Y×X+X^2)' X 0 '' RAD` | `1` |
+| `casim limit '(Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X))' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((X+1)^Y-1)÷((X+1)^Y-1)' X ∞ '' RAD` | `UNDECIDED` |
