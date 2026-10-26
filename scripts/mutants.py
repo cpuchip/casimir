@@ -1198,9 +1198,10 @@ MUTANTS = {
                             "        if (whole && sl > low) rl |= 1u << L;")],
     # CAS 025 (work/025-every-ratio-rows.md; abacus #9687): the rows not read past another factor (rc6's early return);
     # the rows set after the return; the flag ignored, so B is shifted past that factor; a letter inside a function read
-    # as a letter at a whole power; a letter at a negative power without its row; and that row for a monomial too,
-    # whose own row ABS(X)>v already excludes X = 0. (Its row for a symbolic lo too isn't a mutant: the answer then
-    # holds (X÷Y)^A, so the probe prints Y≠0 anyway)
+    # as a letter at a whole power; a letter at a negative power without its row; and a monomial at a negative power
+    # kept from the probe as well as from that row. (Retargeted after 1.3.0, abacus #10989: its first text gave the
+    # monomial the row, whose X≠0 CAS 032 leaves out beside the monomial's own ABS(X)>v, so no line showed it. Its row
+    # for a symbolic lo too isn't a mutant: the answer then holds (X÷Y)^A, so the probe prints Y≠0 anyway)
     "ratio025-early-return": [("src/casim.c", "            other = true;\n            continue;\n        }\n",
                                "            return 0;\n        }\n")],
     "ratio025-rowl-after-return": [("src/casim.c", "    g->rowl = rl;\n    if (other) return 0;\n",
@@ -1211,8 +1212,10 @@ MUTANTS = {
                                   "        else if (x->kind == K_FN && nd(c, x->a)->kind == K_VAR && nd(c, x->a)->id < 26)"
                                   " L = nd(c, x->a)->id, m = 1;\n")],
     "ratio025-negpow-row-off": [("src/casim.c", "                rl |= 1u << nd(c, x->a)->id;\n", "                (void)0;\n")],
-    "ratio025-negpow-mono-row": [("src/casim.c", "            if (!neg && G[gi].rowl >> l & 1u) {",
-                                  "            if ((void)neg, G[gi].rowl >> l & 1u) {")],
+    "ratio025-negpow-mono-row": [("src/casim.c", "            if (!neg && G[gi].rowl >> l & 1u) {\n"
+                                  "                sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);",
+                                  "            if (G[gi].rowl >> l & 1u) {\n"
+                                  "                if (!neg) sm_row(c, rows, n, leaf(c, K_VAR, l), '!', small(c, C_0), l);")],
     # CAS 026 (work/026-factor-rows.md; decision 90, abacus #9720/#9726): the factor row not made; rule 2's skip off (a row
     # where the answer has no value already: the 8 to N go TOO_LONG); rule 3's off (EXP(Z)≠0); a fraction power read
     # whole only (SQRT(Z)^(3×K-1)'s Z^(3÷2)); a negative fraction power read as a positive one ((Y÷SQRT(Z))^K); a root

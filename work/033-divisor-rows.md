@@ -100,4 +100,9 @@ again. The build's lines are 41eb154's byte for byte (the earlier sets, the fami
   build-against-mutant search found no input where the two differ (14,700 calls down to 2,048 B, every earlier set,
   the golden corpus); abacus's own runs over h032 and h033 are the condition for naming it. The probe-or-row choice for
   such a monomial no longer shows in a line, so the mutant should test something that does.
+  Done after 1.3.0: the mutant now keeps the monomial from the probe as well as the row (the row's call under
+  `if (!neg)`), so `X^(-K)` from 0 to N prints `X≠1` alone and loses the `X≠0` the build prints. Over the same 14,700
+  calls it differs from the build on 2,024. The golden corpus catches it (tests/golden/corpus.txt:10727, 10728,
+  10833: `X^(-K)` from 0 to N), as does work/018-examples.txt:142. scripts/sum-values.py doesn't: the answer has no
+  value at X = 0 with the row or without it, so no value printed is wrong.
 

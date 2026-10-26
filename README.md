@@ -148,10 +148,12 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 477 deliberate faults, each of which the tests must
-  catch, but two named. At 1.3.0's tree `make test` caught 475 of the 477 (work/v1.3.0-mutants.txt), the 8 new on CAS
-  032's rows (work/032-redundant-row.md) and the 5 on CAS 033's (work/033-divisor-rows.md) among them. The two named
-  survive because no input is known where they differ from the build: cancel-rewind-keeps-cache (CAS 031's), and
-  ratio025-negpow-mono-row (CAS 025's), whose fault CAS 032 made invisible. At CAS 032's and CAS 033's accepted trees
+  catch, but one named. At 1.3.0's tree `make test` caught 475 of the 477 (work/v1.3.0-mutants.txt), the 8 new on CAS
+  032's rows (work/032-redundant-row.md) and the 5 on CAS 033's (work/033-divisor-rows.md) among them. The two that
+  survived there differ from the build on no known input: cancel-rewind-keeps-cache (CAS 031's), the one named, and
+  ratio025-negpow-mono-row (CAS 025's), whose fault CAS 032 made invisible. That one is retargeted since at a fault a
+  line shows (a monomial at a negative power kept from the probe as well as the row), and the golden corpus catches
+  it. At CAS 032's and CAS 033's accepted trees
   (fde2bc3, 63b9215) it caught 470 of 472 and 474 of 477; the third survivor there, ratio025-negpow-row-off, is caught
   by a pin added at 951151b. It caught 463 of 464 at 1.2.0's tree (work/v1.2.0-mutants.txt), the first of those named,
   and all 456 at 1.1.2's tree (work/v1.1.2-mutants.txt), as it caught all 450 at 1.1.1's tree
