@@ -133,7 +133,8 @@ to a power. Each condition is one of three kinds:
 - **The doc examples:** 26 earlier rows re-pinned, each gaining a row: 25 their cancelled divisor's (work/024 to 031),
   and work/023's `SIN(K×X)÷SIN(K×X)` at 0 its `K≠0`.
 - **min-arena** (the prototype's, #11433): up on 74 bench cases of 1,417, down on none, none newly past 8,192 B. The
-  bench held no sum term by term with a divisor in K: h018's and h032's found new NO_ROOM (below, #11517).
+  build wasn't measured so, and two bench sums term by term with a divisor in K went NO_ROOM at 16,384 B in b9efe8a,
+  as h018's did (below, #11517).
   CAS 033's 2,048 B example needs 2,024 B as at 4c0523b (the lists of eight or fewer are on the stack). td_degen moves
   none of the bench's 1,411; its own four rows: `SIN(K×X)÷SIN(K×X)` at 0 512 to 560 B, the 40-deep SIN nests of Y×X
   and of X+Y 4,744 and 4,736 B as before.
@@ -215,6 +216,11 @@ Measured at f8cd4dc:
 - Mutants: 37 ("td035-", 519 in all), all caught; the five new ones each by its row in work/035-examples.txt.
 - The device (scripts/device.sh at 16,384 B, 19:30Z): DEVICE PASS, 1,412 cases; the worst stack unchanged, 11,360
   masked + 384 = 11,744 of 12,288.
+- The bench, case by case against CAS 034's device run (4c0523b, 1,371 cases in both): b9efe8a had made 18:152 and
+  18:153 (`12×(561+…)÷(…)` from 1 to 50, work/018-examples.txt) NO_ROOM at 16,384 B, where 1.3.0 answers in 9,260 B
+  (18,848 B in b9efe8a). Its device run passed, since the host printed NO_ROOM too. The fix answers them in 9,260 B
+  again, with CAS 034's 3,792 B of stack. Against CAS 034 no case changes status now; 51 need more arena (at most
+  1,976 B more, `1÷(` nested 43 deep, its limit at 0+, 4,864 B) and 14 more stack (at most 464 B more).
 - work/035-examples.txt: 13 rows for these (84 in all).
 
 ## Not yet
