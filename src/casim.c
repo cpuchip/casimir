@@ -6435,7 +6435,8 @@ static __attribute__((noinline)) int tan_hits(ctx *c, ref u, int var, const boun
     return abn_add(&p, &p, &per) != ABN_OK || abn_cmp(&p, &umax) <= 0 ? IV_IMPROPER : IV_OK;       /* p1 inside */
 }
 
-static int interval_walk(ctx *c, ref r, int var, const bound *A, const bound *B)
+/* out of line: gcc's partial inlining of it moved its frame with changes elsewhere in the unit (CAS 035) */
+static __attribute__((noinline)) int interval_walk(ctx *c, ref r, int var, const bound *A, const bound *B)
 {
     const node *x;
     int st = IV_OK;
@@ -12313,6 +12314,212 @@ static __attribute__((noinline)) int td_mixed(ctx *c, ref g, lwalk *L, int side,
     return 2;
 }
 
+#define TD_ORDERS 3
+
+/* e is never 0 where k isn't: a nonzero number with no letter, or (k given) a product of k, its powers, nonzero numbers
+   and parts never 0 */
+static bool td_nz1(ctx *c, ref e, ref k)
+{
+    const node *x = nd(c, e);
+    int s;
+    if (!any_letter(c, e)) return (s = lm_sgn(c, e)) == 1 || s == -1;
+    if (!k) return false;
+    for (int i = 0; i < (x->kind == K_MUL ? x->n : 1); i++) {
+        ref f = x->kind == K_MUL ? list(c, x->a)[i] : e;
+        if (nd(c, f)->kind == K_POW && is_num(c, nd(c, f)->b) && val(c, nd(c, f)->b)->p > 0) f = nd(c, f)->a;
+        if (cmp(c, f, k) != 0 && !td_never0(c, f) && (any_letter(c, f) || (s = lm_sgn(c, f)) == 0 || s == 2))
+            return false;
+    }
+    return true;
+}
+
+/* e's one factor left past nonzero numbers (and k, its powers and parts never 0, k given); 0 where not one */
+static ref td_core(ctx *c, ref e, ref k)
+{
+    const node *x = nd(c, e);
+    ref t = 0;
+    int s;
+    for (int i = 0; i < (x->kind == K_MUL ? x->n : 1); i++) {
+        ref f = x->kind == K_MUL ? list(c, x->a)[i] : e, b = f;
+        if (nd(c, b)->kind == K_POW && is_num(c, nd(c, b)->b) && val(c, nd(c, b)->b)->p > 0) b = nd(c, b)->a;
+        if (!any_letter(c, f) ? (s = lm_sgn(c, f)) == 1 || s == -1 : k && (cmp(c, b, k) == 0 || td_never0(c, b)))
+            continue;
+        if (t) return 0;
+        t = f;
+    }
+    return t;
+}
+
+/* SIN(u) and COS(u) of one u (past td_core), which are never 0 together */
+static bool td_pair(ctx *c, ref p, ref e, ref k)
+{
+    ref a = p ? td_core(c, p, k) : 0, b = a ? td_core(c, e, k) : 0;
+    if (!b || nd(c, a)->kind != K_FN || nd(c, b)->kind != K_FN) return false;
+    return ((nd(c, a)->id == F_SIN && nd(c, b)->id == F_COS) || (nd(c, a)->id == F_COS && nd(c, b)->id == F_SIN)) &&
+           cmp(c, nd(c, a)->a, nd(c, b)->a) == 0;
+}
+
+/* whether g (holding var) is 0 for every var near the point for no value of the letters (k given: none with k ≠ 0):
+   g or one of its first derivatives there never 0 by td_nz1, or two in a row by td_pair; at ∞, g's limit ±∞ or a
+   nonzero number, with no row */
+static __attribute__((noinline)) bool td_nz(ctx *c, ref g, lwalk *L, ref a, ref k)
+{
+    size_t mark = c->used;
+    bool nz = false;
+    if (!a) {
+        lwalk M = *L;
+        lv r;
+        M.steps = 0, M.C.n = 0;
+        r = lm_walk(c, g, &M);
+        if (c->st != CASIM_OK || M.C.n) nz = false;                 /* a row: some letter's value differs */
+        else if (r.k == L_FIN && !any_letter(c, r.v)) {
+            int s = lm_sgn(c, r.v);
+            nz = s == 1 || s == -1;
+        } else nz = r.k == L_PINF || r.k == L_NINF;
+    } else
+        for (int m = 0, p = 0; m <= TD_ORDERS && !nz && c->st == CASIM_OK; m++) {
+            ref e;
+            if (m) g = ib_deriv(c, g);
+            e = ib_at(c, g, L->var, a);
+            if (c->st != CASIM_OK) break;
+            nz = td_nz1(c, e, k) || td_pair(c, p, e, k);
+            p = e;
+        }
+    if (c->st != CASIM_NO_ROOM) c->st = CASIM_OK;
+    td_drop(c, mark);
+    return nz;
+}
+
+/* the letters' k whose 0 leaves r without var: a product's factor in letters, the one k of every term or factor
+   holding var, a function's argument's, a power's base's or its exponent in letters. 0 r has no var, 1 *k, 2 none */
+static int td_kill(ctx *c, ref r, int var, ref *k)
+{
+    const node *x = nd(c, r);
+    ref t = 0, u;
+    int s = 2;
+    if (!contains(c, r, var)) return 0;
+    if (!enter(c)) return 2;
+    if (x->kind == K_FN) s = td_kill(c, x->a, var, k);
+    else if (x->kind == K_POW && !contains(c, x->b, var)) {
+        s = td_kill(c, x->a, var, k);
+        if (s != 1 && any_letter(c, x->b)) *k = x->b, s = 1;           /* a^0 is 1 */
+    } else if (x->kind == K_POW) s = contains(c, x->a, var) ? 2 : td_kill(c, x->b, var, k);
+    else if (x->kind == K_MUL || x->kind == K_ADD) {
+        for (int i = 0; x->kind == K_MUL && i < x->n && s == 2; i++)
+            if (!contains(c, list(c, x->a)[i], var) && any_letter(c, list(c, x->a)[i])) *k = list(c, x->a)[i], s = 1;
+        for (int i = 0; i < x->n && s == 2; i++) {
+            int si = td_kill(c, list(c, x->a)[i], var, &u);
+            if (si == 2 || (si == 1 && t && cmp(c, t, u) != 0)) break;
+            if (si == 1) t = u;
+            if (i == x->n - 1 && t) *k = t, s = 1;
+        }
+    }
+    c->depth--;
+    return s;
+}
+
+static bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m);
+
+/* g with k = 0 (k a letter, its power, or linear in one letter), canonical; 0 where that isn't made */
+static ref td_at0(ctx *c, ref g, ref k)
+{
+    int L, m = 1;
+    rat a, b, t;
+    if (nd(c, k)->kind == K_POW && is_num(c, nd(c, k)->b) && val(c, nd(c, k)->b)->p > 0) k = nd(c, k)->a;
+    if (nd(c, k)->kind == K_VAR && nd(c, k)->id < 26) return ib_at(c, g, nd(c, k)->id, small(c, C_0));
+    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){-b.p, b.q}, &(rat){a.p < 0 ? -a.q : a.q,
+                                                                                       a.p < 0 ? -a.p : a.p}))
+        return 0;
+    return ib_at(c, g, L, num(c, &t));
+}
+
+/* whether r is var times parts without it */
+static bool td_linear(ctx *c, ref r, int var)
+{
+    const node *x = nd(c, r);
+    int n = 0;
+    if (x->kind == K_VAR) return x->id == var;
+    for (int i = 0; x->kind == K_MUL && i < x->n; i++) {
+        ref f = list(c, x->a)[i];
+        if (contains(c, f, var) && (nd(c, f)->kind != K_VAR || ++n > 1)) return false;
+    }
+    return x->kind == K_MUL && n == 1;
+}
+
+/* whether a÷b is a nonzero number */
+static bool td_prop(ctx *c, ref a, ref b)
+{
+    return cmp(c, a, b) == 0 || td_nz1(c, ib_canon(c, mul2(c, a, power(c, b, small(c, C_M1)))), 0);
+}
+
+/* the one form a×var+b (a and b without var; another a nonzero number times it) that every var in r sits in: 0 r has
+   no var, 1 *f, 2 none */
+static int td_form(ctx *c, ref r, int var, ref *f)
+{
+    const node *x = nd(c, r);
+    ref t = 0, u;
+    int s = 1, lin = 1;
+    if (!contains(c, r, var)) return 0;
+    if (td_linear(c, r, var)) return *f = r, 1;
+    if (!enter(c)) return 2;
+    for (int i = 0; x->kind == K_ADD && i < x->n; i++)
+        if (contains(c, list(c, x->a)[i], var) && !td_linear(c, list(c, x->a)[i], var)) lin = 0;
+    if (x->kind == K_ADD && lin) *f = r, t = r;
+    else if (x->kind == K_FN) s = td_form(c, x->a, var, &t);
+    else if (x->kind == K_POW || x->kind == K_ADD || x->kind == K_MUL)
+        for (int i = 0; i < (x->kind == K_POW ? 2 : x->n) && s != 2; i++) {
+            ref o = x->kind == K_POW ? (i ? x->b : x->a) : list(c, x->a)[i];
+            int si = td_form(c, o, var, &u);
+            if (si == 2 || (si == 1 && t && !td_prop(c, t, u))) s = 2;
+            else if (si == 1) t = u;
+        }
+    else s = 2;
+    c->depth--;
+    if (s == 1 && t) *f = t;
+    return s == 1 && t ? 1 : 2;
+}
+
+/* CAS 035: a ≠ condition, g ≠ 0, holding var and another letter. No limit needs a point hole, but where g is 0 for
+   every var near the point the text has no value there (SIN(K×X)÷SIN(K×X) at K = 0). 0 decided, with the row k≠0
+   where k = 0 leaves g 0 (or isn't decided); 2 not decided. The walks come before td_nz's derivatives, which cost a
+   nest the arena (SIN(SIN(Y×X)) took 4,016 B) */
+static __attribute__((noinline)) int td_degen(ctx *c, ref g, lwalk *L)
+{
+    ref k = 0, f = 0, a = 0, b = 0, g0;
+    size_t mark;
+    bool ok = false;
+    int s = td_kill(c, g, L->var, &k);
+    if (c->st == CASIM_OK && td_form(c, g, L->var, &f) == 1) {
+        b = ib_at(c, f, L->var, small(c, C_0)), a = ib_deriv(c, f);
+        if (c->st == CASIM_OK && s != 1 && any_letter(c, a)) k = a, s = 1;     /* X×Y+X×Z: Y+Z = 0 leaves b */
+    }
+    if (c->st != CASIM_OK) return 2;
+    if (s == 1) {
+        bool row;
+        mark = c->used;
+        g0 = td_at0(c, g, k);
+        row = c->st != CASIM_OK || !g0 || any_letter(c, g0) || lm_sgn(c, g0) == 0 || lm_sgn(c, g0) == 2;
+        if (c->st == CASIM_NO_ROOM) return 2;
+        c->st = CASIM_OK;
+        td_drop(c, mark);
+        if (row) td_note(c, L, k, '!');
+    } else k = 0;
+    /* k ≠ 0: g with var as (var-b)÷a, its form's inverse (a a nonzero number, or one times k), holding no other letter
+       (and not 0), or never 0 by td_nz where the point goes; or g never 0 at the point by td_nz with k */
+    mark = c->used;
+    if (f && (td_nz1(c, a, 0) || (k && td_prop(c, a, k)))) {
+        g0 = ib_at(c, g, L->var, mul2(c, add2(c, leaf(c, K_VAR, L->var), ib_neg(c, b)), power(c, a, small(c, C_M1))));
+        ok = c->st == CASIM_OK && !td_other(c, g0, L->var) && !is_k(c, g0, 0, 1);
+        if (!ok && c->st == CASIM_OK && L->a) ok = td_nz(c, g0, L, ib_at(c, f, L->var, L->a), 0);
+    }
+    if (c->st != CASIM_NO_ROOM) c->st = CASIM_OK;
+    if (!ok && c->st == CASIM_OK) ok = td_nz(c, g, L, L->a, k);
+    if (c->st == CASIM_NO_ROOM) return 2;
+    c->st = CASIM_OK;
+    td_drop(c, mark);
+    return ok ? 0 : 2;
+}
+
 static void td_limit_one(ctx *c, const tdc *Dp, lwalk *L, int inf, int *sidep, bool *failp, bool *unkp);
 
 /* CAS 035: limit's typed check, before the walk: c->st UNDEFINED where a side asked has no real value,
@@ -12357,10 +12564,14 @@ static __attribute__((noinline)) void td_limit_one(ctx *c, const tdc *Dp, lwalk 
             td_note(c, L, u, k);
             continue;
         }
-        if (k == '!' || k == 'n' || k == 't') continue;     /* a point hole: no limit needs the point */
+        if ((k == '!' || k == 'n' || k == 't') && !o) continue;     /* a point hole: no limit needs the point */
         g = td_g(c, u, k);
         if (inf < 0 && c->st == CASIM_OK) g = ib_at(c, g, L->var, ib_neg(c, leaf(c, K_VAR, L->var)));
         if (c->st != CASIM_OK) { *sidep = side; return; }
+        if (k == '!' || k == 'n' || k == 't') {
+            if (td_degen(c, g, L) == 2 && c->st == CASIM_OK) unk = true;
+            continue;
+        }
         if (o) {
             int s = td_mixed(c, g, L, side, k);
             if (s == 1) fail = true;
