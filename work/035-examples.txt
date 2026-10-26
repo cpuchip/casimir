@@ -118,3 +118,26 @@
 | `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+SQRT(Y)^2' X 0 '' RAD` | `Y-1÷3; Y>0` |
 | `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `2÷3; K≠0` |
 | `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+EXP(LN(X×Y))' X 0 + RAD` | `-1÷3; Y>0` |
+
+# - Sums term by term with K in a condition (abacus #11517): canon reads the typed entry with each K put in, so a
+#   value splits as a typed divisor does (u^n is 0 where u is, a product where a factor is, EXP never 0) and an
+#   exponent in K is read; each K's work is dropped. A sum's primitive part, which a power of it holds, is probed
+#   too, and a CAS 030 row says the condition. A typed number's divisor isn't walked (canon refuses ÷0 itself). The
+#   row's arena: h018's rational sums at 8,800 B, h032's at 4,096 B. A row that takes the term-by-term line past 191
+#   bytes gives way to the closed form (rule 7)
+
+| Command | Prints |
+|---|---|
+| `casim --model STU --cap 192 sum '1÷(-EXP(-20000))^K' K 1 3 RAD` | `-1÷EXP(-20000)^3+1÷EXP(-20000)^2-1÷EXP(-20000)` |
+| `casim sum 'EXP(-20000)^K÷EXP(-20000)^K' K 1 3 RAD` | `3` |
+| `casim --model STU --cap 192 sum '1÷((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+10^(-12))^K' K 1 3 RAD` | `-1÷(10^25-SIN(1)^2×10^25-COS(1)^2×10^25-1÷1000000000000)^3+1÷(10^25-SIN(1)^2×10^25-COS(1)^2×10^25-1÷1000000000000)^2-1÷(10^25-SIN(1)^2×10^25-COS(1)^2×10^25-1÷1000000000000)` |
+| `casim --model STU --cap 192 sum '1÷((SIN(1)^2+COS(1)^2-1)+10^(-30))^K' K 1 3 RAD` | `1÷(SIN(1)^2+COS(1)^2+1÷10^30-1)^3+1÷(SIN(1)^2+COS(1)^2+1÷10^30-1)^2+1÷(SIN(1)^2+COS(1)^2+1÷10^30-1)` |
+| `casim sum '1÷COS(Z)^K' K 1 12 RAD` | `1÷COS(Z)^12+1÷COS(Z)^11+1÷COS(Z)^10+1÷COS(Z)^9+1÷COS(Z)^8+1÷COS(Z)^7+1÷COS(Z)^6+1÷COS(Z)^5+1÷COS(Z)^4+1÷COS(Z)^3+1÷COS(Z)^2+1÷COS(Z)` |
+| `casim sum 'Y^K×Y^(-K)' K -1 1 RAD` | `3; Y≠0` |
+| `casim sum '(Y-1)^(-K)×(Y-1)^K' K 1 2 RAD` | `2; Y≠1` |
+| `casim sum '(-8)^(1÷K)' K 1 3 RAD` | `UNDEFINED` |
+| `casim sum '(ACOS(Z)^2×Y)^K÷ACOS(Z)' K 1 3 RAD` | `Y×ACOS(Z)+Y^2×ACOS(Z)^3+Y^3×ACOS(Z)^5; ACOS(Z)≠0` |
+| `casim sum '(ACOS(Z)^2×Y)^K÷ACOS(Z)' K 1 12 RAD` | `-Y×ACOS(Z)÷(Y×ACOS(Z)^2-1)+Y^13×ACOS(Z)^25÷(Y×ACOS(Z)^2-1); ACOS(Z)≠0; Y×ACOS(Z)^2≠1` |
+| `casim --cap 192 sum '(18+12×K)÷(K^4+6×K^3+9×K^2)' K 1 31 RAD` | `145920565÷53712384` |
+| `casim --cap 192 sum '(7÷2+K)^(-2)-4÷(5÷2+K)^2-2÷(5÷2+K)+2÷(9÷2+K)+3÷(9÷2+K)^2' K 1 ∞ RAD` | `-1972÷1323` |
+| `casim --arena 4096 sum '(Y÷TAN(Z))^K+COS(Z)^K' K -1 N RAD` | `1÷(COS(Z)-COS(Z)^2)+TAN(Z)÷(Y-Y^2÷TAN(Z))+COS(Z)^(N+1)÷(COS(Z)-1)+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); Y≠0; COS(Z)≠0; TAN(Z)≠0; COS(Z)≠1; Y÷TAN(Z)≠1` |

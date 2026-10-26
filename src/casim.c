@@ -6536,7 +6536,7 @@ static __attribute__((noinline)) void td_walk(ctx *c, ref r, tdset *T)
         if (x->kind == K_BDIV || x->kind == K_BPOW || x->kind == K_BADD || x->kind == K_BSUB || x->kind == K_BMUL ||
             x->kind == K_ROFN) {
             ref a = x->a, b = x->b;
-            if (x->kind == K_BDIV) td_add(c, T, b, 0, '!');
+            if (x->kind == K_BDIV && nd(c, b)->kind != K_LIT) td_add(c, T, b, 0, '!');   /* canon refuses ÷0 itself */
             if (x->kind == K_BPOW) td_add(c, T, a, b, 'p');
             if (b) td_walk(c, b, T);
             r = a;
@@ -6574,6 +6574,15 @@ static void td_put(ctx *c, tdc *D, ref u, char k)
 
 static bool raw_letter(ctx *c, ref r, int var);
 
+/* u^n is 0 where u is, and ABS(u) (abacus #11436 (2)) */
+static ref td_base(ctx *c, ref u)
+{
+    while ((nd(c, u)->kind == K_POW && is_num(c, nd(c, u)->b) && val(c, nd(c, u)->b)->p > 0) ||
+           (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))
+        u = nd(c, u)->a;
+    return u;
+}
+
 /* pv >= 0 (limit's var): a ≠ condition on var alone is a point hole no limit needs, left out before canon (its canon
    of each nested divisor cost the arena: 1÷(1÷(...X)) went NO_ROOM at 8,800 B) */
 static __attribute__((noinline)) void td_canon(ctx *c, const tdset *T, tdc *D, int pv)
@@ -6593,18 +6602,9 @@ static __attribute__((noinline)) void td_canon(ctx *c, const tdset *T, tdc *D, i
         u = ib_canon(c, T->u[i]);
         if (c->st != CASIM_OK) return;
         if (k == '!') {
-            /* u^n is 0 where u is; a product where a factor is */
-            while ((nd(c, u)->kind == K_POW && is_num(c, nd(c, u)->b) && val(c, nd(c, u)->b)->p > 0) ||
-                   (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))
-                u = nd(c, u)->a;                                /* ABS(u) is 0 where u is (abacus #11436 (2)) */
+            u = td_base(c, u);                                  /* a product is 0 where a factor is */
             if (nd(c, u)->kind == K_MUL) {
-                for (int f = 0; f < nd(c, u)->n && c->st == CASIM_OK; f++) {
-                    ref g = list(c, nd(c, u)->a)[f];
-                    while ((nd(c, g)->kind == K_POW && is_num(c, nd(c, g)->b) && val(c, nd(c, g)->b)->p > 0) ||
-                           (nd(c, g)->kind == K_FN && nd(c, g)->id == F_ABS))
-                        g = nd(c, g)->a;
-                    td_put(c, D, g, '!');
-                }
+                for (int f = 0; f < nd(c, u)->n && c->st == CASIM_OK; f++) td_put(c, D, td_base(c, list(c, nd(c, u)->a)[f]), '!');
                 continue;
             }
         }
@@ -6689,15 +6689,22 @@ static __attribute__((noinline)) int td_const(ctx *c, ref u, char k)
 static bool td_holds(ctx *c, ref r, ref u, char k);
 
 /* the answer r has no value where the condition fails: a ≠ by CAS 033's probe (u put to var at 0, or 1 for u≠1), an
-   interval's by r holding the same typed function of u */
+   interval's by r holding the same typed function of u. A sum u is 0 where its primitive part is, which r holds in a
+   power of it (power_sum; abacus #11517: -1÷(10^25-SIN(1)^2×10^25-…)) */
 static __attribute__((noinline)) bool td_gated(ctx *c, ref r, ref u, char k, int var)
 {
     size_t mark = c->used;
-    bool none;
+    bool none = false;
+    rat q;
     if (k != '!' && k != 'n') return td_holds(c, r, u, k);
-    ib_at(c, ib_replace(c, r, u, var), var, small(c, k == 'n' ? C_1 : C_0));
-    none = c->st == CASIM_UNDEFINED;
-    if (none) c->st = CASIM_OK;
+    for (int t = 0; t < 2 && !none && c->st == CASIM_OK; t++) {
+        if (t && (k != '!' || nd(c, u)->kind != K_ADD || (q = content(c, u), rat_is(&q, 1, 1)) ||
+                  (u = sum_div(c, u, &q, content_mark(c, u, &q))) == 0 || u == SPARE))
+            break;
+        ib_at(c, ib_replace(c, r, u, var), var, small(c, k == 'n' ? C_1 : C_0));
+        none = c->st == CASIM_UNDEFINED;
+        if (none) c->st = CASIM_OK;
+    }
     if (c->st == CASIM_OK) td_drop(c, mark);
     return none;
 }
@@ -14032,12 +14039,13 @@ static __attribute__((noinline)) void td_row1(ctx *c, smrow *rows, int *n, ref e
 }
 
 /* whether a row already there says the condition (and its probe needn't run): u≠0 for u≠0 (CAS 033's Y-1≠0, the
-   letters' Y≠0), LN(u)≠0 or LOG(u)≠0 for u≠1 */
+   letters' Y≠0), LN(u)≠0 or LOG(u)≠0 for u≠1. A '?' row (CAS 030) is made only where the answer has no value with
+   its factor 0, which is what the probe would find (abacus #11517: its copy of the answer, at 4,096 B) */
 static bool td_said(ctx *c, const smrow *rows, int n, ref u, char k)
 {
     for (int i = 0; i < n && (k == '!' || k == 'n'); i++) {
         const node *x = nd(c, rows[i].l);
-        if (rows[i].op != '!' || !is_k(c, rows[i].r, 0, 1)) continue;
+        if ((rows[i].op != '!' && rows[i].op != '?') || !is_k(c, rows[i].r, 0, 1)) continue;
         if (k == '!' ? cmp(c, rows[i].l, u) == 0
                      : x->kind == K_FN && (x->id == F_LN || x->id == F_LOG) && cmp(c, x->a, u) == 0)
             return true;
@@ -14071,27 +14079,31 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
         return;
     }
     for (int r = 0; r < T.n && c->st == CASIM_OK; r++) {
+    /* direct, an entry in K: canon reads it with each K put in, so td_canon splits each value as a typed one, and an
+       exponent in K is read too (abacus #11517: 1÷COS(Z)^K, 1÷(-EXP(-20000))^K, Y^K×Y^(-K)) */
+    bool hk = direct && (raw_has_var(c, T.u[r], S->var) || (T.e[r] && raw_has_var(c, T.e[r], S->var)));
+    for (int64_t kk = S->a; kk <= (hk ? S->b : S->a) && c->st == CASIM_OK; kk++) {
     size_t mark = c->used;
     int was = *n;
-    if (!td_entry(c, &T, r, &D, -1)) return;
+    bool ok;
+    if (hk) c->sub_var = S->var, c->sub_val = sm_int(c, kk);
+    ok = td_entry(c, &T, r, &D, -1);
+    c->sub_val = 0, c->sub_var = -1;
+    if (!ok) return;
     for (int i = 0; i < D.n && c->st == CASIM_OK; i++) {
         ref u = D.u[i];
         char k = D.k[i];
-        for (int64_t kk = S->a, last = contains(c, u, S->var) ? (direct ? S->b : S->a - 1) : S->a;
-             kk <= last && c->st == CASIM_OK; kk++) {
-            ref v = contains(c, u, S->var) ? ib_at(c, u, S->var, sm_int(c, kk)) : u;
-            int st;
-            if (c->st != CASIM_OK) break;
-            if (any_letter(c, v)) {
-                if (!td_said(c, rows, *n, v, k) && (!gate || !td_gated(c, sum, v, k, S->var))) td_rows(c, rows, n, v, k);
-                continue;
-            }
-            st = td_const(c, v, k);
-            if (st == 1) fail = true;
-            else if (st == 2 && !(gate && td_gated(c, sum, v, k, S->var))) unk = true;
+        int st;
+        if (any_letter(c, u)) {
+            if (!td_said(c, rows, *n, u, k) && (!gate || !td_gated(c, sum, u, k, S->var))) td_rows(c, rows, n, u, k);
+            continue;
         }
+        st = td_const(c, u, k);
+        if (st == 1) fail = true;
+        else if (st == 2 && !(gate && td_gated(c, sum, u, k, S->var))) unk = true;
     }
-    if (c->st == CASIM_OK && *n == was) td_drop(c, mark);         /* no row: nothing points into it */
+    if (c->st == CASIM_OK && *n == was) td_drop(c, mark);         /* no row: nothing points into it (each K's too) */
+    }
     }
     if (c->st == CASIM_OK && (fail || unk)) c->st = fail ? CASIM_UNDEFINED : CASIM_UNDECIDED;
     if (c->st == CASIM_OK && *n == was0) td_drop(c, mark0);

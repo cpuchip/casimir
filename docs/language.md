@@ -709,8 +709,10 @@ merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), wit
 domain is read as typed (CAS 035, work/035-typed-domain.md): a divisor, LN's and LOG's argument, a root, the arguments
 of ASIN, ACOS, ACOSH and ATANH, and TAN's pole each give a row in the other letters, unless a row already says it or
 the answer shows the hole itself. So Σ (Y÷Y)^K from 1 to N is `N; Y≠0`, Σ K×Y^K÷Y from 0 to 3 is `2×Y+3×Y^2+1; Y≠0`,
-and Σ (Z×EXP(LN(Y))+1)^K from 0 to ∞ is `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1`. The rows count toward the 191 bytes, and a line
-they take past it is TOO_LONG. A factor of the ratio that holds a
+and Σ (Z×EXP(LN(Y))+1)^K from 0 to ∞ is `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1`. Summed term by term, the text is read with each
+K put in, so an exponent in K counts too: Σ Y^K×Y^(-K) from -1 to 1 is `3; Y≠0`. The rows count toward the 191 bytes.
+A term-by-term line they take past it gives way to the closed form (Σ (ACOS(Z)^2×Y)^K÷ACOS(Z) from 1 to 12, whose 12
+terms and `ACOS(Z)≠0` take 198), and any other line they take past it is TOO_LONG. A factor of the ratio that holds a
 letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
 0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
 the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter keep the

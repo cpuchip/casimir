@@ -1409,8 +1409,8 @@ MUTANTS = {
                           "            said = said || ((rows[j].op != '!') && cmp(c, rows[j].l, rows[i].l) == 0 &&")],
     "td035-fits-blind": [("src/casim.c", "        if (c->st == CASIM_OK) td_sum(c, S, r, true, rows, &n, false);      /* CAS 035's rows count (abacus #11436) */",
                           "        (void)0;                                                             /* CAS 035's rows count (abacus #11436) */")],
-    "td035-abs-kept": [("src/casim.c", "                   (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))",
-                        "                   (0 && nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))")],
+    "td035-abs-kept": [("src/casim.c", "           (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))",
+                        "           (0 && nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))")],
     "td035-sgn-undecided": [("src/casim.c", "        u = small(c, s > 0 ? C_1 : s < 0 ? C_M1 : C_0);         /* a typed SGN is opaque (CAS 003): its sign here */",
                              "        (void)0;                                                /* a typed SGN is opaque (CAS 003): its sign here */")],
     "td035-hole-refused": [("src/casim.c", "    if (c->st == CASIM_UNDEFINED) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)",
@@ -1443,6 +1443,17 @@ MUTANTS = {
     # the series route's answer printed without the typed text's rows (the walk's arena, with them, dropped)
     "td035-series-drops": [("src/casim.c", "        else (void)td_limit(&c, &L, inf, side);         /* CAS 035: the typed text's rows went with the walk's arena */",
                             "        else (void)0;         /* CAS 035: the typed text's rows went with the walk's arena */")],
+    # abacus #11517: a direct sum's entry in K read without each K put in; each K's canon kept to the end; a typed
+    # number's divisor walked; a CAS 030 row not read as saying the condition; the primitive part not probed
+    "td035-sum-k-unput": [("src/casim.c", "    if (hk) c->sub_var = S->var, c->sub_val = sm_int(c, kk);", "    (void)kk;")],
+    "td035-sum-k-kept": [("src/casim.c", "    if (c->st == CASIM_OK && *n == was) td_drop(c, mark);         /* no row: nothing points into it (each K's too) */",
+                          "    (void)was, (void)mark;")],
+    "td035-lit-walked": [("src/casim.c", "if (x->kind == K_BDIV && nd(c, b)->kind != K_LIT) td_add(c, T, b, 0, '!');",
+                          "if (x->kind == K_BDIV) td_add(c, T, b, 0, '!');")],
+    "td035-said-hard-only": [("src/casim.c", "        if ((rows[i].op != '!' && rows[i].op != '?') || !is_k(c, rows[i].r, 0, 1)) continue;",
+                              "        if (rows[i].op != '!' || !is_k(c, rows[i].r, 0, 1)) continue;")],
+    "td035-primitive-unprobed": [("src/casim.c", "    for (int t = 0; t < 2 && !none && c->st == CASIM_OK; t++) {",
+                                  "    for (int t = 0; t < 1 && !none && c->st == CASIM_OK; t++) {")],
 }
 
 
