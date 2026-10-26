@@ -13103,8 +13103,14 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
    Z = 0, ABS(X)>1 at X = 0): it excludes nothing the other doesn't. A '?' row (CAS 030's) says it only where the line
    keeps that row. The kept rows keep their order and text */
 
-/* whether every letter of r but L is in a polynomial place (a sum, a product, a whole power not below 0), so that r at
-   L = 0 is one constant whatever their values (abacus #10635 (1): canon reads 0÷Y as 0, which has no value at Y = 0) */
+/* whether every letter of r but L is in a polynomial place (a sum, a product, a whole power not below 0, or CAS 034's
+   functions of those), so that r at L = 0 is one constant whatever their values (abacus #10635 (1): canon reads 0÷Y as
+   0, which has no value at Y = 0). CAS 034 (work/034-total-functions.md; abacus #11253): a function with a value at
+   every real input, in every angle mode, keeps that, so canon's 0×u = 0 holds at every point. ABS, SIN, COS, EXP,
+   ALOG, SINH, COSH, TANH (its divisor above 0), ATAN and ASINH (x+√(x²+1) > 0); not TAN, LN, LOG, SQRT, ASIN, ACOS,
+   ACOSH or ATANH, each without a value somewhere */
+#define SM_TOTAL (1u << F_ABS | 1u << F_SIN | 1u << F_COS | 1u << F_EXP | 1u << F_ALOG | 1u << F_SINH | 1u << F_COSH | \
+                  1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH)
 static bool sm_whole(ctx *c, ref r, int L)
 {
     const node *x = nd(c, r);
@@ -13114,6 +13120,8 @@ static bool sm_whole(ctx *c, ref r, int L)
     if (!enter(c)) return false;
     if (x->kind == K_ADD || x->kind == K_MUL)
         for (int i = 0; i < x->n && ok; i++) ok = sm_whole(c, list(c, x->a)[i], L);
+    else if (x->kind == K_FN)
+        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */
     else
         ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q == 1 && val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);
     c->depth--;

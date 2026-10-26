@@ -1362,6 +1362,21 @@ MUTANTS = {
                         "        if (never || !never) {\n            size_t mark = c->used;")],
     "div-first-term": [("src/casim.c", "        for (int i = 0; i < x->n && c->st == CASIM_OK; i++) sm_rowd_(c, var, sum, list(c, x->a)[i], rows, n);",
                         "        for (int i = 0; i < x->n && i < 1 && c->st == CASIM_OK; i++) sm_rowd_(c, var, sum, list(c, x->a)[i], rows, n);")],
+    # CAS 034 (work/034-total-functions.md; abacus #11253, #11279): no function counts; a listed function counts without
+    # its argument's check (ABS(TAN(Y)), EXP(1÷Y)); TAN let in (no value at π÷2); a half power let in, SQRT as canon
+    # writes it, Y^(1÷2) (no value below 0: SQRT on the list itself is never reached); ATAN dropped from the list
+    "total034-off": [("src/casim.c", "        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */",
+                      "        ok = false;     /* CAS 034 */")],
+    "total034-arg-unchecked": [("src/casim.c",
+                                "        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */",
+                                "        ok = SM_TOTAL >> x->id & 1u;     /* CAS 034 */")],
+    "total034-tan-in": [("src/casim.c", "1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH)",
+                         "1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH | 1u << F_TAN)")],
+    "total034-sqrt-in": [("src/casim.c", "        ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q == 1 && "
+                          "val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);",
+                          "        ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q <= 2 && "
+                          "val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);")],
+    "total034-atan-out": [("src/casim.c", "1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH)", "1u << F_TANH | 1u << F_ASINH)")],
 }
 
 

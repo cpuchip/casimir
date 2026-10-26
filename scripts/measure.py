@@ -473,7 +473,13 @@ def all_cases():
             ("div (Z÷(Y-1)+1)^K from 0 to ∞", "(Z÷(Y-1)+1)^K", "0|∞", "RAD"),
             ("div (Z÷SIN(Y)+1)^K from 0 to ∞, DEG", "(Z÷SIN(Y)+1)^K", "0|∞", "DEG"),
             ("div K×(Z÷COS(Y)+1)^K from 0 to ∞", "K×(Z÷COS(Y)+1)^K", "0|∞", "RAD"),
-            ("div K×(Z÷(Y-1)+1)^K from 1 to ∞, its own hole", "K×(Z÷(Y-1)+1)^K", "1|∞", "RAD")]:
+            ("div K×(Z÷(Y-1)+1)^K from 1 to ∞, its own hole", "K×(Z÷(Y-1)+1)^K", "1|∞", "RAD"),
+            ("total (1+ABS(Y)×Z)^K from 0 to ∞", "(1+ABS(Y)×Z)^K", "0|∞", "RAD"),
+            ("total (1+Z×Y)^K from 0 to ∞", "(1+Z×Y)^K", "0|∞", "RAD"),
+            ("total (ATAN(Y×Z+1)÷45)^K from 0 to N, DEG", "(ATAN(Y×Z+1)÷45)^K", "0|N", "DEG"),
+            ("total (1+EXP(COS(Y×W))×Z)^K from 0 to N", "(1+EXP(COS(Y×W))×Z)^K", "0|N", "RAD"),
+            ("total (2×Y÷SIN(Z))^K+(1+ABS(W)×Z)^K from -1 to N, at the cap", "(2×Y÷SIN(Z))^K+(1+ABS(W)×Z)^K", "-1|N",
+             "RAD")]:
         rows.append((name, expr, "K", angle, "sum", repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes

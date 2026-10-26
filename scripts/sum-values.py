@@ -124,8 +124,10 @@ def d_ln(x):
     return x.ln()
 
 
-def value(text, angle="RAD"):
-    """text with no letter in Decimal, SIN, COS and TAN (and ASIN's, ACOS's and ATAN's answers) in the angle mode"""
+def value(text, angle="RAD", strict=False):
+    """text with no letter in Decimal, SIN, COS and TAN (and ASIN's, ACOS's and ATAN's answers) in the angle mode.
+    strict (CAS 034's judge): TAN has no value where its cosine is 0 to 40 digits, as at π÷2, which the 90-digit π
+    otherwise gives a value near 1E90"""
     to_rad = {"RAD": D(1), "DEG": lv.PI / 180, "GRAD": lv.PI / 200}[angle]
     fns = dict(lv.FN)
     fns["SIN"] = lambda x: lv.d_sin(x * to_rad)
@@ -142,6 +144,14 @@ def value(text, angle="RAD"):
     fns["ASINH"] = lambda x: d_ln(x + (x * x + 1).sqrt())
     fns["ACOSH"] = lambda x: d_ln(x + (x * x - 1).sqrt())       # Decimal's sqrt of a negative: no value
     fns["ATANH"] = lambda x: d_ln((1 + x) / (1 - x)) / 2
+    fns["ALOG"] = lambda x: D(10) ** x                         # CAS 034's
+    if strict:
+        def tan(x):
+            c = lv.d_cos(x * to_rad)
+            if abs(c) < D(10) ** -40:
+                raise ZeroDivisionError(f"TAN({x})")
+            return lv.d_sin(x * to_rad) / c
+        fns["TAN"] = tan
     return dvalue(text, fns)
 
 
@@ -722,9 +732,9 @@ def gen_letter5(rnd):
 def gen_said(rnd):
     """CAS 032: a sum whose answer has no value at Z = 0, and whether a kept row says Z≠0 by the rule (work/032-
     redundant-row.md, h032's reading #10639): a ratio that is 1 at Z = 0 (its ≠1 and ABS rows are false there), Y÷F
-    with F(Z)≠0 kept, and 1+Z×G with G Y's polynomial (says it to N) or Y under a division, a root or a function
-    (doesn't: no value at Z = 0 for some Y, or out of the rule's reach). To ∞, 1+Z×G's row is ABS(Z×G+1)<1, which holds
-    Y inside ABS: out of the rule's reach, so Z≠0 stays (lawful, unchanged)"""
+    with F(Z)≠0 kept, and 1+Z×G with G Y's polynomial or a function with a value everywhere of it (says it; CAS 034:
+    to ∞ too, where the row is ABS(Z×G+1)<1) or Y under a division, a root or another function (doesn't: no value at
+    Z = 0 for some Y)"""
     kind = rnd.choice(("ratio", "over", "poly", "nonpoly"))
     q = rnd.choice(("", "K×", "(K+1)×", "2×"))
     if kind == "ratio":
@@ -735,7 +745,7 @@ def gen_said(rnd):
     g = rnd.choice(("Y", "Y^2", "(Y-1)^2", "(Y+2)", "3×Y") if kind == "poly" else
                    ("Y^(-1)", "(Y-1)^(-1)", "SQRT(Y)", "TAN(Y)", "LN(Y)", "ABS(Y)", "EXP(Y)", "SIN(Y)"))
     hi = rnd.choice(("N", INF))
-    return f"(1+Z×{g})^K", 0, hi, kind == "poly" and hi == "N"
+    return f"(1+Z×{g})^K", 0, hi, kind == "poly" or g in ("ABS(Y)", "EXP(Y)", "SIN(Y)")
 
 
 def judge_said(summand, lo, hi, out, said, angle="RAD"):
@@ -758,6 +768,71 @@ def judge_said(summand, lo, hi, out, said, angle="RAD"):
 DIV033 = {"Y": [("Y", "0")], "Y^2": [("Y", "0")], "(2×Y)": [("Y", "0")], "(Y-1)": [("Y", "1")], "(Y+2)": [("Y", "-2")],
           "(Y^2-1)": [("Y", "1"), ("Y", "-1")], "SIN(Y)": [("SIN(Y)", "π")], "COS(Y)": [("COS(Y)", "π÷2")],
           "LN(Y)": [("LN(Y)", "1")], "(X×Y)": [("Y", "0")], "(Y^2+1)": [], "EXP(Y)": []}
+
+
+TOTAL034 = ("ABS", "SIN", "COS", "EXP", "ALOG", "SINH", "COSH", "TANH", "ATAN", "ASINH")
+PART034 = {"TAN": ("Y", "2×Y", "Y+1"), "SQRT": ("Y", "2×Y", "Y+1"), "LN": ("Y", "Y+1"), "LOG": ("Y", "2×Y"),
+           "ASIN": ("Y", "2×Y"), "ACOS": ("Y", "2×Y"), "ACOSH": ("Y+1",), "ATANH": ("Y", "2×Y")}
+SPECIAL034 = ("-2", "-1", "-1÷2", "0", "1÷2", "1", "2", "π÷2", "π", "-π÷2", "100", "90")
+ROW034 = re.compile(r"^(.*?)(≠|<|>)(.*)$")
+
+
+def gen_total(rnd):
+    """CAS 034 (work/034-total-functions.md): (1+Z×F(P))^K with P Y's polynomial, from 0 or 1, to N or ∞, in an
+    angle mode. Its ratio is 1 at Z = 0, so the line has Z≠0, and the row beside it is 1 at Z = 0 whatever Y is wherever
+    F has a value: said where F is one of the ten with a value at every real input, not where F is TAN, SQRT, LN, LOG,
+    ASIN, ACOS, ACOSH or ATANH (each without one somewhere: P's from their arguments with a value at generic Y)"""
+    if rnd.random() < 0.5:
+        f, said = rnd.choice(TOTAL034), True
+        q = rnd.choice(("Y", "2×Y", "Y+1", "Y^2", "Y-1"))
+    else:
+        f, said = rnd.choice(sorted(PART034)), False
+        q = rnd.choice(PART034[f])
+    return (f"{rnd.choice(('', 'K×', '2×'))}(1+Z×{f}({q}))^K", rnd.choice((0, 1)), rnd.choice(("N", INF)),
+            rnd.choice(("RAD", "DEG", "GRAD")), said)
+
+
+def says034(rows, angle):
+    """whether a row of rows is false at Z = 0 with a value, at every special Y (the card's sentence: false at L = 0 for
+    every value of the others), TAN with no value at its poles"""
+    for r in rows:
+        m = ROW034.match(r)
+        if not m:
+            continue
+        l, op, rr = m.groups()
+        ok = True
+        for y in SPECIAL034:
+            try:
+                a = value(sub(sub(l, "Z", "0"), "Y", y), angle, strict=True)
+                b = value(sub(sub(rr, "Z", "0"), "Y", y), angle, strict=True)
+            except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError):
+                ok = False
+                break
+            if not (abs(a - b) < TOL if op == "≠" else a >= b - TOL if op == "<" else a <= b + TOL):
+                ok = False
+                break
+        if ok:
+            return True
+    return False
+
+
+def judge_total(summand, lo, hi, out, said, angle):
+    """'' when out keeps Z≠0 just where no kept row says it, by the rule and by the sentence at special values of Y;
+    to N, the first part is the running sum at generic Y and Z"""
+    rows = out.split("; ")[1:]
+    if said and "Z≠0" in rows:
+        return f"{out}: NOT_SAID, Z≠0 kept beside a row that says it (CAS 034)"
+    if not said and "Z≠0" not in rows:
+        return f"{out}: Z≠0 dropped though no row says it by the rule (CAS 034)"
+    if "Z≠0" not in rows and not says034(rows, angle):
+        return f"{out}: Z≠0 dropped, no kept row false at Z = 0 with a value at every special Y (CAS 034)"
+    if hi == "N":
+        pt = {"Y": "1÷5", "Z": "7÷10"}
+        s, o = summand, out.split("; ")[0]
+        for L, v in pt.items():
+            s, o = sub(s, L, v), sub(o, L, v)
+        return judge_n(s, lo, o, angle, points=8)
+    return ""
 
 
 def gen_div(rnd):
@@ -1393,8 +1468,8 @@ def main():
     rnd8, n8 = random.Random(20261032), 60
     held8 = [("COS(Z)^K", 1, "N", True), ("K×COS(Z)^(K-1)", 1, "N", True), ("EXP(Z)^K", 0, INF, True),
              ("(Y÷SIN(Z))^K", 1, "N", True), ("(1+Z×Y^2)^K", 0, "N", True), ("(1+Z÷Y)^K", 0, "N", False),
-             ("(1+Z×SQRT(Y))^K", 0, "N", False), ("(1+Z×ABS(Y))^K", 0, "N", False), ("COS(Y×Z)^K", 1, "N", False),
-             ("(1+Z×Y)^K", 0, INF, False)]
+             ("(1+Z×SQRT(Y))^K", 0, "N", False), ("(1+Z×ABS(Y))^K", 0, "N", True), ("COS(Y×Z)^K", 1, "N", True),
+             ("(1+Z×Y)^K", 0, INF, True)]        # the last three said since CAS 034
     cases8 = [gen_said(rnd8) for _ in range(n8)] + held8
     for summand, lo, hi, said in cases8:
         out = run_sum(summand, lo, hi)
@@ -1433,6 +1508,37 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} ∞ RAD: {why}")
+    # CAS 034 (work/034-total-functions.md): a row whose other letters are inside a function with a value at every real
+    # input says the letter's row. Planted first: 1.3.0's line with Z≠0 beside Z×ABS(Y)+1≠1 (NOT_SAID), and drops of
+    # Z≠0 beside Z×TAN(Y)+1≠1 (no value at Y = π÷2) and beside Z×SQRT(Y)+1≠1 (none below 0), refused, the last two by
+    # the sentence as well as the rule; the build's taken
+    takes10 = [("(1+ABS(Y)×Z)^K", 0, "N", "-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z×ABS(Y)+1≠1", True, "RAD"),
+               ("(1+TAN(Y)×Z)^K", 0, "N", "-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1", False, "RAD")]
+    refuses10 = [("(1+ABS(Y)×Z)^K", 0, "N", "-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z≠0; Z×ABS(Y)+1≠1", True, "RAD"),
+                 ("(1+TAN(Y)×Z)^K", 0, "N", "-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z×TAN(Y)+1≠1", False, "RAD"),
+                 ("(1+SQRT(Y)×Z)^K", 0, "N", "-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; SQRT(Y)×Z+1≠1", False, "RAD")]
+    if any(judge_total(*c) for c in takes10) or any(not judge_total(*c) for c in refuses10) or \
+            any(not judge_total(s, lo, hi, out, True, a) for s, lo, hi, out, _, a in refuses10[1:]):
+        print("FAIL scripts/sum-values.py: its CAS 034 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd10, n10 = random.Random(20261034), 60
+    held10 = [("(1+ABS(Y)×Z)^K", 0, INF, "RAD", True), ("(1+ATAN(Y)×Z)^K", 0, "N", "DEG", True),
+              ("(1+ATAN(Y)×Z)^K", 0, "N", "GRAD", True), ("(1+SIN(Y)×Z)^K", 0, "N", "DEG", True),
+              ("(1+COS(Y)×Z)^K", 0, "N", "GRAD", True), ("(1+ABS(SIN(Y))×Z)^K", 0, "N", "RAD", True),
+              ("(1+EXP(COS(Y))×Z)^K", 1, "N", "RAD", True), ("(1+ALOG(Y)×Z)^K", 1, "N", "RAD", True),
+              ("(1+TAN(Y)×Z)^K", 0, "N", "RAD", False), ("(1+SQRT(Y)×Z)^K", 0, "N", "RAD", False),
+              ("(1+ABS(TAN(Y))×Z)^K", 0, "N", "RAD", False), ("(1+EXP(1÷Y)×Z)^K", 0, "N", "RAD", False),
+              ("(1+ATAN(SQRT(Y))×Z)^K", 0, "N", "RAD", False), ("(1+ACOSH(Y+1)×Z)^K", 0, INF, "RAD", False)]
+    cases10 = [gen_total(rnd10) for _ in range(n10)] + held10
+    for summand, lo, hi, angle, said in cases10:
+        out = run_sum(summand, lo, hi, angle)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why = judge_total(summand, lo, hi, out, said, angle)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
     # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
     if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \
@@ -1455,7 +1561,8 @@ def main():
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
     rows, rfailed = check_examples()
-    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases8) + len(cases9) + len(cases5) + rows
+    checks = n_cases + len(cases2) + len(cases3) + len(cases4) + len(cases6) + len(cases7) + len(cases8) + len(cases9) + \
+        len(cases10) + len(cases5) + rows
     print(f"sum values: {n_cases} seeded sums ({', '.join(f'{k[4:]} {v}' for k, v in sorted(kinds.items()))}), "
           f"{n2} ratios in two or three letters (CAS 024; and {len(held2)} held), {n3} past another factor (CAS "
           f"025; and {len(held3)} held; {n_named} with a named row for nothing, {n_empty} with no value at L = 0 below "
@@ -1464,7 +1571,8 @@ def main():
           f"24's shape and of #10068's, CAS 027), {n6} with CAS 030's factors in each angle mode (and {len(held6)} "
           f"held; {n6cap} where the row gives way at the cap, {n6miss} with the 24's shape named), {n7s} of the 12's "
           f"shape (CAS 031; and {len(held7)} held), {n8} with a letter's row another row may say (CAS 032; and "
-          f"{len(held8)} held), {n9} with a divisor inside the ratio (CAS 033; and {len(held9)} held), {n5} typed quotients "
+          f"{len(held8)} held), {n9} with a divisor inside the ratio (CAS 033; and {len(held9)} held), {n10} with a "
+          f"function with a value everywhere around another letter (CAS 034; and {len(held10)} held), {n5} typed quotients "
           f"(CAS 029; and {len(held5)} held) at {ARENA} B, {soft} NO_ROOM, TOO_LONG or DECIMAL_FORM; {rows} example "
           f"rows by value\nchecks: {checks} failed: {failed + rfailed}")
     sys.exit(1 if failed + rfailed else 0)

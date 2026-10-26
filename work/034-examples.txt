@@ -1,0 +1,92 @@
+# CAS 034's examples (work/034-total-functions.md; abacus #11253, Michael's cas-032-rows sentence): a letter's row
+# L≠0 is left out where a kept row is false at every point with L = 0, now also where the row's other letters are inside
+# a function with a value at every real input (ABS, SIN, COS, EXP, ALOG, SINH, COSH, TANH, ATAN, ASINH) of a sum, a
+# product or a whole power. Each row is run by scripts/doc-examples.py, and again with the series route compiled out
+# (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - Each listed function, its row false at the letter's 0 whatever the other letter is: Z×F(Y)+1≠1 is 1≠1 at Z = 0, and
+#   ABS(Z×F(Y)+1)<1 is 1<1
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z×ABS(Y)+1≠1` |
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); ABS(Z×ABS(Y)+1)<1` |
+| `casim sum '(1+SIN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷SIN(Y)+(Z×SIN(Y)+1)^(N+1)÷Z÷SIN(Y); Z×SIN(Y)+1≠1` |
+| `casim sum '(1+COS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷COS(Y); ABS(Z×COS(Y)+1)<1` |
+| `casim sum '(1+EXP(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷EXP(Y)+(Z×EXP(Y)+1)^(N+1)÷Z÷EXP(Y); Z×EXP(Y)+1≠1` |
+| `casim sum '(1+ALOG(Y)×Z)^K' K 1 N RAD` | `-1÷Z÷ALOG(Y)+(Z×ALOG(Y)+1)^(N+1)÷Z÷ALOG(Y)-1; Z×ALOG(Y)+1≠1` |
+| `casim sum '(1+SINH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷SINH(Y)+(Z×SINH(Y)+1)^(N+1)÷Z÷SINH(Y); Z×SINH(Y)+1≠1` |
+| `casim sum '(1+COSH(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷COSH(Y); ABS(Z×COSH(Y)+1)<1` |
+| `casim sum '(1+TANH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷TANH(Y)+(Z×TANH(Y)+1)^(N+1)÷Z÷TANH(Y); Z×TANH(Y)+1≠1` |
+| `casim sum '(1+ATAN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ATAN(Y)+(Z×ATAN(Y)+1)^(N+1)÷Z÷ATAN(Y); Z×ATAN(Y)+1≠1` |
+| `casim sum '(1+ASINH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ASINH(Y)+(Z×ASINH(Y)+1)^(N+1)÷Z÷ASINH(Y); Z×ASINH(Y)+1≠1` |
+
+# - Two letters in a polynomial place inside ABS, to ∞: ABS(Y×Z+1)<1 is false at Y = 0 and at Z = 0, and both letters'
+#   rows go (1.3.0's Not yet: `Y≠0; Z≠0; ABS(Y×Z+1)<1`)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+Z×Y)^K' K 0 ∞ RAD` | `-1÷Y÷Z; ABS(Y×Z+1)<1` |
+| `casim sum 'COS(Y×Z)^K' K 0 N DEG` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); COS(Y×Z)≠1` |
+
+# - The angle modes (abacus #11279): SIN, COS and ATAN in DEG and GRAD, and rows whose constant at the letter's 0 is the
+#   mode's own (ATAN(1) is 45 in DEG and 50 in GRAD, SIN(90) and COS(60) are 1 and 1÷2 in DEG, SIN(100) and COS(100) are
+#   1 and 0 in GRAD): the letters' rows are there because the ratio is 1 at Z = 0 and go because the row says it. In RAD
+#   the same summands have no letter rows
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+SIN(Y)×Z)^K' K 0 N DEG` | `-1÷Z÷SIN(Y)+(Z×SIN(Y)+1)^(N+1)÷Z÷SIN(Y); Z×SIN(Y)+1≠1` |
+| `casim sum '(1+SIN(Y)×Z)^K' K 0 N GRAD` | `-1÷Z÷SIN(Y)+(Z×SIN(Y)+1)^(N+1)÷Z÷SIN(Y); Z×SIN(Y)+1≠1` |
+| `casim sum '(1+COS(Y)×Z)^K' K 0 N DEG` | `-1÷Z÷COS(Y)+(Z×COS(Y)+1)^(N+1)÷Z÷COS(Y); Z×COS(Y)+1≠1` |
+| `casim sum '(1+COS(Y)×Z)^K' K 0 N GRAD` | `-1÷Z÷COS(Y)+(Z×COS(Y)+1)^(N+1)÷Z÷COS(Y); Z×COS(Y)+1≠1` |
+| `casim sum '(1+ATAN(Y)×Z)^K' K 0 N DEG` | `-1÷Z÷ATAN(Y)+(Z×ATAN(Y)+1)^(N+1)÷Z÷ATAN(Y); Z×ATAN(Y)+1≠1` |
+| `casim sum '(1+ATAN(Y)×Z)^K' K 0 N GRAD` | `-1÷Z÷ATAN(Y)+(Z×ATAN(Y)+1)^(N+1)÷Z÷ATAN(Y); Z×ATAN(Y)+1≠1` |
+| `casim sum '(ATAN(Y×Z+1)÷45)^K' K 0 N DEG` | `-45÷(ATAN(Y×Z+1)-45)+45×(ATAN(Y×Z+1)÷45)^(N+1)÷(ATAN(Y×Z+1)-45); ATAN(Y×Z+1)÷45≠1` |
+| `casim sum '(ATAN(Y×Z+1)÷50)^K' K 0 N GRAD` | `-50÷(ATAN(Y×Z+1)-50)+50×(ATAN(Y×Z+1)÷50)^(N+1)÷(ATAN(Y×Z+1)-50); ATAN(Y×Z+1)÷50≠1` |
+| `casim sum '(ATAN(Y×Z+1)÷45)^K' K 0 N RAD` | `-45÷(ATAN(Y×Z+1)-45)+45×(ATAN(Y×Z+1)÷45)^(N+1)÷(ATAN(Y×Z+1)-45); ATAN(Y×Z+1)÷45≠1` |
+| `casim sum 'SIN(Y×Z+90)^K' K 0 N DEG` | `-1÷(SIN(Y×Z+90)-1)+SIN(Y×Z+90)^(N+1)÷(SIN(Y×Z+90)-1); SIN(Y×Z+90)≠1` |
+| `casim sum 'SIN(Y×Z+100)^K' K 0 N GRAD` | `-1÷(SIN(Y×Z+100)-1)+SIN(Y×Z+100)^(N+1)÷(SIN(Y×Z+100)-1); SIN(Y×Z+100)≠1` |
+| `casim sum '(COS(Y×Z+60)×2)^K' K 0 N DEG` | `-1÷2÷(COS(Y×Z+60)-1÷2)+(2×COS(Y×Z+60))^(N+1)÷2÷(COS(Y×Z+60)-1÷2); 2×COS(Y×Z+60)≠1` |
+| `casim sum '(COS(Y×Z+100)+1)^K' K 0 N GRAD` | `-1÷COS(Y×Z+100)+(COS(Y×Z+100)+1)^(N+1)÷COS(Y×Z+100); COS(Y×Z+100)+1≠1` |
+| `casim sum '(COS(Y×Z+60)×2)^K' K 0 N RAD` | `-1÷2÷(COS(Y×Z+60)-1÷2)+(2×COS(Y×Z+60))^(N+1)÷2÷(COS(Y×Z+60)-1÷2); 2×COS(Y×Z+60)≠1` |
+
+# - A listed function of a listed function (abacus #11279): ABS(SIN(Y)) and EXP(COS(W×Y)) have a value everywhere
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+ABS(SIN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(SIN(Y))+(Z×ABS(SIN(Y))+1)^(N+1)÷Z÷ABS(SIN(Y)); Z×ABS(SIN(Y))+1≠1` |
+| `casim sum '(1+EXP(COS(Y×W))×Z)^K' K 0 N RAD` | `-1÷Z÷EXP(COS(W×Y))+(Z×EXP(COS(W×Y))+1)^(N+1)÷Z÷EXP(COS(W×Y)); Z×EXP(COS(W×Y))+1≠1` |
+
+# - Rows that still say nothing: a function off the list, without a value somewhere (TAN at π÷2, SQRT below 0, LN and
+#   LOG at 0 and below, ASIN and ACOS past ±1, ACOSH below 1, ATANH at ±1 and past), or a listed one around such an
+#   argument; the letter's row stays. A function off the list that holds only the letter itself is no other letter's:
+#   at Y = 0, Z×LN(Y+1)+1 is 1 whatever Z is, so `Y≠0` goes and `Z≠0` stays
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+TAN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1` |
+| `casim sum '(1+SQRT(Y)×Z)^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Z≠0; SQRT(Y)×Z+1≠1` |
+| `casim sum '(1+LN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y≠0; Z≠0; Z×LN(Y)+1≠1` |
+| `casim sum '(1+LOG(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LOG(Y)+(Z×LOG(Y)+1)^(N+1)÷Z÷LOG(Y); Y≠0; Z≠0; Z×LOG(Y)+1≠1` |
+| `casim sum '(1+ASIN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ASIN(Y)+(Z×ASIN(Y)+1)^(N+1)÷Z÷ASIN(Y); Z≠0; Z×ASIN(Y)+1≠1` |
+| `casim sum '(1+ACOS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOS(Y)+(Z×ACOS(Y)+1)^(N+1)÷Z÷ACOS(Y); Z≠0; Z×ACOS(Y)+1≠1` |
+| `casim sum '(1+ACOSH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOSH(Y)+(Z×ACOSH(Y)+1)^(N+1)÷Z÷ACOSH(Y); Z≠0; Z×ACOSH(Y)+1≠1` |
+| `casim sum '(1+ATANH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ATANH(Y)+(Z×ATANH(Y)+1)^(N+1)÷Z÷ATANH(Y); Z≠0; Z×ATANH(Y)+1≠1` |
+| `casim sum '(1+ABS(TAN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(TAN(Y))+(Z×ABS(TAN(Y))+1)^(N+1)÷Z÷ABS(TAN(Y)); Z≠0; Z×ABS(TAN(Y))+1≠1` |
+| `casim sum '(1+EXP(1÷Y)×Z)^K' K 0 N RAD` | `-1÷Z÷EXP(1÷Y)+(Z×EXP(1÷Y)+1)^(N+1)÷Z÷EXP(1÷Y); Y≠0; Z≠0; Z×EXP(1÷Y)+1≠1` |
+| `casim sum '(1+ATAN(SQRT(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ATAN(SQRT(Y))+(Z×ATAN(SQRT(Y))+1)^(N+1)÷Z÷ATAN(SQRT(Y)); Z≠0; Z×ATAN(SQRT(Y))+1≠1` |
+| `casim sum '(1+COS(LN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷COS(LN(Y))+(Z×COS(LN(Y))+1)^(N+1)÷Z÷COS(LN(Y)); Y≠0; Z≠0; Z×COS(LN(Y))+1≠1` |
+| `casim sum '(1+SIN(1÷Y)×Z)^K' K 0 N RAD` | `-1÷Z÷SIN(1÷Y)+(Z×SIN(1÷Y)+1)^(N+1)÷Z÷SIN(1÷Y); Y≠0; Z≠0; Z×SIN(1÷Y)+1≠1` |
+| `casim sum '(1+Z×LN(Y+1))^K' K 0 ∞ RAD` | `-1÷Z÷LN(Y+1); Z≠0; ABS(Z×LN(Y+1)+1)<1` |
+
+# - The cap (abacus #11279). A row that gives way at the cap ('?', CAS 030's) is a function of one letter, so CAS 034
+#   never asks about it, and CAS 032's give-way is unchanged: SIN(Z)≠0 says Z≠0, and where it gives way (196 B with it)
+#   Z≠0 comes back. Where CAS 034's rows make room, the '?' row is kept (W≠0 and Z≠0 said by COS(W×Z)≠1), and a line
+#   TOO_LONG in 1.3.0 fits (W≠0 and Z≠0 said by Z×ABS(W)+1≠1; its '?' row gives way, 191 B)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(2×Y÷SIN(Z))^K+(COS(Z)÷2)^K' K -2 N RAD` | `4÷(COS(Z)^2-COS(Z)^3÷2)+SIN(Z)^2÷4÷(Y^2-2×Y^3÷SIN(Z))+2×(COS(Z)÷2)^(N+1)÷(COS(Z)-2)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; Z≠0; COS(Z)÷2≠1; 2×Y÷SIN(Z)≠1` |
+| `casim sum '(2×Y÷SIN(Z))^K+COS(W×Z)^K' K -2 N RAD` | `1÷(COS(W×Z)^2-COS(W×Z)^3)+SIN(Z)^2÷4÷(Y^2-2×Y^3÷SIN(Z))+COS(W×Z)^(N+1)÷(COS(W×Z)-1)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; SIN(Z)≠0; COS(W×Z)≠1; 2×Y÷SIN(Z)≠1` |
+| `casim sum '(2×Y÷SIN(Z))^K+(1+ABS(W)×Z)^K' K -1 N RAD` | `-1÷(Z×ABS(W)+Z^2×ABS(W)^2)+SIN(Z)÷2÷(Y-2×Y^2÷SIN(Z))+(Z×ABS(W)+1)^(N+1)÷Z÷ABS(W)+(2×Y÷SIN(Z))^(N+1)÷2÷(Y÷SIN(Z)-1÷2); Y≠0; Z×ABS(W)+1≠0; 2×Y÷SIN(Z)≠1; Z×ABS(W)+1≠1` |
