@@ -22,6 +22,17 @@ Casimir 1.3.0: the known wrong answer found after 1.2.0 is fixed, and a sum's li
 
 None. 1.0.0 to 1.2.0's, `(Z÷Y+1)^K` from 0 to ∞ reading 0 at Y = 0 with no row, prints its row now (above).
 
+**Found after this release, on 26 Oct 2026.** canon may drop a part of the input that has no value at some points, since its domain rule lets it define a result where the input has none (u÷u is 1, u-u and 0×u are 0, u^0 is 1, EXP(LN(u)) and ALOG(LOG(u)) are u, SQRT(u)^2 is u). sum, defint and limit then print a value where the input as typed has none:
+- Summed from 1 to N, `(Y÷Y)^K` prints `N`. At Y = 0 every term is 0÷0, so the sum has no value, while `N` has one. Summed from 0 to ∞, `(Z×LN(Y)÷LN(Y))^K` prints `-1÷(Z-1); ABS(Z)<1`, which has a value at Y = 1, where every term holds LN(1)÷LN(1), and at every Y ≤ 0, where LN(Y) has none.
+- Summed from 0 to ∞, `(Z×EXP(LN(Y))+1)^K` prints `-1÷Y÷Z; Y≠0; Z≠0; ABS(Y×Z+1)<1`. At Y = -1 and Z = 1÷2 every term holds LN(-1), which has no real value, so the sum has none, while the answer is 2 there and each row holds. With ALOG(LOG(Y)), SQRT(Y)^2 or SQRT(Y)×SQRT(Y) in place of EXP(LN(Y)) it prints the same line.
+- `defint "SQRT(X)^2" X -2 -1` prints `-3÷2`, though SQRT(X) has no real value on the interval (`SQRT(X)` over it is IMPROPER). `SQRT(X)×SQRT(X)` and `(X^(1÷4))^4` print the same, and `0×SQRT(X)` prints `0`.
+- `limit "EXP(LN(X))" X -1 ''` prints `-1`, though LN(X) has no real value near -1.
+- With another letter, a 0÷0 reaches limit and defint as well: `defint "X×Y÷Y" X 0 1` prints `1÷2` and `limit "X×Y÷Y" X 1 ''` prints `1`, each with a value at Y = 0, where the input has none.
+
+limit also reads a function outside its real domain as typed, with no canon involved: `limit "SQRT(X)" X -1 ''` prints `SQRT(-1)`, and from below 0 it prints `0`, though SQRT(X) has no real value near -1 or below 0.
+
+simplify promises no more than the domain rule (docs/canonical-form.md), and expand, collect, subst, derive and integrate answer through canon under the same rule. taylor and the polynomial ops read what was typed: `taylor "EXP(LN(X))" X -1 2` prints `UNDEFINED`, and solve, factor, cancel, partfrac and pdiv refuse these forms (NOT_POLYNOMIAL). 1.0.0 to 1.3.0 print every line above. The project's reviewer found it while testing a later unit, and a fix is being made (CAS 035).
+
 ## How it's tested (at this tag)
 
 - `make test`: 20 programs with 118,439 checks. They read every answer back through an independent evaluator (the calculator firmware's core) and compare values.
