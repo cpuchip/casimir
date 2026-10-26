@@ -1342,8 +1342,10 @@ MUTANTS = {
                       "    if (!contains(c, r->l, L) || (0 && !sm_whole(c, r->l, L))) return false;")],
     "said-whole-negpow": [("src/casim.c", "val(c, x->b)->q == 1 && val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);",
                            "val(c, x->b)->q == 1 && val(c, x->b)->p >= -9 && sm_whole(c, x->a, L);")],
-    "said-whole-fn": [("src/casim.c", "        ok = x->kind == K_POW && is_num(c, x->b)",
-                       "        ok = x->kind == K_FN ? true : x->kind == K_POW && is_num(c, x->b)")],
+    # said-whole-fn on CAS 034's line (abacus #11347): its first text let a function in at the last else, which CAS
+    # 034's K_FN branch now comes before (4c0523b's .text is byte-identical with it)
+    "said-whole-fn": [("src/casim.c", "        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */",
+                       "        ok = true;     /* CAS 034 */")],
     "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
     "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : zero;", "r->op == '>' ? zero || s > 0 : zero;")],
     "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
