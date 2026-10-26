@@ -31,6 +31,7 @@ None.
 - `defint "SQRT(X)^2" X -2 -1` prints `-3÷2`, though SQRT(X) has no real value on the interval (`SQRT(X)` over it is IMPROPER). `SQRT(X)×SQRT(X)` and `(X^(1÷4))^4` print the same, and `0×SQRT(X)` prints `0`.
 - `limit "EXP(LN(X))" X -1 ''` prints `-1`, though LN(X) has no real value near -1.
 - With another letter, a 0÷0 reaches limit and defint as well: `defint "X×Y÷Y" X 0 1` prints `1÷2` and `limit "X×Y÷Y" X 1 ''` prints `1`, each with a value at Y = 0, where the input has none.
+- Where the sum's closed form cancels a divisor of the summand: summed from 1 to ∞, `K×(X×Y)^K÷Y` prints `-X÷(X×Y-1)-X^2×Y÷2÷(X×Y-X^2×Y^2÷2-1÷2); ABS(X×Y)<1`. At Y = 0 the term at K = 1 is 0÷0, so the sum has no value, while the answer is X. From 1.0.1, `K×(SIN(Z)×Y)^K÷SIN(Z)` does the same where SIN(Z) is 0, and `(K-1)×(TAN(Z)×Y)^K÷TAN(Z)` where TAN(Z) is 0 (1.0.0 printed both with no value there).
 
 limit also reads a function outside its real domain as typed, with no canon involved: `limit "SQRT(X)" X -1 ''` prints `SQRT(-1)`, and from below 0 it prints `0`, though SQRT(X) has no real value near -1 or below 0.
 
