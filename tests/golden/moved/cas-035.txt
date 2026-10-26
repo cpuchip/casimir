@@ -1,8 +1,9 @@
 # The golden lines CAS 035 (the typed text's domain: work/035-typed-domain.md) moved. Each line's inputs, then its
 # status and answer before (cda0fcb, 4c0523b's src) and after. Putting every before back gives cda0fcb's files byte
-# for byte (their sha256 below), and every after is a refusal (UNDEFINED, IMPROPER, BAD_ARG) where the before was a
-# value or UNDECIDED: the typed input has no real value there (scripts/typed-golden.py, in make check). The corpus:
-# 34 inputs, each where the line appears; →DEC's below.
+# for byte (their sha256 below). Every after is a refusal (UNDEFINED, IMPROPER, BAD_ARG) where the before was a value
+# or UNDECIDED, or the before's line with a row added (abacus #11461): the typed input has no real value there, or at
+# a letter's value only the new row excludes (scripts/typed-golden.py, in make check). The corpus: 37 inputs,
+# each where the line appears; →DEC's below.
 # cda0fcb corpus.txt sha256 d8170d2661e608f33a909b7482e25369a67c875b7e5891fa4f1e9304649fb882
 # cda0fcb decimal.txt sha256 a8f1bfb0976e9d4f0116d00e527322797669473794dbc6aa582e5e3da7f55924
 defint	1	23	2	1	8800	65536	((7)×((2)×(2)))+((ACOS(π))×(X))	-1	π
@@ -77,18 +78,27 @@ defint	35	23	1	35	8800	65536	EXP((ACOS(Y))×((1.5)+(π)))	1	1
 defint	33	23	1	33	8800	65536	SINH(((Y)÷(1E3))^((3)÷(Y)))	1	1
   before	OK	0
   after	BAD_ARG	
+limit	1	23	2	1	65536	65536	(SIN(K×X))÷(SIN(K×X))	0	
+  before	OK	1
+  after	OK	1; K≠0
 limit	33	23	1	33	65536	65536	(SIN(K×(1÷X)))×(LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
 limit	1	23	1	1	8800	65536	2×X+1-LN(X)	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
+limit	35	23	1	35	8800	65536	(SIN(K×X))÷(SIN(K×X))	0	-
+  before	OK	1
+  after	OK	1; K≠0
 limit	35	23	0	35	65536	65536	(TAN((1÷X)))×(X×LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
 limit	35	23	1	35	8800	65536	(SQRT(X))÷(2×X+1)	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
+limit	35	23	1	35	65536	65536	(SIN(K×X))÷(SIN(K×X))	0	-
+  before	OK	1
+  after	OK	1; K≠0
 limit	35	23	2	35	65536	65536	(EXP((1÷X))-1)×(X×LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
@@ -107,7 +117,7 @@ limit	35	23	1	35	65536	65536	ATAN(X)+1+SQRT(1+X)-1	-2	-
 limit	1	23	0	1	65536	65536	EXP(X)+LN(1+X)	-2	+
   before	UNDECIDED	
   after	UNDEFINED	
-# Under →DEC (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL): 34 inputs
+# Under →DEC (tests/golden/decimal.txt, CASIM_PRINT_DECIMAL): 37 inputs
 defint	1	23	2	1	8800	65536	((7)×((2)×(2)))+((ACOS(π))×(X))	-1	π
   before	OK	28×π-0.5×ACOS(π)+π^2×ACOS(π)÷2+28
   after	UNDEFINED	
@@ -180,18 +190,27 @@ defint	35	23	1	35	8800	65536	EXP((ACOS(Y))×((1.5)+(π)))	1	1
 defint	33	23	1	33	8800	65536	SINH(((Y)÷(1E3))^((3)÷(Y)))	1	1
   before	OK	0
   after	BAD_ARG	
+limit	1	23	2	1	65536	65536	(SIN(K×X))÷(SIN(K×X))	0	
+  before	OK	1
+  after	OK	1; K≠0
 limit	33	23	1	33	65536	65536	(SIN(K×(1÷X)))×(LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
 limit	1	23	1	1	8800	65536	2×X+1-LN(X)	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
+limit	35	23	1	35	8800	65536	(SIN(K×X))÷(SIN(K×X))	0	-
+  before	OK	1
+  after	OK	1; K≠0
 limit	35	23	0	35	65536	65536	(TAN((1÷X)))×(X×LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
 limit	35	23	1	35	8800	65536	(SQRT(X))÷(2×X+1)	-∞	
   before	UNDECIDED	
   after	UNDEFINED	
+limit	35	23	1	35	65536	65536	(SIN(K×X))÷(SIN(K×X))	0	-
+  before	OK	1
+  after	OK	1; K≠0
 limit	35	23	2	35	65536	65536	(EXP((1÷X))-1)×(X×LN(X))	-∞	
   before	UNDECIDED	
   after	UNDEFINED	

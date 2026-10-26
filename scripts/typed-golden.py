@@ -2,11 +2,12 @@
 """CAS 035's boundary (make check; work/035-typed-domain.md). The unit moves the golden lines
 tests/golden/moved/cas-035.txt lists, and no others: with each listed line put back at its before, the corpus and
 →DEC's file are cda0fcb's byte for byte (the sha256s in the list's header), and each listed line's after is the file's.
-Every after is a refusal (UNDEFINED, IMPROPER, BAD_ARG) where its before was a value or UNDECIDED, and each is judged
-apart from the code that refuses: the typed input, valued by scripts/sum-values.py's strict evaluator, has no value
-somewhere it is asked about (defint: inside the interval, the other letters at 0, ±1, ±2, ½; limit: beside the point
-on each side asked, or far out at ±∞). The check's control: a before list with one line left at its after must fail the
-hash.
+Every after is a refusal (UNDEFINED, IMPROPER, BAD_ARG) where its before was a value or UNDECIDED, or the before's
+line with a row added (a limit's divisor 0 for every X at a letter's value, abacus #11461), and each is judged apart
+from the code: the typed input, valued by scripts/sum-values.py's strict evaluator, has no value somewhere it is asked
+about (defint: inside the interval, the other letters at 0, ±1, ±2, ½; limit: beside the point on each side asked, or
+far out at ±∞), and for a row, at a letter's value the new rows exclude and the old ones don't. The check's controls: a
+before list with one line left at its after must fail the hash, and each judge refuses a line it should.
     scripts/typed-golden.py"""
 import decimal
 import hashlib
@@ -74,8 +75,30 @@ def plain(text):
     return re.sub(r"(\d+(?:\.\d+)?)E(-?\d+)", lambda m: format(D(m.group(1)) * D(10) ** int(m.group(2)), "f"), text)
 
 
-def holeless(key):
-    """'' when the typed input has no value somewhere it is asked about; else why it has one everywhere sampled"""
+ROW = re.compile(r"^(.*?)(≠|<|>|≥|≤)(.*)$")
+
+
+def fails(row, pt, angle):
+    """whether the row is false at pt (a side with no value: not false)"""
+    m = ROW.match(row)
+    if not m:
+        return False
+    try:
+        a, b = (sv.value(plain(sub_all(t, pt)), angle, strict=True) for t in (m.group(1), m.group(3)))
+    except NOVALUE:
+        return False
+    return not {"≠": a != b, "<": a < b, ">": a > b, "≥": a >= b, "≤": a <= b}[m.group(2)]
+
+
+def sub_all(text, pt):
+    for L, v in pt.items():
+        text = sv.sub(text, L, v)
+    return text
+
+
+def holeless(key, new=None, old=()):
+    """'' when the typed input has no value somewhere it is asked about (new rows given: at letters' values they exclude
+    and old doesn't); else why it has one everywhere sampled"""
     f = key.split("\t")
     op, var, angle, eqn = f[0], chr(ord("A") + int(f[2])), ANGLE.get(str(int(f[3]) & 3), "RAD"), plain(f[7])
     letters = [L for L in "XYZWNMKT" if L != var and any(L == ch and (i == 0 or not eqn[i - 1].isalpha()) and
@@ -92,11 +115,15 @@ def holeless(key):
             a = num(f[8])
             xs = ([a + D("1E-9")] if side != "-" else []) + ([a - D("1E-9")] if side != "+" else [])
     for combo in itertools.product(LETTERS, repeat=len(letters)):
+        at = dict(zip(letters, combo))
+        if new is not None and (not any(fails(r, at, angle) for r in new) or any(fails(r, at, angle) for r in old)):
+            continue
         for x in xs:
-            pt = dict(zip(letters, combo), **{var: format(x, "f")})
-            if not has(eqn, pt, angle):
+            pt = dict(at, **{var: format(x, "f")})
+            if not has(eqn, pt, angle) if new is None else all(not has(eqn, dict(at, **{var: format(y, "f")}), angle)
+                                                                for y in xs):
                 return ""
-    return "the typed input has a value at every point sampled"
+    return "the typed input has a value at every point sampled" + ("" if new is None else " the new rows exclude")
 
 
 def before(name, mv, keep=None):
@@ -111,10 +138,12 @@ def before(name, mv, keep=None):
             if f[10:12] != a[:2]:
                 bad += 1
                 print(f"FAIL scripts/typed-golden.py: {name} has {f[10:12]} where cas-035.txt's after is {a}: {key}")
-            if b[0] not in ("OK", "UNDECIDED") or a[0] not in REFUSED:
+            bp, ap = b[1].split("; "), a[1].split("; ")
+            row = b[0] == a[0] == "OK" and bp[0] == ap[0] and set(bp[1:]) < set(ap[1:])
+            if not row and (b[0] not in ("OK", "UNDECIDED") or a[0] not in REFUSED):
                 bad += 1
                 print(f"FAIL scripts/typed-golden.py: {name}: a move from {b[0]} to {a[0]}: {key}")
-            why = holeless(key)
+            why = holeless(key, [r for r in ap[1:] if r not in bp[1:]], bp[1:]) if row else holeless(key)
             if why:
                 bad += 1
                 print(f"FAIL scripts/typed-golden.py: {name}: {why}: {key}")
@@ -144,9 +173,14 @@ def main():
             holeless("defint\t35\t23\t1\t35\t8800\t65536\tSQRT(X)\t-2\t-1") != "":
         bad += 1
         print("FAIL scripts/typed-golden.py: its judge's control (SQRT(X) has values on 0..1, none on -2..-1)")
-    print(f"typed boundary: {len(corpus_mv)} moved in the corpus, {len(dec_mv)} under →DEC, each to a refusal where the "
-          f"typed input has no value; with them put back, both files are {BASE}'s; the controls refused\n"
-          f"checks: {3 * (len(corpus_mv) + len(dec_mv)) + 4} failed: {bad}")
+    if holeless("limit\t35\t23\t1\t35\t65536\t65536\tSIN(K×X)÷SIN(K×X)\t0\t", ["K≠0"]) != "" or \
+            holeless("limit\t35\t23\t1\t35\t65536\t65536\t(X+K)÷(X+K)\t1\t", ["K≠0"]) == "":
+        bad += 1
+        print("FAIL scripts/typed-golden.py: its row judge's control (K≠0: SIN(K×X)÷SIN(K×X) has none at K = 0, "
+              "(X+K)÷(X+K) has values)")
+    print(f"typed boundary: {len(corpus_mv)} moved in the corpus, {len(dec_mv)} under →DEC, each to a refusal or a row "
+          f"where the typed input has no value; with them put back, both files are {BASE}'s; the controls refused\n"
+          f"checks: {3 * (len(corpus_mv) + len(dec_mv)) + 5} failed: {bad}")
     sys.exit(1 if bad else 0)
 
 
