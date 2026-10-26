@@ -78,3 +78,13 @@ The build is p033c's code with its comments in house style.
 - **scripts/mutants.py:** 5 new (477 in all): div-letter-off, div-rows-off, div-no-probe, div-never-kept and
   div-first-term. sum-4b-no-hole-row is re-anchored with the line before it, since part 1 copies its text.
 - **docs/language.md:** one paragraph.
+
+## Follow-up (abacus #10989)
+
+- **Retarget ratio025-negpow-mono-row.** At CAS 032's fde2bc3 it survives: it makes a negative-power monomial take
+  the "a term from lo divides" row in place of the answer's probe, and under CAS 032 the extra `X≠0` it prints is said by
+  the monomial's own `ABS(X)>v` (false at X = 0) and left out, while to N the probe finds the hole either way. A
+  build-against-mutant search found no input where the two differ (14,700 calls down to 2,048 B, every earlier set,
+  the golden corpus); abacus's own runs over h032 and h033 are the condition for naming it. The probe-or-row choice for
+  such a monomial no longer shows in a line, so the mutant should test something that does.
+
