@@ -491,7 +491,13 @@ def all_cases():
             ("typed X×Y÷Y over 0..1", "X×Y÷Y", "defint", "0|1"),
             ("typed EXP(LN(X×Y)) at 0+", "EXP(LN(X×Y))", "limit", "0|+"),
             ("typed LN(K+SIN(X)÷X) at 0", "LN(K+SIN(X)÷X)", "limit", "0|"),
-            ("typed SQRT( nest 40 at 2", "SQRT(" * 40 + "X+2" + ")" * 40, "limit", "2|")]:
+            ("typed SQRT( nest 40 at 2", "SQRT(" * 40 + "X+2" + ")" * 40, "limit", "2|"),
+            ("typed SIN(K×X)÷SIN(K×X) at 0", "SIN(K×X)÷SIN(K×X)", "limit", "0|"),
+            ("typed SIN( nest 40 of Y×X over itself at 0", "(" + "SIN(" * 40 + "Y×X" + ")" * 41 + "÷(" + "SIN(" * 40 +
+             "Y×X" + ")" * 41, "limit", "0|"),
+            ("typed SIN( nest 40 of X+Y over itself at 1", "(" + "SIN(" * 40 + "X+Y" + ")" * 41 + "÷(" + "SIN(" * 40 +
+             "X+Y" + ")" * 41, "limit", "1|"),
+            ("typed Y×SIN(X)-SIN(Y×X) over itself at 0", "(Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X))", "limit", "0|")]:
         rows.append((name, expr, "X", "RAD", op, repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes

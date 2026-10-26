@@ -1415,6 +1415,30 @@ MUTANTS = {
                              "        (void)0;                                                /* a typed SGN is opaque (CAS 003): its sign here */")],
     "td035-hole-refused": [("src/casim.c", "    if (c->st == CASIM_UNDEFINED) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)",
                             "    if (0) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)")],
+    # CAS 035, limit's divisor 0 for every X at a letter's value (abacus #11460, #11461): the check off; its refusal
+    # never given; k from a letter factor, an exponent or a linear form's coefficient not found; the row never noted, or
+    # always; the form's walk off; its forms compared exactly (-∞'s -K×X against K×X); a nonzero number not seen; the
+    # SIN and COS pair not seen; one derivative where three are read; completeness taken as shown
+    "td035-degen-off": [("src/casim.c", "            if (td_degen(c, g, L) == 2 && c->st == CASIM_OK) unk = true;",
+                         "            (void)0;")],
+    "td035-degen-trusted": [("src/casim.c", "            if (td_degen(c, g, L) == 2 && c->st == CASIM_OK) unk = true;",
+                             "            if (td_degen(c, g, L) == 2 && 0) unk = true;")],
+    "td035-kill-factor-none": [("src/casim.c", "            if (!contains(c, list(c, x->a)[i], var) && any_letter(c, list(c, x->a)[i])) *k = list(c, x->a)[i], s = 1;",
+                                "            if (0) *k = list(c, x->a)[i], s = 1;")],
+    "td035-kill-exponent-none": [("src/casim.c", "        if (s != 1 && any_letter(c, x->b)) *k = x->b, s = 1;           /* a^0 is 1 */",
+                                  "        if (0) *k = x->b, s = 1;           /* a^0 is 1 */")],
+    "td035-linear-k-none": [("src/casim.c", "        if (c->st == CASIM_OK && s != 1 && any_letter(c, a)) k = a, s = 1;     /* X×Y+X×Z: Y+Z = 0 leaves b */",
+                             "        (void)0;     /* X×Y+X×Z: Y+Z = 0 leaves b */")],
+    "td035-row-never": [("src/casim.c", "        if (row) td_note(c, L, k, '!');", "        (void)row;")],
+    "td035-row-always": [("src/casim.c", "        if (row) td_note(c, L, k, '!');", "        td_note(c, L, k, '!');")],
+    "td035-form-off": [("src/casim.c", "    if (td_linear(c, r, var)) return *f = r, 1;", "    return 2;")],
+    "td035-form-exact": [("src/casim.c", "    return cmp(c, a, b) == 0 || td_nz1(c, ib_canon(c, mul2(c, a, power(c, b, small(c, C_M1)))), 0);",
+                          "    return cmp(c, a, b) == 0;")],
+    "td035-nz-number-blind": [("src/casim.c", "    if (!any_letter(c, e)) return (s = lm_sgn(c, e)) == 1 || s == -1;", "    if (!any_letter(c, e)) return false;")],
+    "td035-pair-blind": [("src/casim.c", "    ref a = p ? td_core(c, p, k) : 0, b = a ? td_core(c, e, k) : 0;",
+                          "    ref a = 0, b = 0;")],
+    "td035-orders-one": [("src/casim.c", "#define TD_ORDERS 3", "#define TD_ORDERS 1")],
+    "td035-complete-trusted": [("src/casim.c", "    return ok ? 0 : 2;\n}", "    return 0;\n}")],
 }
 
 
