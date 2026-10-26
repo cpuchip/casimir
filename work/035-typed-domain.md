@@ -38,9 +38,11 @@ to a power. Each condition is one of three kinds:
   it (CAS 033's `Y-1≠0` says `Y≠1`). A row also isn't added where the answer has no value wherever the condition fails:
   - for ≠, CAS 033's probe (u put to K in the answer, K at 0, or 1 for u ≠ 1);
   - for >, ≥, ≤, <, the answer holding the same typed function of u.
-  A sum summed term by term decides a condition in K at each K. A closed sum's conditions in K are sm_typed_ok's, as
-  before.
-  Rows are hard: a line that doesn't fit is TOO_LONG. Rows ≥ and ≤ are new and, as soroban's probe showed, read, drawn
+  A sum summed term by term decides a condition in K at each K, canon reading the typed entry with that K put in, so
+  each value splits as a typed one does and an exponent in K is read (#11517; before it, the K was put into canon's
+  condition after the split). A closed sum's conditions in K are sm_typed_ok's, as before.
+  Rows are hard: a line that doesn't fit is TOO_LONG, once a sum term by term has given way to its closed form (rule
+  7; #11517 (3)). Rows ≥ and ≤ are new and, as soroban's probe showed, read, drawn
   and saved by the firmware (#11420); CAS 032's said rule and rows_put read them as themselves.
   The closed form's cancelled divisor is a typed divisor too (#11436 (1)): `K×(SIN(Z)×Y)^K÷SIN(Z)` from 1 to ∞ gains
   `SIN(Z)≠0`.
@@ -130,7 +132,8 @@ to a power. Each condition is one of three kinds:
     and 4,096 B: none goes UNDECIDED, and only the 3 golden lines move.
 - **The doc examples:** 26 earlier rows re-pinned, each gaining a row: 25 their cancelled divisor's (work/024 to 031),
   and work/023's `SIN(K×X)÷SIN(K×X)` at 0 its `K≠0`.
-- **min-arena** (the prototype's, #11433): up on 74 bench cases of 1,417, down on none, none newly past 8,192 B.
+- **min-arena** (the prototype's, #11433): up on 74 bench cases of 1,417, down on none, none newly past 8,192 B. The
+  bench held no sum term by term with a divisor in K: h018's and h032's found new NO_ROOM (below, #11517).
   CAS 033's 2,048 B example needs 2,024 B as at 4c0523b (the lists of eight or fewer are on the stack). td_degen moves
   none of the bench's 1,411; its own four rows: `SIN(K×X)÷SIN(K×X)` at 0 512 to 560 B, the 40-deep SIN nests of Y×X
   and of X+Y 4,744 and 4,736 B as before.
@@ -170,6 +173,49 @@ to a power. Each condition is one of three kinds:
   form to N holds from N = LO-1, the empty sum, up. Below that it agrees with the subtracting convention wherever both
   have a value, and each can have one where the other has none (work/sum-below-lo.tsv: 320 sums to N, 19 and 3 lines
   of those kinds, no value apart). No src.
+
+## After the first acceptance read (abacus #11517, at b9efe8a)
+
+abacus judged h035 green at 8,800, 16,384 and 65,536 B, and found three things in the older sets:
+1. **Lost answers** (h022, sum K from 1 to 3 at 12,288 and 8,800 B): `1÷EXP(-20000)^K`, `1÷(-EXP(-20000))^K`,
+   `1÷EXP(20000)^K` and four near-zero divisors (`(SIN(1)^2+COS(1)^2-1)±10^(-30)`, `(10^25×SIN(1)^2+…-10^25)±10^(-12)`
+   to the K) went from 1.3.0's value to UNDECIDED. td_sum put each K into canon's condition after td_canon's split, so
+   K = 2 asked whether `base^2` is 0, which the sign test can't decide and the answer doesn't hold (it holds `base^-2`).
+   The 10^25 lines also needed the primitive part: canon's power of a sum takes its content out (power_sum), so the
+   answer divides by `10^25-SIN(1)^2×10^25-…`, the typed base negated.
+2. **NO_ROOM where 1.3.0 answered:** h030's `1÷COS(Z)^K` and `X^K÷LN(Z)^K` (K to 12) took a row per K, past the row
+   list; h018's 15 rational sums term by term (`(18+12×K)÷(K^4+6×K^3+9×K^2)` from 1 to 31: 2,928 B before, 9,432 B in
+   b9efe8a) kept each K's work to the end; h018's `(7÷2+K)^(-2)-…` to ∞ canonicalized each typed 2 of `7÷2` (8,789 to
+   8,813 B, past 8,800); h032's `(Y÷TAN(Z))^K+COS(Z)^K` at 4,096 B probed `TAN(Z)≠0` with a copy of the answer (3,976
+   to 4,128 B) where CAS 030's `TAN(Z)≠0` row already said it.
+3. **A question:** h030's `(ACOS(Z)^2×Y)^K÷ACOS(Z)` from 1 to 12 printed the closed form. The term-by-term line is 185
+   bytes and gains `ACOS(Z)≠0` (the typed text has no value at Z = 1, where 1.3.0's line is 0), 198 with it, so rule 7
+   gives way to the closed form, whose values abacus found right.
+
+**The fix** (cas035b):
+- td_sum puts each K into the typed entry and td_canon reads it, so a value splits as a typed divisor does (u^n is 0
+  where u is, a product where a factor is, EXP never 0), an exponent in K is read (`Y^K×Y^(-K)` from -1 to 1 gains
+  `Y≠0`; `(-8)^(1÷K)` from 1 to 3, whose second term is SQRT(-8), is UNDEFINED), and each K's work is dropped.
+- td_gated probes a sum's primitive part where the sum itself isn't found in the answer.
+- td_said reads a CAS 030 `?` row as saying u≠0, since one is made only where the answer has no value there.
+- td_walk leaves out a typed number's divisor; canon refuses ÷0 itself.
+- td_base holds the u^n and ABS step td_canon took twice.
+
+Every line abacus named now prints 1.3.0's line, except `(ACOS(Z)^2×Y)^K÷ACOS(Z)` (3, above). The nine exact zeros
+(`1÷(SIN(1)^2+COS(1)^2-1)^K`) print 1.3.0's expansion too, not UNDECIDED: the answer divides by the same zero, so it
+shows the hole, as b9efe8a already did for `1÷(SIN(1)^2+COS(1)^2-1)` without the K. That is for abacus to judge.
+
+Measured at f8cd4dc:
+- min-arena of abacus's lines, 1.3.0 and the fix: 2,928 and 2,928; 8,789 and 8,789; 3,976 and 3,976 B.
+- S3 text 262,036 B, 108 under the budget (b9efe8a 261,829). S3 frames: the 433 as at 4c0523b, 29 new (td_base);
+  td_gated 48 to 80, td_sum 320 to 304. Host frames: the 436 hold (make check).
+- make check green; make test green, 20 tests, 118,449 checks.
+- The families (c36/cmp035.py, b9efe8a against the fix): 17,243 calls at 65,536, 16,384, 8,800 and 4,096 B, every
+  line the same. Its control, 1b66fd0 against the fix on the golden family, shows CAS 035's 37 moves.
+- Mutants: 37 ("td035-", 519 in all), all caught; the five new ones each by its row in work/035-examples.txt.
+- The device (scripts/device.sh at 16,384 B, 19:30Z): DEVICE PASS, 1,412 cases; the worst stack unchanged, 11,360
+  masked + 384 = 11,744 of 12,288.
+- work/035-examples.txt: 13 rows for these (84 in all).
 
 ## Not yet
 
