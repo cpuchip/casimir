@@ -479,8 +479,20 @@ def all_cases():
             ("total (ATAN(Y×Z+1)÷45)^K from 0 to N, DEG", "(ATAN(Y×Z+1)÷45)^K", "0|N", "DEG"),
             ("total (1+EXP(COS(Y×W))×Z)^K from 0 to N", "(1+EXP(COS(Y×W))×Z)^K", "0|N", "RAD"),
             ("total (2×Y÷SIN(Z))^K+(1+ABS(W)×Z)^K from -1 to N, at the cap", "(2×Y÷SIN(Z))^K+(1+ABS(W)×Z)^K", "-1|N",
-             "RAD")]:
+             "RAD"),
+            ("typed (Z×EXP(LN(Y))+1)^K from 0 to ∞", "(Z×EXP(LN(Y))+1)^K", "0|∞", "RAD"),
+            ("typed Z^K×SQRT(4-Y^2)^2 from 0 to ∞", "Z^K×SQRT(4-Y^2)^2", "0|∞", "RAD"),
+            ("typed (Z×SQRT(Y)^2+1)^K from 1 to 3", "(Z×SQRT(Y)^2+1)^K", "1|3", "RAD"),
+            ("typed Z^K×1÷(1÷( nest 40", "Z^K×" + "1÷(" * 40 + "Y" + ")" * 40, "0|∞", "RAD")]:
         rows.append((name, expr, "K", angle, "sum", repl, "35"))
+    # CAS 035 (work/035-typed-domain.md): defint's and limit's typed checks, a letter's condition, and the walk at depth
+    for name, expr, op, repl in [
+            ("typed SQRT(X)^2 over -2..-1", "SQRT(X)^2", "defint", "-2|-1"),
+            ("typed X×Y÷Y over 0..1", "X×Y÷Y", "defint", "0|1"),
+            ("typed EXP(LN(X×Y)) at 0+", "EXP(LN(X×Y))", "limit", "0|+"),
+            ("typed LN(K+SIN(X)÷X) at 0", "LN(K+SIN(X)÷X)", "limit", "0|"),
+            ("typed SQRT( nest 40 at 2", "SQRT(" * 40 + "X+2" + ")" * 40, "limit", "2|")]:
+        rows.append((name, expr, "X", "RAD", op, repl, "35"))
     # CAS 028 (work/028-complex-left-out.md): ", n CPLX" beside PARTIAL's factor with no root, in model 33, the widest
     # status, and the cap: a line the note takes to 191 B, and one it would take to 192 B, which keeps its bytes
     for name, expr, model in [
