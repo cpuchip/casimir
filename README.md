@@ -148,15 +148,16 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 477 deliberate faults, each of which the tests must
-  catch, but two named. At CAS 032's and CAS 033's accepted trees (fde2bc3, 63b9215) `make test` caught 470 of 472 and,
-  with a pin added at 951151b, 475 of 477, the 8 new on CAS 032's rows (work/032-redundant-row.md) and the 5 on CAS
-  033's (work/033-divisor-rows.md) among them. The two named survive because no input is known where they differ from
-  the build: cancel-rewind-keeps-cache (CAS 031's), and ratio025-negpow-mono-row (CAS 025's), whose fault CAS 032 made
-  invisible. It caught 463 of 464 at 1.2.0's tree (work/v1.2.0-mutants.txt), the first of those named, and all 456 at
-  1.1.2's tree (work/v1.1.2-mutants.txt), as it caught all 450 at 1.1.1's tree (work/v1.1.1-mutants.txt), all 445 at
-  1.1.0's tree (work/v1.1.0-mutants.txt), all 435 at 1.0.1's tree (work/v1.0.1-mutants.txt) and all 428 of 1.0.0-rc7's
-  at rc7's tree (work/rc7-mutants.txt). At 1.1.1 one survived at first: CAS 029's rule took over the case that had
-  caught it, and three rows now reach it.
+  catch, but two named. At 1.3.0's tree `make test` caught 475 of the 477 (work/v1.3.0-mutants.txt), the 8 new on CAS
+  032's rows (work/032-redundant-row.md) and the 5 on CAS 033's (work/033-divisor-rows.md) among them. The two named
+  survive because no input is known where they differ from the build: cancel-rewind-keeps-cache (CAS 031's), and
+  ratio025-negpow-mono-row (CAS 025's), whose fault CAS 032 made invisible. At CAS 032's and CAS 033's accepted trees
+  (fde2bc3, 63b9215) it caught 470 of 472 and 474 of 477; the third survivor there, ratio025-negpow-row-off, is caught
+  by a pin added at 951151b. It caught 463 of 464 at 1.2.0's tree (work/v1.2.0-mutants.txt), the first of those named,
+  and all 456 at 1.1.2's tree (work/v1.1.2-mutants.txt), as it caught all 450 at 1.1.1's tree
+  (work/v1.1.1-mutants.txt), all 445 at 1.1.0's tree (work/v1.1.0-mutants.txt), all 435 at 1.0.1's tree
+  (work/v1.0.1-mutants.txt) and all 428 of 1.0.0-rc7's at rc7's tree (work/rc7-mutants.txt). At 1.1.1 one survived at
+  first: CAS 029's rule took over the case that had caught it, and three rows now reach it.
   After the arena move to 8,800 B, two faults survived, one in the run of
   the 62 near the change and one in the full run (290 of 291): noroom-start-unnoted and limit-sides-share-arena had
   been caught only by rows that ran out of room at 8,192 and fit at 8,800. Each gained a row that reaches it at its

@@ -1,0 +1,46 @@
+# The mutant count at the v1.3.0 tag: 475 of 477 caught at the tag's tree, from one run of every mutant (2026-10-26,
+# lepton, claim #11104); the two survivors, cancel-rewind-keeps-cache and ratio025-negpow-mono-row, are named (abacus
+# #10576 (4) and #10999).
+#
+# The tree: the version commit 7efd2af (951151b, CAS 033 as accepted at 63b9215 with a pin for CAS 025's
+# ratio025-negpow-row-off, and CAS 032 as accepted at fde2bc3, with the 1.3.0 text), the commit v1.3.0 tags. The
+# README's code size (391,615 B, from scripts/device.sh --build at 16,384 B, 04:28:32Z to 04:29:02Z) went in before the
+# commit, so the run's tree is the commit byte for byte. The core was built at CORE_PIN by the control: make test, all
+# green, 20 tests, 118,439 checks, "Casimir 1.3.0" (04:29:17Z to 04:33:46Z).
+#
+# The run (04:33:46Z to 07:06:34Z, 6 shards of 79 or 80, scripts/mutants.py on copies of that tree):
+#   475 of 477 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache: the give-way's rewind as c->used = mark, without taylor_drop's dropping of the
+#     constants cached since. No input is known where it differs from the build. It survived at 1.2.0's tree, and at
+#     fde2bc3 and 63b9215, the same way.
+#   SURVIVED ratio025-negpow-mono-row: CAS 025's L≠0 row made for a monomial at a negative power too, whose own row
+#     ABS(X)>v already excludes X = 0. CAS 032's rule leaves out an L≠0 row a kept row says, so it leaves this one out
+#     too, and no input is known where the mutant differs from the build (a search of build against mutant, 0 differ;
+#     abacus's of h032's 1,456 runs and h033's 484, 0 differ, #10999). It survived at fde2bc3 and 63b9215 the same way.
+#     Retargeting it at a row CAS 032 doesn't leave out is a follow-up (work/033-divisor-rows.md).
+#   ratio025-negpow-row-off, which survived at 63b9215 (474 of 477 there), is caught: by the pin added at 951151b,
+#     work/033-examples.txt's `casim --arena 2048 sum '(X÷Y)^K÷Y' K -2 N RAD`.
+#   The 13 new are caught: CAS 032's 8 (said-off, said-generic, said-gt-flip, said-novalue, said-soft-always,
+#     said-soft-never, said-whole-fn, said-whole-negpow) and CAS 033's 5 (div-letter-off, div-rows-off, div-no-probe,
+#     div-never-kept, div-first-term). By the files the run names: said-off by the golden corpus; said-soft-always by
+#     work/032-examples.txt; the 5 div ones by work/033-examples.txt (div-letter-off by 032's too); the rest by rows in
+#     two or more files.
+#   The six whose only catcher is a developer test, caught by build/series_test, as at 1.2.0:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers, ser-root-of-negative,
+#     ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s: 1,732,324
+# KiB, at 04:33:59Z. The control's largest process: 243,024 KiB. The device build's container (casim-device-*, --memory
+# 8g), its cgroup's memory.peak: 1,091,584,000 B. The S3 size check's container (casim-size-s3-*, --memory 4g), beside
+# the control at 04:31:43Z, up 9 s. The clang check's containers (casim-clang-*, --memory 2g), logged as docker reported
+# them: never two at once, each up 5 to 6 s, 9 in all (one the control's, 8 the shards'). Those containers' memory
+# wasn't sampled.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 200 KiB at most but in one sample, 1,047,440 KiB at 04:50:56Z, with
+# 4 KiB 10 s either side; du reads the whole box's /tmp, and this run's tools write to TMPDIR on disk, so that sample
+# isn't attributed to it. /dev/shm 272 KiB at most. du doesn't see a deleted file held open.
+# The copies on disk (build/mutants): 1,888 MiB at most.
+# Host memory in use (free, every 10 s): 22,707 MiB at most. It counts every tenant of the box, so it doesn't attribute
+# this run's use.
