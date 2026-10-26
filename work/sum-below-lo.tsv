@@ -1,0 +1,34 @@
+# Closed sums to N below LO-1 (abacus #11468, Michael's cas-sum-below, #11471): the sums to N with a whole LO among 640
+# sums of a letter and a function of another (320: 224 of the 448 "fn rows" with a function factor, 96 of the 192
+# "fn-pow rows" with a function to a power), each line from 4c0523b's CLI, valued at N = LO-2 and LO-3 against the
+# subtracting convention (the sum from LO to N as minus the sum from N+1 to LO-1), the letters at 0, ±1, 2, 1÷2, π÷2 and
+# π, by scripts/sum-values.py's strict evaluator (0^0 = 1, as casim and the calculator have it). A row excluding the
+# point skips it. Each line's first finding of each kind: WRONG both have values that differ (both here are a chained
+# power, K×Z^(1÷3)^(K-1), which the evaluator reads from the right and casim from the left, so the two values are of
+# different texts); MISSING the convention has a value and the line none; EXTRA the line has a value and the convention
+# none. Totals: WRONG 2 (both the chained power), MISSING 19, EXTRA 3. Where both have a value they agree.
+family	summand	lo	hi	line	kind	point	sum
+640 fn rows	(K-1)×(SIN(Z)×Y)^K÷SIN(Z)	1	N	N×Y×(Y×SIN(Z))^N÷(Y×SIN(Z)-1)+Y^2×SIN(Z)×(Y×SIN(Z))^N÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); Y×SIN(Z)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	1.18839510577812121626159945237455100352782983409796262526526
+640 fn rows	(K-1)×(COS(Z)×Y)^K÷COS(Z)	1	N	N×Y×(Y×COS(Z))^N÷(Y×COS(Z)-1)+Y^2×COS(Z)×(Y×COS(Z))^N÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2)-Y^2×COS(Z)÷2÷(Y×COS(Z)-Y^2×COS(Z)^2÷2-1÷2); Y×COS(Z)≠1	MISSING	{'Y': '0', 'Z': '0', 'N': '-1'}	0.999999999999999999999999999999999999999999999999999999999990
+640 fn rows	(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z)	1	N	N×Y×(Y×SQRT(Z))^N÷(Y×SQRT(Z)-1)+Y^2×SQRT(Z)×(Y×SQRT(Z))^N÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y^2×SQRT(Z)÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y×SQRT(Z)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	1
+640 fn rows	(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z)	2	N	N×Y×(Y×SQRT(Z))^N÷(Y×SQRT(Z)-1)+Y^2×SQRT(Z)×(Y×SQRT(Z))^N÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y×SQRT(Z)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	1
+640 fn rows	(K-1)×(SQRT(Z)×Y)^K÷SQRT(Z)	2	N	N×Y×(Y×SQRT(Z))^N÷(Y×SQRT(Z)-1)+Y^2×SQRT(Z)×(Y×SQRT(Z))^N÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2)-Y^2×SQRT(Z)÷(Y×SQRT(Z)-1)-Y^3×Z÷2÷(Y×SQRT(Z)-Y^2×Z÷2-1÷2); Y×SQRT(Z)≠1	EXTRA	{'Y': '0', 'Z': '0', 'N': '0'}	None	0
+640 fn rows	(K-1)×(ABS(Z)×Y)^K÷ABS(Z)	1	N	N×Y×(Y×ABS(Z))^N÷(Y×ABS(Z)-1)+Y^2×ABS(Z)×(Y×ABS(Z))^N÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2)-Y^2×ABS(Z)÷2÷(Y×ABS(Z)-Y^2×ABS(Z)^2÷2-1÷2); Y×ABS(Z)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	1
+640 fn rows	K×Z^(1÷3)^(K-1)	0	N	-1÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)-N×(Z^(1÷3))^(N+1)÷(Z^(1÷3)-Z^(2÷3))-(Z^(1÷3))^(N+1)÷(Z^(1÷3)-Z^(2÷3))+(Z^(1÷3))^(N+1)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2); Z≠0; Z^(1÷3)≠1	WRONG	{'Z': '2', 'N': '-2'}	512.000000000000000000000000000000000000000000000000000000005	0.6299605249474365823836053036391141752851257323507539900403
+640 fn rows	K×Z^(1÷3)^(K-1)	1	N	-1÷(Z^(1÷3)-1)+N×(Z^(1÷3))^N÷(Z^(1÷3)-1)+Z^(1÷3)×(Z^(1÷3))^N÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)-Z^(1÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)+(Z^(1÷3))^N÷(Z^(1÷3)-1); Z^(1÷3)≠1	MISSING	{'Z': '0', 'N': '-1'}	0
+640 fn rows	K×Z^(1÷3)^(K-1)	1	N	-1÷(Z^(1÷3)-1)+N×(Z^(1÷3))^N÷(Z^(1÷3)-1)+Z^(1÷3)×(Z^(1÷3))^N÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)-Z^(1÷3)÷2÷(Z^(1÷3)-Z^(2÷3)÷2-1÷2)+(Z^(1÷3))^N÷(Z^(1÷3)-1); Z^(1÷3)≠1	WRONG	{'Z': '2', 'N': '-2'}	512.000000000000000000000000000000000000000000000000000000005	0.62996052494743658238360530363911417528512573235075399003920
+640 fn rows	(K-1)×(Z^(1÷3)×Y)^K÷Z^(1÷3)	1	N	N×Y×(Y×Z^(1÷3))^N÷(Y×Z^(1÷3)-1)+Y^2×Z^(1÷3)×(Y×Z^(1÷3))^N÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2)-Y^2×Z^(1÷3)÷2÷(Y×Z^(1÷3)-Y^2×Z^(2÷3)÷2-1÷2); Y×Z^(1÷3)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	1
+640 fn-pow rows	K×SQRT(Z)^(2×K-2)×Y^(K-1)	0	N	-1÷2÷(Y×Z-Y^2×Z^2÷2-1÷2)-N×(Y×Z)^(N+1)÷(Y×Z-Y^2×Z^2)-(Y×Z)^(N+1)÷(Y×Z-Y^2×Z^2)+(Y×Z)^(N+1)÷2÷(Y×Z-Y^2×Z^2÷2-1÷2); Y≠0; Z≠0; Y×Z≠1	EXTRA	{'Y': '1', 'Z': '-1', 'N': '-2'}	None	1.00
+640 fn-pow rows	K×SQRT(Z)^(2×K-2)×Y^(K-1)	1	N	-1÷(Y×Z-1)+N×(Y×Z)^N÷(Y×Z-1)+Y×Z×(Y×Z)^N÷2÷(Y×Z-Y^2×Z^2÷2-1÷2)-Y×Z÷2÷(Y×Z-Y^2×Z^2÷2-1÷2)+(Y×Z)^N÷(Y×Z-1); Y×Z≠1	EXTRA	{'Y': '1', 'Z': '-1', 'N': '-1'}	None	0.00
+640 fn-pow rows	SQRT(Z)^(3×K-1)×Y^K	1	N	Y×Z×(Y×Z^(3÷2))^N÷(Y×Z^(3÷2)-1)-Y×Z÷(Y×Z^(3÷2)-1); Y×Z^(3÷2)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1
+640 fn-pow rows	(Z^(1÷3))^(2×K-1)×Y^K	1	N	Y×Z^(1÷3)×(Y×Z^(2÷3))^N÷(Y×Z^(2÷3)-1)-Y×Z^(1÷3)÷(Y×Z^(2÷3)-1); Y×Z^(2÷3)≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1
+640 fn-pow rows	ABS(Z)^(2×K-1)×Y^K	1	N	Y×ABS(Z)×(Y×ABS(Z)^2)^N÷(Y×ABS(Z)^2-1)-Y×ABS(Z)÷(Y×ABS(Z)^2-1); Y×ABS(Z)^2≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1
+640 fn-pow rows	ABS(Z)^(3×K-1)×Y^K	1	N	Y×ABS(Z)^2×(Y×ABS(Z)^3)^N÷(Y×ABS(Z)^3-1)-Y×ABS(Z)^2÷(Y×ABS(Z)^3-1); Y×ABS(Z)^3≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1
+640 fn-pow rows	SIN(Z)^(2×K-1)×Y^K	1	N	Y×SIN(Z)×(Y×SIN(Z)^2)^N÷(Y×SIN(Z)^2-1)-Y×SIN(Z)÷(Y×SIN(Z)^2-1); Y×SIN(Z)^2≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1.18839510577812121626159945237455100352782983409796262526526
+640 fn-pow rows	SIN(Z)^(3×K-1)×Y^K	1	N	Y×SIN(Z)^2×(Y×SIN(Z)^3)^N÷(Y×SIN(Z)^3-1)-Y×SIN(Z)^2÷(Y×SIN(Z)^3-1); Y×SIN(Z)^3≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-1.18839510577812121626159945237455100352782983409796262526526
+640 fn-pow rows	COS(Z)^(2×K-1)×Y^K	1	N	Y×COS(Z)×(Y×COS(Z)^2)^N÷(Y×COS(Z)^2-1)-Y×COS(Z)÷(Y×COS(Z)^2-1); Y×COS(Z)^2≠1	MISSING	{'Y': '0', 'Z': '0', 'N': '-1'}	-0.999999999999999999999999999999999999999999999999999999999990
+640 fn-pow rows	COS(Z)^(3×K-1)×Y^K	1	N	Y×COS(Z)^2×(Y×COS(Z)^3)^N÷(Y×COS(Z)^3-1)-Y×COS(Z)^2÷(Y×COS(Z)^3-1); Y×COS(Z)^3≠1	MISSING	{'Y': '0', 'Z': '0', 'N': '-1'}	-0.999999999999999999999999999999999999999999999999999999999990
+640 fn-pow rows	TAN(Z)^(2×K-1)×Y^K	1	N	Y×TAN(Z)×(Y×TAN(Z)^2)^N÷(Y×TAN(Z)^2-1)-Y×TAN(Z)÷(Y×TAN(Z)^2-1); Y×TAN(Z)^2≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-0.642092615934330703006419986594265620230278113918171379101169
+640 fn-pow rows	TAN(Z)^(3×K-1)×Y^K	1	N	Y×TAN(Z)^2×(Y×TAN(Z)^3)^N÷(Y×TAN(Z)^3-1)-Y×TAN(Z)^2÷(Y×TAN(Z)^3-1); Y×TAN(Z)^3≠1	MISSING	{'Y': '0', 'Z': '1', 'N': '-1'}	-0.642092615934330703006419986594265620230278113918171379101169
+640 fn-pow rows	LN(Z)^(2×K-1)×Y^K	1	N	Y×LN(Z)×(Y×LN(Z)^2)^N÷(Y×LN(Z)^2-1)-Y×LN(Z)÷(Y×LN(Z)^2-1); Z≠0; Y×LN(Z)^2≠1	MISSING	{'Y': '0', 'Z': '2', 'N': '-1'}	-1.44269504088896340735992468100189213742664595415298593413545
+640 fn-pow rows	LN(Z)^(3×K-1)×Y^K	1	N	Y×LN(Z)^2×(Y×LN(Z)^3)^N÷(Y×LN(Z)^3-1)-Y×LN(Z)^2÷(Y×LN(Z)^3-1); Z≠0; Y×LN(Z)^3≠1	MISSING	{'Y': '0', 'Z': '2', 'N': '-1'}	-1.44269504088896340735992468100189213742664595415298593413545

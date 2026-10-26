@@ -236,7 +236,7 @@ MUTANTS = {
         ("src/casim.c", "per = abn_from_int(c->angle == CASIM_DEG ? 180 : 200);", "per = abn_from_int(c->angle == CASIM_DEG ? 360 : 400);"),
     ],
     "defint-lo-minus-hi": [
-        ("src/casim.c", "    return finish(&c, add2(&c, b, neg(&c, a)), out, ocap);", "    return finish(&c, add2(&c, a, neg(&c, b)), out, ocap);"),
+        ("src/casim.c", "    b = add2(&c, b, neg(&c, a));", "    b = add2(&c, a, neg(&c, b));"),     # CAS 035: the answer, then its gate
     ],
     "defint-fraction-edge-ignored": [
         ("src/casim.c", "    if (ex->q != 1 && abn_cmp(&umin, &z) < 0) return IV_IMPROPER;",
@@ -1347,7 +1347,7 @@ MUTANTS = {
     "said-whole-fn": [("src/casim.c", "        ok = (SM_TOTAL >> x->id & 1u) && sm_whole(c, x->a, L);     /* CAS 034 */",
                        "        ok = true;     /* CAS 034 */")],
     "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
-    "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : zero;", "r->op == '>' ? zero || s > 0 : zero;")],
+    "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : r->op == 'g'", "r->op == '>' ? zero || s > 0 : r->op == 'g'")],
     "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
                          "                if (rows[j].op == '?') (void)0;")],
     "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
@@ -1379,6 +1379,70 @@ MUTANTS = {
                           "        ok = x->kind == K_POW && is_num(c, x->b) && val(c, x->b)->q <= 2 && "
                           "val(c, x->b)->p >= 0 && sm_whole(c, x->a, L);")],
     "total034-atan-out": [("src/casim.c", "1u << F_TANH | 1u << F_ATAN | 1u << F_ASINH)", "1u << F_TANH | 1u << F_ASINH)")],
+    # CAS 035 (work/035-typed-domain.md; abacus #11402, #11436): each op's typed walk off; the sum's term-by-term one off;
+    # ≥ written > and > written ≥; the interval gate always dropping a row; the ≠ probe always finding the answer without
+    # value; defint's letter conditions let through; limit's side sign flipped; a two-sided edge taking the side with
+    # values (TD_EDGE_STRICT 0); a constant condition ignored; sm_said reading a ≥ row as a letter's ≠ (the prototype's
+    # bug); rows_put letting ≥ say ≠; sm_fits not counting the new rows; ABS(u)≠0 kept; a typed SGN of a constant left
+    # undecided; a condition with a removable hole at the point refused
+    "td035-sum-off": [("src/casim.c", "    if (c.st == CASIM_OK) td_sum(&c, &S, sum, !dir, rows, &nrows, false);           /* CAS 035 */",
+                       "    (void)0;                                                                         /* CAS 035 */")],
+    "td035-direct-off": [("src/casim.c", "sum = sm_direct(&c, &S), td_sum(&c, &S, sum, true, rows, &nrows, true),",
+                          "sum = sm_direct(&c, &S),")],
+    "td035-defint-off": [("src/casim.c", "td_defint(&c, var, &ba, &bb) : td_defint(&c, var, &bb, &ba);", "((void)td_defint, IV_OK) : IV_OK;")],
+    "td035-limit-off": [("src/casim.c", "if (c.st == CASIM_OK) (void)td_limit(&c, &L, inf, side);", "if (c.st == CASIM_OK) (void)0;")],
+    "td035-ge-as-gt": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
+                        "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k == 'g' ? '>' : k);")],
+    "td035-gt-as-ge": [("src/casim.c", "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k);",
+                        "    if (k == '!' || k == '>' || k == 'g') td_row1(c, rows, n, u, k == '>' ? 'g' : k);")],
+    "td035-gate-drops": [("src/casim.c", "    if (k != '!' && k != 'n') return td_holds(c, r, u, k);", "    if (k != '!' && k != 'n') return true || td_holds(c, r, u, k);")],
+    "td035-probe-none": [("src/casim.c", "    ib_at(c, ib_replace(c, r, u, var), var, small(c, k == 'n' ? C_1 : C_0));",
+                          "    c->st = CASIM_UNDEFINED, (void)var;")],
+    "td035-defint-letter": [("src/casim.c", "        if (!td_gated(c, r, P->su[i], P->sk[i], var)) c->st",
+                             "        if (0 && !td_gated(c, r, P->su[i], P->sk[i], var)) c->st")],
+    "td035-side-flip": [("src/casim.c", "            if (!td_ok(k, s)) bad |= 1 << j;", "            if (!td_ok(k, -s)) bad |= 1 << j;")],
+    "td035-edge-domain": [("src/casim.c", "#define TD_EDGE_STRICT 1", "#define TD_EDGE_STRICT 0")],
+    "td035-const-ignored": [("src/casim.c", "    s = lm_sgn(c, td_g(c, u, k));", "    return 0;")],
+    "td035-said-ge": [("src/casim.c", "        if ((rows[i].op != '!' && rows[i].op != '?') || x->kind != K_VAR",
+                       "        if (rows[i].op == '<' || rows[i].op == '>' || x->kind != K_VAR")],
+    "td035-ge-says-ne": [("src/casim.c", "            said = said || ((rows[j].op == '<' || rows[j].op == '>') && cmp(c, rows[j].l, rows[i].l) == 0 &&",
+                          "            said = said || ((rows[j].op != '!') && cmp(c, rows[j].l, rows[i].l) == 0 &&")],
+    "td035-fits-blind": [("src/casim.c", "        if (c->st == CASIM_OK) td_sum(c, S, r, true, rows, &n, false);      /* CAS 035's rows count (abacus #11436) */",
+                          "        (void)0;                                                             /* CAS 035's rows count (abacus #11436) */")],
+    "td035-abs-kept": [("src/casim.c", "                   (nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))",
+                        "                   (0 && nd(c, u)->kind == K_FN && nd(c, u)->id == F_ABS))")],
+    "td035-sgn-undecided": [("src/casim.c", "        u = small(c, s > 0 ? C_1 : s < 0 ? C_M1 : C_0);         /* a typed SGN is opaque (CAS 003): its sign here */",
+                             "        (void)0;                                                /* a typed SGN is opaque (CAS 003): its sign here */")],
+    "td035-hole-refused": [("src/casim.c", "    if (c->st == CASIM_UNDEFINED) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)",
+                            "    if (0) {\n        /* no value at the point itself (K+SIN(X)÷X at 0)")],
+    # CAS 035, limit's divisor 0 for every X at a letter's value (abacus #11460, #11461): the check off; its refusal
+    # never given; k from a letter factor, an exponent or a linear form's coefficient not found; the row never noted, or
+    # always; the form's walk off; its forms compared exactly (-∞'s -K×X against K×X); a nonzero number not seen; the
+    # SIN and COS pair not seen; one derivative where three are read; completeness taken as shown
+    "td035-degen-off": [("src/casim.c", "            if (td_degen(c, g, L) == 2 && c->st == CASIM_OK) unk = true;",
+                         "            (void)td_degen;")],
+    "td035-degen-trusted": [("src/casim.c", "            if (td_degen(c, g, L) == 2 && c->st == CASIM_OK) unk = true;",
+                             "            if (td_degen(c, g, L) == 2 && 0) unk = true;")],
+    "td035-kill-factor-none": [("src/casim.c", "            if (!contains(c, list(c, x->a)[i], var) && any_letter(c, list(c, x->a)[i])) *k = list(c, x->a)[i], s = 1;",
+                                "            if (0) *k = list(c, x->a)[i], s = 1;")],
+    "td035-kill-exponent-none": [("src/casim.c", "        if (s != 1 && any_letter(c, x->b)) *k = x->b, s = 1;           /* a^0 is 1 */",
+                                  "        if (0) *k = x->b, s = 1;           /* a^0 is 1 */")],
+    "td035-linear-k-none": [("src/casim.c", "        if (c->st == CASIM_OK && s != 1 && any_letter(c, a)) k = a, s = 1;     /* X×Y+X×Z: Y+Z = 0 leaves b */",
+                             "        (void)0;     /* X×Y+X×Z: Y+Z = 0 leaves b */")],
+    "td035-row-never": [("src/casim.c", "        if (row) td_note(c, L, k, '!');", "        (void)row;")],
+    "td035-row-always": [("src/casim.c", "        if (row) td_note(c, L, k, '!');", "        (void)row, td_note(c, L, k, '!');")],
+    "td035-form-off": [("src/casim.c", "    if (td_linear(c, r, var)) return *f = r, 1;", "    return 2;")],
+    "td035-form-exact": [("src/casim.c", "    return cmp(c, a, b) == 0 || td_core(c, ib_canon(c, mul2(c, a, power(c, b, small(c, C_M1)))), 0, &t) == 0;",
+                          "    return (void)t, cmp(c, a, b) == 0;")],
+    "td035-nz-number-blind": [("src/casim.c", "        if (!any_letter(c, f) ? (s = lm_sgn(c, f)) == 1 || s == -1 : k && (cmp(c, b, k) == 0 || td_never0(c, b)))",
+                               "        if (!any_letter(c, f) ? (s = 0) : k && (cmp(c, b, k) == 0 || td_never0(c, b)))")],
+    "td035-pair-blind": [("src/casim.c", "    if (!p || td_core(c, p, k, &a) != 1 || td_core(c, e, k, &b) != 1 || nd(c, a)->kind != K_FN ||",
+                          "    if (1 || td_core(c, p, k, &a) != 1 || td_core(c, e, k, &b) != 1 || nd(c, a)->kind != K_FN ||")],
+    "td035-orders-one": [("src/casim.c", "#define TD_ORDERS 3", "#define TD_ORDERS 1")],
+    "td035-complete-trusted": [("src/casim.c", "    return ok ? 0 : 2;\n}", "    return 0;\n}")],
+    # the series route's answer printed without the typed text's rows (the walk's arena, with them, dropped)
+    "td035-series-drops": [("src/casim.c", "        else (void)td_limit(&c, &L, inf, side);         /* CAS 035: the typed text's rows went with the walk's arena */",
+                            "        else (void)0;         /* CAS 035: the typed text's rows went with the walk's arena */")],
 }
 
 

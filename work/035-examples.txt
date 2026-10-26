@@ -1,0 +1,120 @@
+# CAS 035's examples (work/035-typed-domain.md; Michael's cas-wrong-widen (1), abacus #11335, #11402, #11436):
+# sum, defint and limit print a value only where the input as typed has one. A walk over the typed tree lists each
+# part's condition on its argument (a divisor ≠ 0, LN's and LOG's > 0, a root's ≥ 0, ASIN's and ACOS's ABS ≤ 1, ACOSH's
+# ≥ 1, ATANH's ABS < 1, TAN's COS ≠ 0), and each op reads it: a sum's row, defint's IMPROPER (BAD_ARG for another
+# letter's), limit's UNDEFINED on a side without a real value (CAS 023's rows for another letter's). Each row is run by
+# scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the value check's build
+# (CAS 022 rule 5).
+
+# - Sums: a row for each condition canon's answer doesn't show (the domain rule's u÷u, EXP(LN(u)), roots raised back,
+#   0×u; and the closed form's cancelled divisor, abacus #11436 (1)); ≥ and ≤ rows; a constant with no value
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Y÷Y)^K' K 1 N RAD` | `N; Y≠0` |
+| `casim sum '(Z×EXP(LN(Y))+1)^K' K 0 ∞ RAD` | `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1` |
+| `casim sum '(Z×ALOG(LOG(Y))+1)^K' K 0 ∞ RAD` | `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1` |
+| `casim sum 'Z^K×SQRT(Y)^2' K 0 ∞ RAD` | `-Y÷(Z-1); Y≥0; ABS(Z)<1` |
+| `casim sum '(Z×SQRT(Y)^2+1)^K' K 0 ∞ RAD` | `-1÷Y÷Z; Y≥0; ABS(Y×Z+1)<1` |
+| `casim sum 'Z^K×SQRT(4-Y^2)^2' K 0 ∞ RAD` | `-4÷(Z-1)+Y^2÷(Z-1); ABS(Y)≤2; ABS(Z)<1` |
+| `casim sum 'Z^K×(Y^(1÷4))^4' K 0 ∞ RAD` | `-Y÷(Z-1); Y≥0; ABS(Z)<1` |
+| `casim sum 'Z^K×(Y^2-1)÷(Y^2-1)' K 0 ∞ RAD` | `-1÷(Z-1); Y≠-1; Y≠1; ABS(Z)<1` |
+| `casim sum '(Z×LN(Y)÷LN(Y))^K' K 0 ∞ RAD` | `-1÷(Z-1); Y>0; Y≠1; ABS(Z)<1` |
+| `casim sum 'Z^K×ASIN(Y)÷ASIN(Y)' K 0 ∞ RAD` | `-1÷(Z-1); ABS(Y)≤1; ABS(Z)<1; ASIN(Y)≠0` |
+| `casim sum 'Z^K×ATANH(Y)÷ATANH(Y)' K 0 ∞ RAD` | `-1÷(Z-1); ABS(Y)<1; ABS(Z)<1; ATANH(Y)≠0` |
+| `casim sum 'Z^K×ACOSH(Y)÷ACOSH(Y)' K 0 ∞ RAD` | `-1÷(Z-1); Y≥1; ABS(Z)<1; ACOSH(Y)≠0` |
+| `casim sum 'Z^K×TAN(Y)÷TAN(Y)' K 0 ∞ RAD` | `-1÷(Z-1); COS(Y)≠0; ABS(Z)<1; TAN(Y)≠0` |
+| `casim sum 'Z^K×ABS(Y)÷ABS(Y)' K 0 ∞ RAD` | `-1÷(Z-1); Y≠0; ABS(Z)<1` |
+| `casim sum 'Z^K×(0×LN(Y)+1)' K 0 ∞ RAD` | `-1÷(Z-1); Y>0; ABS(Z)<1` |
+| `casim sum 'Z^K×EXP(LN(Y^2-1))' K 0 ∞ RAD` | `1÷(Z-1)-Y^2÷(Z-1); ABS(Y)>1; ABS(Z)<1` |
+| `casim sum 'Z^K×SQRT(Y)^2÷Y' K 0 ∞ RAD` | `-1÷(Z-1); Y≠0; Y≥0; ABS(Z)<1` |
+| `casim sum 'Y^K÷Y' K 1 N RAD` | `-1÷(Y-1)+Y^N÷(Y-1); Y≠0; Y≠1` |
+| `casim sum 'K×(X×Y)^K÷Y' K 1 ∞ RAD` | `-X÷(X×Y-1)-X^2×Y÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1` |
+| `casim sum '(Z×SQRT(Y)^2+1)^K' K 1 3 RAD` | `(Y×Z+1)^2+(Y×Z+1)^3+Y×Z+1; Y≥0` |
+| `casim sum 'Z^K×SQRT(-1)' K 0 ∞ RAD` | `UNDEFINED` |
+
+# - Sums where the answer shows the hole itself (no row: its LN(Y) has no value for Y ≤ 0), and the cancel's fit with
+#   the new rows counted (sm_fits, abacus #11436 (2)): at 4,096 B this sum is printed in the spelling that fits
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Z×LN(Y)+1)^K' K 0 ∞ RAD` | `-1÷Z÷LN(Y); Y≠0; Z≠0; ABS(Z×LN(Y)+1)<1` |
+| `casim --arena 4096 sum 'K×(1+Z×(INV(INV((Y^2-1)))))^K' K 0 ∞ RAD` | `1÷(Z^2-2×Y^2×Z^2+Y^4×Z^2)-Z÷(Z^2-2×Y^2×Z^2+Y^4×Z^2)+Y^2×Z÷(Z^2-2×Y^2×Z^2+Y^4×Z^2); Y≠-1; Y≠1; ABS(-Z+Y^2×Z+1)<1` |
+
+# - defint: IMPROPER where the typed integrand has no real value on the interval; BAD_ARG where another letter's value
+#   decides it and the answer doesn't show it (abacus #11402 (2)); UNDEFINED for a constant with none; a typed SGN of a
+#   constant reads its sign (abacus #11436 (2))
+
+| Command | Prints |
+|---|---|
+| `casim defint 'SQRT(X)^2' X -2 -1 RAD` | `IMPROPER` |
+| `casim defint 'SQRT(X)^2' X 0 1 RAD` | `1÷2` |
+| `casim defint '0×SQRT(X)' X -2 -1 RAD` | `IMPROPER` |
+| `casim defint 'X×Y÷Y' X 0 1 RAD` | `BAD_ARG` |
+| `casim defint 'SQRT(Y)' X 0 1 RAD` | `SQRT(Y)` |
+| `casim defint 'X×SQRT(-1)' X 0 1 RAD` | `UNDEFINED` |
+| `casim defint 'X+LOG(SGN(π))' X 1 1 RAD` | `0` |
+| `casim defint 'X+LOG(SGN(-π))' X 1 1 RAD` | `UNDEFINED` |
+
+# - limit: UNDEFINED on a side asked with no real value near the point (two-sided: either side), at ±∞ by the leading
+#   behaviour; a point hole needs nothing (X÷X at 0); another letter's condition as CAS 023's row (≥ written >, ABS(u)≤1
+#   as ABS(u)<1: stricter at the edge, abacus #11455); a letter with the variable by the first derivative not 0 at the
+#   point, or by the condition's limit where it has no value there
+
+| Command | Prints |
+|---|---|
+| `casim limit 'EXP(LN(X))' X -1 '' RAD` | `UNDEFINED` |
+| `casim limit 'EXP(LN(X))' X 1 '' RAD` | `1` |
+| `casim limit 'SQRT(X)' X -1 '' RAD` | `UNDEFINED` |
+| `casim limit 'SQRT(X)' X 0 - RAD` | `UNDEFINED` |
+| `casim limit 'SQRT(X)' X 0 + RAD` | `0` |
+| `casim limit 'SQRT(X)' X 0 '' RAD` | `UNDEFINED` |
+| `casim limit 'ASIN(X)' X 1 + RAD` | `UNDEFINED` |
+| `casim limit 'ASIN(X)' X 1 - RAD` | `π÷2` |
+| `casim limit 'EXP(LN(-X))' X ∞ '' RAD` | `UNDEFINED` |
+| `casim limit 'SQRT(X)^2' X -∞ '' RAD` | `UNDEFINED` |
+| `casim limit 'X÷X' X 0 '' RAD` | `1` |
+| `casim limit 'X×Y÷Y' X 1 '' RAD` | `1; Y≠0` |
+| `casim limit 'SQRT(Y)^2×X' X 1 '' RAD` | `Y; Y>0` |
+| `casim limit 'ASIN(Y)×X' X 1 '' RAD` | `ASIN(Y); ABS(Y)<1` |
+| `casim limit 'EXP(LN(X×Y))' X 0 + RAD` | `0; Y>0` |
+| `casim limit 'EXP(LN(X×Y))' X 0 - RAD` | `0; Y<0` |
+| `casim limit 'EXP(LN(X×Y))' X 0 '' RAD` | `UNDEFINED` |
+| `casim limit 'EXP(LN(X+Y))' X ∞ '' RAD` | `∞` |
+| `casim limit 'LN(K+SIN(X)÷X)' X 0 '' RAD` | `LN(K+1); K>-1` |
+| `casim limit 'SQRT(K)^2×SIN(K×X)÷(K×X)' X 0 '' RAD` | `K; K>0` |
+| `casim limit 'X×SQRT(-1)' X 1 '' RAD` | `UNDEFINED` |
+
+# - limit, a divisor holding the variable and another letter (abacus #11460, #11461): a point hole needs nothing, but
+#   where a letter's value makes the divisor 0 for every X near the point the text has no value there, so that value's
+#   row (SIN(K×X) is 0 for every X at K = 0); a divisor no letter's value can make 0 everywhere needs none; where that
+#   isn't decided, UNDECIDED (Y×SIN(X)-SIN(Y×X) is 0 for every X at Y = 1 and at Y = -1)
+
+| Command | Prints |
+|---|---|
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 1 '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X ∞ '' RAD` | `1; K≠0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X -∞ '' RAD` | `1; K≠0` |
+| `casim limit '(EXP(Y×X)-1)÷(EXP(Y×X)-1)' X 0 - RAD` | `1; Y≠0` |
+| `casim limit 'LN(1+Y×X)÷LN(1+Y×X)' X 1 '' RAD` | `1; Y>-1; Y≠0` |
+| `casim limit '((X+1)^Y-1)÷((X+1)^Y-1)' X 0 '' RAD` | `1; Y≠0` |
+| `casim limit 'SIN((Y-1)×X)÷SIN((Y-1)×X)' X 0 '' RAD` | `1; Y≠1` |
+| `casim limit 'X×(SIN(Y×X)+Y)÷(SIN(Y×X)+Y)' X 0 '' RAD` | `0; Y≠0` |
+| `casim limit '(X×Y+X×Z)÷(X×Y+X×Z)' X 1 '' RAD` | `1; Y+Z≠0` |
+| `casim limit '(Y×SIN(X)+Y×X^2)÷(Y×SIN(X)+Y×X^2)' X 0 '' RAD` | `1; Y≠0` |
+| `casim limit '(SIN(Y×X)+1)÷(SIN(Y×X)+1)' X 0 '' RAD` | `1` |
+| `casim limit '(X+Y)÷(X+Y)' X 1 '' RAD` | `1` |
+| `casim limit '(SIN(X+Y)-SIN(Y))÷(SIN(X+Y)-SIN(Y))' X 1 '' RAD` | `1` |
+| `casim limit '(Y×X+X^2)÷(Y×X+X^2)' X 0 '' RAD` | `1` |
+| `casim limit '(Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X))' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit '((X+1)^Y-1)÷((X+1)^Y-1)' X ∞ '' RAD` | `UNDECIDED` |
+
+# - limit, where the walk runs out of room and the series route answers (CAS 021): the typed text's rows are noted again
+#   after it, since the walk's went with its arena (1÷X^2-1÷SIN(X)^2 at 0 takes that route at 8,800 B)
+
+| Command | Prints |
+|---|---|
+| `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+SQRT(Y)^2' X 0 '' RAD` | `Y-1÷3; Y>0` |
+| `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `2÷3; K≠0` |
+| `casim --arena 8800 limit '1÷X^2-1÷SIN(X)^2+EXP(LN(X×Y))' X 0 + RAD` | `-1÷3; Y>0` |

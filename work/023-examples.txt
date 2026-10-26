@@ -79,7 +79,7 @@
 | `casim limit 'X^K' X 0 + RAD` | `UNDECIDED` |
 | `casim limit 'EXP(K×X)' X ∞ '' RAD` | `UNDECIDED` |
 | `casim limit 'K^X' X ∞ '' RAD` | `UNDECIDED` |
-| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1; K≠0` |
 | `casim taylor '1÷((K-1)×(K-2)×(K-3)×(K-4)×(K-5)×(K-6)×(K-7)×(K-8)×(K-9)+X)' X 0 0 RAD` | `NO_ROOM` |
 
 # - Rule 6, the sums (abacus #9480): a real constant ratio whose sign isn't decided refuses (UNDECIDED, where partfrac's

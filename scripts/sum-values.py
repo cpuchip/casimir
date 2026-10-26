@@ -17,6 +17,7 @@ import random
 import re
 import subprocess
 import sys
+import threading
 from decimal import Decimal as D
 from fractions import Fraction as F
 
@@ -49,9 +50,10 @@ def ft(c):
     return f"({c.numerator}÷{c.denominator})"
 
 
-def dvalue(text, fns):
+def dvalue(text, fns, strict=False):
     """limit-values.py's reader, with 0^0 = 1 as casim and the calculator have it (Decimal raises there): numbers, π,
-    the functions in fns, + - × ÷ ^"""
+    the functions in fns, + - × ÷ ^. strict (CAS 035): a divisor, or a base under a negative power, that is 0 to 40
+    digits is 0 (the 90-digit π gives COS(π÷2) 2.3E-59, and a line's huge terms there cancelled to a "value")"""
     toks = lv.TOK.findall(text)
     if "".join(toks) != text:
         raise ValueError(f"not readable: {text}")
@@ -93,13 +95,21 @@ def dvalue(text, fns):
                 return D(1)
             if v == 0 and e < 0:                # Decimal gives Infinity here; it has no value, as 1÷0 has none
                 raise ZeroDivisionError("0 to a negative power")
+            if strict and e < 0 and abs(v) < ZERO40:
+                raise ZeroDivisionError("a base 0 to 40 digits under a negative power")
             v = v ** int(e) if e == int(e) else (e * v.ln()).exp()
         return v
 
     def term():
         v = factor()
         while peek() in ("×", "÷"):
-            v = v * factor() if take() == "×" else v / factor()
+            if take() == "×":
+                v = v * factor()
+            else:
+                d = factor()
+                if strict and abs(d) < ZERO40:
+                    raise ZeroDivisionError("a divisor 0 to 40 digits")
+                v = v / d
         return v
 
     def expr():
@@ -124,10 +134,20 @@ def d_ln(x):
     return x.ln()
 
 
+ZERO40 = D(10) ** -40
+CONTEXT = decimal.getcontext().copy()         # the 60 digits set above: Decimal's context is per thread (CAS 035)
+
+
 def value(text, angle="RAD", strict=False):
     """text with no letter in Decimal, SIN, COS and TAN (and ASIN's, ACOS's and ATAN's answers) in the angle mode.
     strict (CAS 034's judge): TAN has no value where its cosine is 0 to 40 digits, as at π÷2, which the 90-digit π
-    otherwise gives a value near 1E90"""
+    otherwise gives a value near 1E90; and (CAS 035's) a divisor 0 to 40 digits is 0, and LN(0) has no value (Decimal's
+    LN gives -Infinity there). Valued in the module's own context, in any thread"""
+    with decimal.localcontext(CONTEXT):
+        return value_(text, angle, strict)
+
+
+def value_(text, angle, strict):
     to_rad = {"RAD": D(1), "DEG": lv.PI / 180, "GRAD": lv.PI / 200}[angle]
     fns = dict(lv.FN)
     fns["SIN"] = lambda x: lv.d_sin(x * to_rad)
@@ -152,7 +172,8 @@ def value(text, angle="RAD", strict=False):
                 raise ZeroDivisionError(f"TAN({x})")
             return lv.d_sin(x * to_rad) / c
         fns["TAN"] = tan
-    return dvalue(text, fns)
+        fns["LN"] = d_ln                                        # CAS 035: LN(0) has no value
+    return dvalue(text, fns, strict)
 
 
 def term(summand, k, angle):
@@ -397,6 +418,13 @@ def gen_pole(rnd):
     return summand, lo, rnd.choice(("N", INF, lo + 5, lo + 80)), "RAD", "UNDEFINED"
 
 
+def typed_row(summand, r):
+    """CAS 035: a row for the typed summand's root or fractional power of a letter (Z≥0 for SQRT(Z)^(2×K-2), which canon
+    writes Z^(K-1)), which judge_typed judges; the older judges read the rows beside it"""
+    m = re.fullmatch(r"([A-Z])(≥|≤|>)(.*)", r)
+    return bool(m) and (f"SQRT({m.group(1)})" in summand or re.search(rf"{m.group(1)}\^\(-?\d+÷\d+\)", summand) is not None)
+
+
 def gen_letter(rnd):
     """rule 4b: q(K) × (c×X^m)^K, answered with its rows: judged at seeded X (off the excluded values; at ∞, inside the
     region), and the rows against the true excluded set: the real roots of c×X^m = 1, or |X| < or > |c|^(-1/m)"""
@@ -520,6 +548,7 @@ def judge_letter2(summand, lo, hi, out, c, letters, ms):
             return (f"{L}≠0 {'missing' if want else 'for nothing'}: a term from {lo} "
                     f"{'divides' if want else 'never divides'} by {L}")
     rest = [r for r in rows if r not in [f"{L}≠0" for L in letters]]
+    rest = [r for r in rest if not typed_row(summand, r)]     # CAS 035's, judged by judge_typed
     m = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
         re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
     if not m:
@@ -617,6 +646,7 @@ def judge_letter3(summand, lo, hi, out, B, letters, ms, es):
             else:
                 return f"{L}≠0 for nothing: no term from {lo} divides by {L}", named
     rest = [r for r in rows if r not in [f"{L}≠0" for L in letters]]
+    rest = [r for r in rest if not typed_row(summand, r)]     # CAS 035's, judged by judge_typed
     m = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
         re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
     if not m:
@@ -774,7 +804,7 @@ TOTAL034 = ("ABS", "SIN", "COS", "EXP", "ALOG", "SINH", "COSH", "TANH", "ATAN", 
 PART034 = {"TAN": ("Y", "2×Y", "Y+1"), "SQRT": ("Y", "2×Y", "Y+1"), "LN": ("Y", "Y+1"), "LOG": ("Y", "2×Y"),
            "ASIN": ("Y", "2×Y"), "ACOS": ("Y", "2×Y"), "ACOSH": ("Y+1",), "ATANH": ("Y", "2×Y")}
 SPECIAL034 = ("-2", "-1", "-1÷2", "0", "1÷2", "1", "2", "π÷2", "π", "-π÷2", "100", "90")
-ROW034 = re.compile(r"^(.*?)(≠|<|>)(.*)$")
+ROW034 = re.compile(r"^(.*?)(≠|<|>|≥|≤)(.*)$")              # ≥ and ≤: CAS 035's rows
 
 
 def gen_total(rnd):
@@ -808,7 +838,8 @@ def says034(rows, angle):
             except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError):
                 ok = False
                 break
-            if not (abs(a - b) < TOL if op == "≠" else a >= b - TOL if op == "<" else a <= b + TOL):
+            if not (abs(a - b) < TOL if op == "≠" else a >= b - TOL if op == "<" else a <= b + TOL if op == ">" else
+                    a < b - TOL if op == "≥" else a > b + TOL):
                 ok = False
                 break
         if ok:
@@ -868,12 +899,14 @@ def judge_div(summand, lo, out, d):
             continue
         excluded = False
         for r in parts[1:]:
-            m = re.match(r"^(.*?)(≠|<|>)(.*)$", r)
+            m = re.match(r"^(.*?)(≠|<|>|≥|≤)(.*)$", r)
             try:
                 a, b = val(m.group(1)), val(m.group(3))
             except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError):
                 continue
-            if (abs(a - b) <= TOL) if m.group(2) == "≠" else (a >= b - TOL if m.group(2) == "<" else a <= b + TOL):
+            op = m.group(2)
+            if (abs(a - b) <= TOL) if op == "≠" else (a >= b - TOL if op == "<" else a <= b + TOL if op == ">" else
+                                                        a < b - TOL if op == "≥" else a > b + TOL):
                 excluded = True
                 break
         if not excluded:
@@ -939,12 +972,12 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f, angle="RAD"):
     def excluded(z, y, n):
         """a row with a value there is false"""
         for r in rows:
-            m = re.fullmatch(r"(.+?)(≠|<|>)(.+)", r)
+            m = re.fullmatch(r"(.+?)(≠|<|>|≥|≤)(.+)", r)
             try:
                 a, c = value(put(m.group(1), z, y, n), angle), value(put(m.group(3), z, y, n), angle)
             except (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
                 continue                                # no value there: it excludes nothing
-            if not {"≠": a != c, "<": a < c, ">": a > c}[m.group(2)]:
+            if not {"≠": a != c, "<": a < c, ">": a > c, "≥": a >= c, "≤": a <= c}[m.group(2)]:
                 return True
         return False
     ns = range(lo - 1, lo + 6) if hi != INF else [None]
@@ -995,6 +1028,7 @@ def judge_letter4(summand, lo, hi, out, fac, B, b, f, angle="RAD"):
         if ok:
             named.append("Z")
     rest = [r for r in rows if r not in ("Y≠0", "Z≠0", f"{fac}≠0")]
+    rest = [r for r in rest if not typed_row(summand, r)]     # CAS 035's, judged by judge_typed
     mt = re.match(r"^ABS\((.*)\)<(.*)$", rest[0]) if hi == INF and len(rest) == 1 else \
         re.match(r"^(.*)≠(.*)$", rest[0]) if len(rest) == 1 else None
     if not mt:
@@ -1056,12 +1090,12 @@ def quot_claim(answer, rows, n=None):
     def v(t):
         return value(sub(t, "N", n) if n is not None else t)
     for r in rows:
-        m = re.fullmatch(r"(.+?)(≠|<|>)(.+)", r)
+        m = re.fullmatch(r"(.+?)(≠|<|>|≥|≤)(.+)", r)
         try:
             a, b = v(m.group(1)), v(m.group(3))
         except (ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero):
             continue
-        if not {"≠": a != b, "<": a < b, ">": a > b}[m.group(2)]:
+        if not {"≠": a != b, "<": a < b, ">": a > b, "≥": a >= b, "≤": a <= b}[m.group(2)]:
             return None
     try:
         return v(answer)
@@ -1141,6 +1175,63 @@ def judge_quot(summand, lo, hi, out, refuse):
 FAMILIES = [(gen_poly, 3), (gen_geom, 3), (gen_geom2, 1), (gen_tele, 3), (gen_tele_typed, 2), (gen_open, 1),
             (gen_direct, 2), (gen_pole, 1),
             (gen_letter, 2)]
+
+
+TYPED035 = ("EXP(LN(u))", "ALOG(LOG(u))", "SQRT(u)^2", "SQRT(u)×SQRT(u)", "(u^(1÷2))^2", "(u^(1÷4))^4", "u÷u",
+            "LN(u)÷LN(u)", "SQRT(u)÷SQRT(u)", "0×LN(u)", "LN(u)^0")
+PTS035 = ("0", "1", "-1", "2", "-2", "1÷2", "-1÷2", "3", "-3")
+NOVAL035 = (ValueError, ZeroDivisionError, decimal.InvalidOperation, decimal.DivisionByZero, OverflowError)
+
+
+def gen_typed(rnd):
+    """CAS 035 (work/035-typed-domain.md): a summand whose typed text has no value where canon's has one, by the
+    domain rule's cases (canon cancels the part with the hole), of a polynomial u of Y, in CAS 034's shapes, from 0 or 1,
+    to N or ∞"""
+    u = rnd.choice(("Y", "Y+1", "2×Y", "Y-2", "Y^2-1", "-Y"))
+    f = rnd.choice(TYPED035).replace("u", u if u == "Y" else f"({u})")
+    shape = rnd.choice(("(1+Z×F)^K", "(Z×F)^K", "Z^K×F", "K×(Z×F)^K"))
+    return shape.replace("F", f"({f})"), rnd.choice((0, 1)), rnd.choice(("N", INF))
+
+
+def judge_typed(summand, lo, hi, out):
+    """'' when the line has no value, or a row with a value is false, at each point where the typed term at K = lo has
+    none (so the sum has none: to ∞, and to N at N = lo), Y at PTS035 and Z at 1÷2; the values strict"""
+    if out in STATUS or not out or out.startswith(("DECIMAL", "NO_", "NOT_", "(rc")):
+        return ""
+    parts = out.split("; ")
+    for y in PTS035:
+        pt = {"Y": y, "Z": "1÷2", "N": str(lo)}
+
+        def val(t):
+            for L, x in pt.items():
+                t = sub(t, L, x)
+            v = value(t, "RAD", strict=True)
+            if not v.is_finite():
+                raise ZeroDivisionError(t)
+            return v
+        try:
+            val(sub(summand, "K", str(lo)))
+            continue                                                # the term at lo has a value
+        except NOVAL035:
+            pass
+        try:
+            val(parts[0])
+        except NOVAL035:
+            continue                                                # the line has none either
+        excluded = False
+        for r in parts[1:]:
+            m = ROW034.match(r)
+            try:
+                a, b = val(m.group(1)), val(m.group(3))
+            except NOVAL035:
+                continue                                            # a row with no value excludes nothing
+            op = m.group(2)
+            if not {"≠": abs(a - b) > TOL, "<": a < b - TOL, ">": a > b + TOL, "≥": a >= b - TOL, "≤": a <= b + TOL}[op]:
+                excluded = True
+                break
+        if not excluded:
+            return f"{out}: a value at Y = {y}, where the typed summand has none from K = {lo} (CAS 035)"
+    return ""
 
 
 def check_examples():
@@ -1539,6 +1630,47 @@ def main():
         if why:
             failed += 1
             print(f"FAIL sum {summand} K {lo} {hi} {angle}: {why}")
+    # CAS 035 (work/035-typed-domain.md): the typed summand's domain. The evaluator's three controls first, each of
+    # which fails without its fix: a divisor 0 to 40 digits has no value in strict mode (COS(π÷2) is 2.3E-59 with the
+    # 90-digit π), LN(0) has none (Decimal gives -Infinity), and a thread values in the module's 60 digits
+    ctl = []
+    for t in ("1÷COS((π÷2))", "LN((0))"):
+        try:
+            value(t, "RAD", strict=True)
+            ctl.append(t)
+        except NOVAL035:
+            pass
+    got = {}
+    th = threading.Thread(target=lambda: got.setdefault("v", value("1÷3")))
+    th.start()
+    th.join()
+    if ctl or got.get("v") != value("1÷3"):
+        print(f"FAIL scripts/sum-values.py: its evaluator values {ctl or 'a thread at another precision'}")
+        sys.exit(1)
+    # planted: 1.3.0's and 4c0523b's lines with a value where the typed summand has none are refused, the build's taken
+    refuses11 = [("(Z×EXP(LN(Y))+1)^K", 0, INF, "-1÷Y÷Z; ABS(Y×Z+1)<1"), ("(Y÷Y)^K", 1, "N", "N"),
+                 ("Z^K×SQRT(Y)^2", 0, INF, "-Y÷(Z-1); ABS(Z)<1"), ("(Z×LN(Y)÷LN(Y))^K", 0, INF, "-1÷(Z-1); ABS(Z)<1")]
+    takes11 = [("(Z×EXP(LN(Y))+1)^K", 0, INF, "-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1"), ("(Y÷Y)^K", 1, "N", "N; Y≠0"),
+               ("Z^K×SQRT(Y)^2", 0, INF, "-Y÷(Z-1); Y≥0; ABS(Z)<1"),
+               ("(Z×LN(Y)÷LN(Y))^K", 0, INF, "-1÷(Z-1); Y>0; Y≠1; ABS(Z)<1")]
+    if any(not judge_typed(*c) for c in refuses11) or any(judge_typed(*c) for c in takes11):
+        print("FAIL scripts/sum-values.py: its CAS 035 judge accepts a planted answer or refuses a right one")
+        sys.exit(1)
+    rnd11, n11 = random.Random(20261035), 60
+    held11 = [("(Z×ALOG(LOG(Y))+1)^K", 0, INF), ("(Z×SQRT(Y)×SQRT(Y)+1)^K", 1, "N"), ("Z^K×(Y-1)÷(Y-1)", 0, INF),
+              ("Z^K×SQRT(Y-2)^2", 1, "N"), ("(Z×(Y^(1÷4))^4)^K", 0, INF), ("Z^K×(0×LN(Y)+1)", 0, INF),
+              ("Z^K×LN(Y)^0", 1, "N"), ("K×(Z×SQRT(Y)÷SQRT(Y))^K", 1, INF), ("(Z×EXP(LN(Y^2-1)))^K", 0, INF),
+              ("Z^K×SQRT(-1)", 0, INF)]
+    cases11 = [gen_typed(rnd11) for _ in range(n11)] + held11
+    for summand, lo, hi in cases11:
+        out = run_sum(summand, lo, hi)
+        if out in ("NO_ROOM", "TOO_LONG") or out.startswith("DECIMAL_FORM"):
+            soft += 1
+            continue
+        why = judge_typed(summand, lo, hi, out)
+        if why:
+            failed += 1
+            print(f"FAIL sum {summand} K {lo} {hi} RAD: {why}")
     # CAS 029: typed quotients, their own seeded batch, and the judge's planted answers first: a value moved, and the
     # answer of canon's cancelled X^K for X^(2×K)÷X^K (a value at X = 0, where its terms are 0÷0), must be refused
     if judge_quot_values("X^K÷Y^K", 1, "N", "-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1") or \

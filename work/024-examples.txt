@@ -9,7 +9,7 @@
 |---|---|
 | `casim sum 'Y^K×X^(K-1)' K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1` |
 | `casim sum 'X^(K-1)×Y^(K-1)' K 1 N RAD` | `-1÷(X×Y-1)+(X×Y)^N÷(X×Y-1); X×Y≠1` |
-| `casim sum '(X×Y)^K÷X' K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X×Y≠1` |
+| `casim sum '(X×Y)^K÷X' K 1 N RAD` | `Y×(X×Y)^N÷(X×Y-1)-Y÷(X×Y-1); X≠0; X×Y≠1` |
 | `casim sum 'X^(2×K-1)×Y^K' K 1 N RAD` | `X×Y×(X^2×Y)^N÷(X^2×Y-1)-X×Y÷(X^2×Y-1); X^2×Y≠1` |
 | `casim sum 'X^(K-1)×Y^K×W^K' K 1 N RAD` | `W×Y×(W×X×Y)^N÷(W×X×Y-1)-W×Y÷(W×X×Y-1); W×X×Y≠1` |
 | `casim sum '(K+1)×X^(K-1)×Y^(K-1)' K 1 N RAD` | `-2÷(X×Y-1)+N×(X×Y)^N÷(X×Y-1)+X×Y×(X×Y)^N÷2÷(X×Y-X^2×Y^2÷2-1÷2)-X×Y÷2÷(X×Y-X^2×Y^2÷2-1÷2)+2×(X×Y)^N÷(X×Y-1); X×Y≠1` |

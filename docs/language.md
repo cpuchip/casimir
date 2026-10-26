@@ -318,6 +318,11 @@ are constants: a letter is BAD_ARG, a bound with no value is UNDEFINED, and a bo
 HI reverses the sign. Statuses: IMPROPER (a pole or domain edge of the integrand on the closed interval, or within
 1E-20 of it), integrate's statuses, BAD_ARG, UNDEFINED, TOO_LONG.
 
+The integrand is read as typed (CAS 035, work/035-typed-domain.md), beside the canonical form integrate takes: a part
+with no real value somewhere on the interval is IMPROPER, as a pole is, so SQRT(X)^2 from -2 to -1 is IMPROPER though
+X from -2 to -1 is -3÷2. A part whose condition holds another letter is BAD_ARG, as a letter in a bound is, unless
+the answer shows the hole itself: X×Y÷Y from 0 to 1 is BAD_ARG, and SQRT(Y) from 0 to 1 is `SQRT(Y)`.
+
 | Command | Prints |
 |---|---|
 | `casim defint "SIN(X)" X 0 π RAD` | `2` |
@@ -325,6 +330,8 @@ HI reverses the sign. Statuses: IMPROPER (a pole or domain edge of the integrand
 | `casim defint "1÷X" X 2 6 RAD` | `LN(3)` |
 | `casim defint "1÷X" X -1 1 RAD` | `IMPROPER` |
 | `casim defint "X^2" X B 1 RAD` | `BAD_ARG` |
+| `casim defint "SQRT(X)^2" X -2 -1 RAD` | `IMPROPER` |
+| `casim defint "X×Y÷Y" X 0 1 RAD` | `BAD_ARG` |
 
 ### factor: over the rationals
 
@@ -558,8 +565,8 @@ argument holds the variable: ABS(K)×SQRT(1+X) has no row), TAN's pole, LN's, LO
 where each part of the typed f is well behaved, so an answer can hold at a K its rows leave out: taylor K×ABS(K+X) to
 order 1 is `K×ABS(K)+K×X×SGN(K); K≠0`, and at K = 0, where ABS(K+X) has its corner, f is 0 and so is the answer. limit's come from its walk: each division by a letter's value, the two sides apart (UNDEFINED with its rows),
 and the answer's own denominators. A sign isn't a condition: an answer that flips with a letter's sign (X^K at 0+,
-EXP(K×X) at ∞) stays UNDECIDED. The text is read as canon reads it, before any decision: SIN(K×X)÷SIN(K×X) is 1, so its
-limit at 0 is 1, with no row. More than 8 rows is NO_ROOM, and an answer with its rows past 191 bytes TOO_LONG.
+EXP(K×X) at ∞) stays UNDECIDED. The typed text's divisors count too (CAS 035): SIN(K×X)÷SIN(K×X) at 0 is `1; K≠0`,
+since at K = 0 its divisor is 0 for every X. More than 8 rows is NO_ROOM, and an answer with its rows past 191 bytes TOO_LONG.
 
 Between steps each derivative is kept as text, in one of two buffers at the arena's top. They are 384 bytes each, and
 1,024 in an arena of 16,384 bytes or more (CAS 016): the host and the web library, whose arena is 65,536, not the
@@ -617,6 +624,17 @@ EXP(E×LN(B)); at ∞ a polynomial by its leading term; an ∞-∞ with a square
 L'Hôpital, which there keeps the numerator and denominator apart). The side near A comes
 from the first derivative that isn't 0 there, so 1÷X at 0 is ∞ from above, -∞ from below, and has no two-sided limit.
 
+Before the walk, the typed text's domain is read (CAS 035, work/035-typed-domain.md). Each part with one gives a
+condition on its argument u: a divisor's u ≠ 0, LN's and LOG's u > 0, a root's u ≥ 0, ASIN's and ACOS's ABS(u) ≤ 1,
+ACOSH's u ≥ 1, ATANH's ABS(u) < 1 and TAN's COS(u) ≠ 0. A side asked with no real value near A is UNDEFINED, and
+two-sided limits ask both: SQRT(X) at -1 is UNDEFINED, and at 0 it is UNDEFINED two-sided and 0 from above. A point
+hole needs nothing (X÷X at 0 is 1). A condition in other letters only is CAS 023's row, with ≥ written as > and
+ABS(u) ≤ 1 as ABS(u)<1, which is stricter at the edge: SQRT(Y)^2×X at 1 is `Y; Y>0`. One that holds X and a letter
+is read near A, so EXP(LN(X×Y)) at 0 is `0; Y>0` from above, `0; Y<0` from below and UNDEFINED two-sided. A divisor
+that some letter's value makes 0 for every X near A leaves the text no value there, so that value gets a row:
+SIN(K×X)÷SIN(K×X) at 0 is `1; K≠0`. Where that can't be decided the answer is UNDECIDED, as for
+(Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X)) at 0, whose divisor is 0 for every X at Y = 1 and at Y = -1.
+
 Where the walk refuses (NO_ROOM or UNDECIDED), limit takes taylor's series route (CAS 021) on each side asked: the text
 at X = A ± t as t^v × (c_0 + c_1×t + …), whose limit is 0 for v above 0, c_0 for v = 0, and ∞ or -∞ by c_0's decided
 sign for v below 0; at ∞ and -∞ the text at X = ±1÷t. Two sides must agree, as the walk's must. So 1÷X^2-1÷SIN(X)^2 at
@@ -625,11 +643,12 @@ LN(X)÷X at ∞ are the walk's, and SIN(X)÷X at ∞ stays UNDECIDED. A constant
 the walk's orders, leading terms and quotients, and the two sides' agreement, refuse (UNDECIDED) on a constant the
 bound can't decide.
 
-Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), or
-SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). With a letter it can be
+Statuses: UNDEFINED means there is no limit, and only where that's proven: the one-sided limits differ (1÷X at 0), a
+side asked has no real value (SQRT(X) at -1), or SIN, COS or TAN of an argument going to ±∞ (SIN(X) at ∞, SIN(X)+1, 2×SIN(X), COS(1÷X) at 0). With a letter it can be
 proven only for some values: then out holds the condition rows (K×ABS(X)÷X at 0 is `UNDEFINED; K≠0`, CAS 023). UNDECIDED means the walk
 couldn't decide: more than 12 L'Hôpital steps, an ∞-∞ the rewrites don't resolve, a damped oscillation (SIN(X)÷X at ∞
-is 0, but by the squeeze theorem, which the walk doesn't have), or a form it doesn't cover. NOT_DIFFERENTIABLE: a name
+is 0, but by the squeeze theorem, which the walk doesn't have), a divisor a letter's value might make 0 for every X,
+or a form it doesn't cover. NOT_DIFFERENTIABLE: a name
 derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a letter in A, a side other than `+`, `-` and
 `''`, or a side at ∞.
 
@@ -648,6 +667,9 @@ derive refuses (X!, IP), since L'Hôpital derives. BAD_ARG: an equation, a lette
 | `casim limit 'SIN(X)' X ∞ '' RAD` | `UNDEFINED` |
 | `casim limit 'SIN(X)÷X' X ∞ '' RAD` | `UNDECIDED` |
 | `casim limit '((10^25×SIN(1)^2+10^25×COS(1)^2-10^25)+X)÷X' X 0 '' RAD` | `UNDECIDED` |
+| `casim limit 'SQRT(X)' X -1 '' RAD` | `UNDEFINED` |
+| `casim limit 'EXP(LN(X×Y))' X 0 + RAD` | `0; Y>0` |
+| `casim limit 'SIN(K×X)÷SIN(K×X)' X 0 '' RAD` | `1; K≠0` |
 | `casim limit '(10^25×SIN(1)^2+10^25×COS(1)^2-10^25)×ABS(X)÷X' X 0 '' RAD` | `UNDECIDED` |
 | `casim limit '1÷X-1÷SIN(X)' X 0 '' RAD` | `0` |
 | `casim limit 'SIN(K×X)÷(K×X)' X 0 '' RAD` | `1; K≠0` |
@@ -662,7 +684,10 @@ terms are added exactly, each the typed text at its value, in the angle mode (so
 exact values); HI below LO is the empty sum, 0. Otherwise the sum needs a closed form: a polynomial times a geometric
 term, q(K)×B^K (q to degree 12, B a constant), by an antidifference checked exactly; a rational
 function through partfrac, when its fractions telescope (each class of shifts whose coefficients sum to 0). The answer
-is expanded, with the telescoped fractions kept as they are.
+is expanded, with the telescoped fractions kept as they are. A closed form to N holds from N = LO-1, the empty sum, up.
+Below that it is the formula carried on: where it and the subtracting convention (the sum from LO to N as minus the sum
+from N+1 to LO-1) both have a value they agreed in every case measured (work/sum-below-lo.tsv), and each can have a
+value where the other has none.
 
 To ∞, |B| < 1 converges and a telescoping class always does; Σ 1÷(K×(K+1)) from 1 is 1. A sum that grows is `∞` or
 `-∞`, as limit prints them; UNDEFINED where the partial sums swing ((-1)^K, (-2)^K), as limit's "no limit"; UNDECIDED
@@ -680,9 +705,12 @@ shift, and CAS 024's for a ratio in two letters or more), while from 0 the first
 Whatever else the ratio holds, the row stands too (CAS 025): Σ K×(SQRT(2)×X×Y)^K÷Y from 0 prints `Y≠0`, and so does
 a letter at a negative power, whose terms divide by it from some K on: Σ (X÷Y)^K÷Y from 0 is `-1÷(X-Y); Y≠0;
 ABS(X÷Y)<1`, since a row with no value at Y = 0 can't exclude it. A term is read as canon reads it, with its powers
-merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), with no value at Y = 0. Added term by term
-(whole bounds at most 64 apart), each term is the typed text simplified, so it cancels as simplify does: 0÷Y is 0,
-X÷X is 1. So Σ K×Y^K÷Y from 0 to 3 has no row, while from 0 to ∞ it has `Y≠0`. A factor of the ratio that holds a
+merged and nothing cancelled after, so K×(X×Y)^K÷Y at K = 0 is 0×Y^(-1), with no value at Y = 0. The typed text's
+domain is read as typed (CAS 035, work/035-typed-domain.md): a divisor, LN's and LOG's argument, a root, the arguments
+of ASIN, ACOS, ACOSH and ATANH, and TAN's pole each give a row in the other letters, unless a row already says it or
+the answer shows the hole itself. So Σ (Y÷Y)^K from 1 to N is `N; Y≠0`, Σ K×Y^K÷Y from 0 to 3 is `2×Y+3×Y^2+1; Y≠0`,
+and Σ (Z×EXP(LN(Y))+1)^K from 0 to ∞ is `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1`. The rows count toward the 191 bytes, and a line
+they take past it is TOO_LONG. A factor of the ratio that holds a
 letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
 0×SIN(Z)^(-1), with no value wherever SIN(Z) = 0, and prints `SIN(Z)≠0`; COS, TAN, LN, SQRT and the other roots, and ABS
 the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter keep the

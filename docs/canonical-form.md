@@ -191,6 +191,10 @@ original is defined (the unit's rule 3). Each rule above was checked against it:
 - (u×v)^n → u^n × v^n for an integer n only.
 - No trig identities, no expansion of products of sums, no factoring (the unit's rule 4).
 
+The rule is simplify's. sum, defint and limit promise a value only where the input as typed has one (CAS 035,
+work/035-typed-domain.md), so each reads the typed text's domain beside the canonical form: a part the rule lets
+canon drop still gives its condition there, as a row, IMPROPER, BAD_ARG or UNDEFINED, as docs/language.md says for each.
+
 ## Printing
 
 Readable and re-readable: printing a canonical tree and parsing it back gives the same canonical tree

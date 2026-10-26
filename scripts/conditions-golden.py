@@ -14,7 +14,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-023.txt")
 LATER = [os.path.join(GOLDEN, "moved", "cas-024.txt"), os.path.join(GOLDEN, "moved", "cas-028.txt"),
-         os.path.join(GOLDEN, "moved", "cas-032.txt")]
+         os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt")]
 BASE = "fc46c8b"
 
 
