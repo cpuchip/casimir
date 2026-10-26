@@ -52,6 +52,10 @@ h032's reading (#10639):
   EXP of another letter (`Z×ABS(Y)+1≠1`'s Z, `COS(Y×Z)≠1`), or `Z÷Y`. It is 31fe266's line and is never failed.
 - **Fails:** a drop the rule doesn't allow, even where it happens to be true (`Z≠0` beside `Z×ABS(Y)+1≠1`).
 - **Fails (NOT_SAID):** a row the rule drops but the build keeps, except where the line gave way at the cap.
+- **Since CAS 034** (work/034-total-functions.md, abacus #11253): a letter inside ABS, SIN, COS, EXP, ALOG, SINH,
+  COSH, TANH, ATAN or ASINH of a polynomial place is in the rule's reach, so `Z≠0` beside `Z×ABS(Y)+1≠1` and both
+  letters' rows beside `COS(Y×Z)≠1` go; h032's judge reads Michael's sentence (false at L = 0 for every value of the
+  others), its change disclosed by abacus.
 
 It reverses CAS 018 rule 2's choice for EXP, made in its cold review: "EXP(X)^K gets X≠0 beside EXP(X)≠1: the same
 value, the plainer row first." Where the other row excludes exactly L = 0 (EXP, COSH, 1÷COSH, `Z^2+1`), the plainer

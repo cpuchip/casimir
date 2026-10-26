@@ -61,8 +61,9 @@
 # - Rows that say nothing (abacus #10635 (1), #10637): a row whose other letter is under a division, a root or a
 #   function has no value at L = 0 for some value of it, or is out of the rule's reach, and the letter's row stays.
 #   Z÷(Y-1)+1≠1 has no value at Y = 1, SQRT(Y)×Z+1≠1 for Y < 0, Z×TAN(Y)+1≠1 at Y = π÷2, Z×LN(Y)+1≠1 for Y ≤ 0;
-#   Z×ABS(Y)+1≠1 and COS(Y×Z)≠1 have a value everywhere but are out of reach (h032's reading: lawful, unchanged). Where
-#   Y is in a polynomial place the same rows say Y≠0
+#   Z×ABS(Y)+1≠1 and COS(Y×Z)≠1 have a value everywhere and were out of the rule's reach (h032's reading: lawful,
+#   unchanged). Since CAS 034 (work/034-total-functions.md) they say Z≠0, and COS(Y×Z)≠1 says Y≠0 as well: the last
+#   three rows below. Where Y is in a polynomial place the same rows say Y≠0
 
 | Command | Prints |
 |---|---|
@@ -71,9 +72,9 @@
 | `casim sum '(1+Z×SQRT(Y))^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Z≠0; SQRT(Y)×Z+1≠1` |
 | `casim sum '(1+Z×TAN(Y))^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1` |
 | `casim sum '(1+Z×LN(Y))^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y≠0; Z≠0; Z×LN(Y)+1≠1` |
-| `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z≠0; Z×ABS(Y)+1≠1` |
-| `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); Y≠0; Z≠0; ABS(Z×ABS(Y)+1)<1` |
-| `casim sum 'COS(Y×Z)^K' K 0 N RAD` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); Y≠0; Z≠0; COS(Y×Z)≠1` |
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z×ABS(Y)+1≠1` |
+| `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); ABS(Z×ABS(Y)+1)<1` |
+| `casim sum 'COS(Y×Z)^K' K 0 N RAD` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); COS(Y×Z)≠1` |
 #   CAS 033 (work/033-divisor-rows.md): `Y≠0` added, where B has no value and the answer had one; it printed `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1`
 | `casim sum '(1+Y^(-1)×Z)^K' K 0 ∞ RAD` | `-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1` |
 | `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); Z≠0; Y÷SIN(2×Z)≠1` |
