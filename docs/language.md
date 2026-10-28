@@ -719,8 +719,10 @@ the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, 
 row even there, as a letter's (CAS 030): Σ (Y÷SIN(Z))^K from 1 to N has no value at Z = π, where the empty sum (N = 0)
 is 0, so it prints `SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that row would pass 191 bytes, the row gives way.
 A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
-its first term is Y, with a value everywhere, and the shift reads the factor as it reads a letter (CAS 027): it prints
-`-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); ABS(Y×SIN(Z))<1`, which is Y at Z = π, as the sum is.
+canon reads its first term as Y, and the shift reads the factor as it reads a letter (CAS 027), so the answer is Y at
+Z = π. The summand as typed divides by SIN(Z), though, so the sum has no value there, and the typed domain's row
+stands (CAS 035): it prints
+`-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(Y×SIN(Z))<1`.
 Each term of the closed form loses the monomial it shares with its denominator, before the rows (CAS 031): Σ
 (K+1)×X^(K+1)×Y^K from -1 to ∞ prints `-X÷2÷(X×Y-X^2×Y^2÷2-1÷2); Y≠0; ABS(X×Y)<1`, which is 0 at X = 0, as the sum
 is, where the shared X made it 0÷0, and Σ (K+1)×SIN(Z)^(K+1)×Y^K from -1 to ∞ has the sum's 0 at Z = π the same way.
@@ -770,7 +772,7 @@ NO_CLOSED_FORM (13): no closed form here, as for Σ 1÷K (harmonic numbers) and 
 
 Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (work/019-fractions.md).
 - **A number casim makes prints as a fraction**, folded into its term: `X^4÷4`, `-X^2÷4+X^2×LN(X)÷2`, `SQRT(2)÷2`,
-  `X^(1÷2)`. A whole number prints as before. collect's groups fold the same way (`X^2÷3+(Y÷2+1÷4)×X`).
+  `X^(3÷2)`. A whole number prints as before. collect's groups fold the same way (`X^2÷3+(Y÷2+1÷4)×X`).
 - **A typed decimal stays a decimal.** A literal with a point or an exponent (`0.5`, `.5`, `2.`, `1E-12`) is marked,
   and so is every number made from a marked one: CAS 002's rule prints it, a decimal where it ends and else a quotient
   (`0.5÷3` is `1÷6`, `2×0.5` is `1`). A fraction typed as `1÷2` or `1.1.2` is not marked. So `∫(0.5×X+X^3)dX` is
