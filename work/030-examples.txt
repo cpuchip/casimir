@@ -15,11 +15,11 @@
 #   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-1÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; COS(Z)≠0; COS(Z)≠1`
 | `casim sum 'K×COS(Z)^(K-1)' K 0 N RAD` | `-1÷2÷(COS(Z)-COS(Z)^2÷2-1÷2)-N×COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)-COS(Z)^(N+1)÷(COS(Z)-COS(Z)^2)+COS(Z)^(N+1)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); COS(Z)≠0; COS(Z)≠1` |
 #   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); Z≠0; TAN(Z)≠0; Y×TAN(Z)^2≠1`
-| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 0 N RAD` | `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); TAN(Z)≠0; Y×TAN(Z)^2≠1` |
-| `casim sum 'LN(Z)^(3×K-1)×Y^K' K 0 N RAD` | `1÷(LN(Z)-Y×LN(Z)^4)-(Y×LN(Z)^3)^(N+1)÷(LN(Z)-Y×LN(Z)^4); Z≠0; LN(Z)≠0; Y×LN(Z)^3≠1` |
-| `casim sum '(Y÷LOG(Z))^K' K 1 N RAD` | `-Y÷(Y-LOG(Z))+(Y÷LOG(Z))^(N+1)÷(Y÷LOG(Z)-1); Z≠0; LOG(Z)≠0; Y÷LOG(Z)≠1` |
-| `casim sum '(Y÷ACOS(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOS(Z)-1)+(Y÷ACOS(Z))^(N+1)÷(Y÷ACOS(Z)-1); ACOS(Z)≠0; Y÷ACOS(Z)≠1` |
-| `casim sum '(Y÷ACOSH(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOSH(Z)-1)+(Y÷ACOSH(Z))^(N+1)÷(Y÷ACOSH(Z)-1); ACOSH(Z)≠0; Y÷ACOSH(Z)≠1` |
+| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 0 N RAD` | `1÷(TAN(Z)-Y×TAN(Z)^3)-(Y×TAN(Z)^2)^(N+1)÷(TAN(Z)-Y×TAN(Z)^3); COS(Z)≠0; TAN(Z)≠0; Y×TAN(Z)^2≠1` |
+| `casim sum 'LN(Z)^(3×K-1)×Y^K' K 0 N RAD` | `1÷(LN(Z)-Y×LN(Z)^4)-(Y×LN(Z)^3)^(N+1)÷(LN(Z)-Y×LN(Z)^4); Z>0; LN(Z)≠0; Y×LN(Z)^3≠1` |
+| `casim sum '(Y÷LOG(Z))^K' K 1 N RAD` | `-Y÷(Y-LOG(Z))+(Y÷LOG(Z))^(N+1)÷(Y÷LOG(Z)-1); Z>0; LOG(Z)≠0; Y÷LOG(Z)≠1` |
+| `casim sum '(Y÷ACOS(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOS(Z)-1)+(Y÷ACOS(Z))^(N+1)÷(Y÷ACOS(Z)-1); ABS(Z)≤1; ACOS(Z)≠0; Y÷ACOS(Z)≠1` |
+| `casim sum '(Y÷ACOSH(Z))^K' K 0 N RAD` | `-1÷(Y÷ACOSH(Z)-1)+(Y÷ACOSH(Z))^(N+1)÷(Y÷ACOSH(Z)-1); Z≥1; ACOSH(Z)≠0; Y÷ACOSH(Z)≠1` |
 #   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; Z≠0; SIN(Z)≠0; Y×SIN(Z)≠1`
 | `casim sum '(SIN(Z)×Y)^K' K -1 N RAD` | `1÷(Y×SIN(Z)-Y^2×SIN(Z)^2)-(Y×SIN(Z))^(N+2)÷(Y×SIN(Z)-Y^2×SIN(Z)^2); Y≠0; SIN(Z)≠0; Y×SIN(Z)≠1` |
 
@@ -32,7 +32,7 @@
 | `casim sum '(Y÷SIN(Z))^K' K 1 N DEG` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
 | `casim sum '(Y÷COS(Z))^K' K 1 N GRAD` | `-Y÷(Y-COS(Z))+(Y÷COS(Z))^(N+1)÷(Y÷COS(Z)-1); COS(Z)≠0; Y÷COS(Z)≠1` |
 #   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); Z≠0; TAN(Z)≠0; Y×TAN(Z)^3≠1`
-| `casim sum 'TAN(Z)^(3×K-1)×Y^K' K 0 N DEG` | `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); TAN(Z)≠0; Y×TAN(Z)^3≠1` |
+| `casim sum 'TAN(Z)^(3×K-1)×Y^K' K 0 N DEG` | `1÷(TAN(Z)-Y×TAN(Z)^4)-(Y×TAN(Z)^3)^(N+1)÷(TAN(Z)-Y×TAN(Z)^4); COS(Z)≠0; TAN(Z)≠0; Y×TAN(Z)^3≠1` |
 
 # - The row gives way at the cap: each line is 33b265d's, and with its row it would pass 191 B (184 + 12, 181 + 12,
 #   178 + 14). The missing value stays, named:
@@ -51,14 +51,18 @@
 # - What stays as it was. A factor 0 only at its letter's 0 (ASIN, ATAN, SINH, TANH; ASINH and ATANH too) has that
 #   letter's row, Z≠0, which already excludes its zero; a factor that isn't one of the list's functions of a letter
 #   (SIN(2×Z), a polynomial) keeps its missing value, named: casim doesn't know its real zeros here, and Z^2+1 has none:
+#   CAS 036 (work/036-missing-values.md): the typed divisor's row is made where the answer shows its hole, and gives
+#   way at the cap. ASIN's `ABS(Z)≤1` and each function's own `≠0` row say the `Z≠0` these printed, so it is left
+#   out; `SIN(2×Z)≠0` excludes the missing value at Z = π÷2; a polynomial with real zeros gets its row too
+#   (`(Y÷(Z-1))^K` from 1 to N prints `Z≠1`). Z^2+1 has no real zero, and gets none.
 
 | Command | Prints |
 |---|---|
-| `casim sum '(Y÷ASIN(Z))^K' K 1 N RAD` | `-Y÷(Y-ASIN(Z))+(Y÷ASIN(Z))^(N+1)÷(Y÷ASIN(Z)-1); Z≠0; Y÷ASIN(Z)≠1` |
-| `casim sum '(Y÷ATAN(Z))^K' K 1 N RAD` | `-Y÷(Y-ATAN(Z))+(Y÷ATAN(Z))^(N+1)÷(Y÷ATAN(Z)-1); Z≠0; Y÷ATAN(Z)≠1` |
-| `casim sum '(Y÷SINH(Z))^K' K 1 N RAD` | `-Y÷(Y-SINH(Z))+(Y÷SINH(Z))^(N+1)÷(Y÷SINH(Z)-1); Z≠0; Y÷SINH(Z)≠1` |
-| `casim sum '(Y÷TANH(Z))^K' K 1 N RAD` | `-Y÷(Y-TANH(Z))+(Y÷TANH(Z))^(N+1)÷(Y÷TANH(Z)-1); Z≠0; Y÷TANH(Z)≠1` |
-| `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); Z≠0; Y÷SIN(2×Z)≠1` |
+| `casim sum '(Y÷ASIN(Z))^K' K 1 N RAD` | `-Y÷(Y-ASIN(Z))+(Y÷ASIN(Z))^(N+1)÷(Y÷ASIN(Z)-1); ABS(Z)≤1; ASIN(Z)≠0; Y÷ASIN(Z)≠1` |
+| `casim sum '(Y÷ATAN(Z))^K' K 1 N RAD` | `-Y÷(Y-ATAN(Z))+(Y÷ATAN(Z))^(N+1)÷(Y÷ATAN(Z)-1); ATAN(Z)≠0; Y÷ATAN(Z)≠1` |
+| `casim sum '(Y÷SINH(Z))^K' K 1 N RAD` | `-Y÷(Y-SINH(Z))+(Y÷SINH(Z))^(N+1)÷(Y÷SINH(Z)-1); SINH(Z)≠0; Y÷SINH(Z)≠1` |
+| `casim sum '(Y÷TANH(Z))^K' K 1 N RAD` | `-Y÷(Y-TANH(Z))+(Y÷TANH(Z))^(N+1)÷(Y÷TANH(Z)-1); TANH(Z)≠0; Y÷TANH(Z)≠1` |
+| `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); SIN(2×Z)≠0; Y÷SIN(2×Z)≠1` |
 | `casim sum '(Y÷(Z^2+1))^K' K 1 N RAD` | `Y÷(Z^2-Y×Z^2÷(Z^2+1)-Y÷(Z^2+1)+1)+(Y÷(Z^2+1))^(N+1)÷(Y÷(Z^2+1)-1); Y÷(Z^2+1)≠1` |
 
 # - A whole hi has no empty sum and no smaller N, and to ∞ no N comes before the first term (the 12, from lo < 0, stay
@@ -75,8 +79,9 @@
 
 # - Not CAS 030's (abacus #10394 (3)): a factor outside the ratio. At its zero every term has no value, and so has the
 #   answer, but the empty sum is 0; Not yet's empty-sum item names it. The same with a letter:
+#   CAS 036 (work/036-missing-values.md): the row is made now, and gives way at the cap: `SIN(Z)≠0` and `X≠0`.
 
 | Command | Prints |
 |---|---|
-| `casim sum 'K×Y^K÷SIN(Z)' K 1 N RAD` | `-N×Y^(N+1)÷(SIN(Z)-Y×SIN(Z))+Y÷(SIN(Z)-Y×SIN(Z))-Y^(N+1)÷(SIN(Z)-Y×SIN(Z))-Y^(N+2)÷(SIN(Z)-2×Y×SIN(Z)+Y^2×SIN(Z))+Y^2÷(SIN(Z)-2×Y×SIN(Z)+Y^2×SIN(Z)); Y≠1` |
-| `casim sum '1÷X' K 1 N RAD` | `N÷X` |
+| `casim sum 'K×Y^K÷SIN(Z)' K 1 N RAD` | `-N×Y^(N+1)÷(SIN(Z)-Y×SIN(Z))+Y÷(SIN(Z)-Y×SIN(Z))-Y^(N+1)÷(SIN(Z)-Y×SIN(Z))-Y^(N+2)÷(SIN(Z)-2×Y×SIN(Z)+Y^2×SIN(Z))+Y^2÷(SIN(Z)-2×Y×SIN(Z)+Y^2×SIN(Z)); Y≠1; SIN(Z)≠0` |
+| `casim sum '1÷X' K 1 N RAD` | `N÷X; X≠0` |

@@ -22,8 +22,8 @@
 | Command | Prints |
 |---|---|
 | `casim sum '(Z÷Y+1)^K' K 0 N RAD` | `-Y÷Z+Y×(Z÷Y+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷Y+1≠1` |
-| `casim sum '(Z÷(Y-1)+1)^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z≠0; Z÷(Y-1)+1≠1` |
-| `casim sum '(Z÷SIN(Y)+1)^K' K 0 N RAD` | `-SIN(Y)÷Z+SIN(Y)×(Z÷SIN(Y)+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷SIN(Y)+1≠1` |
+| `casim sum '(Z÷(Y-1)+1)^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Y≠1; Z≠0; Z÷(Y-1)+1≠1` |
+| `casim sum '(Z÷SIN(Y)+1)^K' K 0 N RAD` | `-SIN(Y)÷Z+SIN(Y)×(Z÷SIN(Y)+1)^(N+1)÷Z; Z≠0; SIN(Y)≠0; Z÷SIN(Y)+1≠1` |
 
 # - The answer's own hole: where the answer has no value with d at 0, no row (CAS 026's factor probe). Without the
 #   probe the first line would go TOO_LONG (188 + 9 B)
@@ -52,4 +52,4 @@
 
 | Command | Prints |
 |---|---|
-| `casim --arena 2048 sum '(X÷Y)^K÷Y' K -2 N RAD` | `Y÷(X^2-X^3÷Y)+(X÷Y)^(N+1)÷(X-Y); X≠0; Y≠0; X÷Y≠1` |
+| `casim --arena 2048 sum '(X÷Y)^K÷Y' K -2 N RAD` | `NO_ROOM` |

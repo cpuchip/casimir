@@ -24,7 +24,7 @@
 | Command | Prints |
 |---|---|
 | `casim sum '(Y÷SIN(Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
-| `casim sum '(Y÷TAN(Z))^K' K 1 N RAD` | `-Y÷(Y-TAN(Z))+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); TAN(Z)≠0; Y÷TAN(Z)≠1` |
+| `casim sum '(Y÷TAN(Z))^K' K 1 N RAD` | `-Y÷(Y-TAN(Z))+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); COS(Z)≠0; TAN(Z)≠0; Y÷TAN(Z)≠1` |
 | `casim sum '(Y÷SIN(Z))^K' K 1 N DEG` | `-Y÷(Y-SIN(Z))+(Y÷SIN(Z))^(N+1)÷(Y÷SIN(Z)-1); SIN(Z)≠0; Y÷SIN(Z)≠1` |
 
 # - A line within its row of the cap (1.2.0's Not yet): the letter's 7 B make room for the '?' row, so Z = π is
@@ -68,14 +68,14 @@
 | Command | Prints |
 |---|---|
 | `casim sum '(1+Z÷Y)^K' K 0 N RAD` | `-Y÷Z+Y×(Z÷Y+1)^(N+1)÷Z; Y≠0; Z≠0; Z÷Y+1≠1` |
-| `casim sum '(1+Z÷(Y-1))^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Z≠0; Z÷(Y-1)+1≠1` |
-| `casim sum '(1+Z×SQRT(Y))^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Z≠0; SQRT(Y)×Z+1≠1` |
-| `casim sum '(1+Z×TAN(Y))^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1` |
-| `casim sum '(1+Z×LN(Y))^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y≠0; Z≠0; Z×LN(Y)+1≠1` |
+| `casim sum '(1+Z÷(Y-1))^K' K 0 N RAD` | `1÷Z-Y÷Z+Y×(Z÷(Y-1)+1)^(N+1)÷Z-(Z÷(Y-1)+1)^(N+1)÷Z; Y≠1; Z≠0; Z÷(Y-1)+1≠1` |
+| `casim sum '(1+Z×SQRT(Y))^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Y≥0; Z≠0; SQRT(Y)×Z+1≠1` |
+| `casim sum '(1+Z×TAN(Y))^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); COS(Y)≠0; Z≠0; Z×TAN(Y)+1≠1` |
+| `casim sum '(1+Z×LN(Y))^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y>0; Z≠0; Z×LN(Y)+1≠1` |
 | `casim sum '(1+ABS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(Y)+(Z×ABS(Y)+1)^(N+1)÷Z÷ABS(Y); Z×ABS(Y)+1≠1` |
 | `casim sum '(1+ABS(Y)×Z)^K' K 0 ∞ RAD` | `-1÷Z÷ABS(Y); ABS(Z×ABS(Y)+1)<1` |
 | `casim sum 'COS(Y×Z)^K' K 0 N RAD` | `-1÷(COS(Y×Z)-1)+COS(Y×Z)^(N+1)÷(COS(Y×Z)-1); COS(Y×Z)≠1` |
 #   CAS 033 (work/033-divisor-rows.md): `Y≠0` added, where B has no value and the answer had one; it printed `-Y÷Z; Z≠0; ABS(Z÷Y+1)<1`
 | `casim sum '(1+Y^(-1)×Z)^K' K 0 ∞ RAD` | `-Y÷Z; Y≠0; Z≠0; ABS(Z÷Y+1)<1` |
-| `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); Z≠0; Y÷SIN(2×Z)≠1` |
+| `casim sum '(Y÷SIN(2×Z))^K' K 1 N RAD` | `-Y÷(Y-SIN(2×Z))+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); SIN(2×Z)≠0; Y÷SIN(2×Z)≠1` |
 | `casim sum 'X^K÷Y^K' K 1 N RAD` | `-X÷(X-Y)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1` |

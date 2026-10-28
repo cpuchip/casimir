@@ -12,11 +12,11 @@
 |---|---|
 | `casim sum 'K×(SIN(Z)×Y)^K÷SIN(Z)' K 1 ∞ RAD` | `-Y÷(Y×SIN(Z)-1)-Y^2×SIN(Z)÷2÷(Y×SIN(Z)-Y^2×SIN(Z)^2÷2-1÷2); SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
 | `casim sum 'SIN(Z)^(2×K-1)×Y^K' K 1 N RAD` | `Y×SIN(Z)×(Y×SIN(Z)^2)^N÷(Y×SIN(Z)^2-1)-Y×SIN(Z)÷(Y×SIN(Z)^2-1); Y×SIN(Z)^2≠1` |
-| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 1 N RAD` | `Y×TAN(Z)×(Y×TAN(Z)^2)^N÷(Y×TAN(Z)^2-1)-Y×TAN(Z)÷(Y×TAN(Z)^2-1); Y×TAN(Z)^2≠1` |
+| `casim sum 'TAN(Z)^(2×K-1)×Y^K' K 1 N RAD` | `Y×TAN(Z)×(Y×TAN(Z)^2)^N÷(Y×TAN(Z)^2-1)-Y×TAN(Z)÷(Y×TAN(Z)^2-1); COS(Z)≠0; Y×TAN(Z)^2≠1` |
 #   CAS 032 (work/032-redundant-row.md): `Z≠0` left out, said by a kept row; it printed `-1÷(COS(Z)-1)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); Z≠0; ABS(COS(Z))<1`
 | `casim sum 'K×COS(Z)^(K-1)' K 1 ∞ RAD` | `-1÷(COS(Z)-1)-COS(Z)÷2÷(COS(Z)-COS(Z)^2÷2-1÷2); ABS(COS(Z))<1` |
 | `casim sum 'K×LN(Z)^(2×K-1)×Y^K' K 1 ∞ RAD` | `-Y×LN(Z)÷(Y×LN(Z)^2-1)-Y^2×LN(Z)^3÷2÷(Y×LN(Z)^2-Y^2×LN(Z)^4÷2-1÷2); Z≠0; ABS(Y×LN(Z)^2)<1` |
-| `casim sum '(SQRT(Z)×Y)^K×SQRT(Z)' K -1 N RAD` | `1÷(Y-Y^2×SQRT(Z))-(Y×SQRT(Z))^(N+2)÷(Y-Y^2×SQRT(Z)); Y≠0; Y×SQRT(Z)≠1` |
+| `casim sum '(SQRT(Z)×Y)^K×SQRT(Z)' K -1 N RAD` | `1÷(Y-Y^2×SQRT(Z))-(Y×SQRT(Z))^(N+2)÷(Y-Y^2×SQRT(Z)); Y≠0; Z≥0; Y×SQRT(Z)≠1` |
 
 # - What comes with it (#10004 (2), judged by value): a row for nothing dropped (1.0.0 printed Y≠0 for both, and at
 #   Y = 0 the sum is its first term, 1 and LN(Z); LN's Z≠0 is LN's own domain, kept as 1.0.0 kept it), and a sum that
