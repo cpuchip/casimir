@@ -1,7 +1,8 @@
 # CAS work unit 036: a row where a sum to N's line misses a value
 
-**From:** casim · **To:** abacus · **Status:** blueprint, ruled (abacus #11621), for h036. Not built: the build starts
-when h036's hash arrives. casim writes the unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built on branch cas036, for h036 (frozen, abacus #11646: sha256
+60f93adb07aa004d2e8c773a2a2b3e35ed048ffece6072ffeb6e4dd3cc35b810, 293 rows, 3 arenas). The blueprint was ruled at
+#11621 and committed at 60fdff7. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **From:**
   - Michael's card cas-missing, option (1) (abacus #11354): a plain rewrite where one exists, else a row.
   - His card cas-missing-scope (#11473): rows for the function class too, giving way at the cap.
@@ -126,8 +127,62 @@ Sorted by the first missing value:
   - **31 short lines with SGN,** which the evaluator can't judge.
 - **A function's give-way row replaces the simpler letter's row it implies,** where the line fits: `ACOS(Z+1)≠0` and
   `ABS(Z+1)≤1` in place of `Z≠0`.
+- **limit's k in two letters, or a letter's square** (abacus #11646, from h036's baseline): part 4 solves k = 0 only
+  for k linear in one letter, so `(SIN((Y-Z)×X)+1)÷(SIN((Y-Z)×X)+1)` at 0 prints `1; Y-Z≠0`, though at Y = Z it is
+  1 everywhere; `Y×Z-1` and `Y^2-1` (`1; Y≠-1; Y≠1`) the same. Each row is never wrong, only stricter than needed.
 
-## The build
+## Built (branch cas036)
+
+**Commits:**
+- a4cfed8, 4fc2082, 127eb82 and 1175caa: parts 1 to 4, each the prototype's source with a comment for it. Each
+  compiles alone under `-Wall -Wextra -Wpedantic -Werror`.
+- f126e26: the 43 documented rows re-pinned. work/030-examples.txt had two comments that named these missing values
+  as kept, and they now say what CAS 036 prints.
+- a34164d: the golden boundary, with 3 corpus lines and 3 under →DEC. scripts/missing-golden.py checks it; the six
+  earlier boundaries put CAS 036's moves back first (LATER); and typed-golden.py gains the list. Falsified: without
+  the LATER entry typed-golden.py fails both hashes, and a moved line left at its after or a row naming no missing
+  value (`X≠2`) fails missing-golden.py.
+- 35dbfae: work/036-examples.txt (24 rows) and ten mutants. Each mutant was built and recorded against the branch
+  before its catcher was chosen.
+- fd58264: CAS 032's said-soft-never retargeted. Part 1 changed the line it anchored, and it keeps its meaning (no
+  row is soft).
+- c301023: scripts/sum-values.py's typed_row. The CAS 024 to 027 value judges read the ratio's row alone and failed 35
+  sums on a give-way domain row (`Z>0` for LN(Z), `Z≥1`, `ABS(Z)≤1`, `COS(Z)≠0`). They now pass that row to
+  judge_typed, as they do CAS 035's root rows, and only for the function and letter the summand holds.
+- bc1dacf: docs/language.md's sum and limit paragraphs.
+
+**What differs from the blueprint:**
+- **Mutants:** ten, not eight. They add part 3's u^K rule off and part 4 solved with b's sign.
+  - `td036-z-any-lo` (u^K read from any lo) changes none of the 35,388 searched sum lines. It changes 39 of the
+    families' 10,271, each from TOO_LONG to NO_ROOM: rows that can't be made still take the arena. Its catcher pins
+    one of them.
+- **sm_said's soft read of a give-way row is kept, though it changes no line.** sm_rgw's first try keeps every row or
+  none, and its fallback runs sm_said with no give-way row. Removing the read gave the same 35,388 searched lines,
+  and the S3 text grew 20 B, so it stays, with no mutant (that mutant would be equivalent).
+
+**Gates on the branch:**
+- make check: green (198 s).
+- make test: green, 20 tests, 118,449 checks (418 s).
+- `make size`: 263,335 of 270,336 B.
+- Frames: no accepted S3 frame moves, and sm_rgw (48), td_gw (48) and td_at0 (96) are new. On the host the 436
+  recorded frames hold.
+- Families against 1.4.0: 1,245 of 10,271 sums move, by rows only, with no status or answer moved.
+- Mutants (claim #11660, 07:34:03Z to 07:41:29Z, three shards): all ten td036 caught.
+  - td036-gw-off and td036-pole-off: by the golden corpus's `X^(-K)` lines.
+  - td036-gw-hard and td036-gw-before-q: by re-pinned rows where the give-way rows go (work/030, 032 and 034), and by
+    026's and 027's.
+  - td036-gw-repeat: by work/035-examples.txt:143 and work/036-examples.txt:26.
+  - td036-z-div-off and td036-z-pow-off: by 029's, 033's and 036's rows.
+  - td036-z-any-lo: by work/036-examples.txt:48.
+  - td036-lin-off and td036-lin-sign: by work/036-examples.txt:55 to 57.
+
+  The full 529, at the tag's tree, wait for the release.
+- Device (the same claim, 07:41:29Z to 08:00:12Z): DEVICE PASS, 1,412 cases at 16,384 B, each the same as the host.
+  - The worst stack read masked is 11,360 B, as at 1.4.0. The interrupt allowance read 400 B this run, against 384
+    at 1.4.0's, so the budget is 11,760 of 12,288, leaving 528 (floor 256).
+  - casim-device's memory.peak: 1,077,186,560 B.
+
+## The build, as the blueprint planned it
 
 **Commits:**
 1. smrow.gw, td_gw and sm_rgw.
