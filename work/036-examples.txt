@@ -1,0 +1,60 @@
+# CAS 036's examples (work/036-missing-values.md; Michael's cas-missing (1) and cas-missing-scope, abacus #11354,
+# #11473, #11621): a sum to N whose line has no value at a point where the sum has one, the empty sum (N = lo-1), gets
+# the row CAS 035 left out, and the row gives way at the cap; limit's degenerate divisor tries k = 0 for k linear in
+# one letter again. Each row is run by scripts/doc-examples.py, and again with the series route compiled out (CAS 021)
+# and through the value check's build (CAS 022 rule 5).
+
+# - Part 1: a typed condition whose hole the answer shows gets its row to N. A row that says a letter's row leaves it
+#   out (ATANH's ABS(Y+1)<1 says Y≠0). To ∞ and to a whole hi there is no empty sum, and no row is added
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+Z×SQRT(Y))^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Y≥0; Z≠0; SQRT(Y)×Z+1≠1` |
+| `casim sum '(1+Z×LN(Y))^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y>0; Z≠0; Z×LN(Y)+1≠1` |
+| `casim sum 'Y^K÷X' K 1 N RAD` | `Y÷(X-X×Y)-Y^(N+1)÷(X-X×Y); X≠0; Y≠1` |
+| `casim sum '(1+Z×ATANH(Y+1))^K' K 0 N RAD` | `-1÷Z÷ATANH(Y+1)+(Z×ATANH(Y+1)+1)^(N+1)÷Z÷ATANH(Y+1); Z≠0; Z×ATANH(Y+1)+1≠1; ABS(Y+1)<1` |
+| `casim sum '(1+Z×SQRT(Y))^K' K 0 ∞ RAD` | `-1÷SQRT(Y)÷Z; Z≠0; ABS(SQRT(Y)×Z+1)<1` |
+| `casim sum '(1+Z×SQRT(Y))^K' K 0 3 RAD` | `(SQRT(Y)×Z+1)^2+(SQRT(Y)×Z+1)^3+SQRT(Y)×Z+2` |
+
+# - Where the line with its rows would pass 191 B, the rows give way together and the line is 1.4.0's. A row CAS 030's
+#   '?' row already gives is made once. A stricter row that says a hard one can bring a line under the cap (1.4.0:
+#   TOO_LONG)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(1+ACOS(Y)×Z)^(2×K)' K 1 N RAD` | `-1÷2÷(Z×ACOS(Y)+Z^2×ACOS(Y)^2÷2)-2÷(Z×ACOS(Y)+2)-Z×ACOS(Y)÷(Z×ACOS(Y)+2)+(2×Z×ACOS(Y)+Z^2×ACOS(Y)^2+1)^(N+1)÷2÷(Z×ACOS(Y)+Z^2×ACOS(Y)^2÷2); Z≠0; (Z×ACOS(Y)+1)^2≠1` |
+| `casim sum '(Y÷TAN(Z))^K+COS(Z)^K' K -2 N RAD` | `1÷(COS(Z)^2-COS(Z)^3)+COS(Z)^(N+1)÷(COS(Z)-1)+TAN(Z)^2÷(Y^2-Y^3÷TAN(Z))+(Y÷TAN(Z))^(N+1)÷(Y÷TAN(Z)-1); Y≠0; COS(Z)≠0; TAN(Z)≠0; COS(Z)≠1; Y÷TAN(Z)≠1` |
+| `casim sum '((K-1)+1)×LN(Z)^((K-1)+1)×Y^((K-1)+1)' K 0 N RAD` | `N×(Y×LN(Z))^(N+1)÷(Y×LN(Z)-1)+Y×LN(Z)×(Y×LN(Z))^(N+1)÷2÷(Y×LN(Z)-Y^2×LN(Z)^2÷2-1÷2)-Y×LN(Z)÷2÷(Y×LN(Z)-Y^2×LN(Z)^2÷2-1÷2)+(Y×LN(Z))^(N+1)÷(Y×LN(Z)-1); Z>0; Y×LN(Z)≠1` |
+
+# - Part 2: the ratio's monomial pole to N, from a lo of 1 or more (abacus #11621: the row, which excludes X = 0 at
+#   every N though the empty sum has a value there). A letter's power with no pole gets none
+
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^(-K)' K 1 N RAD` | `1÷(Y-1)+(1÷Y)^(N+1)÷(1÷Y-1); Y≠0; Y≠1` |
+| `casim sum '(3÷Y)^K' K 1 N RAD` | `3÷(Y-3)+(3÷Y)^(N+1)÷3÷(1÷Y-1÷3); Y≠0; Y≠3` |
+| `casim sum 'Z^K' K 0 N RAD` | `-1÷(Z-1)+Z^(N+1)÷(Z-1); Z≠1` |
+
+# - Part 3: the base of a divisor u^e with K in e alone, and of u^K from a lo below 0. From a lo of 0 or more u^K has a
+#   value at u = 0 and gets none; the last line is TOO_LONG as in 1.4.0, without the arena u^K's rows would take
+
+| Command | Prints |
+|---|---|
+| `casim sum 'X^K÷(Y-1)^K' K 1 N RAD` | `X÷(Y-X×Y÷(Y-1)+X÷(Y-1)-1)+(X÷(Y-1))^(N+1)÷(X÷(Y-1)-1); Y≠1; X÷(Y-1)≠1` |
+| `casim sum 'Y^K÷SIN(2×Z)^K' K 0 N RAD` | `-1÷(Y÷SIN(2×Z)-1)+(Y÷SIN(2×Z))^(N+1)÷(Y÷SIN(2×Z)-1); SIN(2×Z)≠0; Y÷SIN(2×Z)≠1` |
+| `casim sum '(SIN(2×Z)×Y)^K' K -2 N RAD` | `1÷(Y^2×SIN(2×Z)^2-Y^3×SIN(2×Z)^3)-(Y×SIN(2×Z))^(N+3)÷(Y^2×SIN(2×Z)^2-Y^3×SIN(2×Z)^3); Y≠0; SIN(2×Z)≠0; Y×SIN(2×Z)≠1` |
+| `casim sum '(SIN(2×Z)×Y)^K' K 0 N RAD` | `-1÷(Y×SIN(2×Z)-1)+(Y×SIN(2×Z))^(N+1)÷(Y×SIN(2×Z)-1); Y×SIN(2×Z)≠1` |
+| `casim sum '(Z-1)^K' K 0 N RAD` | `-1÷(Z-2)+(Z-1)^(N+1)÷(Z-2); Z-1≠1` |
+| `casim sum '(Z-1)^(3×K-1)×Y^K' K 2 N RAD` | `TOO_LONG` |
+
+# - Part 4: limit's degenerate divisor tries k = 0 for k linear in one letter (1.4.0: `1; Y≠1` for the first, the
+#   named cost). A k in two letters, or a letter's square, keeps its row untried: never wrong, stricter than needed
+
+| Command | Prints |
+|---|---|
+| `casim limit '(SIN((Y-1)×X)+1)÷(SIN((Y-1)×X)+1)' X 0 '' RAD` | `1` |
+| `casim limit '(SIN((Y-1)×X)+Y)÷(SIN((Y-1)×X)+Y)' X 0 '' RAD` | `1` |
+| `casim limit '(SIN((2×Y-1)×X)+1)÷(SIN((2×Y-1)×X)+1)' X 0 '' RAD` | `1` |
+| `casim limit '(SIN((Y+1)×X)+1)÷(SIN((Y+1)×X)+1)' X ∞ '' RAD` | `1` |
+| `casim limit '(SIN((Y-Z)×X)+1)÷(SIN((Y-Z)×X)+1)' X 0 '' RAD` | `1; Y-Z≠0` |
+| `casim limit '(SIN((Y^2-1)×X)+1)÷(SIN((Y^2-1)×X)+1)' X 0 '' RAD` | `1; Y≠-1; Y≠1` |
