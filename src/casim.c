@@ -12417,11 +12417,20 @@ static int td_kill(ctx *c, ref r, int var, ref *k)
     return s;
 }
 
-/* g with k = 0 (k a letter or its power), canonical; 0 for another k */
-static ref td_at0(ctx *c, ref g, ref k)
+static inline __attribute__((always_inline)) bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m);
+
+/* g with k = 0 (k a letter, its power, or linear in one letter), canonical; 0 where that isn't made. Its own frame,
+   so td_degen's doesn't move */
+static __attribute__((noinline)) ref td_at0(ctx *c, ref g, ref k)
 {
+    int L, m = 1;
+    rat a, b, t;
     if (nd(c, k)->kind == K_POW && is_num(c, nd(c, k)->b) && val(c, nd(c, k)->b)->p > 0) k = nd(c, k)->a;
-    return nd(c, k)->kind == K_VAR && nd(c, k)->id < 26 ? ib_at(c, g, nd(c, k)->id, small(c, C_0)) : 0;
+    if (nd(c, k)->kind == K_VAR && nd(c, k)->id < 26) return ib_at(c, g, nd(c, k)->id, small(c, C_0));
+    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){-b.p, b.q}, &(rat){a.p < 0 ? -a.q : a.q,
+                                                                                       a.p < 0 ? -a.p : a.p}))
+        return 0;
+    return ib_at(c, g, L, num(c, &t));
 }
 
 /* whether r is var times parts without it */
@@ -14019,7 +14028,7 @@ static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgr
 }
 
 /* e as a×L^m + b, L one letter, a ≠ 0, m 1 or an even whole number */
-static bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m)
+static inline __attribute__((always_inline)) bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m)
 {
     ref t = e;
     *b = (rat){0, 1};
