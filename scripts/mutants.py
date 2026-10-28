@@ -1348,8 +1348,8 @@ MUTANTS = {
                        "        ok = true;     /* CAS 034 */")],
     "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
     "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : r->op == 'g'", "r->op == '>' ? zero || s > 0 : r->op == 'g'")],
-    "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
-                         "                if (rows[j].op == '?') (void)0;")],
+    "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?' || rows[j].gw) soft |= 1u << i;",
+                         "                if (rows[j].op == '?' || rows[j].gw) (void)0;")],
     "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
     # CAS 033 (work/033-divisor-rows.md): to ∞, no letter's row from B's own probe; no divisor rows; a divisor row where
     # the answer has no value there already (p033b: lines go TOO_LONG); a row for a factor that is never 0 (EXP);
