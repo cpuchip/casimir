@@ -6465,7 +6465,7 @@ static __attribute__((noinline)) int interval_walk(ctx *c, ref r, int var, const
 /* ---- CAS 035: the typed text's domain (work/035-typed-domain.md; Michael's cas-wrong-widen (1)) ----
    td_walk lists each typed part's condition on its argument, as typed; td_canon makes each canonical, once. Kinds:
    '!' u≠0, 'n' u≠1 (a divisor LN(u) or LOG(u)), '>' u>0, 'g' u≥0, '1' u≥1, 'a' ABS(u)≤1, 'h' ABS(u)<1, 't' COS(u)≠0;
-   'p' a power, decided by its exponent once canonical */
+   'p' a power, decided by its exponent once canonical; 'z' (CAS 036) a base read as '!', a give-way row only */
 #ifndef TD_EDGE_STRICT
 #define TD_EDGE_STRICT 1        /* a two-sided limit with no real value on one side is UNDEFINED (abacus #11402) */
 #endif
@@ -6538,6 +6538,12 @@ static __attribute__((noinline)) void td_walk(ctx *c, ref r, tdset *T)
             ref a = x->a, b = x->b;
             if (x->kind == K_BDIV && nd(c, b)->kind != K_LIT) td_add(c, T, b, 0, '!');   /* canon refuses ÷0 itself */
             if (x->kind == K_BPOW) td_add(c, T, a, b, 'p');
+            /* CAS 036: a closed sum's u^K, or a divisor u^e with K in e alone, 'z': u ≠ 0 (u^K only from a lo below 0,
+               e 0 under ÷); td_sum makes it a give-way row only */
+            if (T->skip >= 0 && x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip)
+                td_add(c, T, a, b, 'z');
+            if (T->skip >= 0 && x->kind == K_BDIV && nd(c, b)->kind == K_BPOW && raw_has_var(c, nd(c, b)->b, T->skip))
+                td_add(c, T, nd(c, b)->a, 0, 'z');
             if (b) td_walk(c, b, T);
             r = a;
             continue;
@@ -6589,7 +6595,7 @@ static __attribute__((noinline)) void td_canon(ctx *c, const tdset *T, tdc *D, i
 {
     D->n = 0;
     for (int i = 0; i < T->n && c->st == CASIM_OK; i++) {
-        char k = T->k[i];
+        char k = T->k[i] == 'z' ? '!' : T->k[i];
         ref u;
         if (k == 'p') {
             ref e = ib_canon(c, T->e[i]);
@@ -14140,6 +14146,8 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
     /* direct, an entry in K: canon reads it with each K put in, so td_canon splits each value as a typed one, and an
        exponent in K is read too (abacus #11517: 1÷COS(Z)^K, 1÷(-EXP(-20000))^K, Y^K×Y^(-K)) */
     bool hk = direct && (raw_has_var(c, T.u[r], S->var) || (T.e[r] && raw_has_var(c, T.e[r], S->var)));
+    bool z = T.k[r] == 'z';
+    if (z && (S->inf || S->ihi || (T.e[r] && S->a >= 0))) continue;     /* u^K is u^(-n) only from a lo below 0 */
     for (int64_t kk = S->a; kk <= (hk ? S->b : S->a) && c->st == CASIM_OK; kk++) {
     size_t mark = c->used;
     int was = *n;
@@ -14154,10 +14162,12 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
         int st;
         if (any_letter(c, u)) {
             if (td_said(c, rows, *n, u, k)) continue;
-            if (!gate || !td_gated(c, sum, u, k, S->var)) td_rows(c, rows, n, u, k);
-            else if (!S->inf && !S->ihi) td_gw(c, rows, n, u, k);      /* CAS 036 */
+            if (!gate || !td_gated(c, sum, u, k, S->var)) {
+                if (!z) td_rows(c, rows, n, u, k);                  /* CAS 036: 'z' a give-way row or none */
+            } else if (!S->inf && !S->ihi) td_gw(c, rows, n, u, k);    /* CAS 036 */
             continue;
         }
+        if (z) continue;
         st = td_const(c, u, k);
         if (st == 1) fail = true;
         else if (st == 2 && !(gate && td_gated(c, sum, u, k, S->var))) unk = true;
