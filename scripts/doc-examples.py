@@ -4,7 +4,9 @@ first cell is a `casim ...` command must print exactly its second cell through b
 and what it reports, one line; several lines would be joined by " / "). A doc that drifts from the library fails
 here. CAS 021's boundary (rule 1): each row again through build/casim-ser0, the series route compiled out, must print
 the same, except the rows tests/golden/moved/cas-021-examples.txt lists, which must print its text there (each from
-NO_ROOM, UNDECIDED or DECIMAL_FORM), so today's routes are checked where the series route would answer in their place."""
+NO_ROOM, UNDECIDED or DECIMAL_FORM), so today's routes are checked where the series route would answer in their place.
+docs/language.md's prose (abacus #11634: 1.4.0 kept 1.3.0's line for a sum whose table row had moved): each backticked
+answer in it must be in one of those rows or the golden corpus, or be listed in tests/doc-prose.txt as notation."""
 import os
 import re
 import shlex
@@ -28,6 +30,9 @@ OFF = os.path.join(ROOT, "build", "casim-ser0")
 MOVED = os.path.join(ROOT, "tests", "golden", "moved", "cas-021-examples.txt")
 FROM = ("NO_ROOM", "UNDECIDED", "DECIMAL_FORM")
 ROW = re.compile(r"^\| `casim ([^`]+)` \| `([^`]*)` \|$")
+PROSE = os.path.join(ROOT, "tests", "doc-prose.txt")
+CORPUS = os.path.join(ROOT, "tests", "golden", "corpus.txt")
+ANSWER = re.compile(r"[÷×^≠<>≤≥]|^-?\d|SQRT|UNDEF|IMPROPER|TOO_LONG|NO_")      # backticked text that reads as an answer
 
 
 def moved():
@@ -45,6 +50,42 @@ def casim(cli, args):
     p = subprocess.run([cli] + shlex.split(args), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                        encoding="utf-8")
     return " / ".join(p.stdout.strip().split("\n"))
+
+
+def prose(answers):
+    """language.md's prose, a paragraph at a time (a backticked line may wrap): (answers checked, failures)"""
+    notation = {ln for ln in open(PROSE, encoding="utf-8").read().split("\n") if ln and not ln.startswith("#")}
+    for ln in open(CORPUS, encoding="utf-8"):
+        f = ln.rstrip("\n").split("\t")
+        if len(f) >= 12 and not ln.startswith("#"):
+            answers.add(f[11])
+    paras, cur = [], []
+    for i, line in enumerate(open(DOCS[0], encoding="utf-8").read().split("\n"), 1):
+        if not line.strip() or line.startswith("|"):
+            cur = []
+            continue
+        if not cur:
+            paras.append((i, cur))
+        cur.append(line.strip())
+    n = failed = 0
+    seen = set()
+    for i, lines in paras:
+        text = " ".join(lines)
+        for m in re.finditer(r"`([^`]+)`", text):
+            t = m.group(1)
+            at = i + sum(1 for k in range(1, len(lines)) if len(" ".join(lines[:k])) < m.start())   # the line it starts on
+            if t.startswith("casim ") or not ANSWER.search(t):
+                continue
+            n += 1
+            if t in notation:
+                seen.add(t)
+            elif not any(t in a for a in answers):
+                failed += 1
+                print(f"FAIL docs/language.md:{at}: `{t}` is in no checked row (a line the library moved?)")
+    for t in sorted(notation - seen):
+        failed += 1
+        print(f"FAIL {os.path.relpath(PROSE, ROOT)} lists `{t}`, which docs/language.md's prose doesn't hold")
+    return n, failed
 
 
 def main():
@@ -77,9 +118,11 @@ def main():
     for key in set(mv) - hit:
         failed += 1
         print(f"FAIL {MOVED} lists a row no doc has: {key[0]}: casim {key[1]}")
+    pn, pf = prose({ROW.match(line.rstrip("\n")).group(2) for _, _, line in rows if ROW.match(line.rstrip("\n"))})
+    failed += pf
     print(f"doc examples: {n} commands in {', '.join(os.path.relpath(d, ROOT) for d in DOCS)}, each with the series "
-          f"route compiled out too ({len(mv)} moved)\n"
-          f"checks: {2 * n + len(mv)} failed: {failed}")
+          f"route compiled out too ({len(mv)} moved); {pn} answers in its prose\n"
+          f"checks: {2 * n + len(mv) + pn} failed: {failed}")
     sys.exit(1 if failed or n == 0 else 0)
 
 

@@ -1,0 +1,31 @@
+# docs/language.md's backticked prose that reads like an answer but isn't one: notation, an input, a syntax. scripts/doc-examples.py
+# checks every other backticked answer in that prose against the rows it runs and the golden corpus (abacus #11634). One per line.
+0.1+0.2
+2×X!
+2^3^2
+2^-3^2
+(a^b)^c
+a^(b^c)
+(2×X+2)×Y
+0.25×π
+2×LN(2)+2×LN(3)
+LN(X×Y)
+(A±B×SQRT(r)×0i1)÷D
+defint "<integrand>" X LO HI
+^k
+steps "<text>" X
+steps integrate "<text>" X
+steps solve "<text>" X
+steps partfrac "<n÷d>" X
+n÷d
+c×(N)÷(m×(F)^j)
+taylor "<text>" X A N
+limit "<text>" X A S
+(Z÷(Y-1)+1)^K
+(Z÷SIN(Y)+1)^K
+0.5÷3
+1.1.2
+SIN(0.5×X)+SIN(X÷2)
+∫(1.0×X)dX
+X^2-1÷4
+-3×X^2÷4+3÷4
