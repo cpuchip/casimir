@@ -212,7 +212,7 @@ build/series_test: tests/series_test.c tests/check.h tests/coreeval.h $(CASIM_SR
 
 # ---- elsewhere ----
 
-# S3 code size of casim's own sources (the core's is measured in its own repo).
+# S3 code size of casim's own sources, its text gated at decision 92's 270,336 B (the core's is measured in its own repo).
 size:
 	scripts/size-s3.sh
 
