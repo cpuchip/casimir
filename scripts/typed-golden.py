@@ -7,7 +7,8 @@ line with a row added (a limit's divisor 0 for every X at a letter's value, abac
 from the code: the typed input, valued by scripts/sum-values.py's strict evaluator, has no value somewhere it is asked
 about (defint: inside the interval, the other letters at 0, ±1, ±2, ½; limit: beside the point on each side asked, or
 far out at ±∞), and for a row, at a letter's value the new rows exclude and the old ones don't. The check's controls: a
-before list with one line left at its after must fail the hash, and each judge refuses a line it should.
+before list with one line left at its after must fail the hash, and each judge refuses a line it should. Later units'
+moves (LATER: CAS 036's) are put back first.
     scripts/typed-golden.py"""
 import decimal
 import hashlib
@@ -21,6 +22,7 @@ from decimal import Decimal as D
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-035.txt")
+LATER = [os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "cda0fcb"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
 sv = importlib.util.module_from_spec(_spec)
@@ -31,11 +33,11 @@ LETTERS = ["0", "1", "-1", "2", "-2", "1÷2"]
 ANGLE = {"0": "DEG", "1": "RAD", "2": "GRAD"}
 
 
-def moved():
+def moved(path=MOVED):
     """the list's sections (the corpus's moves, →DEC's): inputs (the first ten fields) -> (before, after), each
     [status, text]; and the header's sha256 for each file"""
     sections, lines, sha = [{}], [], {}
-    for ln in open(MOVED, encoding="utf-8").read().split("\n"):
+    for ln in open(path, encoding="utf-8").read().split("\n"):
         if ln.startswith("# " + BASE + " ") and " sha256 " in ln:
             name, _, h = ln[len("# " + BASE + " "):].split(" ")
             sha[name] = h
@@ -46,7 +48,7 @@ def moved():
     for i in range(0, len(lines), 3):
         (s, inp), (_, b), (_, a) = lines[i:i + 3]
         if not b.startswith("  before\t") or not a.startswith("  after\t"):
-            sys.exit(f"FAIL scripts/typed-golden.py: {MOVED} is not inputs, before, after at {inp}")
+            sys.exit(f"FAIL scripts/typed-golden.py: {path} is not inputs, before, after at {inp}")
         sections[s][inp] = (b.split("\t")[1:3], a.split("\t")[1:3])
     return sections, sha
 
@@ -129,9 +131,15 @@ def holeless(key, new=None, old=()):
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after): (failures, its sha256)"""
     bad, out, hit = 0, [], set()
+    later = {}
+    for path in LATER:                                  # a later unit's moves, at their before first
+        (c_mv, d_mv), _ = moved(path)
+        later.update(c_mv if name == "corpus.txt" else d_mv)
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if ln and not ln.startswith("#") and key in later:
+            f = f[:10] + later[key][0][:2]
         if ln and not ln.startswith("#") and key in mv:
             b, a = mv[key]
             hit.add(key)

@@ -2,7 +2,7 @@
 """CAS 022's boundary (make check; work/022-signs.md rule 4). The unit moves the golden lines
 tests/golden/moved/cas-022.txt lists, and no others: with each listed line put back at its before, the corpus and
 →DEC's file are CAS 021's b282bbe byte for byte (the sha256s in the list's header), each listed line's after is the
-file's, and every after is a refusal (UNDECIDED). Later units' moves (LATER: CAS 023's, 024's, 028's, 032's and 035's) are put back first.
+file's, and every after is a refusal (UNDECIDED). Later units' moves (LATER: CAS 023's, 024's, 028's, 032's, 035's and 036's) are put back first.
 The check's control: a before list with one line left at its after must fail the hash.
     scripts/signs-golden.py"""
 import hashlib
@@ -15,7 +15,7 @@ MOVED = os.path.join(GOLDEN, "moved", "cas-022.txt")
 TO = ("UNDECIDED",)
 LATER = [os.path.join(GOLDEN, "moved", "cas-023.txt"), os.path.join(GOLDEN, "moved", "cas-024.txt"),
          os.path.join(GOLDEN, "moved", "cas-028.txt"), os.path.join(GOLDEN, "moved", "cas-032.txt"),
-         os.path.join(GOLDEN, "moved", "cas-035.txt")]
+         os.path.join(GOLDEN, "moved", "cas-035.txt"), os.path.join(GOLDEN, "moved", "cas-036.txt")]
 
 
 def moved(path=MOVED):

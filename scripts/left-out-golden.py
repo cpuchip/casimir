@@ -6,7 +6,7 @@ and every after is its before with ", n CPLX" right after the status. n is judge
 the same input solved with CASIM_COMPLEX (model 33 read as 35, which ignores the bit) counts n more roots, with their
 multiplicities, than the before. Every solve line not listed that is SOLVED or PARTIAL has n = 0, or a line that the
 note would take past 191 B (abacus #10148). The check's control: a before list with one line left at its after must
-fail the hash. Later units' moves (LATER: CAS 032's and 035's) are put back first.
+fail the hash. Later units' moves (LATER: CAS 032's, 035's and 036's) are put back first.
     scripts/left-out-golden.py [CLI]"""
 import hashlib
 import os
@@ -18,7 +18,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-028.txt")
 CLI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "casim")
-LATER = [os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt")]
+LATER = [os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt"),
+         os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "c96b328"
 MODEL = {"1": "STU", "33": "35", "35": "35"}
 bad = 0

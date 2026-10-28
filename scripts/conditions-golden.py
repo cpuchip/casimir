@@ -4,7 +4,7 @@ tests/golden/moved/cas-023.txt lists, and no others: with each listed line put b
 →DEC's file are CAS 022's follow-up fc46c8b byte for byte (the sha256s in the list's header), each listed line's after
 is the file's, and every after is its before with condition rows after "; " (rule 1: the same status and answer). The
 check's control: a before list with one line left at its after must fail the hash. Later units' moves (LATER: CAS
-024's, 028's and 032's) are put back first.
+024's, 028's, 032's, 035's and 036's) are put back first.
     scripts/conditions-golden.py"""
 import hashlib
 import os
@@ -14,7 +14,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-023.txt")
 LATER = [os.path.join(GOLDEN, "moved", "cas-024.txt"), os.path.join(GOLDEN, "moved", "cas-028.txt"),
-         os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt")]
+         os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt"),
+         os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "fc46c8b"
 
 

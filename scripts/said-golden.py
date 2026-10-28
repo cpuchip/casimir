@@ -6,7 +6,7 @@ file's. Every after keeps its before's status, its first part and its kept rows 
 rows. Each dropped row is judged apart from the code that drops it: a kept row has a value at L = 0 and is false
 there, at generic values of the other letters and at special ones (0, ±1, ±2, ½, ±π÷2, π), one letter at a time
 (abacus #10635 (1)). The check's control: a before list with one line left at its after must fail the hash. Later
-units' moves (LATER: CAS 035's) are put back first.
+units' moves (LATER: CAS 035's and 036's) are put back first.
     scripts/said-golden.py"""
 import decimal
 import hashlib
@@ -18,7 +18,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-032.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-035.txt")]
+LATER = [os.path.join(GOLDEN, "moved", "cas-035.txt"), os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "2a9c354"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
 sv = importlib.util.module_from_spec(_spec)
