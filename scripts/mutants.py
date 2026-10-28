@@ -1348,8 +1348,8 @@ MUTANTS = {
                        "        ok = true;     /* CAS 034 */")],
     "said-novalue": [("src/casim.c", "    said = said && c->st == CASIM_OK;", "    said = said || c->st != CASIM_OK;")],
     "said-gt-flip": [("src/casim.c", "r->op == '>' ? zero || s < 0 : r->op == 'g'", "r->op == '>' ? zero || s > 0 : r->op == 'g'")],
-    "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?') soft |= 1u << i;",
-                         "                if (rows[j].op == '?') (void)0;")],
+    "said-soft-never": [("src/casim.c", "                if (rows[j].op == '?' || rows[j].gw) soft |= 1u << i;",
+                         "                if (rows[j].op == '?' || rows[j].gw) (void)0;")],
     "said-soft-always": [("src/casim.c", "            if (w->full) soft = 0;", "            (void)0;")],
     # CAS 033 (work/033-divisor-rows.md): to ∞, no letter's row from B's own probe; no divisor rows; a divisor row where
     # the answer has no value there already (p033b: lines go TOO_LONG); a row for a factor that is never 0 (EXP);
@@ -1454,6 +1454,28 @@ MUTANTS = {
                               "        if (rows[i].op != '!' || !is_k(c, rows[i].r, 0, 1)) continue;")],
     "td035-primitive-unprobed": [("src/casim.c", "    for (int t = 0; t < 2 && !none && c->st == CASIM_OK; t++) {",
                                   "    for (int t = 0; t < 1 && !none && c->st == CASIM_OK; t++) {")],
+    # CAS 036 (work/036-missing-values.md): td_gw makes no row; the give-way rows never give way; the fallback drops
+    # CAS 030's '?' rows in their place; a '?' row td_gw repeats is kept; the monomial pole's row off; part 3's
+    # divisor rule, and its u^K rule, off; u^K read from any lo; the linear k untried, and solved with b's sign
+    "td036-gw-off": [("src/casim.c", "    td_rows(c, rows, n, u, k);\n    out = c->st == CASIM_NO_ROOM;",
+                      "    (void)u, (void)k;\n    out = c->st == CASIM_NO_ROOM;")],
+    "td036-gw-hard": [("src/casim.c", "        if (!(g >> i & 1u)) rows[k++] = rows[i];", "        rows[k++] = rows[i];")],
+    "td036-gw-before-q": [("src/casim.c", "        if (!(g >> i & 1u)) rows[k++] = rows[i];",
+                           "        if (rows[i].op != '?') rows[k++] = rows[i];")],
+    "td036-gw-repeat": [("src/casim.c", "        if (rows[i].op == '?') rows[i].op = '!', rows[i].gw |= 4;", "        (void)0;")],
+    "td036-pole-off": [("src/casim.c",
+                        "                if (!S->inf && !S->ihi) td_gw(c, rows, n, leaf(c, K_VAR, l), '!');    /* CAS 036: the empty sum */",
+                        "                (void)0;")],
+    "td036-z-div-off": [("src/casim.c",
+                         "            if (T->skip >= 0 && x->kind == K_BDIV && nd(c, b)->kind == K_BPOW && raw_has_var(c, nd(c, b)->b, T->skip))\n"
+                         "                td_add(c, T, nd(c, b)->a, 0, 'z');", "            (void)0;")],
+    "td036-z-pow-off": [("src/casim.c",
+                         "            if (T->skip >= 0 && x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip)\n"
+                         "                td_add(c, T, a, b, 'z');", "            (void)0;")],
+    "td036-z-any-lo": [("src/casim.c", "(T.e[r] && S->a >= 0)", "(T.e[r] && S->a >= 0 && 0)")],
+    "td036-lin-off": [("src/casim.c", "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 ||", "    if (1 || !td_lin(c, k, &L, &a, &b, &m) || m != 1 ||")],
+    "td036-lin-sign": [("src/casim.c", "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){-b.p, b.q},",
+                        "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){b.p, b.q},")],
 }
 
 

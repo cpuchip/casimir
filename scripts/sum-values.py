@@ -418,11 +418,17 @@ def gen_pole(rnd):
     return summand, lo, rnd.choice(("N", INF, lo + 5, lo + 80)), "RAD", "UNDEFINED"
 
 
+DOMAIN036 = {"LN": "{}>0", "LOG": "{}>0", "ACOSH": "{}≥1", "ASIN": "ABS({})≤1", "ACOS": "ABS({})≤1", "TAN": "COS({})≠0"}
+
+
 def typed_row(summand, r):
     """CAS 035: a row for the typed summand's root or fractional power of a letter (Z≥0 for SQRT(Z)^(2×K-2), which canon
-    writes Z^(K-1)), which judge_typed judges; the older judges read the rows beside it"""
+    writes Z^(K-1)), which judge_typed judges; the older judges read the rows beside it. CAS 036: to N, the domain row
+    of the summand's LN, LOG, ACOSH, ASIN, ACOS or TAN of a letter too, which its answer shows the hole of"""
     m = re.fullmatch(r"([A-Z])(≥|≤|>)(.*)", r)
-    return bool(m) and (f"SQRT({m.group(1)})" in summand or re.search(rf"{m.group(1)}\^\(-?\d+÷\d+\)", summand) is not None)
+    if m and (f"SQRT({m.group(1)})" in summand or re.search(rf"{m.group(1)}\^\(-?\d+÷\d+\)", summand) is not None):
+        return True
+    return r in {DOMAIN036[f].format(L) for f, L in re.findall(r"(?<![A-Z])(LN|LOG|ACOSH|ASIN|ACOS|TAN)\(([A-Z])\)", summand)}
 
 
 def gen_letter(rnd):

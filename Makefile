@@ -51,6 +51,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/left-out-golden.py
 	scripts/said-golden.py
 	scripts/typed-golden.py
+	scripts/missing-golden.py
 	build/golden_check-vcheck tests/golden/corpus.txt
 	scripts/decimal-golden.py build/golden_check-vcheck
 	scripts/complex-golden.py build/golden_check-vcheck

@@ -1,0 +1,26 @@
+# The golden lines CAS 036 (rows where a sum to N's line misses a value: work/036-missing-values.md) moved. Each
+# line's inputs, then its status and answer before (6090b8c, 1.4.0's tree) and after. Putting every before back gives
+# 6090b8c's files byte for byte (their sha256 below), and every after is its before with rows added, its status and
+# first part unchanged: each new row excludes a letter's value where the after's answer has no value at the empty sum
+# (N = lo-1), where the sum is 0 (scripts/missing-golden.py, in make check). The corpus: 3 inputs; →DEC's below.
+# 6090b8c corpus.txt sha256 68bbab259f671ec10d9d296d312e688c4cd872efa2f013f686f0b9b67cbcefe3
+# 6090b8c decimal.txt sha256 d5b83b12b66a15f4f2553832b3f1ba63190c8a85c205cae28eea9c01e224e8fd
+sum	35	10	1	35	65536	65536	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
+sum	35	10	1	35	8800	192	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
+sum	35	10	1	35	8800	65536	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
+# Under →DEC (tests/golden/decimal.txt): 3 inputs
+sum	35	10	1	35	65536	65536	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
+sum	35	10	1	35	8800	192	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1
+sum	35	10	1	35	8800	65536	X^(-K)	1	N
+  before	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1
+  after	OK	1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1

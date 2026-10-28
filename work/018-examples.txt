@@ -77,7 +77,7 @@
 | `casim sum "X^K" K 0 ∞ RAD` | `-1÷(X-1); ABS(X)<1` |
 | `casim sum "X^(2×K)" K 0 N RAD` | `-1÷(X^2-1)+(X^2)^(N+1)÷(X^2-1); X≠-1; X≠1` |
 | `casim sum "X^(2×K)" K 0 ∞ RAD` | `-1÷(X^2-1); ABS(X)<1` |
-| `casim sum "X^(-K)" K 1 N RAD` | `1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠1` |
+| `casim sum "X^(-K)" K 1 N RAD` | `1÷(X-1)+(1÷X)^(N+1)÷(1÷X-1); X≠0; X≠1` |
 | `casim sum "X^(-K)" K 1 ∞ RAD` | `1÷(X-1); ABS(X)>1` |
 | `casim sum "K×X^K" K 1 N RAD` | `N×X^(N+1)÷(X-1)-X÷(X-1)+X^(N+1)÷(X-1)+X^(N+2)÷2÷(X-X^2÷2-1÷2)-X^2÷2÷(X-X^2÷2-1÷2); X≠1` |
 | `casim sum "(-X)^K" K 0 N RAD` | `1÷(X+1)-(-X)^(N+1)÷(X+1); X≠-1` |

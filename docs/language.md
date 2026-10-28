@@ -632,7 +632,10 @@ hole needs nothing (X÷X at 0 is 1). A condition in other letters only is CAS 02
 ABS(u) ≤ 1 as ABS(u)<1, which is stricter at the edge: SQRT(Y)^2×X at 1 is `Y; Y>0`. One that holds X and a letter
 is read near A, so EXP(LN(X×Y)) at 0 is `0; Y>0` from above, `0; Y<0` from below and UNDEFINED two-sided. A divisor
 that some letter's value makes 0 for every X near A leaves the text no value there, so that value gets a row:
-SIN(K×X)÷SIN(K×X) at 0 is `1; K≠0`. Where that can't be decided the answer is UNDECIDED, as for
+SIN(K×X)÷SIN(K×X) at 0 is `1; K≠0`. A k that is a letter, its power, or linear in one letter is tried at k = 0
+(CAS 036), so (SIN((Y-1)×X)+1)÷(SIN((Y-1)×X)+1) at 0 is 1, with no row, as it is 1 everywhere at Y = 1. A k in two
+letters, or a letter's square, gets its row untried, which is never wrong and only stricter than it needs to be:
+(SIN((Y-Z)×X)+1)÷(SIN((Y-Z)×X)+1) at 0 is `1; Y-Z≠0`. Where it can't be decided the answer is UNDECIDED, as for
 (Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X)) at 0, whose divisor is 0 for every X at Y = 1 and at Y = -1.
 
 Where the walk refuses (NO_ROOM or UNDECIDED), limit takes taylor's series route (CAS 021) on each side asked: the text
@@ -718,6 +721,11 @@ letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN
 the same, unless the answer itself has no value there. To N, SIN, COS, TAN, LN, LOG, ACOS and ACOSH of a letter keep the
 row even there, as a letter's (CAS 030): Σ (Y÷SIN(Z))^K from 1 to N has no value at Z = π, where the empty sum (N = 0)
 is 0, so it prints `SIN(Z)≠0; Y÷SIN(Z)≠1`. Where the line with that row would pass 191 bytes, the row gives way.
+To N, a typed condition whose hole the answer shows gets its row too (CAS 036): the sum is 0 at the empty sum, where
+the answer has no value. So Σ (1+Z×SQRT(Y))^K from 0 to N prints `Y≥0`, Σ Y^K÷X from 1 prints `X≠0`, Σ Y^(-K) from 1
+prints `Y≠0`, and Σ X^K÷(Y-1)^K from 1 prints `Y≠1`, the base of a divisor whose exponent alone holds K. Each such row
+excludes its point at every N, though the sum has a value there at the empty sum. These rows give way at the cap
+together, and the line is then as it was without them.
 A factor that is never 0 (EXP, COSH, 2^Z) gets none. From 1
 canon reads its first term as Y, and the shift reads the factor as it reads a letter (CAS 027), so the answer is Y at
 Z = π. The summand as typed divides by SIN(Z), though, so the sum has no value there, and the typed domain's row

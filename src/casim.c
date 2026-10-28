@@ -6465,7 +6465,7 @@ static __attribute__((noinline)) int interval_walk(ctx *c, ref r, int var, const
 /* ---- CAS 035: the typed text's domain (work/035-typed-domain.md; Michael's cas-wrong-widen (1)) ----
    td_walk lists each typed part's condition on its argument, as typed; td_canon makes each canonical, once. Kinds:
    '!' u≠0, 'n' u≠1 (a divisor LN(u) or LOG(u)), '>' u>0, 'g' u≥0, '1' u≥1, 'a' ABS(u)≤1, 'h' ABS(u)<1, 't' COS(u)≠0;
-   'p' a power, decided by its exponent once canonical */
+   'p' a power, decided by its exponent once canonical; 'z' (CAS 036) a base read as '!', a give-way row only */
 #ifndef TD_EDGE_STRICT
 #define TD_EDGE_STRICT 1        /* a two-sided limit with no real value on one side is UNDEFINED (abacus #11402) */
 #endif
@@ -6538,6 +6538,12 @@ static __attribute__((noinline)) void td_walk(ctx *c, ref r, tdset *T)
             ref a = x->a, b = x->b;
             if (x->kind == K_BDIV && nd(c, b)->kind != K_LIT) td_add(c, T, b, 0, '!');   /* canon refuses ÷0 itself */
             if (x->kind == K_BPOW) td_add(c, T, a, b, 'p');
+            /* CAS 036: a closed sum's u^K, or a divisor u^e with K in e alone, 'z': u ≠ 0 (u^K only from a lo below 0,
+               e 0 under ÷); td_sum makes it a give-way row only */
+            if (T->skip >= 0 && x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip)
+                td_add(c, T, a, b, 'z');
+            if (T->skip >= 0 && x->kind == K_BDIV && nd(c, b)->kind == K_BPOW && raw_has_var(c, nd(c, b)->b, T->skip))
+                td_add(c, T, nd(c, b)->a, 0, 'z');
             if (b) td_walk(c, b, T);
             r = a;
             continue;
@@ -6589,7 +6595,7 @@ static __attribute__((noinline)) void td_canon(ctx *c, const tdset *T, tdc *D, i
 {
     D->n = 0;
     for (int i = 0; i < T->n && c->st == CASIM_OK; i++) {
-        char k = T->k[i];
+        char k = T->k[i] == 'z' ? '!' : T->k[i];
         ref u;
         if (k == 'p') {
             ref e = ib_canon(c, T->e[i]);
@@ -9276,6 +9282,7 @@ static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, i
 typedef struct {
     ref l, r;
     char op;
+    char gw;                            /* CAS 036: 1, a row that gives way at the cap (td_gw; 2 and 4 its marks) */
     int letter;                         /* its order: the letter solved for, or 26 for B itself */
 } smrow;
 
@@ -12410,11 +12417,20 @@ static int td_kill(ctx *c, ref r, int var, ref *k)
     return s;
 }
 
-/* g with k = 0 (k a letter or its power), canonical; 0 for another k */
-static ref td_at0(ctx *c, ref g, ref k)
+static inline __attribute__((always_inline)) bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m);
+
+/* g with k = 0 (k a letter, its power, or linear in one letter), canonical; 0 where that isn't made. Its own frame,
+   so td_degen's doesn't move */
+static __attribute__((noinline)) ref td_at0(ctx *c, ref g, ref k)
 {
+    int L, m = 1;
+    rat a, b, t;
     if (nd(c, k)->kind == K_POW && is_num(c, nd(c, k)->b) && val(c, nd(c, k)->b)->p > 0) k = nd(c, k)->a;
-    return nd(c, k)->kind == K_VAR && nd(c, k)->id < 26 ? ib_at(c, g, nd(c, k)->id, small(c, C_0)) : 0;
+    if (nd(c, k)->kind == K_VAR && nd(c, k)->id < 26) return ib_at(c, g, nd(c, k)->id, small(c, C_0));
+    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){-b.p, b.q}, &(rat){a.p < 0 ? -a.q : a.q,
+                                                                                       a.p < 0 ? -a.p : a.p}))
+        return 0;
+    return ib_at(c, g, L, num(c, &t));
 }
 
 /* whether r is var times parts without it */
@@ -13530,7 +13546,7 @@ static void sm_row(ctx *c, smrow *rows, int *n, ref l, char op, ref r, int lette
         if (p->letter == letter && const_sign(c, ib_canon(c, add2(c, p->r, ib_neg(c, r)))) <= 0) break;
     }
     memmove(&rows[at + 1], &rows[at], (size_t)(*n - at) * sizeof rows[0]);
-    rows[at] = (smrow){l, r, op, letter};
+    rows[at] = (smrow){l, r, op, 0, letter};
     (*n)++;
 }
 
@@ -13736,6 +13752,7 @@ static ref sm_cancel1(ctx *c, ref t)
    be the longer, and an answer that fit isn't lost to TOO_LONG (abacus #10595). The terms are kept in the arena, not
    on the stack (a 64-term array made the frame 288 B on the S3) */
 static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgroup *G, int ng, ref r, size_t ocap);
+static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, char k);
 
 static __attribute__((noinline)) ref sm_cancel(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, size_t ocap)
 {
@@ -13784,7 +13801,10 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
             bool hole, neg;
             if (!contains(c, B, l)) continue;
             neg = sm_mono(c, B, &k, &L, &m) && m < 0;
-            if (neg && S->ilo && S->a >= 1) continue;
+            if (neg && S->ilo && S->a >= 1) {
+                if (!S->inf && !S->ihi) td_gw(c, rows, n, leaf(c, K_VAR, l), '!');    /* CAS 036: the empty sum */
+                continue;
+            }
             /* CAS 024, abacus #9594: a term from lo divides by l (0×Y^(-1) too). A monomial at a negative power keeps
                the probe: its own row, ABS(X)>v, is false at X = 0 (CAS 025's rows are for a B whose row has no value
                there) */
@@ -13889,7 +13909,7 @@ static __attribute__((noinline)) int sm_said(ctx *c, out_t *w, smrow *rows, int 
             continue;
         for (int j = 0; j < n && !(hard >> i & 1u) && c->st == CASIM_OK; j++)
             if (j != i && sm_false0(c, &rows[j], x->id)) {
-                if (rows[j].op == '?') soft |= 1u << i;
+                if (rows[j].op == '?' || rows[j].gw) soft |= 1u << i;
                 else hard |= 1u << i;
             }
     }
@@ -13937,6 +13957,35 @@ static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int
     rows_put(c, w, rows, k, true);
 }
 
+/* CAS 036: the line with every row, td_gw's too, where it fits; else sm_rput's without td_gw's, as before */
+static __attribute__((noinline)) void sm_rgw(ctx *c, out_t *w, smrow *rows, int n)
+{
+    size_t at = w->n, mark = c->used;
+    unsigned g = 0;
+    int k = 0;
+    for (int i = 0; i < n; i++) g |= (unsigned)rows[i].gw << i;
+    if (g && !w->full) {
+        ref room = grab(c, (size_t)n * sizeof *rows);
+        if (room) {
+            smrow *t = (smrow *)(void *)nd(c, room);
+            memcpy(t, rows, (size_t)n * sizeof *rows);
+            for (int i = 0; i < n; i++)
+                if (t[i].op == '?') t[i].op = '!';
+            rows_put(c, w, t, sm_said(c, w, t, n), true);
+            if (!w->full && c->st == CASIM_OK) {
+                taylor_drop(c, mark);
+                return;
+            }
+            w->n = at, w->full = false, w->o[at] = '\0';
+        }
+        if (c->st == CASIM_NO_ROOM) c->st = CASIM_OK;
+        taylor_drop(c, mark);
+    }
+    for (int i = 0; i < n; i++)
+        if (!(g >> i & 1u)) rows[k++] = rows[i];
+    sm_rput(c, w, rows, k);
+}
+
 /* the answer (∞ or -∞ when dir), then its rows after "; " (CANCEL's) */
 static inline __attribute__((always_inline)) casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n,
                                                                    char *out, size_t ocap)
@@ -13946,7 +13995,7 @@ static inline __attribute__((always_inline)) casim_status sm_print(ctx *c, ref s
     if (ocap == 0) return CASIM_TOO_LONG;
     if (dir) puts_(&w, dir > 0 ? "\xe2\x88\x9e" : "-\xe2\x88\x9e");
     else print(c, &w, sum);
-    sm_rput(c, &w, rows, n);
+    sm_rgw(c, &w, rows, n);
     if (c->st == CASIM_OK && w.full) c->st = CASIM_TOO_LONG;
     if (c->st != CASIM_OK) {
         out[0] = '\0';
@@ -13979,7 +14028,7 @@ static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgr
 }
 
 /* e as a×L^m + b, L one letter, a ≠ 0, m 1 or an even whole number */
-static bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m)
+static inline __attribute__((always_inline)) bool td_lin(ctx *c, ref e, int *L, rat *a, rat *b, int *m)
 {
     ref t = e;
     *b = (rat){0, 1};
@@ -14064,6 +14113,30 @@ static __attribute__((noinline)) void td_rows(ctx *c, smrow *rows, int *n, ref u
     else if (k == 't') sm_row(c, rows, n, ib_canon(c, fn(c, F_COS, u)), '!', small(c, C_0), L);
 }
 
+/* CAS 036 (cas-missing-scope): a sum to N whose answer shows a condition's hole has no value at the empty sum, where
+   the sum is 0, unless a row excludes it. The row gives way at the cap (sm_rgw), and where it doesn't fit in the rows
+   or the arena it is left out */
+static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, char k)
+{
+    size_t mark = c->used;
+    int m = 0;
+    bool out;
+    for (int i = 0; i < *n; i++) {                       /* a '?' row (CAS 030) shown to sm_row as '!', so it's once */
+        rows[i].gw |= 2;
+        if (rows[i].op == '?') rows[i].op = '!', rows[i].gw |= 4;
+    }
+    td_rows(c, rows, n, u, k);
+    out = c->st == CASIM_NO_ROOM;
+    if (out) c->st = CASIM_OK;
+    for (int i = 0; i < *n; i++) {
+        if (rows[i].gw & 4) rows[i].op = '?';
+        if (rows[i].gw & 2) rows[i].gw &= 1, rows[m++] = rows[i];
+        else if (!out) rows[i].gw = 1, rows[m++] = rows[i];
+    }
+    if (out) td_drop(c, mark);
+    *n = m;
+}
+
 /* CAS 035: the typed summand's conditions as rows (gate: the answer's first part, none when it diverges);
    direct: summed term by term, a condition in K decided at each K, as each term is */
 static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bool gate, smrow *rows, int *n,
@@ -14082,6 +14155,8 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
     /* direct, an entry in K: canon reads it with each K put in, so td_canon splits each value as a typed one, and an
        exponent in K is read too (abacus #11517: 1÷COS(Z)^K, 1÷(-EXP(-20000))^K, Y^K×Y^(-K)) */
     bool hk = direct && (raw_has_var(c, T.u[r], S->var) || (T.e[r] && raw_has_var(c, T.e[r], S->var)));
+    bool z = T.k[r] == 'z';
+    if (z && (S->inf || S->ihi || (T.e[r] && S->a >= 0))) continue;     /* u^K is u^(-n) only from a lo below 0 */
     for (int64_t kk = S->a; kk <= (hk ? S->b : S->a) && c->st == CASIM_OK; kk++) {
     size_t mark = c->used;
     int was = *n;
@@ -14095,9 +14170,13 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
         char k = D.k[i];
         int st;
         if (any_letter(c, u)) {
-            if (!td_said(c, rows, *n, u, k) && (!gate || !td_gated(c, sum, u, k, S->var))) td_rows(c, rows, n, u, k);
+            if (td_said(c, rows, *n, u, k)) continue;
+            if (!gate || !td_gated(c, sum, u, k, S->var)) {
+                if (!z) td_rows(c, rows, n, u, k);                  /* CAS 036: 'z' a give-way row or none */
+            } else if (!S->inf && !S->ihi) td_gw(c, rows, n, u, k);    /* CAS 036 */
             continue;
         }
+        if (z) continue;
         st = td_const(c, u, k);
         if (st == 1) fail = true;
         else if (st == 2 && !(gate && td_gated(c, sum, u, k, S->var))) unk = true;

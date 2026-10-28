@@ -65,18 +65,18 @@
 
 | Command | Prints |
 |---|---|
-| `casim sum '(1+TAN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); Z≠0; Z×TAN(Y)+1≠1` |
-| `casim sum '(1+SQRT(Y)×Z)^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Z≠0; SQRT(Y)×Z+1≠1` |
-| `casim sum '(1+LN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y≠0; Z≠0; Z×LN(Y)+1≠1` |
-| `casim sum '(1+LOG(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LOG(Y)+(Z×LOG(Y)+1)^(N+1)÷Z÷LOG(Y); Y≠0; Z≠0; Z×LOG(Y)+1≠1` |
-| `casim sum '(1+ASIN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ASIN(Y)+(Z×ASIN(Y)+1)^(N+1)÷Z÷ASIN(Y); Z≠0; Z×ASIN(Y)+1≠1` |
-| `casim sum '(1+ACOS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOS(Y)+(Z×ACOS(Y)+1)^(N+1)÷Z÷ACOS(Y); Z≠0; Z×ACOS(Y)+1≠1` |
-| `casim sum '(1+ACOSH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOSH(Y)+(Z×ACOSH(Y)+1)^(N+1)÷Z÷ACOSH(Y); Z≠0; Z×ACOSH(Y)+1≠1` |
-| `casim sum '(1+ATANH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ATANH(Y)+(Z×ATANH(Y)+1)^(N+1)÷Z÷ATANH(Y); Z≠0; Z×ATANH(Y)+1≠1` |
-| `casim sum '(1+ABS(TAN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(TAN(Y))+(Z×ABS(TAN(Y))+1)^(N+1)÷Z÷ABS(TAN(Y)); Z≠0; Z×ABS(TAN(Y))+1≠1` |
+| `casim sum '(1+TAN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷TAN(Y)+(Z×TAN(Y)+1)^(N+1)÷Z÷TAN(Y); COS(Y)≠0; Z≠0; Z×TAN(Y)+1≠1` |
+| `casim sum '(1+SQRT(Y)×Z)^K' K 0 N RAD` | `-1÷SQRT(Y)÷Z+(SQRT(Y)×Z+1)^(N+1)÷SQRT(Y)÷Z; Y≥0; Z≠0; SQRT(Y)×Z+1≠1` |
+| `casim sum '(1+LN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LN(Y)+(Z×LN(Y)+1)^(N+1)÷Z÷LN(Y); Y>0; Z≠0; Z×LN(Y)+1≠1` |
+| `casim sum '(1+LOG(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷LOG(Y)+(Z×LOG(Y)+1)^(N+1)÷Z÷LOG(Y); Y>0; Z≠0; Z×LOG(Y)+1≠1` |
+| `casim sum '(1+ASIN(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ASIN(Y)+(Z×ASIN(Y)+1)^(N+1)÷Z÷ASIN(Y); ABS(Y)≤1; Z≠0; Z×ASIN(Y)+1≠1` |
+| `casim sum '(1+ACOS(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOS(Y)+(Z×ACOS(Y)+1)^(N+1)÷Z÷ACOS(Y); ABS(Y)≤1; Z≠0; Z×ACOS(Y)+1≠1` |
+| `casim sum '(1+ACOSH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ACOSH(Y)+(Z×ACOSH(Y)+1)^(N+1)÷Z÷ACOSH(Y); Y≥1; Z≠0; Z×ACOSH(Y)+1≠1` |
+| `casim sum '(1+ATANH(Y)×Z)^K' K 0 N RAD` | `-1÷Z÷ATANH(Y)+(Z×ATANH(Y)+1)^(N+1)÷Z÷ATANH(Y); ABS(Y)<1; Z≠0; Z×ATANH(Y)+1≠1` |
+| `casim sum '(1+ABS(TAN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ABS(TAN(Y))+(Z×ABS(TAN(Y))+1)^(N+1)÷Z÷ABS(TAN(Y)); COS(Y)≠0; Z≠0; Z×ABS(TAN(Y))+1≠1` |
 | `casim sum '(1+EXP(1÷Y)×Z)^K' K 0 N RAD` | `-1÷Z÷EXP(1÷Y)+(Z×EXP(1÷Y)+1)^(N+1)÷Z÷EXP(1÷Y); Y≠0; Z≠0; Z×EXP(1÷Y)+1≠1` |
-| `casim sum '(1+ATAN(SQRT(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ATAN(SQRT(Y))+(Z×ATAN(SQRT(Y))+1)^(N+1)÷Z÷ATAN(SQRT(Y)); Z≠0; Z×ATAN(SQRT(Y))+1≠1` |
-| `casim sum '(1+COS(LN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷COS(LN(Y))+(Z×COS(LN(Y))+1)^(N+1)÷Z÷COS(LN(Y)); Y≠0; Z≠0; Z×COS(LN(Y))+1≠1` |
+| `casim sum '(1+ATAN(SQRT(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷ATAN(SQRT(Y))+(Z×ATAN(SQRT(Y))+1)^(N+1)÷Z÷ATAN(SQRT(Y)); Y≥0; Z≠0; Z×ATAN(SQRT(Y))+1≠1` |
+| `casim sum '(1+COS(LN(Y))×Z)^K' K 0 N RAD` | `-1÷Z÷COS(LN(Y))+(Z×COS(LN(Y))+1)^(N+1)÷Z÷COS(LN(Y)); Y>0; Z≠0; Z×COS(LN(Y))+1≠1` |
 | `casim sum '(1+SIN(1÷Y)×Z)^K' K 0 N RAD` | `-1÷Z÷SIN(1÷Y)+(Z×SIN(1÷Y)+1)^(N+1)÷Z÷SIN(1÷Y); Y≠0; Z≠0; Z×SIN(1÷Y)+1≠1` |
 | `casim sum '(1+Z×LN(Y+1))^K' K 0 ∞ RAD` | `-1÷Z÷LN(Y+1); Z≠0; ABS(Z×LN(Y+1)+1)<1` |
 
