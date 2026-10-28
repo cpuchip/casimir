@@ -148,9 +148,14 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 519 deliberate faults, each of which the tests must
-  catch, but one named. At CAS 034's accepted tree (4c0523b) `make test` caught 480 of 482, the 5 new on CAS 034's
+  catch, but five named. At 1.4.0's tree (6090b8c) `make test` caught 514 of 519 (work/v1.4.0-mutants.txt), which
+  names the five with what masks each: cancel-rewind-keeps-cache, as at 1.3.0, and four older checks beside CAS 035's
+  typed walk (cond-site2-lhopital, ser-root-of-negative and ser-ln-no-value, which no searched line separates from the
+  build, and div-letter-off, which drops only rows the kept rows imply). At the version commit (9eaab97) it caught 509;
+  of the nine older checks that survived there beside cancel-rewind-keeps-cache, 6090b8c pins the lines where five
+  alone decide. At CAS 034's accepted tree (4c0523b) `make test` caught 480 of 482, the 5 new on CAS 034's
   total functions (work/034-total-functions.md) among them: said-whole-fn, which CAS 034's own branch made inert, is
-  retargeted at 8512c5a and caught there, and cancel-rewind-keeps-cache is the one named. At CAS 035's accepted tree
+  retargeted at 8512c5a and caught there, and cancel-rewind-keeps-cache survived. At CAS 035's accepted tree
   (a6836d0) it caught the 37 on CAS 035's typed domain (work/035-typed-domain.md). At 1.3.0's tree `make test` caught
   475 of the 477 (work/v1.3.0-mutants.txt), the 8 new on CAS
   032's rows (work/032-redundant-row.md) and the 5 on CAS 033's (work/033-divisor-rows.md) among them. The two that

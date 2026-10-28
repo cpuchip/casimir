@@ -1,0 +1,71 @@
+# The mutant count at the v1.4.0 tag: 514 of 519 caught at the tag's tree, from one run of every mutant (2026-10-26/27,
+# lepton, claim #11543); the five survivors are named below (abacus #11540, #11546).
+#
+# The tree: 6090b8c, the commit v1.4.0 tags: the version commit 9eaab97 (CAS 034 as accepted at 4c0523b, CAS 035 as
+# accepted at a6836d0, with the 1.4.0 text), 5f49abf (CAS 035's unit doc) and 6090b8c (six pins, rows only). src is
+# a6836d0's apart from the version text. The README's code size (403,525 B, scripts/device.sh --build at 16,384 B) was
+# measured at 9eaab97; src hasn't changed since. The control: make test, all green, 20 tests, 118,449 checks,
+# "Casimir 1.4.0" (23:37:07Z to 23:43:11Z).
+#
+# The first run, at 9eaab97 (20:12:31Z to 23:13:16Z, claim #11533): 509 of 519. Beside cancel-rewind-keeps-cache, 9
+# that CAS 034's run (4c0523b) caught survived, since CAS 035's typed rows give the same line. Built on 1b66fd0 (CAS
+# 035's parent), the defint three fail 11, 30 and 5 golden lines and ser-ln-no-value 2; at 9eaab97, 0.
+# The search (claim #11541, host only): each of the 9 against the build by golden_check --record, over 604,398 lines
+# from the corpus's and the examples' defint, limit, sum and taylor texts (varied over bounds, points, sides and
+# letters) at 65,536 B and again at 8,800 and 2,048 B; 400,000 random (seed 20261026); the series-only build
+# (CASIM_SER=2) on 1,004,398 of them; and 7,215 aimed by hand. Where five still decide the line, 6090b8c pins it
+# (work/035-examples.txt's last block; failed checks of scripts/doc-examples.py at each mutant in brackets):
+#   cond-site6-answer [4]: a limit's hole that shows only in its value, (K^2)^X at -1 and K^X at 0.5.
+#   cond-site7-f [1]: 1÷(X×EXP(K^K)) at ∞, where the series route answers and site 7's row, which says K^K has a
+#     value, is the line's only one (tests/golden/moved/cas-021-examples.txt lists it: UNDECIDED with the route off).
+#   defint-endpoint-pole-allowed [2], defint-fraction-edge-ignored [2], defint-check-walks-F [2]: IMPROPER, as at
+#     1.3.0, where the integrand also holds a constant with no value. interval_walk's checks are redundant to defint's
+#     output except for that order: over everything searched, a weakened interval_walk changed only IMPROPER to
+#     UNDEFINED there (15, 17 and 55 lines), since td_defint runs when interval_walk says OK.
+#   Two of these hold what 1.3.0 printed, and no ruling stands behind them (abacus #11546): K^X at 0.5 keeps K>0,
+#   though at K = 0 the typed text has a value (0^X is 0 for X>0, and the limit is 0), so K≥0 would be exact and the
+#   stricter row is lawful at that edge; and the defint pins keep IMPROPER, where UNDEFINED would be just as lawful.
+#
+# The run (23:43:11Z to 02:41:17Z, 6 shards of 86 or 87, scripts/mutants.py on copies of that tree):
+#   514 of 519 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache: as at 1.3.0 (no input is known where it differs from the build).
+#   SURVIVED cond-site2-lhopital: CAS 023 site 2's L'Hôpital row off. No line differed in the search: the K≠0 it adds
+#     is printed by site 6 (the answer 1÷K) and by the typed rows. At 1b66fd0 too, site 2 off left it (X÷SIN(K×X) at
+#     0); CAS 034's catcher there, work/023-examples.txt:19, holds now because the typed rows print its K≠0.
+#   SURVIVED div-letter-off: CAS 033's letter hole off. 16 lines differed, each only by rows the kept rows imply (Y≠0;
+#     Z≠0 beside SQRT(Y×Z)≠0; Z≠0 beside LN(Y^Z)≠0): all 23 dropped rows implied, by ratio or at 14^2 letter values.
+#     A pin would hold redundant rows.
+#   SURVIVED ser-root-of-negative: the series route's check for a root of a negative leading term, weakened. No line
+#     differed, on either build: CAS 035's limit walk refuses (UNDEFINED) a base negative at the point, or on the side
+#     asked, before the route runs. CAS 034's catcher, series_test's (-2-X)^(1÷3) at 0, has been UNDEFINED since
+#     6a01575.
+#   SURVIVED ser-ln-no-value: the series route's check for a constant with no value, off. No line differed on the
+#     library build. On the series-only build, one: ATAN(2×K×X÷SQRT(K^2)) at -1 from the right, where the mutant's
+#     ATAN(-2×K÷SQRT(K^2)); K≠0 is right and the build refuses (UNDECIDED). CAS 034's catchers, the corpus's 9915 and
+#     10033 (LN(1+X) at -2), are UNDEFINED by the typed walk first.
+#   The five above caught again, each only by its pin: cond-site6-answer by work/035-examples.txt:152 and 153,
+#     cond-site7-f by :154, defint-endpoint-pole-allowed by :155, defint-fraction-edge-ignored by :156,
+#     defint-check-walks-F by :157.
+#   The 42 new since 1.3.0 are caught: CAS 034's 5 (total034-*) and CAS 035's 37 (td035-*). By the files the run
+#     names: total034-atan-out by work/034-examples.txt, the other 4 by rows in two or more files; of CAS 035's, 11 by
+#     the golden corpus alone, 21 by work/035-examples.txt alone and 5 by rows in two or more files.
+#   The five caught only by build/series_test, a developer test, as at 1.3.0 less ser-root-of-negative:
+#     ser-after-rule7-ran-out, ser-bound-product-unscaled, ser-limit-no-retry,
+#     ser-puiseux-answers, ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Seen in the search, older than CAS 035 (1b66fd0 prints the same): CAS 023 site 6 restates typed rows (K×π+4≠0
+# beside K×π÷2+2≠0), and on 69 limit lines its rows take the build to TOO_LONG where the mutant's line fits; site 7
+# prints never-0 rows such as EXP(K^2)≠0. For a later unit.
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s: 1,843,144
+# KiB, at 23:43:24Z. The control's largest process: 263,432 KiB. The clang check's containers (casim-clang-*, --memory
+# 2g), logged as docker reported them: never two at once, each up 5 to 6 s, 11 in all (one the control's, 10 the
+# shards'). Those containers' memory wasn't sampled. No device build or S3 size check ran: the code size is 9eaab97's.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 716 to 724 KiB, /dev/shm 272 KiB throughout. du doesn't see a
+# deleted file held open.
+# The copies on disk (build/mutants): 2,979 MiB at most.
+# Host memory in use (free, every 10 s): 23,114 MiB at most. It counts every tenant of the box, so it doesn't attribute
+# this run's use.
