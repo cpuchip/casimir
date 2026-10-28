@@ -9276,6 +9276,7 @@ static __attribute__((noinline)) casim_status irs_refused(const casim_req *rq, i
 typedef struct {
     ref l, r;
     char op;
+    char gw;                            /* CAS 036: 1, a row that gives way at the cap (td_gw; 2 and 4 its marks) */
     int letter;                         /* its order: the letter solved for, or 26 for B itself */
 } smrow;
 
@@ -13530,7 +13531,7 @@ static void sm_row(ctx *c, smrow *rows, int *n, ref l, char op, ref r, int lette
         if (p->letter == letter && const_sign(c, ib_canon(c, add2(c, p->r, ib_neg(c, r)))) <= 0) break;
     }
     memmove(&rows[at + 1], &rows[at], (size_t)(*n - at) * sizeof rows[0]);
-    rows[at] = (smrow){l, r, op, letter};
+    rows[at] = (smrow){l, r, op, 0, letter};
     (*n)++;
 }
 
@@ -13889,7 +13890,7 @@ static __attribute__((noinline)) int sm_said(ctx *c, out_t *w, smrow *rows, int 
             continue;
         for (int j = 0; j < n && !(hard >> i & 1u) && c->st == CASIM_OK; j++)
             if (j != i && sm_false0(c, &rows[j], x->id)) {
-                if (rows[j].op == '?') soft |= 1u << i;
+                if (rows[j].op == '?' || rows[j].gw) soft |= 1u << i;
                 else hard |= 1u << i;
             }
     }
@@ -13937,6 +13938,35 @@ static __attribute__((noinline)) void sm_rput(ctx *c, out_t *w, smrow *rows, int
     rows_put(c, w, rows, k, true);
 }
 
+/* CAS 036: the line with every row, td_gw's too, where it fits; else sm_rput's without td_gw's, as before */
+static __attribute__((noinline)) void sm_rgw(ctx *c, out_t *w, smrow *rows, int n)
+{
+    size_t at = w->n, mark = c->used;
+    unsigned g = 0;
+    int k = 0;
+    for (int i = 0; i < n; i++) g |= (unsigned)rows[i].gw << i;
+    if (g && !w->full) {
+        ref room = grab(c, (size_t)n * sizeof *rows);
+        if (room) {
+            smrow *t = (smrow *)(void *)nd(c, room);
+            memcpy(t, rows, (size_t)n * sizeof *rows);
+            for (int i = 0; i < n; i++)
+                if (t[i].op == '?') t[i].op = '!';
+            rows_put(c, w, t, sm_said(c, w, t, n), true);
+            if (!w->full && c->st == CASIM_OK) {
+                taylor_drop(c, mark);
+                return;
+            }
+            w->n = at, w->full = false, w->o[at] = '\0';
+        }
+        if (c->st == CASIM_NO_ROOM) c->st = CASIM_OK;
+        taylor_drop(c, mark);
+    }
+    for (int i = 0; i < n; i++)
+        if (!(g >> i & 1u)) rows[k++] = rows[i];
+    sm_rput(c, w, rows, k);
+}
+
 /* the answer (∞ or -∞ when dir), then its rows after "; " (CANCEL's) */
 static inline __attribute__((always_inline)) casim_status sm_print(ctx *c, ref sum, int dir, smrow *rows, int n,
                                                                    char *out, size_t ocap)
@@ -13946,7 +13976,7 @@ static inline __attribute__((always_inline)) casim_status sm_print(ctx *c, ref s
     if (ocap == 0) return CASIM_TOO_LONG;
     if (dir) puts_(&w, dir > 0 ? "\xe2\x88\x9e" : "-\xe2\x88\x9e");
     else print(c, &w, sum);
-    sm_rput(c, &w, rows, n);
+    sm_rgw(c, &w, rows, n);
     if (c->st == CASIM_OK && w.full) c->st = CASIM_TOO_LONG;
     if (c->st != CASIM_OK) {
         out[0] = '\0';
@@ -14064,6 +14094,30 @@ static __attribute__((noinline)) void td_rows(ctx *c, smrow *rows, int *n, ref u
     else if (k == 't') sm_row(c, rows, n, ib_canon(c, fn(c, F_COS, u)), '!', small(c, C_0), L);
 }
 
+/* CAS 036 (cas-missing-scope): a sum to N whose answer shows a condition's hole has no value at the empty sum, where
+   the sum is 0, unless a row excludes it. The row gives way at the cap (sm_rgw), and where it doesn't fit in the rows
+   or the arena it is left out */
+static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, char k)
+{
+    size_t mark = c->used;
+    int m = 0;
+    bool out;
+    for (int i = 0; i < *n; i++) {                       /* a '?' row (CAS 030) shown to sm_row as '!', so it's once */
+        rows[i].gw |= 2;
+        if (rows[i].op == '?') rows[i].op = '!', rows[i].gw |= 4;
+    }
+    td_rows(c, rows, n, u, k);
+    out = c->st == CASIM_NO_ROOM;
+    if (out) c->st = CASIM_OK;
+    for (int i = 0; i < *n; i++) {
+        if (rows[i].gw & 4) rows[i].op = '?';
+        if (rows[i].gw & 2) rows[i].gw &= 1, rows[m++] = rows[i];
+        else if (!out) rows[i].gw = 1, rows[m++] = rows[i];
+    }
+    if (out) td_drop(c, mark);
+    *n = m;
+}
+
 /* CAS 035: the typed summand's conditions as rows (gate: the answer's first part, none when it diverges);
    direct: summed term by term, a condition in K decided at each K, as each term is */
 static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bool gate, smrow *rows, int *n,
@@ -14095,7 +14149,9 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
         char k = D.k[i];
         int st;
         if (any_letter(c, u)) {
-            if (!td_said(c, rows, *n, u, k) && (!gate || !td_gated(c, sum, u, k, S->var))) td_rows(c, rows, n, u, k);
+            if (td_said(c, rows, *n, u, k)) continue;
+            if (!gate || !td_gated(c, sum, u, k, S->var)) td_rows(c, rows, n, u, k);
+            else if (!S->inf && !S->ihi) td_gw(c, rows, n, u, k);      /* CAS 036 */
             continue;
         }
         st = td_const(c, u, k);
