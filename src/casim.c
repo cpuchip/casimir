@@ -13737,6 +13737,7 @@ static ref sm_cancel1(ctx *c, ref t)
    be the longer, and an answer that fit isn't lost to TOO_LONG (abacus #10595). The terms are kept in the arena, not
    on the stack (a 64-term array made the frame 288 B on the S3) */
 static __attribute__((noinline)) bool sm_fits(ctx *c, const smsum *S, const smgroup *G, int ng, ref r, size_t ocap);
+static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, char k);
 
 static __attribute__((noinline)) ref sm_cancel(ctx *c, const smsum *S, const smgroup *G, int ng, ref sum, size_t ocap)
 {
@@ -13785,7 +13786,10 @@ static inline __attribute__((always_inline)) void sm_rows(ctx *c, const smsum *S
             bool hole, neg;
             if (!contains(c, B, l)) continue;
             neg = sm_mono(c, B, &k, &L, &m) && m < 0;
-            if (neg && S->ilo && S->a >= 1) continue;
+            if (neg && S->ilo && S->a >= 1) {
+                if (!S->inf && !S->ihi) td_gw(c, rows, n, leaf(c, K_VAR, l), '!');    /* CAS 036: the empty sum */
+                continue;
+            }
             /* CAS 024, abacus #9594: a term from lo divides by l (0×Y^(-1) too). A monomial at a negative power keeps
                the probe: its own row, ABS(X)>v, is false at X = 0 (CAS 025's rows are for a B whose row has no value
                there) */
