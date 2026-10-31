@@ -148,8 +148,11 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 543 deliberate faults, each of which the tests must
-  catch, but five named. At CAS 036's accepted tree (ead17ba) `make test` caught its 10 new
-  (work/036-missing-values.md), and at CAS 037's (8b6f1d7) the 17 run on CAS 037's reading (work/037-wrong-values.md).
+  catch, but six named. At 1.5.0's tree (cd7db86) `make test` caught 537 of 543 (work/v1.5.0-mutants.txt), which
+  names the six with what masks each: 1.4.0's five, four of which move the same searched lines as at 1.4.0, and
+  factor026-letter-off, whose row CAS 037's row on a power with K in its exponent prints too. At CAS 036's accepted
+  tree (ead17ba) `make test` caught its 10 new (work/036-missing-values.md), and at CAS 037's (8b6f1d7) the 17 run
+  on CAS 037's reading (work/037-wrong-values.md).
   ratio025-negpow-row-off was among those 17: CAS 036 moved its pin, work/033-examples.txt:55, to the line the mutant
   prints, so it survived at ead17ba, and CAS 037 put the row back. At 1.4.0's tree (6090b8c) `make test` caught 514 of
   519 (work/v1.4.0-mutants.txt), which names the five with what masks each: cancel-rewind-keeps-cache, as at 1.3.0,

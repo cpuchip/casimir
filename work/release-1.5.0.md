@@ -1,0 +1,94 @@
+Casimir 1.5.0: the wrong answers found after 1.4.0 are fixed. A closed sum whose summand holds a power with K in its exponent, or a divisor in K that canon cancels, no longer prints a value where the sum as typed has none. A sum to N whose line had no value at a point where the sum has one, the empty sum, gets the row it was missing, and limit no longer adds 1.4.0's named row for a k linear in one letter. 1.5.0's code is CAS 036's and CAS 037's, accepted at ead17ba and 8b6f1d7, with the version text changed. src/casim.h's interface is 1.0's, but answers' bytes change, which is why this is 1.5.0 and not 1.4.1. A moved answer keeps its value. It gains rows that exclude a point where the line has no value, and limit's moved lines lose a row that excluded nothing. A status moves where 1.4.0 printed a value the sum doesn't have (now UNDEFINED), where a refusal now says why (NO_CLOSED_FORM to UNDEFINED), where one line once TOO_LONG now fits, and where a refusal changes kind with the arena (below).
+
+## What's new since 1.4.0
+
+- **A row where a sum to N's line misses a value** (CAS 036, Michael's cards cas-missing and cas-missing-scope). At the empty sum (N = LO-1) the sum is 0. Where the line has no value there, a row now excludes the point. Each row excludes its point at every N, though the sum has a value there at the empty sum, so it is stricter than the sum by that one N. The rows give way at the cap: where the line with them would pass 191 bytes, they go together, and the line is 1.4.0's byte for byte.
+  - a typed condition whose hole the answer shows: `(1+Z×SQRT(Y))^K` from 0 to N gains `Y≥0`, `(1+Z×LN(Y))^K` gains `Y>0`, and `Y^K÷X` from 1 gains `X≠0`. Where the new row says a letter's row, that row goes: `(1+Z×ATANH(Y+1))^K` from 0 prints `ABS(Y+1)<1` in place of `Y≠0`;
+  - the ratio's monomial pole from a LO of 1 or more: `Y^(-K)` and `(3÷Y)^K` from 1 to N gain `Y≠0`;
+  - the base of a divisor whose exponent alone holds K, and of u^K from a LO below 0: `X^K÷(Y-1)^K` from 1 gains `Y≠1`, and `(SIN(2×Z)×Y)^K` from -2 gains `SIN(2×Z)≠0`;
+  - a stricter row that says a hard one can bring a line under the cap: `((K-1)+1)×LN(Z)^((K-1)+1)×Y^((K-1)+1)` from 0 to N, TOO_LONG in 1.4.0, prints its line with `Z>0`.
+- **A closed sum reads a power with K in its exponent as typed** (CAS 037, the fix; Michael's card cas037-wrong). Summed term by term, 1.4.0 already read each term as typed (`Y^K×Y^(-K)` from -1 to 1 is `3; Y≠0`). Its closed form merged the powers first and could print a value where the sum has none, and 1.3.0 printed the same lines:
+  - a factor that cancels the base's negative powers: `(Y×SQRT(Z))^K×SQRT(Z)` from -1 to N printed a line that is 1 at Y = 1, Z = 0, where the term at K = -1 is SQRT(0)^(-1). It gains `Z≠0`, and `Y^K×Y` from -1 gains `Y≠0`. The same holds for SIN, COS, TAN, ABS, LN and the other functions at their zeros, and to ∞;
+  - powers that cancel exactly, from any LO: `Y^K×Y^(-K)` from 1 to N printed `N` and prints `N; Y≠0`. The exponent is read where it is negative for some K from LO, at LO, LO+1 or LO+2 or falling from there;
+  - a divisor in K alone that canon cancels, 0 at a whole K in range: `((K+1)^2-1)÷((K+1)-1)` from 0 to N printed `5×N÷2+N^2÷2+2` and is UNDEFINED, as `1÷(K-2)` from 0 to N already was. `(-8)^(1÷(-K))` from 0, NO_CLOSED_FORM in 1.4.0, is UNDEFINED too.
+
+  These rows are hard: the line without one would have a value where the sum has none, so they never give way at the cap.
+- **limit tries k = 0 for k linear in one letter again** (CAS 036). 1.4.0 left the try out to fit its flash line, so `(SIN((Y-1)×X)+1)÷(SIN((Y-1)×X)+1)` at 0 printed `1; Y≠1`. It prints `1`, as the input is 1 everywhere at Y = 1. A k in two letters, or a letter's square, keeps its row (Not yet).
+- **The S3 code line is gated.** Michael's decision 92 set Casimir's line at 270,336 bytes. `make size` now fails past it.
+- **Prose answers are checked.** 1.4.0's docs/language.md kept 1.3.0's line for Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 1, and its reason, after CAS 035 moved the answer, and it named `X^(1÷2)` as a fraction casim prints (it prints SQRT(X)). Both are fixed (07d8a91), and the 1.4.0 release page carries the erratum. Every backticked answer in that file's prose must now be in a checked row or in the golden corpus (3d7c1d3).
+- **What moves**, against 1.4.0:
+  - the golden corpus: 3 of 10,822 lines, and their 3 under →DEC (`X^(-K)` from 1 to N gains `X≠0`);
+  - the documented examples: 43 of 1.4.0's commands, each by a row;
+  - a family of 10,271 sums: 1,253, by rows only;
+  - the 1.4.0 mutant search's inputs at 65,536 B: 1,764 of 35,388 sum lines and 23 of 162,486 limit lines, with defint and taylor unchanged (0 of 406,524). Of the sum lines, 1,754 move by rows, 3 go from OK to UNDEFINED and 6 from NO_CLOSED_FORM to UNDEFINED (CAS 037's (C)), and 1 goes from TOO_LONG to OK. No answer moves;
+  - at the calculator's arenas the same inputs move the same way, and a refusal changes kind: 3 sum lines go from TOO_LONG to NO_ROOM at 8,800 B and 1 at 16,384 B, each TOO_LONG at 65,536 B. The rows take arena.
+- **The hidden sets at acceptance:** CAS 036's has 12 failing runs, each ruled (decision 93). Six are under Not yet below, and six are the row's exclusion at N = 0 from a LO of 0, where the one term is u^0 = 1 (below). CAS 037's, 189 rows at three arenas, has 18, each a CAS 037 row's exclusion at N = LO of the same kind (below). In CAS 035's set, two lines lose a letter's row that a kept row says, accepted.
+- **Measured:** S3 code 265,194 bytes (3,158 more than 1.4.0's), 5,142 under the line. On the ESP32-S3 the bench's worst stack is unchanged.
+
+**The guarantee is unchanged:** an exact answer, or a status that says why not. Never an approximation presented as an answer.
+
+## The known wrong answers
+
+None. Those found at CAS 036's acceptance, and printed by 1.4.0 and 1.3.0 as well, print CAS 037's rows (above). make check now holds 596 sums of their shapes (scripts/wrong-values.py), each added term by term from the typed summand: a line with a value where the sum has none fails.
+
+## How it's tested (at this tag)
+
+- `make test`: 20 programs with 118,449 checks. They read every answer back through an independent evaluator (the calculator firmware's core) and compare values.
+- The golden corpus, 10,822 calls compared byte for byte. CAS 036 moves 3, each listed with its before (tests/golden/moved/cas-036.txt). A check judges each added row apart from casim: at a letter's value it excludes, the line has no value at the empty sum. CAS 037 moves none.
+- Frame and symbol gates: no frame over 1 KiB, no `pow` linked, and every function's frame against the recorded table. No frame moved from 1.4.0, on the host or the S3. CAS 036's three new functions take at most 96 B on the S3 (td_at0), and CAS 037's five at most 224 B (td_kq).
+- Value checks beside the corpus judge Taylor polynomials, limits, integrals and sums against independent constructions. New in 1.5.0: the sum judges read a function's domain row (`Z>0` for LN(Z)) as the typed domain's.
+- The docs: every `casim` row of docs/language.md and the units' example files is run (2,602 checks, each again with the series route compiled out), and every backticked answer in docs/language.md's prose must be in one of them or in the golden corpus.
+- CI on every push: `make check` under gcc and clang, `make test`, CMake under gcc and clang, WebAssembly, and the ESP-IDF component for the ESP32-S3.
+- Mutants (scripts/mutants.py): 543 deliberate faults, and at this tag's tree `make test` catches 537 (work/v1.5.0-mutants.txt, which names what masks each survivor). Five survived at 1.4.0 too: cancel-rewind-keeps-cache, which differs from the build on no known input, and four older checks beside CAS 035's typed walk. Searched again at this tree over the 1.4.0 search's 2,220,409 lines, each of the four moves exactly the lines it moved at 1.4.0. div-letter-off moves the same 16 sum lines by rows the kept rows imply and ser-ln-no-value the same limit line on the series-only build; the other two move none. The sixth, factor026-letter-off, takes off CAS 026's row for a letter whose fraction power a term from LO divides by. CAS 037's row on a power with K in its exponent is the same row, so `K×SQRT(Z)^(2×K-1)×Y^K` from 0 to ∞, which caught it at 1.4.0, keeps `Z≠0` with the mutant, and no searched line separates it from the build. One of 1.4.0's, ratio025-negpow-row-off, survived at CAS 036's tree: CAS 036 moved work/033-examples.txt:55, its catcher, to the line the mutant prints. CAS 037 put the row back, and it is caught again.
+- A check that no sum line has a value where the typed sum has none (CAS 037, scripts/wrong-values.py): 596 sums, each added term by term from the typed summand. Through CAS 036's build it fails 253 of them.
+- Hidden sets kept by the project's reviewer, independent of this repository, rerun at each unit's acceptance. At CAS 036's: its own, 293 rows at three arenas, with the 12 failing runs ruled (above), and the earlier units'. At CAS 037's: its own, 189 rows at three arenas, the earlier units' and a comparison of every line against CAS 036's build. That comparison found two right answers CAS 037's first build took past the cap (a row said twice, in another spelling), fixed before acceptance.
+- On the ESP32-S3, every one of the bench's 1,412 cases is byte-identical to the host (at aaf5ace, whose src is this tag's but for the version text):
+  - with a 16,384 B arena, the size the calculator runs it with;
+  - worst stack 11,360 B read with interrupts masked, plus a 384 B interrupt allowance (two frames, or the most measured over the masked reading where that is larger), 11,744 of a 12 KiB task;
+  - nesting deeper than 44 levels is refused (NO_ROOM);
+  - about 265 KB of Casimir's code at -O2 (265,194 B), 5,142 B under the 270,336 B line.
+
+## Not yet, after 1.5.0
+
+These print a line without the note it could have, print a row the answer doesn't need, have no value where the sum has one, refuse, or print a constant as written. None of them is a wrong value.
+
+- **The typed domain, stricter than it needs to be** (CAS 035):
+  - limit's letter conditions at the edge: `SQRT(Y)^2×X` at 1 prints `Y; Y>0`, though Y = 0 has a value, and `ASIN(Y)×X` at 1 prints `ASIN(Y); ABS(Y)<1`, though |Y| = 1 has one;
+  - `SQRT(X^2×Y)^2` at 0 gives `0; Y>0`, though Y = 0 has a value;
+  - limit's degenerate divisor tries k = 0 only for k linear in one letter: `(SIN((Y-Z)×X)+1)÷(SIN((Y-Z)×X)+1)` at 0 prints `1; Y-Z≠0`, though at Y = Z it is 1 everywhere, and `Y×Z-1` and `Y^2-1` (`1; Y≠-1; Y≠1`) the same.
+- **The typed domain, refused where it could be answered** (CAS 035):
+  - an X×Y-form limit at ±∞ is UNDECIDED: its sign is Y's, and no row is given (`SQRT(X×Y)÷SQRT(X×Y)` at ∞);
+  - a divisor 0 for every X at a letter's value that casim can't rule out is UNDECIDED: `(Y×SIN(X)-SIN(Y×X))÷(Y×SIN(X)-SIN(Y×X))` at 0, whose divisor is 0 for every X at Y = ±1;
+  - rows count toward the 191 bytes, so some lines with them are TOO_LONG: `K×(1+Z×F(u))^K` from 1 to ∞ with u Y+1, Y-2 or W-1, and `(K-1)×(F(Z)×Y)^K÷F(Z)` from 1 to N for ACOSH, ASINH and ATANH, and LN from 2.
+- **Older checks beside the typed rows** (found by 1.4.0's mutant search; 1.3.0 prints the same):
+  - which refusal a constant with no value gets beside a pole on the interval: `X^(-2)×ACOS(3)` over 0..1 is IMPROPER, where UNDEFINED would be just as lawful (CAS 009's interval check answers first);
+  - limit rows from the answer's own walk and f's (CAS 023 sites 6 and 7) that restate a typed row (`K×π+4≠0` beside `K×π÷2+2≠0`) or can't fail (`EXP(K^2)≠0`), and 69 limit lines found TOO_LONG where the line without site 6's rows fits.
+- **A quotient that canon cancels, or whose divisor falls in K, is still refused.** `X^(2×K)÷X^K` is NO_CLOSED_FORM: canon reads it as `X^K`, which has a value at X = 0, where its terms are 0÷0. So is `X^K÷Y^(-K)`: its divisor has no value at Y = 0, while canon's `(X×Y)^K` has one. Answering them needs a row that `(X÷Y)^K`-style twins don't print (`X≠0`, `Y≠0`). So are `Y^K÷Y^K` (where `Y^K×Y^(-K)` prints `N; Y≠0`) and a divisor in K inside an exponent: `(-8)^(1÷(K-1))` from 0 is NO_CLOSED_FORM, though the term at K = 1 has no value (UNDEFINED would say why).
+- **A divisor of degree 2 or more in K that canon cancels** is read by no CAS 037 rule. The shapes found are refused (`((K^2-1)×K)÷(K^2-1)` from 0 to N is NO_CLOSED_FORM) or UNDEFINED already.
+- **UNDEFINED for a whole sum to N whose divisor is 0 mid-range** (CAS 037's (C), as for a divisor canon keeps): `((K+1)^2-1)÷((K+1)-1)` from -2 to N is UNDEFINED, though the sum has a value for N = -2 and -1, as `1÷(K-2)` from 0 to N is UNDEFINED, though the sum has one for N = 0 and 1.
+- **A refusal that changes kind with the arena.** CAS 037's rows take arena, so a line too long at every arena can run out of room first at the calculator's: `(1+Z×(Y-1)^2)^(-K)` from -2 to N is NO_ROOM at 8,800 B and TOO_LONG at 16,384 B, where 1.4.0 was TOO_LONG at both.
+- **The `÷` spelling reaches the rows of the `×` one.** A quotient prints the answer its canon spelling did in 1.1.0, rows for nothing and missing values included. At a letter's 0, a quotient's terms whose power of the letter is 0 or less have values (0^0 = 1), and there the letter's row excludes the sum's value. `X^K÷Y^K` from 0 to N prints `-1÷(X÷Y-1)+(X÷Y)^(N+1)÷(X÷Y-1); Y≠0; X÷Y≠1`, though at Y = 0 and N = 0 the sum is 1, as `X^K×Y^(-K)` printed in 1.1.0. `X^(K-1)÷Y^(K+2)` from 1 to N prints `X≠0`, though at X = 0 the sum is 1÷Y^3 for every N ≥ 1. Where the factor is one of CAS 030's functions of a letter, its row excludes the point now: `Y^K÷SIN(Z)^K` from 0 to N prints `SIN(Z)≠0`, though at Z = π and N = 0 the sum is 1 (rows for nothing, below). They're the class below, where the shift that clears a rational ratio's row is refused past a letter at a negative power.
+- **A note that doesn't fit.** Where the line with the note would pass solve's 191 B, solve prints the line as 1.0.1 did, with no note, never TOO_LONG for it and with no root dropped. `(7×X-2)×(3×X^2-9×X-7)×(8×X^2+3×X-2)×(8×X-3)×(X^2-3×X+8)×(8×X^2+6×X-1)×(1×X^2+9×X+3)` prints its ten real roots in 184 B as `SOLVED: …`, and `, 2 CPLX` would make it 192 B. With `--complex` the same input is TOO_LONG. In a family of degree-12 polynomials built to reach the cap, 59 of 1,416 noted answers give way at one seed and 69 of 1,403 at another; none in the golden corpus does.
+- **The complex roots of a factor of degree 3 or more** aren't counted, since solve doesn't find them, with the bit or without it: `X^4+1` is `PARTIAL, DEGREE 4 LEFT`.
+- **Rows for nothing.** Each is excluded where the sum has a value, while the answer has none there:
+  - CAS 036's rows, at the empty sum: `X^(-K)` from 1 to N prints `X≠0`, while at X = 0 and N = 0 the sum is 0;
+  - from a LO of 0, CAS 036's row also excludes N = 0, where the one term is u^0 = 1: `X^K÷(Y+1)^K` from 0 to N prints `Y≠-1`, though at Y = -1 and N = 0 the sum is 1. CAS 037's rows do the same at N = LO where the exponent is 0 there: `Y^K×Y^(-K)` from 0 to N prints `N+1; Y≠0`, though at Y = 0 and N = 0 the sum is 1;
+  - a CAS 037 row read from an exponent that falls toward negative excludes its point before it gets there: `Y^(2-K)×Y^K` from 0 to N prints `Y^2+N×Y^2; Y≠0`, though at Y = 0 the sum is 0 for N up to 2 (1.4.0 printed no row, and a value from N = 3, where the term is 0^(-1)×0^3);
+  - a function factor's row to N, at an N before the first term that divides by the factor (CAS 030, as a letter's row): `(Y÷SIN(Z))^K` from 1 to N prints `SIN(Z)≠0`, which excludes Z = π at N = 0, where the sum is 0, as its twin's `X≠0` excludes X = 0. For every N from 1 the sum has no value there, and the row is the one it needs;
+  - `(X÷Y)^K÷X` from 1 to N prints `X≠0`, though the sum has a value at X = 0;
+  - a row that excludes no point: casim doesn't know a polynomial's real zeros here, so to ∞ a divisor inside the ratio that has none gets its row all the same (CAS 033): `(Z÷(Y^2+1)+1)^K` from 0 to ∞ prints `Y^2+1≠0`, true everywhere;
+  - past an irrational constant, to N, the shift that clears a rational ratio's row is refused, and the cancel doesn't reach a power of N. `(K-1)×(SQRT(2)×X×Y)^K÷X` from 1 to N prints `…; X≠0; X×Y×SQRT(2)≠1`, though the sum is 0 at X = 0. To ∞ the cancel clears it.
+- **A redundant row the rule doesn't reach.** Where the row beside it holds another letter under a division or inside a function with no value somewhere (TAN, LN, LOG, ASIN, ACOS, ACOSH, ATANH), the letter's row stays though it may exclude nothing more: `(1+TAN(Y)×Z)^K` from 0 to N keeps `Z≠0` beside `Z×TAN(Y)+1≠1`. A give-way row beside a hard letter's row prints both: `K×(SQRT(Z)×Y)^K÷SQRT(Z)` from 0 to N prints `Z≠0; Z≥0`, which `Z>0` says together.
+- **A row less plain than the one it replaces.** Where a function's row says a letter's, the letter's goes: `(Y÷ASIN(Z))^K` from 1 to N prints `ABS(Z)≤1; ASIN(Z)≠0` in place of 1.4.0's `Z≠0`.
+- **A missing value.** Each has no value at a point where the sum has one, and no row excludes that point. What CAS 036 leaves:
+  - a line within its rows of the cap. The rows give way together, so a line with room for one keeps none: `K×Y^K÷TAN(Z)` from 1 to N is 170 B, with room for `TAN(Z)≠0` alone (182 B) but not with `COS(Z)≠0` too (194 B). `(K-1)×(COS(Z)×Y)^K÷COS(Z)` from 0 to N prints its 181 B line as 1.2.0 did, with no value at Z = π÷2 for N = -1, where the sum is 0;
+  - an exponent linear in K that isn't K: `SIN(2×Z)^(2×K-1)×Y^K` from 0 to N has no value at Z = π÷2 for N = -1, where the sum is 0. The same holds from -2 and -1, and for 3×K-1;
+  - the closed form's own hole, where the typed summand has none: `X^(K+2)×Y^(-2×K)` from -2 to N has no value at X = 0 for N = -3, where the sum is 0, and `X^(K+1)×Y^(-K)` from -1 likewise. `(Y÷TAN(Z))^(K+1)` from -1 to N has no value at Y = 0 for N = -2, and so do ACOS, ACOSH and TAN(W) in its place.
+- A letter-free constant that is exactly 0 but isn't seen to be is printed as written:
+  - in a finite sum's terms, Σ 1÷c^K for K = 1 to 3, where the line divides by c and so shows the hole;
+  - in a factor 1÷c pulled out of a limit, SIN(X)÷(c×X) at 0.
+
+  Here c = SIN(1)^2+COS(1)^2-1. simplify prints 1÷c the same way.
+- The least arena a case needs isn't monotone in the arena it's given: at rc6, two bench cases needed less at 16,384 B than at 12,288 B, with the same answer. Not yet traced.
+
+Also not on 1.0's list: trigonometric identities, matrices, letters as coefficients in solve, and implied products (`2X`).

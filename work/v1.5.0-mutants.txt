@@ -1,0 +1,57 @@
+# The mutant count at the v1.5.0 tag: 537 of 543 caught at the tag's tree, from one run of every mutant (2026-10-31,
+# claim #11953); the six survivors are named below (abacus #11951).
+#
+# The tree: cd7db86, the commit v1.5.0 tags: the version commit on 8b6f1d7 (CAS 036 as accepted at ead17ba, CAS 037 as
+# accepted at 8b6f1d7), which changes only README.md, idf_component.yml and src/casim.h's version text. The README's
+# code size (406,250 B, scripts/device.sh --build at 16,384 B) and the S3 code (265,194 B) were measured at aaf5ace,
+# whose src is the tag's but for the version text. The control: make test, all green, 20 tests, 118,449 checks,
+# "Casimir 1.5.0" (18:05:49Z to 18:14:01Z).
+#
+# The run (18:14:01Z to 21:51:20Z, 6 shards of 90 or 91, scripts/mutants.py on copies of that tree, nice 19):
+#   537 of 543 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache: as at 1.3.0 and 1.4.0 (no input is known where it differs from the build).
+#   SURVIVED cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value: as at 1.4.0
+#     (work/v1.4.0-mutants.txt names what masks each). Searched again at this tree (claim #12036, host only): the 1.4.0
+#     search's 2,220,409 lines through golden_check --record on the build and each mutant, and 1,011,613 of them
+#     through the series-only build (CASIM_SER=2) for the two ser-*. Each moves what it moved at 1.4.0's tree.
+#     cond-site2-lhopital and ser-root-of-negative: no line, on either build. div-letter-off: the same 16 sum lines,
+#     each to the same line, by rows the kept rows imply. ser-ln-no-value: on the series-only build alone, the same one
+#     line, ATAN(2×K×X÷SQRT(K^2)) at -1 from the right, where the mutant's ATAN(-2×K÷SQRT(K^2)); K≠0 is right and
+#     the build refuses (UNDECIDED).
+#   SURVIVED factor026-letter-off: CAS 026's row for a letter at a whole power, read where a term from LO divides by
+#     q's fraction power of it, off (sm_rowf). New since 1.4.0, where work/026-examples.txt:28 and 29 caught it:
+#     K×SQRT(Z)^(2×K-1)×Y^K and K×(Z^(1÷3))^(3×K-1)×Y^K from 0 to ∞, whose Z≠0 the mutant dropped. CAS 037 reads a
+#     power with K in its exponent as typed, and its row on that power's base is the same Z≠0, so both lines print it
+#     with the mutant. Built with that row off as well (td036-z-pow-off, which CAS 037 retargeted to its line), both
+#     lose Z≠0 again.
+#     The search (claim #12036, host only): the mutant's golden_check --record against the build's over the 1.4.0
+#     search's 197,879 sum lines (at 65,536, 8,800 and 2,048 B, and the random set), byte for byte the same; and
+#     moves37.py's 45,659 sums (the families and the searched sums) through both CLIs at 8,800, 16,384 and 65,536 B, 0
+#     moves. A build that marks where the letter case makes its row found it on 205 of the 45,659 at 65,536 B (203 at
+#     8,800), and the mutant prints each of those lines byte for byte as the build does. With CAS 037's row off too, 18
+#     of them move, each by losing that row, work/026-examples.txt:28 and 29 among them; on the other 187 the letter
+#     case changes nothing with that row off either. No input is known where the letter case decides the line, so a
+#     pin would hold a row two checks print.
+#   The five that 1.4.0's search pinned are caught by their pins: cond-site6-answer by work/035-examples.txt:152 and
+#     153, cond-site7-f by :154, defint-endpoint-pole-allowed by :155, defint-fraction-edge-ignored by :156,
+#     defint-check-walks-F by :157. ratio025-negpow-row-off, which survived at CAS 036's tree (ead17ba), is caught by
+#     work/033-examples.txt:57, the row CAS 037 put back.
+#   The 24 new since 1.4.0 are caught: CAS 036's 10 (td036-*) and CAS 037's 14 (td037-*). By the files the run names:
+#     of CAS 036's, 3 by the golden corpus alone (td036-gw-off, td036-pole-off, td036-z-any-lo), 2 by
+#     work/036-examples.txt alone and 5 by rows in two or more files; of CAS 037's, 8 by work/037-examples.txt alone,
+#     td037-zsaid-rowraw by work/031-examples.txt alone and 5 by rows in two or more files.
+#   The five caught only by build/series_test, a developer test, as at 1.4.0: ser-after-rule7-ran-out,
+#     ser-bound-product-unscaled, ser-limit-no-retry, ser-puiseux-answers, ser-taylor-no-retry
+#   The one caught by the frame table, as named in the script: irat-hook-in-do-integrate.
+#   Two whose catch is named by a file in TMPDIR, a corpus a golden script wrote and then deleted:
+#     cx-bit-in-33, cx-start-keeps-bit
+#
+# Peaks, host RSS summed over the run's process tree (the control, then the six shards), sampled every 5 s: 1,818,060
+# KiB, at 18:17:14Z. The control's largest process: 263,616 KiB. The clang check's containers (casim-clang-*, --memory
+# 2g), logged as docker reported them: never two at once, each up 5 to 7 s, 12 in all. Those containers' memory wasn't
+# sampled. No device build or S3 size check ran: the code size is aaf5ace's.
+# /tmp and /dev/shm, read with du every 10 s: /tmp 228 to 232 KiB, /dev/shm 272 to 292 KiB. du doesn't see a deleted
+# file held open.
+# The copies on disk (build/mutants): 3,255 MiB at most.
+# Host memory in use (free, every 10 s): 23,176 MiB at most. It counts every tenant of the box, so it doesn't attribute
+# this run's use.
