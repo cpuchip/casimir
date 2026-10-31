@@ -116,7 +116,7 @@ def main():
         if "|" in ln and not ln.startswith("#"):
             f = ln.rstrip("\n").split("|")
             items.append((f[0], f[1], f[2]))
-    with ProcessPoolExecutor(min(16, os.cpu_count() or 1)) as ex:      # the evaluator is Python: processes
+    with ProcessPoolExecutor(min(4, os.cpu_count() or 1)) as ex:   # the evaluator is Python: processes; the box is shared
         res = list(ex.map(judge, items, chunksize=8))
     left = 0
     for s, lo, hi, out, w in res:

@@ -193,7 +193,7 @@ empty sum has a value, and a blanket UNDEFINED for (A) or (B) would fail.
   stricter-row count (17, all u^0) is over the families, which hold no such line.
 - **scripts/wrong-values.py** checks 596 sums, not 528: the 65 from the 1.4.0 search and 3 from the examples bring (B)
   and (C), and N runs to lo+4 so the linear fall's N = 3 is reached. Through ead17ba's CLI it fails 160 of the 456
-  aimed, 26 of 72, 65 of 65 and 2 of 3. It takes 1.7 s here.
+  aimed, 26 of 72, 65 of 65 and 2 of 3. It runs in four processes, 6.7 s here (1.7 s in sixteen; the box is shared).
 - **Two mutants didn't build in the gate run.** td037-zsaid-off left the parameter n unused and td037-zsaid-noneg the
   variable V, which `-Werror` refuses. I had built them by hand without it. d252fb2 keeps their meaning, and both were
   rerun and caught.
