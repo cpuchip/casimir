@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.4.0.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.5.0.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -82,7 +82,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (403,525 bytes of code, 1,765,480 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (406,250 bytes of code, 1,765,480 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
@@ -147,9 +147,13 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 519 deliberate faults, each of which the tests must
-  catch, but five named. At 1.4.0's tree (6090b8c) `make test` caught 514 of 519 (work/v1.4.0-mutants.txt), which
-  names the five with what masks each: cancel-rewind-keeps-cache, as at 1.3.0, and four older checks beside CAS 035's
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 543 deliberate faults, each of which the tests must
+  catch, but five named. At CAS 036's accepted tree (ead17ba) `make test` caught its 10 new
+  (work/036-missing-values.md), and at CAS 037's (8b6f1d7) the 17 run on CAS 037's reading (work/037-wrong-values.md).
+  ratio025-negpow-row-off was among those 17: CAS 036 moved its pin, work/033-examples.txt:55, to the line the mutant
+  prints, so it survived at ead17ba, and CAS 037 put the row back. At 1.4.0's tree (6090b8c) `make test` caught 514 of
+  519 (work/v1.4.0-mutants.txt), which names the five with what masks each: cancel-rewind-keeps-cache, as at 1.3.0,
+  and four older checks beside CAS 035's
   typed walk (cond-site2-lhopital, ser-root-of-negative and ser-ln-no-value, which no searched line separates from the
   build, and div-letter-off, which drops only rows the kept rows imply). At the version commit (9eaab97) it caught 509;
   of the nine older checks that survived there beside cancel-rewind-keeps-cache, 6090b8c pins the lines where five

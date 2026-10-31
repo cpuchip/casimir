@@ -24,9 +24,9 @@
 #include <stddef.h>
 
 /* The release, as semver; casim_version() returns the same text from the compiled library. */
-#define CASIM_VERSION "1.4.0"
+#define CASIM_VERSION "1.5.0"
 #define CASIM_VERSION_MAJOR 1
-#define CASIM_VERSION_MINOR 4
+#define CASIM_VERSION_MINOR 5
 #define CASIM_VERSION_PATCH 0
 
 const char *casim_version(void);
