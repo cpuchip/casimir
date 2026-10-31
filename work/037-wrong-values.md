@@ -1,7 +1,8 @@
 # CAS work unit 037: a closed sum's value where the typed sum has none
 
-**From:** casim · **To:** abacus · **Status:** blueprint, for h037 (abacus freezes it from this file). casim writes the
-unit; abacus writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built on branch cas037, for h037 (frozen, abacus #11884: sha256
+675ade643988ae2b376709c11c0b6dd7815f2f17a1fe1ba172487bfa98b0f234, 189 rows, 567 runs at 8,800, 16,384 and 65,536 B).
+The blueprint was committed at 9b9436a. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **From:** Michael's card cas037-wrong, ruled 2026-10-31 14:06Z (abacus #11859): "Fix first (CAS 037), then release
   1.5.0 with both." The class was found in CAS 036's acceptance read (abacus #11679) and measured for the card
   (#11680). A 2 h prototype (#11681) was measured and held as it was, outside this repo (#11682, #11683).
@@ -130,23 +131,33 @@ the mutant's CLI, no documented row fails. I re-pinned it without reading the co
   CAS 037 tree with the row re-pinned it is caught by work/033-examples.txt:55. So accepted CAS 036 carries one
   survivor, and CAS 037's re-pin ends it.
 
-## Open, for abacus
+## Rulings (abacus #11884)
 
-1. **(C)'s status.** UNDEFINED for the whole line, as for a divisor canon keeps. From -2, `((K+1)^2-1)÷((K+1)-1)`
-   has a value for N = -2 and -1, as `1÷(K-2)` from 0, UNDEFINED at ead17ba, has for N = 0 and 1. Lean: the same
-   status.
-2. **The 6 NO_CLOSED_FORM lines that become UNDEFINED.** A refusal becomes the status that says why: the term at
-   K = 0 has no value. Lean: in.
-3. **The 17 rows at N = lo:** under Not yet, with CAS 036's u^0 item. Lean: yes.
-4. **The two readings above:** CAS 027's comment and language.md, as written in What it reverses. Lean: yes, since the
-   card's ruling takes the class as wrong answers.
-5. **The instrument in the repo.** wrong036.py as scripts/wrong-values.py, in make check over the family aimed at the
-   class and its letter forms (528 sums, 1.2 s here), with a planted wrong line it must catch. Lean: yes, so the class
-   can't come back unseen. missing036.py stays out: it is slow, and CAS 036's gates hold its class.
+1. **(C)'s status:** UNDEFINED for the whole line, as `1÷(K-2)` from 0 to N is. On h037's (C) rows the zero is at lo.
+   A zero mid-range, as `((K+1)^2-1)÷((K+1)-1)` from -2 has (a value for N = -2 and -1), goes in the notes beside
+   `1÷(K-2)`.
+2. **The 6 NO_CLOSED_FORM lines that become UNDEFINED:** in.
+3. **The 17 rows at N = lo:** under Not yet, decision 93's class. h037 shows them as EXCLUDED, and abacus reads them
+   by hand, as at CAS 036.
+4. **CAS 027's comment and language.md:** as in What it reverses, since the card's ruling makes this class wrong
+   answers.
+5. **scripts/wrong-values.py in make check,** with its planted wrong line.
+
+**The judge's contract, new for CAS 037:** a line that was WRONG and becomes a refusal FAILS (REFUSED_WRONG) where the
+typed sum has a value at a grid point past the empty sum. So UNDEFINED is lawful for (C) only where nothing past the
+empty sum has a value, and a blanket UNDEFINED for (A) or (B) would fail.
 
 ## Not yet (for the release notes)
 
 - **The u^0 rows at N = lo** (17 in the search's inputs; above).
+- **A row read from a linear fall** excludes its point at every N, though the sum has a value there before the
+  exponent turns negative: `Y^(2-K)×Y^K` from 0 to N prints `Y^2+N×Y^2; Y≠0`, and the sum is 0 at Y = 0 for N up to 2.
+  Without the row the line has a value at Y = 0 from N = 3, where the term is 0^(-1)×0^3, as CAS 036's did. Found in
+  the build, choosing td037-eneg-no-fall's catcher. The families of the measure above hold no such line.
+- **A zero mid-range in (C)** (ruling 1): `((K+1)^2-1)÷((K+1)-1)` from -2 to N is UNDEFINED, though the sum has a value
+  for N = -2 and -1, as `1÷(K-2)` from 0 has for N = 0 and 1.
+- **A divisor in K that canon keeps, inside an exponent,** is refused, though the term where it is 0 has no value:
+  `(-8)^(1÷(K-1))` from 0 to N is NO_CLOSED_FORM. td_kq reads only a divisor the expanded summand lost.
 - **The closed form's own hole** (CAS 036's Not yet, unchanged): `(Y÷TAN(Z))^(K+1)` from -1 to N has no value at
   Y = 0 for N = -2, and `X^(K+2)×Y^(-2×K)` from -2 at X = 0 for N = -3, where the sum is 0. Those are missing values,
   and the typed summand has no condition there.
@@ -155,7 +166,64 @@ the mutant's CLI, no documented row fails. I re-pinned it without reading the co
   (`((K^2-1)×K)÷(K^2-1)`, NO_CLOSED_FORM) or UNDEFINED already.
 - **Refusals that change kind with the arena** (above).
 
-## The build
+## Built (branch cas037)
+
+**Commits:**
+- 4a35db7 and 7e0e5db: parts 1 and 2, each the prototype's source with its comments. Each compiles alone under
+  `-Wall -Wextra -Wpedantic -Werror`. Part 2 has td_kzero on pf_rmake and one raw_letter declaration, above td_walk.
+- 9246a12: the 3 documented rows re-pinned. Rule 4's comment in work/027-examples.txt keeps its sentence and says what
+  CAS 037 reads, and 033:55's says why the row pins at 2,048 B again.
+- 54e3243: work/037-examples.txt (26 rows) and the td037 mutants, with td036-z-pow-off and td036-z-any-lo retargeted.
+  Each mutant was built by hand and run through the documented rows before its catcher was chosen.
+- 3c77d20: scripts/wrong-values.py in make check, over tests/wrong-values.txt. Falsified: through ead17ba's CLI it
+  fails 253 sums, and with its judge broken its control fails.
+- 5ea8a20: docs/language.md's sum paragraph.
+- d252fb2: td037-zsaid-off and td037-zsaid-noneg made to build under `-Werror` (below).
+
+**What differs from the blueprint:**
+- **Mutants:** 13, not 10.
+  - td_eneg's lo-only mutant is two: td037-eneg-lo-only (lo alone, the fall kept) and td037-eneg-no-fall (no fall).
+  - td037-z-inf-off (the `z` entries to N only, as CAS 036) and td037-kzero-whole-off (a zero that isn't whole read
+    as one) are added.
+  - The `q` reading's raw_letter test has no mutant: a divisor that is the letter K is refused before td_kq reads it
+    (`K÷K` from 0 is NO_CLOSED_FORM at ead17ba and here), so that mutant would be equivalent.
+  - td037-kq-den-off's only catcher pins a refusal: `(-8)^(1÷(K-1))` from 0 is NO_CLOSED_FORM, and the mutant prints
+    UNDEFINED, which would say why. It is named under Not yet.
+- **A row read from a linear fall,** under Not yet, was found choosing td037-eneg-no-fall's catcher. The blueprint's
+  stricter-row count (17, all u^0) is over the families, which hold no such line.
+- **scripts/wrong-values.py** checks 596 sums, not 528: the 65 from the 1.4.0 search and 3 from the examples bring (B)
+  and (C), and N runs to lo+4 so the linear fall's N = 3 is reached. Through ead17ba's CLI it fails 160 of the 456
+  aimed, 26 of 72, 65 of 65 and 2 of 3. It takes 1.7 s here.
+- **Two mutants didn't build in the gate run.** td037-zsaid-off left the parameter n unused and td037-zsaid-noneg the
+  variable V, which `-Werror` refuses. I had built them by hand without it. d252fb2 keeps their meaning, and both were
+  rerun and caught.
+
+**Gates on the branch:**
+- make test, which runs make check first: green, 20 tests, 118,449 checks (at 5ea8a20, 14:49:57Z to 14:56:38Z).
+- `make size`: 265,127 of 270,336 B.
+- Frames: no S3 or host frame moves. On the S3 td_zsaid (48), td_eneg (80), td_kzero (64) and td_kq (224) are new.
+  The host table, last recorded at CAS 033, holds; CAS 034 to 037 leave their new functions unrecorded.
+- doc-examples.py: 2,598 checks. scripts/wrong-values.py: 585 checks, 12 sums left out (SQ, INV, a^b^c).
+- Mutants (claim #11895, 14:56:38Z to 15:04:43Z in four shards, the two rerun 15:24:42Z to 15:27:39Z at d252fb2):
+  all 16 caught.
+  - td037-z-k-alone, td037-z-inf-off and td037-kq-off: by work/037-examples.txt's part 1 and part 2 rows.
+  - td037-eneg-lo-only: by `Y^(K^2-2×K)×Y^(2×K-K^2)` from 0; td037-eneg-no-fall: by `Y^(2-K)×Y^K` from 0.
+  - td037-eneg-div-off: by `X^K÷(Y-1)^K` from 1 (work/029-examples.txt and work/036-examples.txt).
+  - td037-zsaid-off: by work/031-examples.txt:120 and :123; td037-zsaid-noneg: by :123.
+  - td037-z-ungated-none: by the re-pinned work/027-examples.txt rows and part 1's.
+  - td037-z-wide-gw: by `ASIN(Z)^(2×K-1)×Y^K` from 0.
+  - td037-kzero-range-off: by work/018-examples.txt:151 and :152 and the out-of-range rows; td037-kzero-whole-off: by
+    `((2×K-1)^2+(2×K-1))÷(2×K-1)` from 0; td037-kq-den-off: by `(-8)^(1÷(K-1))` from 0.
+  - td036-z-pow-off: by the re-pinned 027 rows and work/036-examples.txt; td036-z-any-lo: by the golden corpus.
+  - ratio025-negpow-row-off: by work/033-examples.txt:57, the re-pinned row (two comment lines above it moved it from
+    :55). It survives at ead17ba.
+
+  The full mutant run, at 1.5.0's tree, waits for the release.
+- Device (the same claim, 15:04:43Z to 15:23:41Z): DEVICE PASS, 1,412 cases at 16,384 B, each the same as the host.
+  The worst stack read masked is 11,360 B, as at CAS 036, and the interrupt allowance 400 B, so the budget is 11,760 of
+  12,288, leaving 528 (floor 256). casim-device's memory.peak: 1,636,585,472 B.
+
+## The build, as the blueprint planned it
 
 **Commits:**
 1. Part 1, the `z` reading.
