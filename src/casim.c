@@ -6515,6 +6515,8 @@ static void td_add(ctx *c, tdset *T, ref u, ref e, char k)
     T->u[T->n] = u, T->e[T->n] = e, T->k[T->n++] = k;
 }
 
+static bool raw_letter(ctx *c, ref r, int var);
+
 /* the raw tree's conditions: left spines in a loop, right sides through the depth guard (raw_has_var's walk) */
 static __attribute__((noinline)) void td_walk(ctx *c, ref r, tdset *T)
 {
@@ -6538,10 +6540,14 @@ static __attribute__((noinline)) void td_walk(ctx *c, ref r, tdset *T)
             ref a = x->a, b = x->b;
             if (x->kind == K_BDIV && nd(c, b)->kind != K_LIT) td_add(c, T, b, 0, '!');   /* canon refuses ÷0 itself */
             if (x->kind == K_BPOW) td_add(c, T, a, b, 'p');
-            /* CAS 036: a closed sum's u^K, or a divisor u^e with K in e alone, 'z': u ≠ 0 (u^K only from a lo below 0,
-               e 0 under ÷); td_sum makes it a give-way row only */
-            if (T->skip >= 0 && x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip)
-                td_add(c, T, a, b, 'z');
+            /* CAS 036: a closed sum's u^K, or a divisor u^e with K in e alone, 'z': u ≠ 0 (e 0 under ÷). CAS 037: u^e
+               for any e in K, read where e is negative for a K from lo (td_eneg); td_sum makes it a hard row where
+               the answer doesn't show the hole */
+            if (T->skip >= 0 && x->kind == K_BPOW && raw_has_var(c, b, T->skip)) td_add(c, T, a, b, 'z');
+            if (T->skip >= 0 && x->kind == K_BDIV && raw_has_var(c, b, T->skip) && !raw_letter(c, b, T->skip)) {
+                int sk = T->skip;                               /* CAS 037 'q': a divisor in K, read by td_kq */
+                T->skip = -1, td_add(c, T, b, 0, 'q'), T->skip = sk;
+            }
             if (T->skip >= 0 && x->kind == K_BDIV && nd(c, b)->kind == K_BPOW && raw_has_var(c, nd(c, b)->b, T->skip))
                 td_add(c, T, nd(c, b)->a, 0, 'z');
             if (b) td_walk(c, b, T);
@@ -6577,8 +6583,6 @@ static void td_put(ctx *c, tdc *D, ref u, char k)
     }
     D->u[D->n] = u, D->k[D->n++] = k;
 }
-
-static bool raw_letter(ctx *c, ref r, int var);
 
 /* u^n is 0 where u is, and ABS(u) (abacus #11436 (2)) */
 static ref td_base(ctx *c, ref u)
@@ -14137,6 +14141,80 @@ static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, 
     *n = m;
 }
 
+/* CAS 037: whether a row already says base u ≠ 0 whole, expanded or as its negative (the ratio's rows spell
+   (Z-1)×Y as -Y+Y×Z and 1-Z as Z-1) */
+static __attribute__((noinline)) bool td_zsaid(ctx *c, const smrow *rows, int n, ref u)
+{
+    size_t mark = c->used;
+    ref U = expand_fully(c, ib_canon(c, u)), V = expand_fully(c, ib_neg(c, U));
+    bool said = false;
+    for (int i = 0; i < n && !said && c->st == CASIM_OK; i++)
+        said = (rows[i].op == '!' || rows[i].op == '?') && is_k(c, rows[i].r, 0, 1) &&
+               (cmp(c, rows[i].l, U) == 0 || cmp(c, rows[i].l, V) == 0);
+    if (c->st != CASIM_OK) c->st = CASIM_OK, said = false;
+    td_drop(c, mark);
+    return said;
+}
+
+/* CAS 037: whether the divisor u, linear in K alone, is 0 at a whole K in the sum's range (pf_rmake: a new call to
+   rat_make moves lm_sum's host frame) */
+static __attribute__((noinline)) bool td_kzero(ctx *c, const smsum *S, ref u)
+{
+    size_t mark = c->used;
+    rat *lin, r;
+    bool z = sm_poly(c, u, S->var, &lin) && pdeg(lin) == 1 && pf_rmake(&r, -lin[0].p * lin[1].q, lin[0].q * lin[1].p) &&
+             r.q == 1 && sm_in(S, r.p);
+    if (c->st != CASIM_OK) c->st = CASIM_OK, z = false;
+    td_drop(c, mark);
+    return z;
+}
+
+/* CAS 037: a typed divisor in K alone that the expanded summand lost (canon cancelled it), 0 at a whole K in range:
+   the sum has no value from there (the partfrac route finds the ones it keeps). Read before the closed form, while
+   the arena is low */
+static __attribute__((noinline)) bool td_kq(ctx *c, const smsum *S)
+{
+    tdset T;
+    tdc D;
+    size_t mark = c->used;
+    bool hit = false;
+    if (!S->ilo || !td_raw(c, S->raw, &T, S->var)) {
+        if (c->st != CASIM_OK) c->st = CASIM_OK;
+        td_drop(c, mark);
+        return false;
+    }
+    for (int r = 0; r < T.n && !hit && c->st == CASIM_OK; r++)
+        if (T.k[r] == 'q' && td_entry(c, &T, r, &D, -1))
+            for (int i = 0; i < D.n && !hit && c->st == CASIM_OK; i++)
+                hit = !ib_den(c, S->e, D.u[i]) && td_kzero(c, S, D.u[i]);
+    if (c->st != CASIM_OK) c->st = CASIM_OK, hit = false;
+    td_drop(c, mark);
+    return hit;
+}
+
+/* CAS 037: whether exponent e (raw; 0 under ÷, always) is negative for some whole K from lo: at lo, lo+1 or lo+2,
+   or falling linearly from lo */
+static __attribute__((noinline)) bool td_eneg(ctx *c, const smsum *S, ref e)
+{
+    size_t mark = c->used;
+    ref v[3];
+    bool neg = false;
+    if (!e) return true;
+    if (!S->ilo) return false;
+    e = ib_canon(c, e);
+    for (int i = 0; i < 3 && c->st == CASIM_OK; i++) {
+        v[i] = ib_at(c, e, S->var, sm_int(c, S->a + i));
+        neg = neg || (c->st == CASIM_OK && const_sign(c, v[i]) < 0);
+    }
+    if (!neg && c->st == CASIM_OK) {
+        ref d = ib_canon(c, add2(c, v[1], ib_neg(c, v[0])));
+        neg = c->st == CASIM_OK && const_sign(c, d) < 0 && cmp(c, d, ib_canon(c, add2(c, v[2], ib_neg(c, v[1])))) == 0;
+    }
+    if (c->st != CASIM_OK) c->st = CASIM_OK, neg = false;
+    td_drop(c, mark);
+    return neg;
+}
+
 /* CAS 035: the typed summand's conditions as rows (gate: the answer's first part, none when it diverges);
    direct: summed term by term, a condition in K decided at each K, as each term is */
 static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bool gate, smrow *rows, int *n,
@@ -14156,7 +14234,7 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
        exponent in K is read too (abacus #11517: 1÷COS(Z)^K, 1÷(-EXP(-20000))^K, Y^K×Y^(-K)) */
     bool hk = direct && (raw_has_var(c, T.u[r], S->var) || (T.e[r] && raw_has_var(c, T.e[r], S->var)));
     bool z = T.k[r] == 'z';
-    if (z && (S->inf || S->ihi || (T.e[r] && S->a >= 0))) continue;     /* u^K is u^(-n) only from a lo below 0 */
+    if (T.k[r] == 'q' || (z && (S->ihi || !td_eneg(c, S, T.e[r]) || td_zsaid(c, rows, *n, T.u[r])))) continue;
     for (int64_t kk = S->a; kk <= (hk ? S->b : S->a) && c->st == CASIM_OK; kk++) {
     size_t mark = c->used;
     int was = *n;
@@ -14169,11 +14247,12 @@ static __attribute__((noinline)) void td_sum(ctx *c, const smsum *S, ref sum, bo
         ref u = D.u[i];
         char k = D.k[i];
         int st;
+        if (k == 'q') continue;                                     /* td_kq's */
         if (any_letter(c, u)) {
             if (td_said(c, rows, *n, u, k)) continue;
-            if (!gate || !td_gated(c, sum, u, k, S->var)) {
-                if (!z) td_rows(c, rows, n, u, k);                  /* CAS 036: 'z' a give-way row or none */
-            } else if (!S->inf && !S->ihi) td_gw(c, rows, n, u, k);    /* CAS 036 */
+            if (!gate || !td_gated(c, sum, u, k, S->var)) td_rows(c, rows, n, u, k);    /* CAS 037: a 'z' too */
+            else if (!S->inf && !S->ihi && (!z || !T.e[r] || (nd(c, T.e[r])->kind == K_VAR && S->a < 0)))
+                td_gw(c, rows, n, u, k);        /* CAS 036; a 'z' gives way only as 036's u^K or divisor */
             continue;
         }
         if (z) continue;
@@ -14230,6 +14309,7 @@ static __attribute__((noinline)) casim_status do_sum_(const char *eqn, int var, 
             return *direct = true, sum = sm_direct(&c, &S), td_sum(&c, &S, sum, true, rows, &nrows, true),
                    sm_print(&c, sum, 0, rows, nrows, out, ocap);                    /* CAS 035 */
         if (r == 0 && !sm_typed_ok(&c, S.raw, S.f, var) && c.st == CASIM_OK) c.st = CASIM_NO_CLOSED_FORM;
+        if (r == 0 && c.st == CASIM_OK && td_kq(&c, &S)) c.st = CASIM_UNDEFINED;          /* CAS 037 */
         ng = nr = 0;
         if (c.st == CASIM_OK) sm_split(&c, S.e, var, G, &ng, R, &nr);
         if (c.st == CASIM_OK && nr && !S.ilo) c.st = CASIM_NO_CLOSED_FORM;        /* rule 2: it would divide by lo */

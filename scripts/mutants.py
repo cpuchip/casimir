@@ -1470,12 +1470,35 @@ MUTANTS = {
                          "            if (T->skip >= 0 && x->kind == K_BDIV && nd(c, b)->kind == K_BPOW && raw_has_var(c, nd(c, b)->b, T->skip))\n"
                          "                td_add(c, T, nd(c, b)->a, 0, 'z');", "            (void)0;")],
     "td036-z-pow-off": [("src/casim.c",
-                         "            if (T->skip >= 0 && x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip)\n"
-                         "                td_add(c, T, a, b, 'z');", "            (void)0;")],
-    "td036-z-any-lo": [("src/casim.c", "(T.e[r] && S->a >= 0)", "(T.e[r] && S->a >= 0 && 0)")],
+                         "            if (T->skip >= 0 && x->kind == K_BPOW && raw_has_var(c, b, T->skip)) td_add(c, T, a, b, 'z');",
+                         "            (void)0;")],                                             # CAS 037's line
+    "td036-z-any-lo": [("src/casim.c", "    if (!e) return true;\n    if (!S->ilo) return false;\n",
+                        "    if (1) return true;\n    if (!S->ilo) return false;\n")],      # CAS 037: td_eneg's
     "td036-lin-off": [("src/casim.c", "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 ||", "    if (1 || !td_lin(c, k, &L, &a, &b, &m) || m != 1 ||")],
     "td036-lin-sign": [("src/casim.c", "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){-b.p, b.q},",
                         "    if (!td_lin(c, k, &L, &a, &b, &m) || m != 1 || !rat_mul(&t, &(rat){b.p, b.q},")],
+    # 037 (work/037-wrong-values.md): a power with K in its exponent read as typed; a cancelled divisor in K
+    "td037-z-k-alone": [("src/casim.c", "x->kind == K_BPOW && raw_has_var(c, b, T->skip)) td_add(c, T, a, b, 'z');",
+                         "x->kind == K_BPOW && nd(c, b)->kind == K_VAR && nd(c, b)->id == T->skip) td_add(c, T, a, b, 'z');")],
+    "td037-eneg-no-fall": [("src/casim.c", "    if (!neg && c->st == CASIM_OK) {\n        ref d = ib_canon(",
+                            "    if (0 && !neg && c->st == CASIM_OK) {\n        ref d = ib_canon(")],
+    "td037-eneg-lo-only": [("src/casim.c", "        neg = neg || (c->st == CASIM_OK && const_sign(c, v[i]) < 0);",
+                            "        neg = neg || (i == 0 && c->st == CASIM_OK && const_sign(c, v[i]) < 0);")],
+    "td037-eneg-div-off": [("src/casim.c", "    if (!e) return true;\n", "    if (!e) return false;\n")],
+    "td037-zsaid-off": [("src/casim.c", "    for (int i = 0; i < n && !said && c->st == CASIM_OK; i++)\n        said = (rows[i].op",
+                         "    for (int i = 0; i < n && !said && 0; i++)\n        said = (rows[i].op")],
+    "td037-zsaid-noneg": [("src/casim.c", "(cmp(c, rows[i].l, U) == 0 || cmp(c, rows[i].l, V) == 0)",
+                           "(cmp(c, rows[i].l, U) == 0 || (cmp(c, rows[i].l, V) == 0 && 0))")],
+    "td037-z-ungated-none": [("src/casim.c", "            if (!gate || !td_gated(c, sum, u, k, S->var)) td_rows(c, rows, n, u, k);",
+                              "            if (!gate || !td_gated(c, sum, u, k, S->var)) { if (!z) td_rows(c, rows, n, u, k); }")],
+    "td037-z-wide-gw": [("src/casim.c", "(!z || !T.e[r] || (nd(c, T.e[r])->kind == K_VAR && S->a < 0))", "(1)")],
+    "td037-z-inf-off": [("src/casim.c", "(z && (S->ihi || !td_eneg(c, S, T.e[r])", "(z && (S->inf || S->ihi || !td_eneg(c, S, T.e[r])")],
+    "td037-kq-off": [("src/casim.c", "c.st == CASIM_OK && td_kq(&c, &S)) c.st = CASIM_UNDEFINED;",
+                      "c.st == CASIM_OK && 0 && td_kq(&c, &S)) c.st = CASIM_UNDEFINED;")],
+    "td037-kzero-range-off": [("src/casim.c", "             r.q == 1 && sm_in(S, r.p);", "             r.q == 1;")],
+    "td037-kzero-whole-off": [("src/casim.c", "             r.q == 1 && sm_in(S, r.p);", "             sm_in(S, r.p);")],
+    "td037-kq-den-off": [("src/casim.c", "hit = !ib_den(c, S->e, D.u[i]) && td_kzero(c, S, D.u[i]);",
+                          "hit = td_kzero(c, S, D.u[i]);")],
 }
 
 
