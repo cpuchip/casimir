@@ -2,7 +2,8 @@
 
 **From:** casim · **To:** abacus · **Status:** built on branch cas037, for h037 (frozen, abacus #11884: sha256
 675ade643988ae2b376709c11c0b6dd7815f2f17a1fe1ba172487bfa98b0f234, 189 rows, 567 runs at 8,800, 16,384 and 65,536 B).
-The blueprint was committed at 9b9436a. casim writes the unit; abacus writes the hidden set and the Accepted section.
+The blueprint was committed at 9b9436a, the build merged at 7c93354, and the fix for abacus's hold (#11922) at
+c7b0b14. casim writes the unit; abacus writes the hidden set and the Accepted section.
 - **From:** Michael's card cas037-wrong, ruled 2026-10-31 14:06Z (abacus #11859): "Fix first (CAS 037), then release
   1.5.0 with both." The class was found in CAS 036's acceptance read (abacus #11679) and measured for the card
   (#11680). A 2 h prototype (#11681) was measured and held as it was, outside this repo (#11682, #11683).
@@ -222,6 +223,36 @@ empty sum has a value, and a blanket UNDEFINED for (A) or (B) would fail.
 - Device (the same claim, 15:04:43Z to 15:23:41Z): DEVICE PASS, 1,412 cases at 16,384 B, each the same as the host.
   The worst stack read masked is 11,360 B, as at CAS 036, and the interrupt allowance 400 B, so the budget is 11,760 of
   12,288, leaving 528 (floor 256). casim-device's memory.peak: 1,636,585,472 B.
+
+## After the acceptance read (abacus #11922, #11925)
+
+**The hold.** cmp037 found two right answers of h031 lost: `(K+1)×(2×Z-1)^K×Y^K` and its Y^(K+1) twin, from -1 to ∞,
+went from OK to TOO_LONG at 16,384 and 65,536 B. Widening the line cap in a scratch build showed the row that did it:
+`Z≠1÷2`, from the base 2×Z-1, beside the ratio's `Z-1÷2≠0`, which says the same point. td_zsaid compared the base and
+its negative exactly, so a multiple of the base passed it. That is 031:123's shape with a scale, and abacus's
+hypothesis.
+
+**The fix (c7b0b14, aaf5ace):** td_prim divides a sum by its content, with the content() and sum_div that td_gated
+uses, and td_zsaid compares both sides that way. The content's sign is the first term's, so the negative needs no
+compare of its own and V goes.
+- **Cost:** +67 B, S3 265,194 of 270,336. td_prim is new (S3 48, host 96); no frame moves.
+- **Reach:**
+  - No line moves against 35131c1 over the families and the 1.4.0 search's 35,388, at 8,800 or 16,384 B.
+  - My families held no such base. A family of the hold's shape (504 sums: 7 summands, 9 scaled bases, lo from -2 to
+    1, to N and ∞) shows 7c93354 losing 7 OK lines and 1 DECIMAL_FORM line to TOO_LONG at 16,384 B, and at 8,800 B 3
+    OK lines and 13 TOO_LONG to NO_ROOM. With the fix every one is as ead17ba printed it.
+  - Against ead17ba that family gains only (A)'s rows (9 lines, `Z≠1÷2` for `(2×Z-1)^K×Y^K×(2×Z-1)` from -1 to N),
+    and wrong036 finds a value where the sum has none in 5 of its sums at ead17ba and in none with the fix.
+- **Mutants:** td037-zsaid-noneg named the compare the fix removes. td037-zsaid-noprim (the base not over its content)
+  and td037-zsaid-rowraw (the row's side as spelled) take its place, so CAS 037 has 14.
+- **Examples:** two rows of the hold's shape, `(K+1)×(2×Z+1)^K×Y^K` from -1 to ∞ and its Y^(K+1) twin at 16,384 B,
+  each TOO_LONG at 7c93354.
+- **Gates** (claim #11926, 16:35:51Z to 17:09:35Z, at aaf5ace):
+  - make test green, 20 tests, 118,449 checks; make check green (227 s).
+  - All 17 mutants caught: td037-zsaid-noprim and td037-zsaid-off by work/031-examples.txt:120 and :123 and the two
+    new rows, td037-zsaid-rowraw by :120, and ratio025-negpow-row-off again by work/033-examples.txt:57.
+  - DEVICE PASS, 1,412 cases at 16,384 B: worst 11,360 B masked plus 384 B of interrupts, 11,744 of 12,288, leaving
+    544. casim-device's memory.peak: 982,454,272 B.
 
 ## The build, as the blueprint planned it
 

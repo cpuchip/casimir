@@ -14141,16 +14141,27 @@ static __attribute__((noinline)) void td_gw(ctx *c, smrow *rows, int *n, ref u, 
     *n = m;
 }
 
-/* CAS 037: whether a row already says base u ≠ 0 whole, expanded or as its negative (the ratio's rows spell
-   (Z-1)×Y as -Y+Y×Z and 1-Z as Z-1) */
+/* CAS 037: a sum over its content, else itself: 2×Z-1 and 1-2×Z are both Z-1÷2 (the content's sign is the first
+   term's), so a row compares whatever multiple of u it spells */
+static ref td_prim(ctx *c, ref u)
+{
+    rat q;
+    ref p;
+    if (nd(c, u)->kind != K_ADD || (q = content(c, u), rat_is(&q, 1, 1))) return u;
+    p = sum_div(c, u, &q, content_mark(c, u, &q));
+    return p && p != SPARE ? p : u;
+}
+
+/* CAS 037: whether a row already says base u ≠ 0 whole, expanded and over its content (the ratio's rows spell
+   (Z-1)×Y as -Y+Y×Z, 1-Z as Z-1 and 2×Z-1 as Z-1÷2) */
 static __attribute__((noinline)) bool td_zsaid(ctx *c, const smrow *rows, int n, ref u)
 {
     size_t mark = c->used;
-    ref U = expand_fully(c, ib_canon(c, u)), V = expand_fully(c, ib_neg(c, U));
+    ref U = td_prim(c, expand_fully(c, ib_canon(c, u)));
     bool said = false;
     for (int i = 0; i < n && !said && c->st == CASIM_OK; i++)
         said = (rows[i].op == '!' || rows[i].op == '?') && is_k(c, rows[i].r, 0, 1) &&
-               (cmp(c, rows[i].l, U) == 0 || cmp(c, rows[i].l, V) == 0);
+               cmp(c, td_prim(c, expand_fully(c, rows[i].l)), U) == 0;
     if (c->st != CASIM_OK) c->st = CASIM_OK, said = false;
     td_drop(c, mark);
     return said;
