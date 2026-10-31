@@ -713,7 +713,12 @@ domain is read as typed (CAS 035, work/035-typed-domain.md): a divisor, LN's and
 of ASIN, ACOS, ACOSH and ATANH, and TAN's pole each give a row in the other letters, unless a row already says it or
 the answer shows the hole itself. So Σ (Y÷Y)^K from 1 to N is `N; Y≠0`, Σ K×Y^K÷Y from 0 to 3 is `2×Y+3×Y^2+1; Y≠0`,
 and Σ (Z×EXP(LN(Y))+1)^K from 0 to ∞ is `-1÷Y÷Z; Y>0; ABS(Y×Z+1)<1`. Summed term by term, the text is read with each
-K put in, so an exponent in K counts too: Σ Y^K×Y^(-K) from -1 to 1 is `3; Y≠0`. The rows count toward the 191 bytes.
+K put in, so an exponent in K counts too: Σ Y^K×Y^(-K) from -1 to 1 is `3; Y≠0`. The closed form reads it as typed
+too (CAS 037, work/037-wrong-values.md): where the exponent is negative for a K from LO, the power's base gets a row,
+so Σ Y^K×Y^(-K) from 1 to N is `N; Y≠0`, and Σ (Y×SQRT(Z))^K×SQRT(Z) from -1 gains `Z≠0` for its K = -1 term. The
+line without the row would have a value where the sum has none, so the row never gives way, and it excludes its
+point at every N. A divisor in K alone that canon cancels, 0 at a whole K in range, makes the sum UNDEFINED, as a
+divisor it keeps does: Σ ((K+1)^2-1)÷((K+1)-1) from 0 to N, like Σ 1÷(K-2). The rows count toward the 191 bytes.
 A term-by-term line they take past it gives way to the closed form (Σ (ACOS(Z)^2×Y)^K÷ACOS(Z) from 1 to 12, whose 12
 terms and `ACOS(Z)≠0` take 198), and any other line they take past it is TOO_LONG. A factor of the ratio that holds a
 letter gets its own row where a term from LO divides by it (CAS 026): Σ K×(SIN(Z)×Y)^K÷SIN(Z) from 0 starts with
