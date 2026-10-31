@@ -75,6 +75,7 @@ check: all build/frames.ok build/inline.ok build/symbols.ok build/gcdprimes_chec
 	scripts/abs-sides.py
 	scripts/integrate-values.py
 	scripts/sum-values.py
+	scripts/wrong-values.py
 	@test "$$(scripts/ci-test.sh --ref)" = "$(CORE_PIN)" || { \
 	    echo "FAIL scripts/ci-test.sh: CI's make test would fetch $$(scripts/ci-test.sh --ref), not CORE_PIN (CAS 016)"; exit 1; }
 
