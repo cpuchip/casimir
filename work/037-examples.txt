@@ -1,0 +1,78 @@
+# CAS 037's examples (work/037-wrong-values.md; Michael's card cas037-wrong, abacus #11859, h037 #11884): a closed sum
+# whose line had a value at a point where the typed sum has none. A power with K in its exponent is read as typed, as
+# term by term reads it, and its base gets a hard row; a divisor in K alone that canon cancels, 0 at a whole K in
+# range, makes the sum UNDEFINED. Each row is run by scripts/doc-examples.py, and again with the series route compiled
+# out (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - Part 1: a factor that cancels the base's negative powers (CAS 036 printed each without the base's row, a value
+#   there: 1 at Y = 1, Z = 0 for the first, 1 at Y = 0 for the second). To ∞ too. From a lo of 0, u^K has no negative
+#   power and no row
+
+| Command | Prints |
+|---|---|
+| `casim sum '(Y×SQRT(Z))^K×SQRT(Z)' K -1 N RAD` | `1÷(Y-Y^2×SQRT(Z))-(Y×SQRT(Z))^(N+2)÷(Y-Y^2×SQRT(Z)); Y≠0; Z≥0; Z≠0; Y×SQRT(Z)≠1` |
+| `casim sum 'Y^K×Y' K -1 N RAD` | `-1÷(Y-1)+Y^(N+2)÷(Y-1); Y≠0; Y≠1` |
+| `casim sum '(SIN(Z)×Y)^K×SIN(Z)' K -1 ∞ RAD` | `1÷(Y-Y^2×SIN(Z)); Y≠0; SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
+| `casim sum '(Y×SQRT(Z))^K×SQRT(Z)' K 0 N RAD` | `SQRT(Z)×(Y×SQRT(Z))^(N+1)÷(Y×SQRT(Z)-1)-SQRT(Z)÷(Y×SQRT(Z)-1); Z≥0; Y×SQRT(Z)≠1` |
+
+# - Part 1: where the answer shows the hole, the wider reading adds no give-way row, so ASIN(Z)^(2×K-1)'s base keeps
+#   the letter's Z≠0, as at CAS 036 (a give-way ASIN(Z)≠0 would take its place)
+
+| Command | Prints |
+|---|---|
+| `casim sum 'ASIN(Z)^(2×K-1)×Y^K' K 0 N RAD` | `1÷(ASIN(Z)-Y×ASIN(Z)^3)-(Y×ASIN(Z)^2)^(N+1)÷(ASIN(Z)-Y×ASIN(Z)^3); Z≠0; ABS(Z)≤1; Y×ASIN(Z)^2≠1` |
+
+# - Part 1: powers that cancel exactly, from any lo (CAS 036 printed N, and ∞, with no row). The exponent is read at
+#   lo, lo+1 and lo+2, then for a linear fall: K^2-2×K is negative at K = 1 alone (2-K, from K = 3, is below)
+
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K×Y^(-K)' K 1 N RAD` | `N; Y≠0` |
+| `casim sum 'Y^K×Y^(-K)' K 1 ∞ RAD` | `∞; Y≠0` |
+| `casim sum '(Y-1)^(-K)×(Y-1)^K' K 1 N RAD` | `N; Y≠1` |
+| `casim sum 'SIN(Z)^K×SIN(Z)^(-K)' K 1 N RAD` | `N; SIN(Z)≠0` |
+| `casim sum '(K+1)×Y^K×Y^(-K)' K 1 N RAD` | `3×N÷2+N^2÷2; Y≠0` |
+| `casim sum 'Y^(1-2×K)×Y^(2×K-1)' K 0 N RAD` | `N+1; Y≠0` |
+| `casim sum 'Y^(K^2-2×K)×Y^(2×K-K^2)' K 0 N RAD` | `N+1; Y≠0` |
+
+# - Not yet (work/037-wrong-values.md). The row also excludes N = lo where the exponent is 0 there and the one term is
+#   u^0×u^0 (1 at Y = 0 and N = 0 for the first, decision 93's class). A row read from a linear fall excludes its
+#   point at every N, though the sum has a value there before the exponent turns negative: 0 at Y = 0 for N up to 2.
+#   CAS 036 printed Y^2+N×Y^2 with no row, a value at Y = 0 for N = 3 too, where the term at K = 3 is 0^(-1)×0^3. The
+#   ÷ spelling is refused
+
+| Command | Prints |
+|---|---|
+| `casim sum 'Y^K×Y^(-K)' K 0 N RAD` | `N+1; Y≠0` |
+| `casim sum 'Y^(2-K)×Y^K' K 0 N RAD` | `Y^2+N×Y^2; Y≠0` |
+| `casim sum 'Y^K÷Y^K' K 1 N RAD` | `NO_CLOSED_FORM` |
+
+# - Part 2: a divisor in K alone that canon cancels, 0 at a whole K in range: the sum has no value from that K, as for
+#   a divisor canon keeps (1÷(K-2)). CAS 036 printed 5×N÷2+N^2÷2+2 for the first and 3×N÷2+N^2÷2+1 for (K^2+K)÷K, and
+#   NO_CLOSED_FORM for (-8)^(1÷(-K)). From -2 the zero is mid-range and the line is UNDEFINED too, though the sum has
+#   a value for N = -2 and -1, as 1÷(K-2) from 0 has for N = 0 and 1 (abacus #11884 (1))
+
+| Command | Prints |
+|---|---|
+| `casim sum '((K+1)^2-1)÷((K+1)-1)' K 0 N RAD` | `UNDEFINED` |
+| `casim sum '((K+1)^2-1)÷((K+1)-1)' K 0 ∞ RAD` | `UNDEFINED` |
+| `casim sum '((K+1)^2-1)÷((K+1)-1)' K -2 N RAD` | `UNDEFINED` |
+| `casim sum '(K^2+K)÷K' K 0 N RAD` | `UNDEFINED` |
+| `casim sum '(-8)^(1÷(-K))' K 0 N RAD` | `UNDEFINED` |
+| `casim sum '1÷(K-2)' K 0 N RAD` | `UNDEFINED` |
+
+# - Part 2: a zero out of range, or at a K that isn't whole, leaves the line as it was
+
+| Command | Prints |
+|---|---|
+| `casim sum '((K+1)^2-1)÷((K+1)-1)' K 1 N RAD` | `5×N÷2+N^2÷2` |
+| `casim sum '(K^2+K)÷K' K 1 N RAD` | `3×N÷2+N^2÷2` |
+| `casim sum '(K^2+3×K)÷(K+3)' K 0 N RAD` | `N÷2+N^2÷2` |
+| `casim sum '((2×K-1)^2+(2×K-1))÷(2×K-1)' K 0 N RAD` | `N+N^2` |
+
+# - Not yet: a divisor in K that canon keeps, inside an exponent, is refused, though the term at K = 1 has no value
+#   (td_kq reads only a divisor the expanded summand lost)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(-8)^(1÷(K-1))' K 0 N RAD` | `NO_CLOSED_FORM` |
