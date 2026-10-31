@@ -15,6 +15,15 @@
 | `casim sum '(SIN(Z)×Y)^K×SIN(Z)' K -1 ∞ RAD` | `1÷(Y-Y^2×SIN(Z)); Y≠0; SIN(Z)≠0; ABS(Y×SIN(Z))<1` |
 | `casim sum '(Y×SQRT(Z))^K×SQRT(Z)' K 0 N RAD` | `SQRT(Z)×(Y×SQRT(Z))^(N+1)÷(Y×SQRT(Z)-1)-SQRT(Z)÷(Y×SQRT(Z)-1); Z≥0; Y×SQRT(Z)≠1` |
 
+# - Part 1: a base whose zero a row already says gets no second row, whatever multiple of it the row spells (abacus
+#   #11922: 7c93354 compared the base and its negative only, so 2×Z+1 beside the ratio's Z+1÷2≠0 added Z≠-1÷2 and
+#   took these lines past 191 B, TOO_LONG)
+
+| Command | Prints |
+|---|---|
+| `casim sum '(K+1)×(2×Z+1)^K×Y^K' K -1 ∞ RAD` | `-1÷2÷(Y-Z-Y^2÷2+4×Y×Z+4×Y×Z^2-3×Y^2×Z-6×Y^2×Z^2-4×Y^2×Z^3-1÷2)-Z÷(Y-Z-Y^2÷2+4×Y×Z+4×Y×Z^2-3×Y^2×Z-6×Y^2×Z^2-4×Y^2×Z^3-1÷2); Y≠0; Z+1÷2≠0; ABS(2×Y×(Z+1÷2))<1` |
+| `casim --arena 16384 sum '(K+1)×(2×Z+1)^K×Y^(K+1)' K -1 ∞ RAD` | `-Y×Z÷(Y-Z-Y^2÷2+4×Y×Z+4×Y×Z^2-3×Y^2×Z-6×Y^2×Z^2-4×Y^2×Z^3-1÷2)-Y÷2÷(Y-Z-Y^2÷2+4×Y×Z+4×Y×Z^2-3×Y^2×Z-6×Y^2×Z^2-4×Y^2×Z^3-1÷2); Z+1÷2≠0; ABS(2×Y×(Z+1÷2))<1` |
+
 # - Part 1: where the answer shows the hole, the wider reading adds no give-way row, so ASIN(Z)^(2×K-1)'s base keeps
 #   the letter's Z≠0, as at CAS 036 (a give-way ASIN(Z)≠0 would take its place)
 
