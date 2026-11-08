@@ -1502,8 +1502,8 @@ MUTANTS = {
     "td037-kq-den-off": [("src/casim.c", "hit = !ib_den(c, S->e, D.u[i]) && td_kzero(c, S, D.u[i]);",
                           "hit = td_kzero(c, S, D.u[i]);")],
     # CAS 038 (work/038-letters-in-solve.md): letters as coefficients in solve. The hook, the gate (a letter or π as
-    # typed; X÷0=1 stays NOT_NUMERIC), model 33's i, var dropping out, the answer's sign and its put-back check (with
-    # the degree guard off too: alone, each is caught by the other), a≠0's rows, the typed text's on both sides at the
+    # typed; X÷0=1 stays NOT_NUMERIC), model 33's i, var dropping out, the answer's sign and its two checks (L-R as
+    # a×var+b with the degree guard off, a×x+b = 0 with the sign off: alone, each fault is caught by its check), a≠0's rows, the typed text's on both sides at the
     # answer, the factors again once x is in, LN's u≠1, SQRT's ≥ and ACOSH's u≥1, the merges into > and <, a failing
     # condition's two outcomes, and steps' BAD_ARG with its mark and at the fallback's arena
     "ls038-off": [("src/casim.c", "    if (c.st == CASIM_NOT_NUMERIC && ls_solve(&c, &w, var)) return ls_end(&c, &w);",
@@ -1519,6 +1519,10 @@ MUTANTS = {
     "ls038-sign": [("src/casim.c", "    x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));",
                     "    x = ib_canon(c, mul2(c, b, power(c, a, small(c, C_M1))));")],
     "ls038-check-off-deg2": [("src/casim.c", "|| k < 0 || k > 1) goto no;", "|| k < 0 || k > 2) goto no;"),
+                             ("src/casim.c", "    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;\n    z = expand_fully(c, ib_canon(",
+                              "    z = expand_fully(c, ib_canon(")],
+    "ls038-sign-unchecked": [("src/casim.c", "    x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));",
+                              "    x = ib_canon(c, mul2(c, b, power(c, a, small(c, C_M1))));"),
                              ("src/casim.c", "    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;\n    /* a≠0",
                               "    if (c->st != CASIM_OK) goto no;\n    /* a≠0")],
     "ls038-a-rows-off": [("src/casim.c", "    D.u = &a, D.k = &ne, D.n = 1;", "    D.u = &a, D.k = &ne, D.n = 0;")],
