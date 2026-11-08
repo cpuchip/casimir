@@ -14,7 +14,9 @@ reading of the typed text is the one that counts:
     (a, b, c), then a factor left;
   - each side of every line, read back by casim (subst at a point), has this reader's value (abacus #6288, D2);
   - the last step is plain solve's answer byte for byte, k runs 0..count-1, the one-line steps are the two-line
-    steps' results, a second run is identical, and a refusal is plain solve's status.
+    steps' results, a second run is identical, and a refusal is plain solve's status;
+  - CAS 038: an equation solve answers with another letter or π as typed (letters as coefficients) has no steps, and
+    both ways print BAD_ARG.
     scripts/ssteps-values.py [N] [SEED]     (default 300 random equations, seed 20261010)"""
 import importlib.util
 import math
@@ -536,20 +538,28 @@ def readback(rows, var, model):
     return why
 
 
+LETTER = re.compile(r"(?<![A-Z])[A-Z](?![A-Z(])|π")      # a letter as typed (not in a name), or π: CAS 038's
+
+
 def check(e, var, angle, model, counts):
     """e through plain solve and both steps; the reasons it fails"""
     pc, pout = run(["--model", model, "solve", e, var, angle])
     pout = pout.strip()
     why = []
     outs = {}
+    letters = pc == 0 and LETTER.search(re.sub(rf"(?<![A-Z]){var}(?![A-Z(])", "", e)) is not None
     for one in (False, True):
         rc, out = run(["--tsv", "--model", model] + (["--one-line"] if one else []) + ["steps", "solve", e, var, angle])
         outs[one] = (rc, out)
-        if (rc == 0) != (pc == 0) or (rc != 0 and out.strip() != pout):
+        if letters:
+            if rc == 0 or out.strip() != "BAD_ARG":
+                why.append(f"steps {'one line' if one else 'two lines'} of a letter solve: exit {rc} {out.strip()[-60:]!r}")
+        elif (rc == 0) != (pc == 0) or (rc != 0 and out.strip() != pout):
             why.append(f"steps {'one line' if one else 'two lines'}: exit {rc} {out.strip()[-60:]!r}, solve {pc} {pout!r}")
         if run(["--tsv", "--model", model] + (["--one-line"] if one else []) + ["steps", "solve", e, var, angle])[1] != out:
             why.append("a second run differs")
-    if pc != 0 or why:
+    if pc != 0 or why or letters:
+        counts["letters"] = counts.get("letters", 0) + letters
         return why
     rows = [r.split("\t") for r in outs[False][1].rstrip("\n").split("\n")]
     ones = [r.split("\t") for r in outs[True][1].rstrip("\n").split("\n")]
@@ -715,8 +725,12 @@ def main():
         if why:
             failed += 1
             print(f"FAIL scripts/ssteps-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why[:6]))
+    if not counts.get("letters"):
+        failed += 1
+        print("FAIL scripts/ssteps-values.py: no letter solve among the inputs, so CAS 038's BAD_ARG is checked on none")
     print(f"solve steps: {len(cases)} equations ({len(cases) - n} from the corpus, the docs and aimed ones), {counts['lines']} "
-          f"steps judged exactly and read back by casim (one line past 191 bytes); the judge refused its nine planted faults\n"
+          f"steps judged exactly and read back by casim (one line past 191 bytes), {counts.get('letters', 0)} letter solves "
+          f"BAD_ARG both ways; the judge refused its nine planted faults\n"
           f"checks: {len(cases)} failed: {failed}")
     sys.exit(1 if failed or control else 0)
 

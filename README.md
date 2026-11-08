@@ -22,7 +22,7 @@ Named by Michael Stufflebeam: "I like casimir related to kasimir: proclaimer of 
 | derive | the derivative of an expression or an equation |
 | simplify | one canonical text for each expression, with exact numbers and exact values (SIN(π÷6) is 0.5) |
 | expand, collect, subst | distribute and multiply out; gather the powers of a variable; replace a variable |
-| solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2), and a count of the complex roots it leaves out (`SOLVED, 2 CPLX: X=2`) |
+| solve | the real roots of a polynomial equation of degree ≤ 12, exactly (X=(1+SQRT(13))÷2), and a count of the complex roots it leaves out (`SOLVED, 2 CPLX: X=2`); an equation linear in its variable with letters as coefficients, with where the answer holds (V=I×R for R is `R=V÷I; I≠0`) |
 | integrate, defint | an antiderivative from a table of forms, of a rational function through its partial fractions, and by substitution and by parts (`X×EXP(X)` is `-EXP(X)+X×EXP(X)`); a definite integral, exactly |
 | factor | a polynomial over the rationals, each factor proven irreducible |
 | pdiv, pgcd, cancel | polynomial division, greatest common divisor, and a quotient reduced by it |
@@ -36,7 +36,8 @@ docs/language.md is the input language, with every operation's statuses and exam
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
 **What it doesn't do (yet):** complex roots beyond a quadratic's (solve's `--complex` gives those), a sum with no
-closed form of the kinds above (Σ 1÷K), trigonometric identities (so not SIN(X)^2's integral), matrices. The input uses the calculator's notation (`×`, `÷`, `π`,
+closed form of the kinds above (Σ 1÷K), trigonometric identities (so not SIN(X)^2's integral), matrices, letters as
+coefficients past degree 1 (X^2=A), and steps for an equation solved with letters. The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee
