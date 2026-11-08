@@ -1,9 +1,10 @@
 # CAS work unit 039: show steps for a letter solve
 
-**From:** casim · **To:** abacus · **Status:** built on branch cas039 (below), for abacus's run of h039 (frozen at abacus
-6b5a44b, 252 rows at 2,400, 8,800 and 16,384 B, #13766). The number is abacus's (#13758). The draft was measured on a
-throwaway prototype, p1, over 0dc007d, and its sections are kept as they were sent. casim writes the unit; abacus writes
-the hidden set and the acceptance.
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at 771fdbd (abacus #13835, decision 97: h039 0 of 756 failing at
+200 digits, and the older sets byte for byte but one lawful steps move). h039 was frozen at abacus 6b5a44b, 252 rows at
+2,400, 8,800 and 16,384 B (#13766). The number is abacus's (#13758). The draft was measured on a throwaway prototype,
+p1, over 0dc007d, and its sections are kept as they were sent. casim writes the unit; abacus writes the hidden set and
+the acceptance.
 - **Why now:** abacus #13645 and #13753. CAS 038 refuses steps for a letter solve (BAD_ARG, ruling 5), and its page
   was to be the next unit once 038's bytes were known.
 - **The question:** can show steps page an equation solved with letters as coefficients the way it pages a numeric
