@@ -1150,7 +1150,7 @@ MUTANTS = {
                         "    if (m % 2) sm_row(c, rows, n, leaf(c, K_VAR, L), '!', t.p < 0 ? u : ib_canon(c, ib_neg(c, u)), L);")],
     "cond-square-gt": [("src/casim.c", "        if (k.p > 0 && t.p == 0) {", "        if (0) {")],
     # rule 4, the implication: the same expression's > not kept; a > row not leaving out its ≠ (abacus #9493 (4))
-    "cond-gt-not-kept": [("src/casim.c", "            if (op == '>') S->op[i] = '>';", "            (void)0;")],
+    "cond-gt-not-kept": [("src/casim.c", "            if (op != S->op[i]) S->op[i] = '>';", "            (void)0;")],
     "cond-gt-says-not-ne": [("src/casim.c", "        if (said) continue;", "        (void)said;")],
     # rule 2: rows only with a letter (abacus #9493 (4)), never on a refusal. Left out, run and surviving: lm_combine's give-back
     # of an abandoned attempt's notes (a letter limit reaches lm_combine only through an ∞-∞ of known signs, which letters
@@ -1501,6 +1501,50 @@ MUTANTS = {
     "td037-kzero-whole-off": [("src/casim.c", "             r.q == 1 && sm_in(S, r.p);", "             sm_in(S, r.p);")],
     "td037-kq-den-off": [("src/casim.c", "hit = !ib_den(c, S->e, D.u[i]) && td_kzero(c, S, D.u[i]);",
                           "hit = td_kzero(c, S, D.u[i]);")],
+    # CAS 038 (work/038-letters-in-solve.md): letters as coefficients in solve. The hook, the gate (a letter or π as
+    # typed; X÷0=1 stays NOT_NUMERIC), model 33's i, var dropping out, the answer's sign and its put-back check (with
+    # the degree guard off too: alone, each is caught by the other), a≠0's rows, the typed text's on both sides at the
+    # answer, the factors again once x is in, LN's u≠1, SQRT's ≥ and ACOSH's u≥1, the merges into > and <, a failing
+    # condition's two outcomes, and steps' BAD_ARG with its mark and at the fallback's arena
+    "ls038-off": [("src/casim.c", "    if (c.st == CASIM_NOT_NUMERIC && ls_solve(&c, &w, var)) return ls_end(&c, &w);",
+                   "    if (c.st == CASIM_NOT_NUMERIC && 0 && ls_solve(&c, &w, var)) return ls_end(&c, &w);")],
+    "ls038-gate-off": [("src/casim.c", "    if (c->st != CASIM_OK || !(strstr(c->s, PI_UTF8) || (nd(c, e)->kind == K_REQ",
+                        "    if (c->st != CASIM_OK || !(1 || (nd(c, e)->kind == K_REQ")],
+    "ls038-no-pi": [("src/casim.c", "!(strstr(c->s, PI_UTF8) || (nd(c, e)->kind == K_REQ", "!(0 || (nd(c, e)->kind == K_REQ")],
+    "ls038-gate-left-only": [("src/casim.c", "? raw_letter(c, nd(c, e)->a, var) || raw_letter(c, nd(c, e)->b, var)\n",
+                              "? raw_letter(c, nd(c, e)->a, var)\n")],
+    "ls038-i-off": [("src/casim.c", "!contains(c, e, var) || contains(c, e, 26)) goto no;", "!contains(c, e, var)) goto no;")],
+    "ls038-drops-out": [("src/casim.c", "    if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;\n    x = ib_canon(",
+                         "    if (c->st != CASIM_OK) goto no;\n    x = ib_canon(")],
+    "ls038-sign": [("src/casim.c", "    x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));",
+                    "    x = ib_canon(c, mul2(c, b, power(c, a, small(c, C_M1))));")],
+    "ls038-check-off-deg2": [("src/casim.c", "|| k < 0 || k > 1) goto no;", "|| k < 0 || k > 2) goto no;"),
+                             ("src/casim.c", "    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;\n    /* a≠0",
+                              "    if (c->st != CASIM_OK) goto no;\n    /* a≠0")],
+    "ls038-a-rows-off": [("src/casim.c", "    D.u = &a, D.k = &ne, D.n = 1;", "    D.u = &a, D.k = &ne, D.n = 0;")],
+    "ls038-typed-off": [("src/casim.c", "        if (td_raw(c, side[h], &T, -1))\n            for (int r = 0;",
+                         "        if (0 && td_raw(c, side[h], &T, -1))\n            for (int r = 0;")],
+    "ls038-one-side": [("src/casim.c", "side[1] = nd(c, side[0])->b, side[0] = nd(c, side[0])->a, ns = 2;",
+                        "side[1] = nd(c, side[0])->b, side[0] = nd(c, side[0])->a, ns = 1;")],
+    "ls038-at-x-off": [("src/casim.c", "        ref u = x ? ib_at(c, D->u[j], var, x) : D->u[j];", "        ref u = D->u[j];")],
+    "ls038-resplit-off": [("src/casim.c", "        if (x && kd == '!') {\n            tdset T", "        if (0 && kd == '!') {\n            tdset T")],
+    "ls038-ln-as-ne": [("src/casim.c", "        if (kd == 'n' || kd == '1') u = add2(c, u, small(c, C_M1));\n        cd_note(",
+                        "        if (kd == '1') u = add2(c, u, small(c, C_M1));\n        cd_note(")],
+    "ls038-ge-as-gt": [("src/casim.c", "kd == '>' || kd == 'g' ? kd : kd == '1' ? 'g' : '!', var);",
+                        "kd == '>' || kd == 'g' ? '>' : kd == '1' ? 'g' : '!', var);")],
+    "ls038-acosh-ne": [("src/casim.c", "kd == '>' || kd == 'g' ? kd : kd == '1' ? 'g' : '!', var);",
+                        "kd == '>' || kd == 'g' ? kd : '!', var);")],
+    "ls038-merge-old": [("src/casim.c", "            if (op != S->op[i]) S->op[i] = '>';", "            if (op == '>') S->op[i] = '>';")],
+    "ls038-row-merge-off": [("src/casim.c", "                rows[i].op = rows[i].op == 'g' ? '>' : '<';", "                (void)0;")],
+    "ls038-var-fail-undefined": [("src/casim.c", "            if (s == 1 && x && !contains(c, D->u[j], var)) c->st = CASIM_UNDEFINED;",
+                                  "            if (s == 1) c->st = CASIM_UNDEFINED;")],
+    "ls038-const-fail-declines": [("src/casim.c", "            if (s == 1 && x && !contains(c, D->u[j], var)) c->st = CASIM_UNDEFINED;",
+                                   "            if (0) c->st = CASIM_UNDEFINED;")],
+    "ls038-steps-off": [("src/casim.c", "    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0) return CASIM_BAD_ARG;",
+                         "    if (0) return CASIM_BAD_ARG;")],
+    "ls038-steps-mark-off": [("src/casim.c", "    ((rat *)(void *)nd(c, 2))->q = 0;", "    (void)0;")],
+    "ls038-steps-fallback": [("src/casim.c", "        st = CASIM_NO_ROOM;                                 /* unless it was a letter solve (below) */",
+                              "        return CASIM_NO_ROOM;")],
 }
 
 

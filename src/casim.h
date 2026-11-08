@@ -43,7 +43,8 @@ typedef enum {
     CASIM_NOT_POLYNOMIAL,       /* CAS 005, solve: var inside a function, under a root, in a denominator, or to a
                                    power not a whole number >= 0; out is "" */
     CASIM_NOT_NUMERIC,          /* CAS 005, solve: a coefficient not an exact rational number (another letter,
-                                   π, SQRT(2), a draw); out is "" */
+                                   π, SQRT(2), a draw), where CAS 038 doesn't answer: an equation linear in var with
+                                   letters or π as typed is solved, with its rows; out is "" */
     CASIM_NOT_INTEGRABLE,       /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
                                    derive-back check could not close; out is "" */
     CASIM_PARTIAL,              /* CAS 007, factor: out holds a correct factorization (it reads back as the
@@ -138,7 +139,7 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
 
 /* Show steps (work/steps-derive.md, steps-integrate.md, steps-solve.md, steps-partfrac.md): the working of rq, one step
    a page, for derive, integrate, solve and partfrac (CASIM_DERIVE, CASIM_INTEGRATE, CASIM_SOLVE, CASIM_PARTFRAC;
-   another op is BAD_ARG). casim_step runs rq
+   another op is BAD_ARG, and so is a solve answered with letters as coefficients, CAS 038). casim_step runs rq
    with steps on and prints step k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate,
    where after is the rule applied with its parts still to do (a template line) or the step's result; integrate's
    CHECK lines are "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the

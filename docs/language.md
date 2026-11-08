@@ -113,7 +113,8 @@ kept. A function outside its real domain where it has a complex value is kept as
 LN(-1), ASIN(2), SQRT(-4), (-8)^(1÷3), ACOSH(0). So that a pole behind them is seen, SINH, TANH, ASINH and ATANH of 0 are
 0, COSH(0) and ALOG(0) are 1, and ACOSH(1) is 0: LN(SINH(0)) is UNDEFINED. In solve and factor a pole decides wherever
 it is: SIN(X)+TAN(π÷2)=0 is UNDEFINED. A known difference: there a division by 0 (X÷0, 1÷0+X) is still NOT_NUMERIC, the
-one place a ÷0 isn't UNDEFINED, until the next unit that touches solve.
+one place a ÷0 isn't UNDEFINED. CAS 038 kept it for a text with no letter and no π, which reads as before; with one,
+the text is read as typed and a ÷0 is UNDEFINED (X÷0=π).
 
 | Command | Prints |
 |---|---|
@@ -156,8 +157,8 @@ Statuses: TOO_LONG (the answer is past 191 bytes; expand stops before building m
 ### solve: real roots of a polynomial equation
 
 `L=R` is read as L−R=0, and an expression as expr=0. The polynomial is read as typed: a variable in a denominator or
-inside a function is refused even where it would cancel. The coefficients must be exact rationals. out is one line,
-its result first:
+inside a function is refused even where it would cancel. The coefficients must be exact rationals, except in an
+equation linear in var (letters as coefficients, below). out is one line, its result first:
 - SOLVED: every root, each found by exact division, with any multiplicity above 1 as (MULT k);
 - PARTIAL, DEGREE n LEFT: a factor of degree 3 or more is left, with the roots found so far;
 - NO REAL ROOTS, NO SOLUTION (for a nonzero constant), or EVERY X (for 0).
@@ -175,8 +176,20 @@ n counts only the roots factoring finds, the quadratic factors with no real root
 whole adds none, so `X^4+1` is `PARTIAL, DEGREE 4 LEFT`, with no note. NO REAL ROOTS says it already and has none. Where
 the note would take the line past 191 bytes, the line is printed without it.
 
-Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π or an irrational number), NO_ROOM
-(degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
+**Letters as coefficients** (CAS 038): an equation linear in var whose coefficients hold another letter or π, as
+typed, is solved for var. L−R is read as a×var+b, a and b free of var, and var=−b÷a prints as canon prints it once
+putting it back into L−R gives 0: V=I×R for R is `R=V÷I; I≠0`. Its rows are where the answer holds, as a sum's are:
+- a≠0, read as a divisor is: each letter factor, LN(u)'s u≠1, and none for a factor never 0 (EXP, a number);
+- each condition of the typed text (CAS 035) at the answer: u≠0, u>0, u≥0 (SQRT), u≥1 (ACOSH), LN's u≠1 and TAN's
+  COS(u)≠0, each solved for its letter where it is linear in one (`A≥0`, `ABS(A)≥1`). u≠0 and u≥0 on one u are u>0.
+A condition with no letter that fails is UNDEFINED, as a ÷0 is. The text is canon's, not always the one a student
+writes: (X+A)÷B=C is `X=B×(C-A÷B); B≠0`. A text with neither a letter nor π is read as before, so SIN(1)×X=1 is still
+NOT_NUMERIC. Show steps has no page for these: steps solve is BAD_ARG.
+
+Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is not an exact rational, where letters as coefficients
+don't answer: degree 2 or more with a letter, var inside a function or a denominator, var dropping out, a condition no
+row writes (ASIN's ABS(u)≤1, ATANH's ABS(u)<1), model 33's i, or a constant with neither a letter nor π, SQRT(2) or
+SIN(1)), NO_ROOM (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
 
 | Command | Prints |
 |---|---|
@@ -191,6 +204,12 @@ Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is another letter, π 
 | `casim solve "(X^2+1)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT, 2 CPLX` |
 | `casim solve "X^4+1" X RAD` | `PARTIAL, DEGREE 4 LEFT` |
 | `casim solve "SIN(X)=0.5" X RAD` | `NOT_POLYNOMIAL` |
+| `casim solve "V=I×R" R RAD` | `SOLVED: R=V÷I; I≠0` |
+| `casim solve "(A^2-1)×X=A+1" X RAD` | `SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |
+| `casim solve "LN(A)×X=1" X RAD` | `SOLVED: X=1÷LN(A); A>0; A≠1` |
+| `casim solve "X=SQRT(A)÷B" X RAD` | `SOLVED: X=SQRT(A)÷B; A≥0; B≠0` |
+| `casim solve "π×X=1" X RAD` | `SOLVED: X=1÷π` |
+| `casim solve "A×(X-1)=A×X" X RAD` | `NOT_NUMERIC` |
 | `casim solve "A×X^2-1" X RAD` | `NOT_NUMERIC` |
 | `casim solve "X^14-1" X RAD` | `NO_ROOM` |
 
@@ -421,6 +440,8 @@ them, in descending powers. The steps are:
   b^2-4ac when it is negative) then the roots, one line when the values are the roots already; LEFT for a factor of
   degree 3 or more, as (F)^k when it is a power;
 - ANSWER is solve's own answer.
+
+An equation solve answers with letters as coefficients (CAS 038) has no page: its steps are BAD_ARG.
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
@@ -826,7 +847,7 @@ Michael's card stu-fractions: "Fractions, but a typed decimal stays a decimal" (
 | 4 | BAD_ARG | an argument out of range, or an equation where an expression is needed | "" |
 | 5 | NO_ROOM | the arena ran out, the depth guard stopped a walk, or a bound (degree, coefficient) was passed | "" |
 | 6 | NOT_POLYNOMIAL | solve, factor and the polynomial operations (partfrac too): not a polynomial in var as typed | "" |
-| 7 | NOT_NUMERIC | the same: a coefficient that is not an exact rational | "" |
+| 7 | NOT_NUMERIC | the same: a coefficient that is not an exact rational (solve answers letters as coefficients where linear, CAS 038) | "" |
 | 8 | NOT_INTEGRABLE | integrate and defint: not a form in the table, or the check did not close | "" |
 | 9 | PARTIAL | factor: a correct factorization with one factor unproven | the factorization |
 | 10 | UNDEFINED | an exact 0 under a negative power, a division by 0, a pole (TAN(π÷2), LN(0)), a bound with no value | "", or limit's condition rows (CAS 023) |

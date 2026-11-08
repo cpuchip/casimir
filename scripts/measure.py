@@ -566,6 +566,14 @@ def all_cases():
     for n in range(20, 58, 4):
         rows.append((f"v nest {n}", "(" * n + "X" + "+1)" * n + f"-{n}", "X", "RAD", "solve", None, "35"))
     rows.append(("v STU chain X^1^1^...", "X^" + "^".join(["1"] * 40) + "-2", "X", "RAD", "solve", None, "STU"))
+    # CAS 038 (work/038-letters-in-solve.md): letters as coefficients at depth, across the guard. canon, the answer's
+    # print and the typed conditions read at the answer all run below ls_solve's frame, 448 bytes more than simplify's
+    # above canon on the S3: STU's right chain prints as it nests, and a condition holding var is read at the answer
+    for n in range(34, 48):
+        nest = "SIN(" * n + "A" + ")" * n
+        rows.append((f"ls STU chain A^ {n}", "X=" + "^".join(["A"] * n), "X", "RAD", "solve", None, "STU"))
+        rows.append((f"ls SIN nest {n}", "X=" + nest, "X", "RAD", "solve", None, "35"))
+        rows.append((f"ls var SIN nest {n}", "X×(X+" + nest + ")÷(X+" + nest + ")=B", "X", "RAD", "solve", None, "35"))
     rows = [r if len(r) == 7 else r + ("35",) for r in rows + SHAPES003]
     # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
     for r in rows[:]:
