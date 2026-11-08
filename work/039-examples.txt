@@ -1,0 +1,49 @@
+# CAS 039's examples (work/039-letter-steps.md; abacus #13757, #13758, h039 #13766): show steps for a letter solve
+# (CAS 038). The page is a numeric linear one's: BOTH SIDES (POLYNOMIAL for an expression) in collect's text, left out
+# when it is the text as typed; LINEAR at depth 1, with the answer's value and the rows of var's coefficient, where the
+# division happens; ANSWER, solve's own line with every row. Each row is run by scripts/doc-examples.py, and again with
+# the series route compiled out (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - Part 1: formulas, and the coefficient's rows on the LINEAR line
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve 'V=I×R' R RAD` | `BOTH SIDES: -I×R+V=0 /   LINEAR: -I×R+V=0: R=V÷I; I≠0 / ANSWER: SOLVED: R=V÷I; I≠0` |
+| `casim steps solve 'P×V=N×R×T' T RAD` | `BOTH SIDES: -N×R×T+P×V=0 /   LINEAR: -N×R×T+P×V=0: T=P×V÷N÷R; N≠0; R≠0 / ANSWER: SOLVED: T=P×V÷N÷R; N≠0; R≠0` |
+| `casim steps solve 'A×X+B=C×X+D' X RAD` | `BOTH SIDES: (A-C)×X+(B-D)=0 /   LINEAR: (A-C)×X+(B-D)=0: X=-(B-D)÷(A-C); A-C≠0 / ANSWER: SOLVED: X=-(B-D)÷(A-C); A-C≠0` |
+| `casim steps solve '(A^2-1)×X=A+1' X RAD` | `BOTH SIDES: (A^2-1)×X+(-A-1)=0 /   LINEAR: (A^2-1)×X+(-A-1)=0: X=(A+1)÷(A^2-1); A≠-1; A≠1 / ANSWER: SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |
+| `casim --one-line steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
+| `casim --model STU steps solve 'V=I×R' R RAD` | `BOTH SIDES: -I×R+V=0 /   LINEAR: -I×R+V=0: R=V÷I; I≠0 / ANSWER: SOLVED: R=V÷I; I≠0` |
+| `casim --model 33 steps solve 'A×X+B=C' X DEG` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
+
+# - Part 2: the typed text's own rows stay in ANSWER (ruling 3). The coefficient's row alone can be wider than
+#   ANSWER's (A≠0 beside SQRT's A≥0, which ANSWER writes A>0); LN's u≠1 is the coefficient's, its u>0 the typed text's
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve 'LN(A)×X=1' X RAD` | `BOTH SIDES: LN(A)×X-1=0 /   LINEAR: LN(A)×X-1=0: X=1÷LN(A); A≠1 / ANSWER: SOLVED: X=1÷LN(A); A>0; A≠1` |
+| `casim steps solve 'SQRT(A)×X=1' X RAD` | `BOTH SIDES: SQRT(A)×X-1=0 /   LINEAR: SQRT(A)×X-1=0: X=1÷SQRT(A); A≠0 / ANSWER: SOLVED: X=1÷SQRT(A); A>0` |
+| `casim steps solve 'X×Y÷Y=3' X RAD` | `BOTH SIDES: X-3=0 /   LINEAR: X-3=0: X=3 / ANSWER: SOLVED: X=3; Y≠0` |
+| `casim steps solve 'X=SQRT(A)÷B' X RAD` | `BOTH SIDES: X-SQRT(A)÷B=0 /   LINEAR: X-SQRT(A)÷B=0: X=SQRT(A)÷B / ANSWER: SOLVED: X=SQRT(A)÷B; A≥0; B≠0` |
+| `casim steps solve '(X+A)÷B=C' X RAD` | `BOTH SIDES: X÷B+(-C+A÷B)=0 /   LINEAR: X÷B+(-C+A÷B)=0: X=B×(C-A÷B) / ANSWER: SOLVED: X=B×(C-A÷B); B≠0` |
+| `casim steps solve 'π×X=1' X RAD` | `BOTH SIDES: π×X-1=0 /   LINEAR: π×X-1=0: X=1÷π / ANSWER: SOLVED: X=1÷π` |
+
+# - Part 3: BOTH SIDES is left out where it is the text as typed, as for numbers; an expression's line is POLYNOMIAL
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve 'A×X+B=0' X RAD` | `LINEAR: A×X+B=0: X=-B÷A; A≠0 / ANSWER: SOLVED: X=-B÷A; A≠0` |
+| `casim steps solve 'A×X+B' X RAD` | `LINEAR: A×X+B=0: X=-B÷A; A≠0 / ANSWER: SOLVED: X=-B÷A; A≠0` |
+| `casim steps solve 'A×X+B-C' X RAD` | `POLYNOMIAL: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
+
+# - Part 4: a refusal is solve's own status, one line; steps need solve's room and the answer's 192-byte slot, so
+#   A×X+B=C pages from 2,104 B (solve alone needs 1,912), and below that is NO_ROOM, as for numbers
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim steps solve 'A×(X-1)=A×X' X RAD` | `NOT_NUMERIC` |
+| `casim steps solve 'X=A÷(B-B)' X RAD` | `UNDEFINED` |
+| `casim --arena 2104 steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
+| `casim --arena 2000 steps solve 'A×X+B=C' X RAD` | `NO_ROOM` |
+| `casim --arena 1900 steps solve 'A×X+B=C' X RAD` | `NO_ROOM` |

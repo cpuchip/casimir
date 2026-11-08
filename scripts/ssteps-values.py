@@ -15,8 +15,11 @@ reading of the typed text is the one that counts:
   - each side of every line, read back by casim (subst at a point), has this reader's value (abacus #6288, D2);
   - the last step is plain solve's answer byte for byte, k runs 0..count-1, the one-line steps are the two-line
     steps' results, a second run is identical, and a refusal is plain solve's status;
-  - CAS 038: an equation solve answers with another letter or π as typed (letters as coefficients) has no steps, and
-    both ways print BAD_ARG.
+  - CAS 039: an equation solve answers with another letter or π as typed (letters as coefficients, CAS 038) pages as
+    BOTH SIDES (or POLYNOMIAL; left out when it is the text as typed), LINEAR at depth 1 and ANSWER, both ways alike:
+    BOTH SIDES's left side is the typed L-R at random letter and var values (the typed text read by casim's subst, the
+    step by this reader), LINEAR has its equation and solve's value, ANSWER is solve's line, and LINEAR's rows hold
+    wherever ANSWER's do and fail at each one-letter row of ANSWER's where var's coefficient is 0.
     scripts/ssteps-values.py [N] [SEED]     (default 300 random equations, seed 20261010)"""
 import importlib.util
 import math
@@ -539,6 +542,92 @@ def readback(rows, var, model):
 
 
 LETTER = re.compile(r"(?<![A-Z])[A-Z](?![A-Z(])|π")      # a letter as typed (not in a name), or π: CAS 038's
+ROW = re.compile(r"^(.*?)(≠|≥|≤|>|<)(.*)$")
+
+
+def lv(text, d):
+    """casim's text at the letters' values d (this reader's; None where it has none)"""
+    try:
+        v = eval(sv.py(text), d)
+        return None if isinstance(v, complex) or not math.isfinite(float(v)) else float(v)
+    except (ValueError, ZeroDivisionError, OverflowError, TypeError, NameError, SyntaxError):
+        return None
+
+
+def holds(rows, d):
+    """whether every row holds at d (None where one can't be read)"""
+    for r in rows:
+        m = ROW.match(r)
+        a, b = (lv(m.group(1), d), lv(m.group(3), d)) if m else (None, None)
+        if a is None or b is None:
+            return None
+        if not {"≠": abs(a - b) > 1e-12, "≥": a >= b - 1e-12, "≤": a <= b + 1e-12, ">": a > b + 1e-12,
+                "<": a < b - 1e-12}[m.group(2)]:
+            return False
+    return True
+
+
+def typed_at(e, var, model, vals):
+    """the typed L-R at vals (letter: Fraction), as casim reads it: subst letter by letter"""
+    sides = []
+    for side in top_split(e, "="):
+        t = side
+        for L, x in vals.items():
+            p = subprocess.run([CLI, "--model", model, "subst", t, L, f"({x.numerator}÷{x.denominator})", "RAD"],
+                               stdout=subprocess.PIPE, text=True, encoding="utf-8")
+            if p.returncode != 0:
+                return None
+            t = p.stdout.strip()
+        sides.append(lv(t, sv.env(0.0, False)))
+    return None if None in sides else sides[0] - (sides[1] if len(sides) > 1 else 0)
+
+
+def letter_page(e, var, model, rows, pout, rnd):
+    """CAS 039: the reasons a letter solve's page fails"""
+    why = []
+    eq = top_split(e, "=")[1:] != []
+    names = sorted(set(LETTER.findall(e)) - {var, "π"})
+    want = [("0", "BOTH SIDES" if eq else "POLYNOMIAL")] * (len(rows) == 3) + [("1", "LINEAR"), ("0", "ANSWER")]
+    if [(r[1], r[3]) for r in rows] != want or any(r[2] != "R" for r in rows):
+        return [f"the page's depths and rules: {[(r[1], r[3]) for r in rows]}"]
+    if rows[-1][4] != pout:
+        why.append(f"ANSWER {rows[-1][4]!r} is not solve's line {pout!r}")
+    m = re.fullmatch(rf"(.+)=0: {var}=([^;]+)((?:; .+)*)", rows[-2][4])
+    ans = pout[len(f"SOLVED: {var}="):].split("; ")
+    if not m:
+        return why + [f"LINEAR {rows[-2][4]!r} is not 'S=0: {var}=x; rows'"]
+    S, x, lrows = m.group(1), m.group(2), m.group(3).split("; ")[1:]
+    if len(rows) == 3 and rows[0][4] != S + "=0":
+        why.append("LINEAR's equation is not BOTH SIDES's")
+    if x != ans[0]:
+        why.append(f"LINEAR's value {x!r} is not the answer's {ans[0]!r}")
+    for _ in range(4):                          # S is the typed L-R
+        vals = {L: F(rnd.choice([-7, -3, -2, 2, 3, 5, 7]), rnd.choice([2, 3, 5])) for L in names + [var]}
+        d = sv.env(0.0, False)
+        d.update({L: float(v) for L, v in vals.items()})
+        t, sval = typed_at(e, var, model, vals), lv(S, d)
+        if t is not None and sval is not None and abs(t - sval) > 1e-9 * max(1.0, abs(t)):
+            why.append(f"BOTH SIDES at {vals}: {sval}, the typed L-R {t}")
+    for _ in range(12):                         # LINEAR's rows hold where ANSWER's do
+        d = sv.env(0.0, False)
+        d.update({L: rnd.choice([-2.5, -0.5, 0.75, 1.5, 3.25, 4.5]) for L in names})
+        if holds(ans[1:], d) and holds(lrows, d) is False:
+            why.append(f"LINEAR's rows fail where ANSWER's hold: {d and {L: d[L] for L in names}}")
+            break
+    for r in ans[1:]:                           # and fail where the coefficient of var is 0
+        m = re.fullmatch(r"([A-Z])≠(-?\d+(?:÷\d+)?)", r)
+        if not m or m.group(1) == var:
+            continue
+        d = sv.env(0.0, False)
+        d.update({L: 1.37 + 0.11 * i for i, L in enumerate(names)})
+        d[m.group(1)] = lv(m.group(2), d)
+        d[var], s1 = 1.0, None
+        s1 = lv(S, d)
+        d[var] = 0.0
+        s0 = lv(S, d)
+        if s1 is not None and s0 is not None and abs(s1 - s0) < 1e-12 and holds(lrows, d):
+            why.append(f"LINEAR's rows allow {m.group(1)}={m.group(2)}, where {var}'s coefficient is 0")
+    return why
 
 
 def check(e, var, angle, model, counts):
@@ -552,8 +641,11 @@ def check(e, var, angle, model, counts):
         rc, out = run(["--tsv", "--model", model] + (["--one-line"] if one else []) + ["steps", "solve", e, var, angle])
         outs[one] = (rc, out)
         if letters:
-            if rc == 0 or out.strip() != "BAD_ARG":
+            if rc != 0:
                 why.append(f"steps {'one line' if one else 'two lines'} of a letter solve: exit {rc} {out.strip()[-60:]!r}")
+            else:
+                why += letter_page(e, var, model, [r.split("\t") for r in out.rstrip("\n").split("\n")], pout,
+                                   random.Random(e))
         elif (rc == 0) != (pc == 0) or (rc != 0 and out.strip() != pout):
             why.append(f"steps {'one line' if one else 'two lines'}: exit {rc} {out.strip()[-60:]!r}, solve {pc} {pout!r}")
         if run(["--tsv", "--model", model] + (["--one-line"] if one else []) + ["steps", "solve", e, var, angle])[1] != out:
@@ -584,7 +676,12 @@ AIMED = [(LONG, "X", "RAD", "35"), ("(X^2-2)^5", "X", "RAD", "35"), ("(X^2+X+1)^
          ("X^3×(3×X^2-5)^2=0", "X", "RAD", "35"), ("(2×X+1)^4×(X^2-3)^3", "X", "RAD", "35"),
          # a power left (abacus #6311: H01143's shape) and X alone beside other factors
          ("(X^3+6×X^2+6×X+3)^4", "X", "RAD", "35"), ("(X-1)×(X^3+X+1)^2", "X", "RAD", "35"),
-         ("X^3×(X^3+2)^2", "X", "RAD", "35"), ("(2×X^3+X+1)^3=1", "X", "RAD", "35"), ("X×(X^2-4)", "X", "RAD", "35")]
+         ("X^3×(X^3+2)^2", "X", "RAD", "35"), ("(2×X^3+X+1)^3=1", "X", "RAD", "35"), ("X×(X^2-4)", "X", "RAD", "35"),
+         # CAS 039: letter solves' pages (CAS 038's shapes: both sides, a product, a sum coefficient, typed rows)
+         ("A×X+B=C×X+D", "X", "RAD", "35"), ("P×V=N×R×T", "T", "RAD", "35"), ("V=I×R", "R", "RAD", "STU"),
+         ("(A^2-1)×X=A+1", "X", "RAD", "35"), ("SQRT(A)×X=1", "X", "RAD", "35"), ("X×Y÷Y=3", "X", "RAD", "35"),
+         ("(X+A)÷B=C", "X", "RAD", "35"), ("(1÷2)×X+3=B×X+5", "X", "RAD", "35"), ("A×X+B=0", "X", "RAD", "35"),
+         ("A×X+B", "X", "DEG", "33"), ("(A-1)×(X+B)=LN(C)", "X", "RAD", "35"), ("X=TAN(A)", "X", "DEG", "35")]
 
 
 def known_inputs():
@@ -725,12 +822,22 @@ def main():
         if why:
             failed += 1
             print(f"FAIL scripts/ssteps-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why[:6]))
+    # the letter judge's own control: a page with BOTH SIDES's sign changed, and one with LINEAR's row taken out
+    good = [r.split("\t") for r in run(["--tsv", "steps", "solve", "A×X+B=C", "X", "RAD"])[1].rstrip("\n").split("\n")]
+    pa = run(["solve", "A×X+B=C", "X", "RAD"])[1].strip()
+    bad1 = [r[:4] + [r[4].replace("+(B-C)", "-(B-C)")] for r in good]
+    bad2 = [r[:4] + [r[4].replace("; A≠0", "")] if r[3] == "LINEAR" else r for r in good]
+    if letter_page("A×X+B=C", "X", "35", good, pa, random.Random(1)) or \
+            not letter_page("A×X+B=C", "X", "35", bad1, pa, random.Random(1)) or \
+            not letter_page("A×X+B=C", "X", "35", bad2, pa, random.Random(1)):
+        failed += 1
+        print("FAIL scripts/ssteps-values.py: the letter judge's control (a right page passes, two wrong ones fail)")
     if not counts.get("letters"):
         failed += 1
         print("FAIL scripts/ssteps-values.py: no letter solve among the inputs, so CAS 038's BAD_ARG is checked on none")
     print(f"solve steps: {len(cases)} equations ({len(cases) - n} from the corpus, the docs and aimed ones), {counts['lines']} "
-          f"steps judged exactly and read back by casim (one line past 191 bytes), {counts.get('letters', 0)} letter solves "
-          f"BAD_ARG both ways; the judge refused its nine planted faults\n"
+          f"steps judged exactly and read back by casim (one line past 191 bytes), {counts.get('letters', 0)} letter solves' "
+          f"pages judged by value both ways; the judge refused its nine planted faults and the letter judge its two\n"
           f"checks: {len(cases)} failed: {failed}")
     sys.exit(1 if failed or control else 0)
 

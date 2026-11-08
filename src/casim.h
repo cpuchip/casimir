@@ -139,14 +139,16 @@ casim_status casim_run(const casim_req *rq, char *out, size_t cap, void *arena, 
 
 /* Show steps (work/steps-derive.md, steps-integrate.md, steps-solve.md, steps-partfrac.md): the working of rq, one step
    a page, for derive, integrate, solve and partfrac (CASIM_DERIVE, CASIM_INTEGRATE, CASIM_SOLVE, CASIM_PARTFRAC;
-   another op is BAD_ARG, and so is a solve answered with letters as coefficients, CAS 038). casim_step runs rq
+   another op is BAD_ARG). casim_step runs rq
    with steps on and prints step k into out: "d/dX(before) = after" for derive, "∫(before)dX = after" for integrate,
    where after is the rule applied with its parts still to do (a template line) or the step's result; integrate's
    CHECK lines are "d/dX(F) = f". The walk is top-down: a template line, its parts' steps, then its result; the
    root's result is the last step and is the op's own answer (never a "+C"), with or without CASIM_STEPS_ONE_LINE,
    which leaves out the template lines (abacus #6252: one rule for the firmware). Solve's steps are the equation as
    it stands, "...=0", at depth 0 (moved, cleared, each factor divided out) and each factor set to 0, "F=0: X=...",
-   at depth 1; its last step is solve's answer (ANSWER). Partfrac's are the working a student writes: the common
+   at depth 1; its last step is solve's answer (ANSWER). A solve answered with letters as coefficients (CAS 038) pages
+   as BOTH SIDES (or POLYNOMIAL), L-R gathered as collect prints it, LINEAR at depth 1 with the answer and the rows of
+   var's coefficient, and ANSWER (CAS 039). Partfrac's are the working a student writes: the common
    factor out, the polynomial part, d's factors, the form with unknown numerators, the form cleared of d, then at depth
    1 each linear factor's root (COVER-UP) and each power of X's coefficients (COEFFICIENTS), and partfrac's answer;
    each page returns PARTIAL when partfrac does. k < 0 only counts. Each call is complete in itself: page k

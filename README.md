@@ -36,8 +36,8 @@ docs/language.md is the input language, with every operation's statuses and exam
 docs/how-this-was-built.md says who built Casimir, a team of AI agents with Michael, and how each unit ran.
 
 **What it doesn't do (yet):** complex roots beyond a quadratic's (solve's `--complex` gives those), a sum with no
-closed form of the kinds above (Σ 1÷K), trigonometric identities (so not SIN(X)^2's integral), matrices, letters as
-coefficients past degree 1 (X^2=A), and steps for an equation solved with letters. The input uses the calculator's notation (`×`, `÷`, `π`,
+closed form of the kinds above (Σ 1÷K), trigonometric identities (so not SIN(X)^2's integral), matrices, and letters as
+coefficients past degree 1 (X^2=A). The input uses the calculator's notation (`×`, `÷`, `π`,
 upper-case names) and doesn't read implied products (`2X`).
 
 ## The guarantee

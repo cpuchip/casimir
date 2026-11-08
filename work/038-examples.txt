@@ -99,14 +99,14 @@
 | `casim solve 'X×(X-A)÷(X-A)=A' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'X^2÷X×A=1' X RAD` | `NOT_POLYNOMIAL` |
 
-# - Part 6: show steps has no page for these (ruling 5): BAD_ARG, as for an op it doesn't show, at every arena where
-#   solve answers. A refusal is solve's own. Where solve has no room, neither has steps
+# - Part 6: show steps. CAS 038 refused them (ruling 5: BAD_ARG, at every arena where solve answered); CAS 039 pages
+#   them (work/039-examples.txt). A refusal is solve's own. Where the steps have no room, NO_ROOM, as for numbers
 
-| Command | Prints |
+| Command | Prints (lines joined by " / ") |
 |---|---|
-| `casim steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
-| `casim steps solve 'π×X=1' X RAD` | `BAD_ARG` |
-| `casim --arena 2000 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
-| `casim --arena 2400 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
+| `casim steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
+| `casim steps solve 'π×X=1' X RAD` | `BOTH SIDES: π×X-1=0 /   LINEAR: π×X-1=0: X=1÷π / ANSWER: SOLVED: X=1÷π` |
+| `casim --arena 2000 steps solve 'A×X+B=C' X RAD` | `NO_ROOM` |
+| `casim --arena 2400 steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
 | `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
 | `casim --arena 1000 solve 'A×X+B=C' X RAD` | `NO_ROOM` |

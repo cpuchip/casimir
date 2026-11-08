@@ -184,7 +184,7 @@ putting it back into L−R gives 0: V=I×R for R is `R=V÷I; I≠0`. Its rows ar
   COS(u)≠0, each solved for its letter where it is linear in one (`A≥0`, `ABS(A)≥1`). u≠0 and u≥0 on one u are u>0.
 A condition with no letter that fails is UNDEFINED, as a ÷0 is. The text is canon's, not always the one a student
 writes: (X+A)÷B=C is `X=B×(C-A÷B); B≠0`. A text with neither a letter nor π is read as before, so SIN(1)×X=1 is still
-NOT_NUMERIC. Show steps has no page for these: steps solve is BAD_ARG.
+NOT_NUMERIC. Show steps pages these as it pages a linear equation (below).
 
 Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is not an exact rational, where letters as coefficients
 don't answer: degree 2 or more with a letter, var inside a function or a denominator, var dropping out, a condition no
@@ -441,7 +441,10 @@ them, in descending powers. The steps are:
   degree 3 or more, as (F)^k when it is a power;
 - ANSWER is solve's own answer.
 
-An equation solve answers with letters as coefficients (CAS 038) has no page: its steps are BAD_ARG.
+An equation solve answers with letters as coefficients (CAS 038) pages the same way (CAS 039): BOTH SIDES (or
+POLYNOMIAL) with L−R gathered as collect prints it, left out when that is the text as typed; LINEAR at depth 1, with the
+answer and the rows of var's coefficient, where it divides; and ANSWER, solve's own line with every row. The typed
+text's own rows (LN's A>0, SQRT's A≥0) are in ANSWER only.
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
@@ -454,6 +457,7 @@ An equation solve answers with letters as coefficients (CAS 038) has no page: it
 | `casim steps solve "(X^2-2)^2" X RAD` | `POLYNOMIAL: X^4-4×X^2+4=0 / QUADRATIC FACTOR: (X^4-4×X^2+4)÷(X^2-2)^2=1 / QUADRATIC FACTOR: (X^2-2)^2=0 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(8)÷2; X=SQRT(8)÷2 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2) / ANSWER: SOLVED: X=-SQRT(2) (MULT 2); X=SQRT(2) (MULT 2)` |
 | `casim steps solve "(X-1)×(X^3+X+1)^2" X RAD` | `POLYNOMIAL: X^7-X^6+2×X^5-X^3+X^2-X-1=0 / LINEAR FACTOR: (X^7-X^6+2×X^5-X^3+X^2-X-1)÷(X-1)=(X^3+X+1)^2 / LINEAR FACTOR: (X-1)×(X^3+X+1)^2=0 /   LINEAR: X-1=0: X=1 /   LEFT: (X^3+X+1)^2=0: DEGREE 6 LEFT / ANSWER: PARTIAL, DEGREE 6 LEFT: X=1` |
 | `casim --one-line steps solve "X^3-3×X+2" X RAD` | `LINEAR FACTOR: (X+2)×(X^2-2×X+1)=0 / LINEAR FACTOR: (X+2)×(X-1)^2=0 /   LINEAR: X+2=0: X=-2 /   LINEAR: X-1=0: X=1 (MULT 2) / ANSWER: SOLVED: X=-2; X=1 (MULT 2)` |
+| `casim steps solve "V=I×R" R RAD` | `BOTH SIDES: -I×R+V=0 /   LINEAR: -I×R+V=0: R=V÷I; I≠0 / ANSWER: SOLVED: R=V÷I; I≠0` |
 
 `steps partfrac "<n÷d>" X` pages partfrac's working (work/steps-partfrac.md), as a student writes it, with the
 polynomials multiplied out in descending powers. The steps are:

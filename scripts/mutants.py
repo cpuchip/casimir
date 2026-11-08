@@ -1505,7 +1505,8 @@ MUTANTS = {
     # typed; X÷0=1 stays NOT_NUMERIC), model 33's i, var dropping out, the answer's sign and its two checks (L-R as
     # a×var+b with the degree guard off, a×x+b = 0 with the sign off: alone, each fault is caught by its check), a≠0's rows, the typed text's on both sides at the
     # answer, the factors again once x is in, LN's u≠1, SQRT's ≥ and ACOSH's u≥1, the merges into > and <, a failing
-    # condition's two outcomes, and steps' BAD_ARG with its mark and at the fallback's arena
+    # condition's two outcomes, and steps' mark (ls038-steps-fallback went at CAS 039, equivalent: there a letter
+    # solve's page and the fallback's both give NO_ROOM. 1.5.0's fallback line back would move do_ssteps' host frame)
     "ls038-off": [("src/casim.c", "    if (c.st == CASIM_NOT_NUMERIC && ls_solve(&c, &w, var)) return ls_end(&c, &w);",
                    "    if (c.st == CASIM_NOT_NUMERIC && 0 && ls_solve(&c, &w, var)) return ls_end(&c, &w);")],
     "ls038-gate-off": [("src/casim.c", "    if (c->st != CASIM_OK || !(strstr(c->s, PI_UTF8) || (nd(c, e)->kind == K_REQ",
@@ -1525,7 +1526,8 @@ MUTANTS = {
                               "    x = ib_canon(c, mul2(c, b, power(c, a, small(c, C_M1))));"),
                              ("src/casim.c", "    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;\n    /* a≠0",
                               "    if (c->st != CASIM_OK) goto no;\n    /* a≠0")],
-    "ls038-a-rows-off": [("src/casim.c", "    D.u = &a, D.k = &ne, D.n = 1;", "    D.u = &a, D.k = &ne, D.n = 0;")],
+    "ls038-a-rows-off": [("src/casim.c", "    D.u = &a, D.k = &ne, D.n = 1;\n    if (!ls_note(c, &S, &D, var, x)) goto no;",
+                          "    D.u = &a, D.k = &ne, D.n = 0;\n    if (!ls_note(c, &S, &D, var, x)) goto no;")],
     "ls038-typed-off": [("src/casim.c", "        if (td_raw(c, side[h], &T, -1))\n            for (int r = 0;",
                          "        if (0 && td_raw(c, side[h], &T, -1))\n            for (int r = 0;")],
     "ls038-one-side": [("src/casim.c", "side[1] = nd(c, side[0])->b, side[0] = nd(c, side[0])->a, ns = 2;",
@@ -1544,11 +1546,28 @@ MUTANTS = {
                                   "            if (s == 1) c->st = CASIM_UNDEFINED;")],
     "ls038-const-fail-declines": [("src/casim.c", "            if (s == 1 && x && !contains(c, D->u[j], var)) c->st = CASIM_UNDEFINED;",
                                    "            if (0) c->st = CASIM_UNDEFINED;")],
-    "ls038-steps-off": [("src/casim.c", "    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0) return CASIM_BAD_ARG;",
-                         "    if (0) return CASIM_BAD_ARG;")],
+    "ls038-steps-off": [("src/casim.c", "    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0)        /* CAS 038's letters",
+                         "    if (0)        /* CAS 038's letters")],
     "ls038-steps-mark-off": [("src/casim.c", "    ((rat *)(void *)nd(c, 2))->q = 0;", "    (void)0;")],
-    "ls038-steps-fallback": [("src/casim.c", "        st = CASIM_NO_ROOM;                                 /* unless it was a letter solve (below) */",
-                              "        return CASIM_NO_ROOM;")],
+    # CAS 039 (work/039-letter-steps.md): a letter solve's page. Its call, BOTH SIDES left out only where it is the text
+    # as typed (and POLYNOMIAL's rule for an expression), LINEAR's depth, value and rows (the coefficient's, split by
+    # factor, not b's), and ANSWER as solve's own line
+    "ls039-off": [("src/casim.c", "        return st == CASIM_NO_ROOM ? st : ls_steps(rq, P, o, ans, arena, room);",
+                   "        return st == CASIM_NO_ROOM ? st : (ls_steps(rq, P, o, ans, arena, room), CASIM_BAD_ARG);")],
+    "ls039-both-always": [("src/casim.c", "    if (strcmp(T, rq->eqn) != 0 && (eq || strncmp(T, rq->eqn, n) != 0 || strcmp(T + n, \"=0\") != 0) &&",
+                           "    if ((void)n, 1 &&")],
+    "ls039-both-never": [("src/casim.c", "    if (strcmp(T, rq->eqn) != 0 && (eq ||", "    if (0 && strcmp(T, rq->eqn) != 0 && (eq ||")],
+    "ls039-polynomial-off": [("src/casim.c", "eq ? CASIM_RULE_BOTH_SIDES : CASIM_RULE_POLYNOMIAL))\n        puts_(&w, T);",
+                              "CASIM_RULE_BOTH_SIDES))\n        puts_(&w, T);")],
+    "ls039-depth": [("src/casim.c", "ss_hit(&S, &w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)", "ss_hit(&S, &w, 0, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)")],
+    "ls039-value-off": [("src/casim.c", "        for (const char *p = x; *p && p != end; p++) {",
+                         "        for (const char *p = x + 1; *p && p != end; p++) {")],
+    "ls039-rows-off": [("src/casim.c", "        ls_print(&c, &w, &R);\n    }", "        (void)R;\n    }")],
+    "ls039-coef-b": [("src/casim.c", "&& k == 1) a = add2(&c, a, co);", "&& k == 0) a = add2(&c, a, co);")],
+    "ls039-coef-whole": [("src/casim.c", "    if (c.st == CASIM_OK) ls_note(&c, &R, &D, rq->var, a);",
+                          "    if (c.st == CASIM_OK) ls_note(&c, &R, &D, rq->var, 0);")],
+    "ls039-answer-own": [("src/casim.c", "w.cap = o->cap, w.n = 0, w.full = false, puts_(&w, ans);",
+                          "w.cap = o->cap, w.n = 0, w.full = false, puts_(&w, T);")],
 }
 
 
