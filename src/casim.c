@@ -5216,6 +5216,9 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
     ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
 }
 
+static casim_status ls_steps(const casim_req *rq, walk_t *P, out_t *o, const char *ans, void *arena, size_t room);
+
+
 /* casim_step for solve, page P->k with P->flags into o: do_solve itself, its answer in a slot at the arena's top
    (plain solve's out and bound), then the walk over what it left in the arena: its coefficients and its factors, at
    the places it grabbed them */
@@ -5260,7 +5263,8 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
     start(&c, rq->eqn, rq->angle, arena, room);
     if (solve_flags(rq->model, rq->angle) & SF_CX) c.nm |= NM_CX;     /* the walk's quadratics as solve's */
     cr = held(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
-    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0) return CASIM_BAD_ARG;  /* CAS 038: letters, no steps */
+    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0)        /* CAS 038's letters: their own page */
+        return st == CASIM_NO_ROOM ? st : ls_steps(rq, P, o, ans, arena, room);
     if (st != CASIM_OK) return st;
     ws = held(&c, sizeof(solve_ws));
     held(&c, SOLVE_DIVS * sizeof(int32_t));
@@ -9574,6 +9578,71 @@ no:
         return false;
     }
     return true;
+}
+
+/* ---- CAS 039 (work/039-letter-steps.md): show steps for a letter solve (CAS 038) ----
+   Solve's reading again: L - R canonical and expanded where var is, printed as collect prints it (BOTH SIDES, or
+   POLYNOMIAL for an expression; left out when that is the text as typed); it = 0 at depth 1 (LINEAR), with the
+   answer's value and the coefficient's rows; then ANSWER, solve's own (every row) */
+static __attribute__((noinline)) casim_status ls_steps(const casim_req *rq, walk_t *P, out_t *o, const char *ans,
+                                                        void *arena, size_t room)
+{
+    ctx c;
+    sstep_t S = {P->k, 0, (P->flags & CASIM_STEPS_ONE_LINE) != 0, o->cap, P->info};
+    out_t w = {o->o, o->cap, 0, false}, t;
+    cdset R = {{0}, {0}, 0};
+    tdc D;
+    ref e, tb, a, co, one, *u;
+    long k;
+    int nu;
+    char ne = '!';
+    char *T;
+    const char *x = ans + 10, *end = strstr(ans, "; ");
+    size_t n = strlen(rq->eqn);
+    bool eq = strchr(rq->eqn, '=') != NULL;
+    char name[2] = {(char)('A' + rq->var), '\0'};
+    start(&c, rq->eqn, rq->angle, arena, room);
+    c.rtl = rq->model == CASIM_MODEL_STU;
+    c.opaque = true;
+    e = parse(&c);
+    if (c.st == CASIM_OK) e = canon(&c, e);
+    if (c.st == CASIM_OK && nd(&c, e)->kind == K_EQ) e = add2(&c, nd(&c, e)->a, ib_neg(&c, nd(&c, e)->b));
+    c.sub_var = rq->var;
+    if (c.st == CASIM_OK) e = expand_fully(&c, e);
+    c.sub_var = -1;
+    tb = grab(&c, SLOT);
+    if (c.st != CASIM_OK) return c.st;
+    T = (char *)(void *)nd(&c, tb);
+    t = (out_t){T, SLOT, 0, false};
+    put_collected(&c, &t, e, rq->var), puts_(&t, "=0");
+    if (t.full) return CASIM_TOO_LONG;
+    /* the coefficient's rows, on the line that divides by it (abacus #13758): a≠0 as ls_solve reads it, a holding no
+       var, so a at "x = a" is a itself and its ≠ is split by factor */
+    one = e, u = nd(&c, e)->kind == K_ADD ? list(&c, nd(&c, e)->a) : &one, nu = nd(&c, e)->kind == K_ADD ? nd(&c, e)->n : 1;
+    a = small(&c, C_0);
+    for (int i = 0; i < nu && c.st == CASIM_OK; i++)
+        if (as_power(&c, u[i], rq->var, &k, &co) && k == 1) a = add2(&c, a, co);
+    D.u = &a, D.k = &ne, D.n = 1;
+    if (c.st == CASIM_OK) ls_note(&c, &R, &D, rq->var, a);
+    if (c.st != CASIM_OK) return c.st;
+    if (strcmp(T, rq->eqn) != 0 && (eq || strncmp(T, rq->eqn, n) != 0 || strcmp(T + n, "=0") != 0) &&
+        ss_hit(&S, &w, 0, CASIM_STEP_RESULT, eq ? CASIM_RULE_BOTH_SIDES : CASIM_RULE_POLYNOMIAL))
+        puts_(&w, T);
+    if (ss_hit(&S, &w, 1, CASIM_STEP_RESULT, CASIM_RULE_LINEAR)) {
+        puts_(&w, T), puts_(&w, ": "), puts_(&w, name), puts_(&w, "=");
+        for (const char *p = x; *p && p != end; p++) {
+            char ch[2] = {*p, '\0'};
+            puts_(&w, ch);
+        }
+        ls_print(&c, &w, &R);
+    }
+    if (ss_hit(&S, &w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER)) w.cap = o->cap, w.n = 0, w.full = false, puts_(&w, ans);
+    P->info->count = S.at;
+    if (c.st != CASIM_OK) return c.st;
+    if (P->k < 0) return CASIM_OK;
+    if (P->k >= S.at) return CASIM_BAD_ARG;
+    if (w.full) return o->o[0] = '\0', CASIM_TOO_LONG;
+    return CASIM_OK;
 }
 
 /* the arena back to mark, the constants cached since dropped (they would point into reused room: ir_reset's rule) */

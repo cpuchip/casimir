@@ -714,19 +714,31 @@ static void letters(void)
     }
     ce_angle(angle);
     for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
-    /* steps: BAD_ARG for a letter solve, out "" (at the calculator's arena, where only plain solve fits beside the
-       answer's slot, 2,000 B, and past it, 2,400 B, where the steps' own room doesn't) */
+    /* CAS 039: steps page a letter solve as a numeric one pages, BOTH SIDES, LINEAR (with the coefficient's row) and
+       ANSWER, at the calculator's arena and from 2,104 B (plain solve's 1,912 and the answer's slot); at 2,000 B plain
+       solve fits and its steps don't, NO_ROOM as for numbers */
+    static const struct { int depth, rule; const char *line; } page[] = {
+        {0, CASIM_RULE_BOTH_SIDES, "A×X+(B-C)=0"}, {1, CASIM_RULE_LINEAR, "A×X+(B-C)=0: X=-(B-C)÷A; A≠0"},
+        {0, CASIM_RULE_ANSWER, "SOLVED: X=-(B-C)÷A; A≠0"}};
     for (int a = 0; a < 4; a++) {
-        size_t cap = a == 0 ? sizeof arena : a == 1 ? sizeof small : a == 2 ? 2000 : 2400;
+        size_t cap = a == 0 ? sizeof arena : a == 1 ? sizeof small : a == 2 ? 2104 : 2000;
         unsigned char *m = a == 0 ? arena : small;
         casim_req rq = {CASIM_SOLVE, "A×X+B=C", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
         casim_step_info info;
-        for (int k = -1; k <= 0; k++) {
-            out[0] = 'x', out[1] = '\0';
-            casim_status st = casim_step(&rq, k, 0, &info, out, OUT, m, cap);
-            CHECK(st == CASIM_BAD_ARG && out[0] == '\0', "steps solve A×X+B=C page %d at %zu B: %d \"%s\"", k, cap, (int)st,
-                  out);
+        casim_status st = casim_step(&rq, -1, 0, &info, out, OUT, m, cap);
+        if (a == 3) {
+            CHECK(st == CASIM_NO_ROOM, "steps solve A×X+B=C at %zu B: %d, want NO_ROOM", cap, (int)st);
+            continue;
         }
+        CHECK(st == CASIM_OK && info.count == 3, "steps solve A×X+B=C at %zu B: %d, %d steps", cap, (int)st, info.count);
+        for (int k = 0; k < 3; k++) {
+            st = casim_step(&rq, k, CASIM_STEPS_ONE_LINE * (k == 1), &info, out, OUT, m, cap);
+            CHECK(st == CASIM_OK && info.depth == page[k].depth && info.rule == page[k].rule && info.line == CASIM_STEP_RESULT &&
+                      strcmp(out, page[k].line) == 0,
+                  "steps solve A×X+B=C page %d at %zu B: %d, depth %d rule %d \"%s\"", k, cap, (int)st, info.depth,
+                  info.rule, out);
+        }
+        CHECK(casim_step(&rq, 3, 0, &info, out, OUT, m, cap) == CASIM_BAD_ARG, "steps solve A×X+B=C page 3 at %zu B", cap);
     }
 }
 
