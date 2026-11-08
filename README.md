@@ -149,9 +149,11 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 576 deliberate faults, each of which the tests must
-  catch, but six named. At CAS 038's accepted tree (eedbf16) `make test` caught its 25 (work/038-letters-in-solve.md),
-  and at CAS 039's (771fdbd) 34 of the 35 run on 038's and 039's; the one that survived, ls038-steps-fallback, is
-  equivalent there (work/039-letter-steps.md) and is retired. At 1.5.0's tree (cd7db86) `make test` caught 537 of 543 (work/v1.5.0-mutants.txt), which
+  catch, but six named. At 1.6.0's tree (175c160) `make test` caught 570 of 576 (work/v1.6.0-mutants.txt): the six
+  are 1.5.0's, and searched again there each moves exactly the lines it moved at 1.5.0's tree. At CAS 038's accepted
+  tree (eedbf16) `make test` caught its 25 (work/038-letters-in-solve.md), and at CAS 039's (771fdbd) 34 of the 35
+  run on 038's and 039's; the one that survived, ls038-steps-fallback, is equivalent there (work/039-letter-steps.md)
+  and is retired. At 1.5.0's tree (cd7db86) `make test` caught 537 of 543 (work/v1.5.0-mutants.txt), which
   names the six with what masks each: 1.4.0's five, four of which move the same searched lines as at 1.4.0, and
   factor026-letter-off, whose row CAS 037's row on a power with K in its exponent prints too. At CAS 036's accepted
   tree (ead17ba) `make test` caught its 10 new (work/036-missing-values.md), and at CAS 037's (8b6f1d7) the 17 run

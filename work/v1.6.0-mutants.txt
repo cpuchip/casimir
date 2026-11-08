@@ -1,0 +1,51 @@
+# The mutant count at the v1.6.0 tag: 570 of 576 caught at the tag's tree, from one run of every mutant (2026-11-08);
+# the six survivors are 1.5.0's six, named below (abacus #13835, #13925, #13928).
+#
+# The tree: 175c160, the commit v1.6.0 tags: the version commit on 10be2fb (CAS 038 as accepted at eedbf16, CAS 039 as
+# accepted at 771fdbd), which changes only README.md, idf_component.yml, src/casim.h's version text and one comment in
+# tests/solve_test.c. The README's code size (410,435 B, scripts/device.sh at 16,384 B) and the S3 code (269,805 B) were
+# measured at 2da4e2f, whose code is the tag's but for the version text and a comment.
+#
+# The control: make test in the main repository at 175c160, built there by make check: all green, 20 tests, 118,545
+# checks, golden reporting "Casimir 1.6.0" (10:28Z to 10:33:53Z). The run's own control, in the run's worktree, doesn't
+# count: that worktree had a build folder copied in with cp -r, whose fresh timestamps let objects built with 1.5.0's
+# version text pass as up to date, and its golden reported "Casimir 1.5.0". What that means for the run:
+#   - The folder was built from three states, read from its source's untouched timestamps against the commit times:
+#     the gate run at 2da4e2f (golden_check 09:09:33Z, the tests from 09:13:07 to 09:15:01Z), an uncommitted try at
+#     1.5.0's do_ssteps fallback line (solve_test, casim-ser0.o and casim-vcheck.o, 09:57Z), and ec4121d's casim.c
+#     (casim.o, libcasim.a and the CLI, 09:58:25Z; committed 09:59:02Z). All three had casim.h at 1.5.0's text, and
+#     tests/solve_test.c at a346b81's, which 175c160 changes by one comment line.
+#   - scripts/mutants.py copies the tree with shutil.copytree, which keeps timestamps, so make rebuilds only what
+#     depends on the file a mutant rewrites. 574 of the 576 rewrite src/casim.c, and Makefile:208 makes every test
+#     binary depend on src/casim.c itself (build/%_test: tests/%_test.c … $(CASIM_SRC) src/casim.h build/libcore.a),
+#     as are casim.o, casim-ser0.o and casim-vcheck.o. So in those copies everything compiled from casim.c, and every
+#     test, is rebuilt from the copy's own sources; what stays is the core's, abn's and libbid's objects, whose sources
+#     are the same at all three states and at 175c160.
+#   - abacus's control (b): an unmutated copy made as mutants.py makes a mutant's, src/casim.c written back with
+#     identical text, then make all, the frame table re-recorded and make test: all green, 20 tests, 118,545 checks,
+#     solve_test 416 checks, golden and the CLI reporting 1.6.0.
+#   - The two that rewrite a script, irs-chain-unchecked (scripts/istep-values.py) and ci-pin-from-main
+#     (scripts/ci-test.sh), ran over the stale objects in the run. Run again at 14:00Z on copies of the worktree
+#     rebuilt fresh (every source touched, then make test: green, 118,545 checks, golden 1.6.0), both are caught, by the
+#     same files as in the run.
+#
+# The run (10:28:07Z to 13:50:20Z, 6 shards of 96, scripts/mutants.py on copies of that tree, nice 19):
+#   570 of 576 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache, cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value,
+#     factor026-letter-off: 1.5.0's six (work/v1.5.0-mutants.txt names what masks each).
+#   Searched again at this tree (host only, 14:02:45Z to 14:03:55Z), with 1.5.0's inputs: 2,220,409 lines through
+#     golden_check --record on the build and each of the six, and 1,011,613 of them through the series-only build
+#     (CASIM_SER=2) for the two ser-*. Each moves exactly what it moved at 1.5.0's tree, byte for byte: div-letter-off
+#     the same 16 sum lines, ser-ln-no-value the same one line on the series-only build, and cancel-rewind-keeps-cache,
+#     cond-site2-lhopital, ser-root-of-negative and factor026-letter-off none. CAS 038's change to cd_note's merge line,
+#     which CAS 023's rows use beside cond-site2-lhopital's site, moves none of them.
+#   The 33 new since 1.5.0 are caught: CAS 038's 23 (ls038-*) and CAS 039's 10 (ls039-*). ls038-steps-fallback, CAS
+#     038's 24th, is retired: at CAS 039's tree a letter solve's page and do_ssteps' fallback both give NO_ROOM there,
+#     so it is equivalent (work/039-letter-steps.md).
+#   cond-gt-not-kept is caught at its new anchor, cd_note's merge line, which CAS 038 changed.
+#
+# Peaks: host memory in use (free, every 10 s): 24,972 MiB at most, counting every tenant of the box, so it doesn't
+# attribute this run's use. The copies on disk (build/mutants): 4,191 MiB at most. /tmp 24 KiB at most and /dev/shm 616
+# KiB, read with du every 10 s; du doesn't see a deleted file held open. The clang check's containers (casim-clang-*):
+# 13 started and 13 died while the run was up, as docker reported them, never two at once. No device build or S3
+# size check ran in it: the code size is 2da4e2f's.
