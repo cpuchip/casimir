@@ -5255,7 +5255,7 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
         st = do_solve(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, solve_flags(rq->model, rq->angle));
         if (cap) out[0] = st == CASIM_OK ? '\0' : out[0];
         if (st != CASIM_OK) return st;
-        st = CASIM_NO_ROOM;                                 /* unless it was a letter solve (below) */
+        st = CASIM_NO_ROOM;                     /* a letter solve's mark below gives it back (CAS 039) */
     } else if (st != CASIM_OK) {
         if (cap > strlen(ans)) memcpy(out, ans, strlen(ans) + 1);      /* what plain solve's out holds */
         return st;

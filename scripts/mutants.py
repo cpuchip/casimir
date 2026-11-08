@@ -1505,7 +1505,8 @@ MUTANTS = {
     # typed; X÷0=1 stays NOT_NUMERIC), model 33's i, var dropping out, the answer's sign and its two checks (L-R as
     # a×var+b with the degree guard off, a×x+b = 0 with the sign off: alone, each fault is caught by its check), a≠0's rows, the typed text's on both sides at the
     # answer, the factors again once x is in, LN's u≠1, SQRT's ≥ and ACOSH's u≥1, the merges into > and <, a failing
-    # condition's two outcomes, and steps' BAD_ARG with its mark and at the fallback's arena
+    # condition's two outcomes, and steps' mark (ls038-steps-fallback went at CAS 039, equivalent: there a letter
+    # solve's page and the fallback's both give NO_ROOM. 1.5.0's fallback line back would move do_ssteps' host frame)
     "ls038-off": [("src/casim.c", "    if (c.st == CASIM_NOT_NUMERIC && ls_solve(&c, &w, var)) return ls_end(&c, &w);",
                    "    if (c.st == CASIM_NOT_NUMERIC && 0 && ls_solve(&c, &w, var)) return ls_end(&c, &w);")],
     "ls038-gate-off": [("src/casim.c", "    if (c->st != CASIM_OK || !(strstr(c->s, PI_UTF8) || (nd(c, e)->kind == K_REQ",
@@ -1548,8 +1549,6 @@ MUTANTS = {
     "ls038-steps-off": [("src/casim.c", "    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0)        /* CAS 038's letters",
                          "    if (0)        /* CAS 038's letters")],
     "ls038-steps-mark-off": [("src/casim.c", "    ((rat *)(void *)nd(c, 2))->q = 0;", "    (void)0;")],
-    "ls038-steps-fallback": [("src/casim.c", "        st = CASIM_NO_ROOM;                                 /* unless it was a letter solve (below) */",
-                              "        return CASIM_NO_ROOM;")],
     # CAS 039 (work/039-letter-steps.md): a letter solve's page. Its call, BOTH SIDES left out only where it is the text
     # as typed (and POLYNOMIAL's rule for an expression), LINEAR's depth, value and rows (the coefficient's, split by
     # factor, not b's), and ANSWER as solve's own line
