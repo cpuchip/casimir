@@ -1,0 +1,96 @@
+# CAS 038's examples (work/038-letters-in-solve.md; Michael's "whatever is good/next for casimir", abacus #13632, h038
+# #13635): solve for a variable in an equation linear in it, whose coefficients hold other letters or π. The answer is
+# put back into the equation and must give 0 before it prints, and its rows are where it holds: a≠0 for the variable's
+# coefficient a, and each condition of the typed text read at the answer. Each row is run by scripts/doc-examples.py,
+# and again with the series route compiled out (CAS 021) and through the value check's build (CAS 022 rule 5).
+
+# - Part 1: formulas rearranged, in each model and mode (the answer is canon's text, as every op prints it)
+
+| Command | Prints |
+|---|---|
+| `casim solve 'V=I×R' R RAD` | `SOLVED: R=V÷I; I≠0` |
+| `casim solve 'P×V=N×R×T' T RAD` | `SOLVED: T=P×V÷N÷R; N≠0; R≠0` |
+| `casim solve 'C=2×π×R' R RAD` | `SOLVED: R=C÷2÷π` |
+| `casim solve 'Y=M×X+B' M RAD` | `SOLVED: M=-(B-Y)÷X; X≠0` |
+| `casim solve 'A×X+B=C' X RAD` | `SOLVED: X=-(B-C)÷A; A≠0` |
+| `casim solve '(X+A)÷B=C' X RAD` | `SOLVED: X=B×(C-A÷B); B≠0` |
+| `casim solve 'X÷A=B' X RAD` | `SOLVED: X=A×B; A≠0` |
+| `casim solve 'A=X' X RAD` | `SOLVED: X=A` |
+| `casim --model STU solve 'V=I×R' R RAD` | `SOLVED: R=V÷I; I≠0` |
+| `casim --complex solve 'A×X=B' X RAD` | `SOLVED: X=B÷A; A≠0` |
+| `casim solve 'A×X=0.5' X RAD` | `SOLVED: X=0.5÷A; A≠0` |
+| `casim solve 'X=TAN(A)' X DEG` | `SOLVED: X=TAN(A); COS(A)≠0` |
+
+# - Part 2: the rows. a≠0 is read as a divisor is (each letter factor, LN(u)'s u≠1, none for a factor never 0), u≠0 and
+#   u≥0 on one u are u>0, and a ≥ or ≤ row beside a ≠ row of the same sides is > or <. At A = -1 in (A^2-1)×X=A+1
+#   every X solves, and at A = 1 none does
+
+| Command | Prints |
+|---|---|
+| `casim solve 'X×Y÷Y=3' X RAD` | `SOLVED: X=3; Y≠0` |
+| `casim solve 'X×A=X' X RAD` | `SOLVED: X=0; A≠1` |
+| `casim solve '(A^2-1)×X=A+1' X RAD` | `SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |
+| `casim solve 'X×(A+B)=A^2-B^2' X RAD` | `SOLVED: X=(A^2-B^2)÷(A+B); A+B≠0` |
+| `casim solve 'X÷(A×B)=1' X RAD` | `SOLVED: X=A×B; A≠0; B≠0` |
+| `casim solve 'X×(X+A)÷(X+A)=B' X RAD` | `SOLVED: X=B; A+B≠0` |
+| `casim solve 'A×X^2÷X=1' X RAD` | `SOLVED: X=1÷A; A≠0` |
+| `casim solve 'LN(A)×X=1' X RAD` | `SOLVED: X=1÷LN(A); A>0; A≠1` |
+| `casim solve 'X=LN(A×B)' X RAD` | `SOLVED: X=LN(A×B); A×B>0` |
+| `casim solve 'SQRT(A)×X=1' X RAD` | `SOLVED: X=1÷SQRT(A); A>0` |
+| `casim solve 'X=SQRT(A)' X RAD` | `SOLVED: X=SQRT(A); A≥0` |
+| `casim solve 'X=SQRT(A)÷B' X RAD` | `SOLVED: X=SQRT(A)÷B; A≥0; B≠0` |
+| `casim solve 'X=SQRT(-A)÷A' X RAD` | `SOLVED: X=SQRT(-A)÷A; A<0` |
+| `casim solve 'X=SQRT(A^2-1)' X RAD` | `SOLVED: X=SQRT(A^2-1); ABS(A)≥1` |
+| `casim solve 'SQRT(A^2-1)×X=1' X RAD` | `SOLVED: X=1÷SQRT(A^2-1); ABS(A)>1` |
+| `casim solve 'X=ACOSH(A)' X RAD` | `SOLVED: X=ACOSH(A); A≥1` |
+| `casim solve 'X=ACOSH(A)÷(A-1)' X RAD` | `SOLVED: X=ACOSH(A)÷(A-1); A>1` |
+| `casim solve 'ACOSH(A)×X=1' X RAD` | `SOLVED: X=1÷ACOSH(A); A≥1; ACOSH(A)≠0` |
+
+# - Part 3: no value anywhere, as in every op (CAS 016): a 0 divided, a condition without a letter that fails
+
+| Command | Prints |
+|---|---|
+| `casim solve 'X=A÷(B-B)' X RAD` | `UNDEFINED` |
+| `casim solve 'A×X=LN(-1)' X RAD` | `UNDEFINED` |
+
+# - Part 4: π as typed is let in as a letter is (ruling 6: no golden line moved), so a text with π and no letter
+#   answers too, and its pole is UNDEFINED. A constant with neither, SIN(1) or SQRT(2), keeps 1.5.0's NOT_NUMERIC
+
+| Command | Prints |
+|---|---|
+| `casim solve 'π×X=A' X RAD` | `SOLVED: X=A÷π` |
+| `casim solve 'π×X=1' X RAD` | `SOLVED: X=1÷π` |
+| `casim solve 'SIN(π÷6)×X=1' X RAD` | `SOLVED: X=2` |
+| `casim solve 'X÷0=π' X RAD` | `UNDEFINED` |
+| `casim solve 'SIN(1)×X=1' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'SQRT(2)×X=1' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X÷0=1' X RAD` | `NOT_NUMERIC` |
+
+# - Part 5: still refused, as 1.5.0 refuses them: the variable drops out (ruling 3), degree 2, the variable inside a
+#   function or a denominator, a condition no row here writes (ABS(u)≤1, ABS(u)<1), model 33's i (as a sum refuses
+#   it), and an answer where the typed text has no value (at X = A, X×(X-A)÷(X-A) has none, and the text has one
+#   at every other X). pw's first refusal decides whether letters are read at all: X^2÷X×A=1 stops at ÷X, before A
+
+| Command | Prints |
+|---|---|
+| `casim solve 'A×(X-1)=A×X' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'A×SIN(X)=B' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'A÷X=1' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X=ASIN(A)' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X=ATANH(A)' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'i×X=A' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X×(X-A)÷(X-A)=A' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X^2÷X×A=1' X RAD` | `NOT_POLYNOMIAL` |
+
+# - Part 6: show steps has no page for these (ruling 5): BAD_ARG, as for an op it doesn't show, at every arena where
+#   solve answers. A refusal is solve's own. Where solve has no room, neither has steps
+
+| Command | Prints |
+|---|---|
+| `casim steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
+| `casim steps solve 'π×X=1' X RAD` | `BAD_ARG` |
+| `casim --arena 1900 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
+| `casim --arena 2400 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
+| `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim --arena 1000 solve 'A×X+B=C' X RAD` | `NO_ROOM` |

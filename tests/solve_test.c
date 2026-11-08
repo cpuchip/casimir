@@ -96,8 +96,8 @@ static void exact(void)
     refused("X^0.5-2", CASIM_NOT_POLYNOMIAL);
     refused("X^(-1)+1", CASIM_NOT_POLYNOMIAL);
     refused("X^Y-1", CASIM_NOT_POLYNOMIAL);
-    refused("Y×X-1", CASIM_NOT_NUMERIC);
-    refused("π×X-1", CASIM_NOT_NUMERIC);
+    is("Y×X-1", "SOLVED: X=1÷Y; Y≠0");                   /* CAS 038: letters, linear in X (letters()) */
+    is("π×X-1", "SOLVED: X=1÷π");
     refused("SQRT(2)×X-1", CASIM_NOT_NUMERIC);
     refused("X^2+Y", CASIM_NOT_NUMERIC);
     refused("X^13-1", CASIM_NO_ROOM);                     /* degree past 12 */
@@ -627,9 +627,109 @@ static void visible(void)
     CHECK(n == 22, "%d visible examples, want 22", n);
 }
 
+/* CAS 038 (work/038-letters-in-solve.md): an equation linear in var with letters or π as coefficients. Each text
+   exactly; each answer put back on the core at letter values every row holds at; and at each row's edge on one letter
+   (L≠r, L>r, L≥r, L<r, L≤r: L at r, or r ∓ 1÷2 for ≥ and ≤) the equation has no value as typed, or no longer
+   depends on var (every value or none). Steps are BAD_ARG, at every arena; the declines keep 1.5.0's NOT_NUMERIC */
+static void letters(void)
+{
+    static const struct { const char *eqn; char var; const char *want; } rows[] = {
+        {"V=I×R", 'R', "SOLVED: R=V÷I; I≠0"},
+        {"P×V=N×R×T", 'T', "SOLVED: T=P×V÷N÷R; N≠0; R≠0"},
+        {"A×X+B=C", 'X', "SOLVED: X=-(B-C)÷A; A≠0"},
+        {"Y=M×X+B", 'M', "SOLVED: M=-(B-Y)÷X; X≠0"},
+        {"(X+A)÷B=C", 'X', "SOLVED: X=B×(C-A÷B); B≠0"},
+        {"X×Y÷Y=3", 'X', "SOLVED: X=3; Y≠0"},
+        {"X×A=X", 'X', "SOLVED: X=0; A≠1"},
+        {"X×(X+A)÷(X+A)=B", 'X', "SOLVED: X=B; A+B≠0"},
+        {"(A^2-1)×X=A+1", 'X', "SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1"},
+        {"X×(A+B)=A^2-B^2", 'X', "SOLVED: X=(A^2-B^2)÷(A+B); A+B≠0"},
+        {"LN(A)×X=1", 'X', "SOLVED: X=1÷LN(A); A>0; A≠1"},
+        {"C=2×π×R", 'R', "SOLVED: R=C÷2÷π"},
+        {"SQRT(A)×X=1", 'X', "SOLVED: X=1÷SQRT(A); A>0"},
+        {"X=SQRT(A)÷B", 'X', "SOLVED: X=SQRT(A)÷B; A≥0; B≠0"},
+        {"X=SQRT(-A)÷A", 'X', "SOLVED: X=SQRT(-A)÷A; A<0"},
+        {"X=ACOSH(A)÷(A-1)", 'X', "SOLVED: X=ACOSH(A)÷(A-1); A>1"},
+        {"X=SQRT(A^2-1)", 'X', "SOLVED: X=SQRT(A^2-1); ABS(A)≥1"},
+        {"X=TAN(A)", 'X', "SOLVED: X=TAN(A); COS(A)≠0"},
+        {"π×X=A", 'X', "SOLVED: X=A÷π"},
+        {"SIN(π÷6)×X=1", 'X', "SOLVED: X=2"},
+    };
+    static const char *const declined[] = {"A×(X-1)=A×X", "X^2=A", "A×SIN(X)=B", "X=ASIN(A)", "i×X=A", "SQRT(2)×X=1",
+                                           "SIN(1)×X=1", "X÷0=1", "X^2=π", "X×(X-A)÷(X-A)=A"};
+    static const char *const ops[] = {"\xe2\x89\xa0", "\xe2\x89\xa5", "\xe2\x89\xa4", ">", "<"};
+    static unsigned char small[8800];
+    char out[OUT];
+    abn tiny = ce_num("1E-25");
+    int angle = (int)ce_calc->angle;
+    ce_angle(CASIM_RAD);                                /* solve's RAD (the core starts in DEG) */
+    for (size_t i = 0; i < sizeof rows / sizeof rows[0]; i++) {
+        char text[OUT], *p, *row;
+        abn x, f0, f1, mag;
+        casim_status st = solve(rows[i].eqn, rows[i].var - 'A', CASIM_MODEL_35, out);
+        CHECK(st == CASIM_OK && strcmp(out, rows[i].want) == 0, "solve %s for %c: %d \"%s\", want \"%s\"", rows[i].eqn,
+              rows[i].var, (int)st, out, rows[i].want);
+        if (st != CASIM_OK) continue;
+        /* the answer, at values every row here holds at (each > 1, no two alike) */
+        for (char l = 'A'; l <= 'Z'; l++) {
+            char v[16];
+            snprintf(v, sizeof v, "%d.%d", 2 + (l - 'A') % 7, (l - 'A') * 7 % 10);
+            ce_set(l, v);
+        }
+        if (rows[i].eqn[0] == 'X' && strstr(rows[i].eqn, "SQRT(-A)")) ce_set('A', "-2.5");
+        snprintf(text, sizeof text, "%s", out + strlen("SOLVED: X="));
+        if ((p = strstr(text, "; "))) *p = '\0';
+        if (ce_eval(text, &x) != ABN_OK) {
+            CHECK(false, "%s: %s does not evaluate", rows[i].eqn, text);
+            continue;
+        }
+        ce_set_abn(rows[i].var, x);
+        CHECK(ce_eval(rows[i].eqn, &f0) == ABN_OK && (mag = abn_abs(&f0), abn_cmp(&mag, &tiny) < 0), "%s at %c=%s: %s",
+              rows[i].eqn, rows[i].var, text, ce_text(&f0));
+        /* each row on one letter, at its edge */
+        for (row = strstr(out, "; "); row; row = strstr(row + 2, "; ")) {
+            char l = row[2], v[32], *end;
+            size_t o = 0;
+            double r;
+            if (l < 'A' || l > 'Z') continue;
+            while (o < 5 && strncmp(row + 3, ops[o], strlen(ops[o])) != 0) o++;
+            if (o == 5) continue;
+            r = strtod(row + 3 + strlen(ops[o]), &end);
+            if (*end != '\0' && *end != ';') continue;
+            snprintf(v, sizeof v, "%g", o == 1 ? r - 0.5 : o == 2 ? r + 0.5 : r);
+            ce_set(l, v);
+            ce_set(rows[i].var, "0");
+            abn_status s0 = ce_eval(rows[i].eqn, &f0);
+            ce_set(rows[i].var, "1");
+            abn_status s1 = ce_eval(rows[i].eqn, &f1);
+            CHECK(s0 != ABN_OK || s1 != ABN_OK || abn_cmp(&f0, &f1) == 0, "%s at %c=%s: still depends on %c (%s, %s)",
+                  rows[i].eqn, l, v, rows[i].var, ce_text(&f0), ce_text(&f1));
+            snprintf(v, sizeof v, "%d.%d", 2 + (l - 'A') % 7, (l - 'A') * 7 % 10);
+            ce_set(l, v);
+        }
+    }
+    ce_angle(angle);
+    for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
+    /* steps: BAD_ARG for a letter solve, out "" (at the calculator's arena, where only plain solve fits beside the
+       answer's slot, 1,900 B, and past it, 2,400 B, where the steps' own room doesn't) */
+    for (int a = 0; a < 4; a++) {
+        size_t cap = a == 0 ? sizeof arena : a == 1 ? sizeof small : a == 2 ? 1900 : 2400;
+        unsigned char *m = a == 0 ? arena : small;
+        casim_req rq = {CASIM_SOLVE, "A×X+B=C", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
+        casim_step_info info;
+        for (int k = -1; k <= 0; k++) {
+            out[0] = 'x', out[1] = '\0';
+            casim_status st = casim_step(&rq, k, 0, &info, out, OUT, m, cap);
+            CHECK(st == CASIM_BAD_ARG && out[0] == '\0', "steps solve A×X+B=C page %d at %zu B: %d \"%s\"", k, cap, (int)st,
+                  out);
+        }
+    }
+}
+
 int main(void)
 {
     ce_init();
+    letters();
     visible();
     exact();
     left_out();

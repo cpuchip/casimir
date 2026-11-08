@@ -4839,6 +4839,9 @@ static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, i
     if (note) put_left_out(w, s);
 }
 
+static bool ls_solve(ctx *c, out_t *w, int var);
+static casim_status ls_end(ctx *c, out_t *w);
+
 static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var, int angle, char *out, size_t cap,
                                                         void *arena, size_t arena_cap, int sf)
 {
@@ -4870,6 +4873,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
             }
         } else pw(&c, n, var, co);
     }
+    if (c.st == CASIM_NOT_NUMERIC && ls_solve(&c, &w, var)) return ls_end(&c, &w);
     if (c.st != CASIM_OK) return pw_refused(&c, n, var), finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
     /* the tree is done with: its arena goes to the search (show steps reads cr and ws here afterwards: do_ssteps) */
     c.used = mark;
@@ -5247,15 +5251,17 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
            or answers, and then only the steps don't fit */
         st = do_solve(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, solve_flags(rq->model, rq->angle));
         if (cap) out[0] = st == CASIM_OK ? '\0' : out[0];
-        return st == CASIM_OK ? CASIM_NO_ROOM : st;
-    }
-    if (st != CASIM_OK) {
+        if (st != CASIM_OK) return st;
+        st = CASIM_NO_ROOM;                                 /* unless it was a letter solve (below) */
+    } else if (st != CASIM_OK) {
         if (cap > strlen(ans)) memcpy(out, ans, strlen(ans) + 1);      /* what plain solve's out holds */
         return st;
     }
     start(&c, rq->eqn, rq->angle, arena, room);
     if (solve_flags(rq->model, rq->angle) & SF_CX) c.nm |= NM_CX;     /* the walk's quadratics as solve's */
     cr = held(&c, 2 * (SOLVE_DEG + 1) * sizeof(rat));
+    if (c.st == CASIM_OK && ((rat *)(void *)nd(&c, cr))->q == 0) return CASIM_BAD_ARG;  /* CAS 038: letters, no steps */
+    if (st != CASIM_OK) return st;
     ws = held(&c, sizeof(solve_ws));
     held(&c, SOLVE_DIVS * sizeof(int32_t));
     if (c.st != CASIM_OK || !clear(&c, (rat *)(void *)nd(&c, cr), &f0)) return CASIM_NO_ROOM;   /* not reached */
@@ -9299,11 +9305,11 @@ static ref ib_neg(ctx *c, ref r);
 
 typedef struct {
     ref e[CD_MAX];
-    char op[CD_MAX];                    /* '!': e ≠ 0; '>': e > 0 */
+    char op[CD_MAX];                    /* '!': e ≠ 0; '>': e > 0; 'g': e ≥ 0 (CAS 038's solve) */
     int n;
 } cdset;
 
-/* e ≠ 0 ('!') or e > 0 ('>'), e free of var and holding a letter, kept once */
+/* e ≠ 0 ('!'), e > 0 ('>') or e ≥ 0 ('g'), e free of var and holding a letter, kept once (two of them say e > 0) */
 static __attribute__((noinline)) void cd_note(ctx *c, cdset *S, ref e, char op, int var)
 {
     if (c->st != CASIM_OK || !e) return;
@@ -9311,7 +9317,7 @@ static __attribute__((noinline)) void cd_note(ctx *c, cdset *S, ref e, char op, 
     if (c->st != CASIM_OK || contains(c, e, var) || !any_letter(c, e)) return;
     for (int i = 0; i < S->n; i++)
         if (cmp(c, S->e[i], e) == 0) {
-            if (op == '>') S->op[i] = '>';
+            if (op != S->op[i]) S->op[i] = '>';
             return;
         }
     if (S->n == CD_MAX) {
@@ -9441,6 +9447,130 @@ static __attribute__((noinline)) void cd_print(ctx *c, out_t *w, const cdset *S,
         if (S->op[i] == '>') cd_gt(c, rows, &n, S->e[i]);
         else cd_ne(c, rows, &n, S->e[i]);
     rows_put(c, w, rows, n, lead);
+}
+
+/* ls_solve's answer, or its refusal, as do_solve ends (out of line: do_solve's frame stays) */
+static __attribute__((noinline)) casim_status ls_end(ctx *c, out_t *w)
+{
+    if (w->full && c->st == CASIM_OK) c->st = CASIM_TOO_LONG;
+    return c->st == CASIM_OK ? CASIM_OK : finish(c, SPARE, w->o, w->cap);
+}
+
+static void td_rows(ctx *c, smrow *rows, int *n, ref u, char k);
+
+/* D's conditions at var = x (x 0: as they are) into S, each once (u≠0 and u≥0 say u>0): u≠0 by its factors once x is
+   in (td_canon's, again), u≠1, u>0, u≥0, u≥1 and COS(u)≠0. One without var or a letter that fails is UNDEFINED (c->st),
+   as in sum, limit and defint; false where one holding var fails at x (the text has no value at the one answer, and a
+   value elsewhere), where one can't be written (ABS(u)≤1, ABS(u)<1) or its sign isn't known */
+static __attribute__((noinline)) bool ls_note(ctx *c, cdset *S, const tdc *D, int var, ref x)
+{
+    for (int j = 0; j < D->n && c->st == CASIM_OK; j++) {
+        char kd = D->k[j];
+        ref u = x ? ib_at(c, D->u[j], var, x) : D->u[j];
+        if (c->st != CASIM_OK || kd == 'a' || kd == 'h') return c->st != CASIM_OK;
+        if (!any_letter(c, u)) {
+            int s = td_const(c, u, kd);
+            if (s == 1 && x && !contains(c, D->u[j], var)) c->st = CASIM_UNDEFINED;
+            else if (s) return false;
+            continue;
+        }
+        if (x && kd == '!') {
+            tdset T = {&u, &u, &kd, 1, 1, -1, {0}, {0}, {0}};
+            tdc E;
+            if (!td_entry(c, &T, 0, &E, -1) || !ls_note(c, S, &E, var, 0)) return c->st != CASIM_OK;
+            continue;
+        }
+        if (kd == 'n' || kd == '1') u = add2(c, u, small(c, C_M1));
+        cd_note(c, S, kd == 't' ? fn(c, F_COS, u) : u, kd == '>' || kd == 'g' ? kd : kd == '1' ? 'g' : '!', var);
+    }
+    return true;
+}
+
+/* S as rows after the answer, solved for their letter as CAS 035's are (td_rows): a ≥ or ≤ row with a ≠ row of the same
+   sides is > or < (A≠0 and A≤0 are A<0; rows_put leaves out the ≠) */
+static __attribute__((noinline)) void ls_print(ctx *c, out_t *w, const cdset *S)
+{
+    smrow rows[SM_ROWS];
+    int n = 0;
+    for (int i = 0; i < S->n && c->st == CASIM_OK; i++) td_rows(c, rows, &n, S->e[i], S->op[i]);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n && (rows[i].op == 'g' || rows[i].op == 'l'); j++)
+            if (rows[j].op == '!' && cmp(c, rows[i].l, rows[j].l) == 0 && cmp(c, rows[i].r, rows[j].r) == 0)
+                rows[i].op = rows[i].op == 'g' ? '>' : '<';
+    rows_put(c, w, rows, n, true);
+}
+
+/* ---- CAS 038 (work/038-letters-in-solve.md): solve for var in an equation linear in it, letters as coefficients ----
+   L - R as a×var + b, a and b free of var: var = -b÷a, with a≠0 and each typed condition read at that value as a row.
+   Checked by putting the answer back. False: not this shape, c->st back to pw's refusal. Its answer marks do_solve's
+   first coefficient (q 0, which pw never leaves): show steps has no page for it (do_ssteps) */
+static __attribute__((noinline)) bool ls_solve(ctx *c, out_t *w, int var)
+{
+    casim_status was = c->st;
+    size_t mark = c->used;
+    tdset T;
+    tdc D;
+    cdset S = {{0}, {0}, 0};
+    ref e, a, b, x, z, *t, one, side[2];
+    int nt, ns;
+    long k;
+    char name[2] = {(char)('A' + var), '\0'}, ne = '!';
+    c->st = CASIM_OK;
+    e = parse(c);                               /* only a text with another letter or π, as typed: else pw's (X÷0=1) */
+    if (c->st != CASIM_OK || !(strstr(c->s, PI_UTF8) || (nd(c, e)->kind == K_REQ
+                                                           ? raw_letter(c, nd(c, e)->a, var) || raw_letter(c, nd(c, e)->b, var)
+                                                           : raw_letter(c, e, var))))
+        goto no;
+    e = canon(c, e);
+    if (c->st != CASIM_OK) goto no;
+    if (nd(c, e)->kind == K_EQ) e = add2(c, nd(c, e)->a, ib_neg(c, nd(c, e)->b));
+    if (c->st != CASIM_OK || !contains(c, e, var) || contains(c, e, 26)) goto no;      /* model 33's i, as sm_letter */
+    c->sub_var = var;                                   /* expand only where var is (collect's) */
+    e = expand_fully(c, e);
+    c->sub_var = -1;
+    if (c->st != CASIM_OK) goto no;
+    one = e;
+    t = nd(c, e)->kind == K_ADD ? list(c, nd(c, e)->a) : &one;
+    nt = nd(c, e)->kind == K_ADD ? nd(c, e)->n : 1;
+    a = small(c, C_0), b = small(c, C_0);
+    for (int i = 0; i < nt && c->st == CASIM_OK; i++) {
+        ref co;
+        if (!as_power(c, t[i], var, &k, &co) || k < 0 || k > 1) goto no;
+        if (k) a = add2(c, a, co);
+        else b = add2(c, b, co);
+    }
+    if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;
+    x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));
+    z = ib_at(c, e, var, x);
+    z = expand_fully(c, z);
+    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;
+    /* a≠0 as the typed conditions read a divisor (td_canon: each factor, a power's base, LN(u)'s u≠1, none for one
+       never 0), then the typed text's at var = x, each side of an equation (td_walk stops at K_REQ) */
+    D.u = &a, D.k = &ne, D.n = 1;
+    if (!ls_note(c, &S, &D, var, x)) goto no;
+    side[0] = parse(c), ns = 1;
+    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)
+        side[1] = nd(c, side[0])->b, side[0] = nd(c, side[0])->a, ns = 2;
+    for (int h = 0; h < ns && c->st == CASIM_OK; h++)
+        if (td_raw(c, side[h], &T, -1))
+            for (int r = 0; r < T.n && c->st == CASIM_OK; r++)
+                if (!td_entry(c, &T, r, &D, -1) || !ls_note(c, &S, &D, var, x)) goto no;
+    if (c->st != CASIM_OK) return true;
+    ((rat *)(void *)nd(c, 2))->q = 0;                  /* do_solve's cr: its first grab, after start's 2 units */
+    puts_(w, "SOLVED: ");
+    puts_(w, name);
+    puts_(w, "=");
+    print(c, w, x);
+    ls_print(c, w, &S);
+    return true;
+no:
+    if (c->st == CASIM_OK || c->st == CASIM_NOT_POLYNOMIAL || c->st == CASIM_NOT_NUMERIC) {
+        c->sub_var = -1;
+        td_drop(c, mark);
+        c->st = was;
+        return false;
+    }
+    return true;
 }
 
 /* the arena back to mark, the constants cached since dropped (they would point into reused room: ir_reset's rule) */
