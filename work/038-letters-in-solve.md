@@ -1,10 +1,10 @@
 # CAS work unit 038: letters as coefficients in solve
 
-**From:** casim · **To:** abacus · **Status:** built on branch cas038 (below). abacus's first run of h038 (frozen at
-abacus 61237b8, 225 rows at 2 arenas, #13635) held it at 3c3e686 for a refusal class (#13700), fixed at adbcc6c for the
-rerun. The number is abacus's (#13632). The draft was measured on a throwaway prototype, p1, over 3f165a0 (1.5.0's
-code), and its sections are kept as they were sent. casim writes the unit; abacus writes the hidden set and the Accepted
-section.
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at eedbf16 (abacus #13753, decision 96: h038 0 of 450 failing,
+and the older sets byte for byte but one lawful move). abacus's first run of h038 (frozen at abacus 61237b8, 225 rows at
+2 arenas, #13635) held it at 3c3e686 for a refusal class (#13700), fixed at adbcc6c. The number is abacus's (#13632).
+The draft was measured on a throwaway prototype, p1, over 3f165a0 (1.5.0's code), and its sections are kept as they
+were sent. casim writes the unit; abacus writes the hidden set and the acceptance.
 - **Why now:** Michael, 2026-11-08, after 1.5.0: "I was going to have you work on whatever is good/next for casimir."
   casim's pick from the README's "doesn't do (yet)" list and 1.5.0's notes ("letters as coefficients in solve"): a
   student is more likely to rearrange a formula than to meet one of the Not yet rows.
@@ -227,7 +227,13 @@ ls_solve runs where pw refused NOT_NUMERIC. When it declines, pw's refusal stand
 
 ## Not yet (for the release notes)
 
-- **canon's forms a student wouldn't write:** `X=B×(C-A÷B); B≠0` for (X+A)÷B=C, `-(B-C)÷A`, `C÷2÷π` (ruling 1).
+- **A coefficient that is 0 where canon can't see it** prints SOLVED with a row that never holds:
+  (SIN(A)^2+COS(A)^2-1)×X=1 is `X=1÷(SIN(A)^2+COS(A)^2-1); SIN(A)^2+COS(A)^2-1≠0`. Nothing printed is false, but a
+  student sees SOLVED for an equation with no solution. Trigonometric identities would fix it (abacus #13753).
+- **canon's forms a student wouldn't write:** `X=B×(C-A÷B); B≠0` for (X+A)÷B=C, `-(B-C)÷A`, `C÷2÷π` (ruling 1), and
+  (abacus #13753) `X=B×Y×(A÷B÷Y+1); B≠0; Y≠0` for (X-A)÷(B×Y)=1, `C=5×F÷9-160÷9` for F=9÷5×C+32.
+- **A row in the expanded coefficient's form:** A=(B+C)×H÷2 for H has `-B÷2-C÷2≠0` where B+C≠0 is meant, and
+  (A×B-A)×X=B has `-A+A×B≠0` (abacus #13753).
 - **ACOSH's zero is not read as LN's is:** `ACOSH(A)×X=1` is `A≥1; ACOSH(A)≠0`, which says A>1.
 - **A row that always holds is printed,** and one on SQRT isn't solved: `(SQRT(A)+1)×(X+1)=B` has `SQRT(A)+1≠0`, and
   `(SQRT(A)-1)×X=1` has `SQRT(A)-1≠0` (A≠1).
