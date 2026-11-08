@@ -21,6 +21,20 @@
 | `casim solve 'A×X=0.5' X RAD` | `SOLVED: X=0.5÷A; A≠0` |
 | `casim solve 'X=TAN(A)' X DEG` | `SOLVED: X=TAN(A); COS(A)≠0` |
 
+# - Part 1b: var on both sides, and a coefficient that is a sum (abacus #13700: at 3c3e686 these were NOT_NUMERIC, the
+#   answer put back whole expanding to terms over a that never met; the check is now L-R = a×var+b and a×x+b = 0)
+
+| Command | Prints |
+|---|---|
+| `casim solve 'A×X+B=C×X+D' X RAD` | `SOLVED: X=-(B-D)÷(A-C); A-C≠0` |
+| `casim solve 'A×X+B=X' X RAD` | `SOLVED: X=-B÷(A-1); A≠1` |
+| `casim solve 'A×X+3=2×X+B' X RAD` | `SOLVED: X=(B-3)÷(A-2); A≠2` |
+| `casim solve '(1÷2)×X+3=B×X+5' X RAD` | `SOLVED: X=-2÷(B-1÷2); B≠1÷2` |
+| `casim solve 'X×(A+1)=X+B' X RAD` | `SOLVED: X=B÷A; A≠0` |
+| `casim solve '(A+1)×(X+1)=2' X RAD` | `SOLVED: X=-(A-1)÷(A+1); A≠-1` |
+| `casim solve '(A-1)×(X+B)=LN(C)' X RAD` | `SOLVED: X=(B+LN(C)-A×B)÷(A-1); A≠1; C>0` |
+| `casim solve '(SQRT(A)+1)×(X+1)=B' X RAD` | `SOLVED: X=(B-SQRT(A)-1)÷(SQRT(A)+1); A≥0; SQRT(A)+1≠0` |
+
 # - Part 2: the rows. a≠0 is read as a divisor is (each letter factor, LN(u)'s u≠1, none for a factor never 0), u≠0 and
 #   u≥0 on one u are u>0, and a ≥ or ≤ row beside a ≠ row of the same sides is > or <. At A = -1 in (A^2-1)×X=A+1
 #   every X solves, and at A = 1 none does
@@ -92,7 +106,7 @@
 |---|---|
 | `casim steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
 | `casim steps solve 'π×X=1' X RAD` | `BAD_ARG` |
-| `casim --arena 1900 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
+| `casim --arena 2000 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
 | `casim --arena 2400 steps solve 'A×X+B=C' X RAD` | `BAD_ARG` |
 | `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
 | `casim --arena 1000 solve 'A×X+B=C' X RAD` | `NO_ROOM` |

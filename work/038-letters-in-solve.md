@@ -1,9 +1,10 @@
 # CAS work unit 038: letters as coefficients in solve
 
-**From:** casim · **To:** abacus · **Status:** built on branch cas038 (below), for abacus's run of h038 (frozen at abacus
-61237b8, 225 rows at 2 arenas, #13635). The number is abacus's (#13632). The draft was measured on a throwaway
-prototype, p1, over 3f165a0 (1.5.0's code), and its sections are kept as they were sent. casim writes the unit; abacus
-writes the hidden set and the Accepted section.
+**From:** casim · **To:** abacus · **Status:** built on branch cas038 (below). abacus's first run of h038 (frozen at
+abacus 61237b8, 225 rows at 2 arenas, #13635) held it at 3c3e686 for a refusal class (#13700), fixed at adbcc6c for the
+rerun. The number is abacus's (#13632). The draft was measured on a throwaway prototype, p1, over 3f165a0 (1.5.0's
+code), and its sections are kept as they were sent. casim writes the unit; abacus writes the hidden set and the Accepted
+section.
 - **Why now:** Michael, 2026-11-08, after 1.5.0: "I was going to have you work on whatever is good/next for casimir."
   casim's pick from the README's "doesn't do (yet)" list and 1.5.0's notes ("letters as coefficients in solve"): a
   student is more likely to rearrange a formula than to meet one of the Not yet rows.
@@ -130,7 +131,8 @@ ls_solve runs where pw refused NOT_NUMERIC. When it declines, pw's refusal stand
 2. **L − R as a×var + b,** canonical and expanded only where var is, each term of degree 0 or 1 in var with a coefficient
    free of it. Anything else declines, and so does a text holding model 33's variable i (as a sum refuses it).
 3. **a canonically 0 declines** (var drops out).
-4. **var = −b÷a, canonical, checked:** put back into L − R and expanded fully, it must be 0, or ls_solve declines.
+4. **var = −b÷a, canonical, checked as two identities:** L − R expanded fully must equal a×var + b, and a×x + b must be
+   0 (canonical, then expanded), or ls_solve declines. a stays one factor, so a sum a cancels against its inverse.
 5. **The conditions,** each kept once:
    - a≠0, read as the typed conditions read a divisor (td_canon): each factor and a power's base, LN(u)'s u≠1, and none
      for a factor never 0 (EXP, a number, 1÷u);
@@ -160,6 +162,25 @@ ls_solve runs where pw refused NOT_NUMERIC. When it declines, pw's refusal stand
 - **Steps at small arenas.** Between 1,984 and 3,200 B a letter solve's steps were NO_ROOM, because the mark was read
   after the steps reserved their room. The mark is read first now.
 
+## After the hold (abacus #13700)
+
+- **What h038 found at 3c3e686:** 50 of 450 runs refused (NOT_NUMERIC) on 25 SOLVE rows, and no wrong value. The class
+  is var on both sides with a collected coefficient that is a letter and more (23 of h038's 27 both-sides rows), and a
+  sum times a bracket on one side (2 of its 153): `A×X+B=X`, `A×X+3=2×X+B`, `(A+1)×(X+1)=2` were NOT_NUMERIC, while
+  `(A-1)×X=B-1` answered.
+- **The trace:** an instrumented copy declined every one of them at the put-back, as abacus guessed. Put back whole,
+  `A×X+B-X` at X = −B÷(A−1) expands to −A×B÷(A−1), B and B÷(A−1), which nothing combines. The check is now the two
+  identities above (adbcc6c), and `A×X+B=C×X+D` is `X=-(B-D)÷(A-C); A-C≠0`.
+- **My own fuzz of the shape** (random equations linear in X on both sides, coefficients mixing numbers, letters,
+  sums, SQRT and LN of a letter; each answer evaluated in floating point at random letter values where its rows hold;
+  the same equations through both builds): of 587, 3c3e686 answered 184 and refused 403, and adbcc6c answers 584 and
+  refuses 3. Of another seed's 585, 3c3e686 answered 216 and adbcc6c answers 581, refusing 4. No answer is wrong on
+  either build, and each of adbcc6c's 7 refusals is an equation where X drops out (L − R collects to a constant).
+- **The cost:** a letter solve needs more arena for the first identity's expansion: `A×X+B=C` from 1,792 B to
+  1,912 B. The steps fallback's case moves from 1,900 B to 2,000 B.
+- **Mutants:** ls038-check-off-deg2 now pairs the degree guard with the first identity, and ls038-sign-unchecked pairs
+  the sign with the second; alone, each fault is caught by its check.
+
 ## Built (branch cas038)
 
 **Commits:**
@@ -172,6 +193,8 @@ ls_solve runs where pw refused NOT_NUMERIC. When it declines, pw's refusal stand
   README; ssteps-values.py reads a letter solve's steps as BAD_ARG, and fails when no input is one.
 - 9ec4ac8: scripts/measure.py, 42 bench rows of letter solves at depth, 34 to 47 levels.
 - e39f0b6: two rows with model 33's i in b, in letters() and the examples (56 rows), for ls038-i-off (below).
+- adbcc6c, after the hold: the check as two identities; eight rows in work/038-examples.txt (64), four in letters();
+  the steps fallback's case at 2,000 B; ls038-check-off-deg2 retargeted and ls038-sign-unchecked added.
 
 **Gates at 9ec4ac8** (one run, 06:53:33Z to 07:34:18Z):
 - **make test**, which runs make check first: green, 20 tests, 118,524 checks (06:53:43Z to 06:58:44Z). doc-examples.py
@@ -192,10 +215,22 @@ ls_solve runs where pw refused NOT_NUMERIC. When it declines, pw's refusal stand
   The worst stack is unchanged, 11,360 B masked (STU's X^ chain of 44 levels), plus 400 for interrupts, 11,760 of
   12,288. The deepest of the 42 new letter solves is 8,208 B (STU's A^ chain of 40 levels, answered).
 
+**Gates at adbcc6c** (one run, 07:52:17Z to 08:30:50Z):
+- **make test:** green, 20 tests, 118,537 checks (07:52:26Z to 07:58:03Z).
+- **S3:** 268,220 B of 270,336, 276 B more than 3c3e686 and 3,026 B more than 1.5.0, so 2,116 B are left.
+- **Frames:** no accepted frame moves on the S3 or the host; the new S3 frames are as at 9ec4ac8.
+- **Mutants:** 25 in four shards (07:58:03Z to 08:11:28Z), all caught. ls038-check-off-deg2 by the golden corpus's
+  `A×X^2-1` (598, 599, 1656), ls038-sign-unchecked by docs/language.md's rows, ls038-i-off by e39f0b6's two rows.
+- **wasm:** golden 10,822 with 0 failed, control refused; the both-sides rows through node print as natively.
+- **Device** (16,384 B, 08:11:38Z to 08:30:50Z): DEVICE PASS, 1,454 cases. The worst stack is unchanged, 11,760 of
+  12,288 B. The deepest letter solve is 8,384 B (STU's A^ chain of 41 levels, which now answers in its arena).
+
 ## Not yet (for the release notes)
 
 - **canon's forms a student wouldn't write:** `X=B×(C-A÷B); B≠0` for (X+A)÷B=C, `-(B-C)÷A`, `C÷2÷π` (ruling 1).
 - **ACOSH's zero is not read as LN's is:** `ACOSH(A)×X=1` is `A≥1; ACOSH(A)≠0`, which says A>1.
+- **A row that always holds is printed,** and one on SQRT isn't solved: `(SQRT(A)+1)×(X+1)=B` has `SQRT(A)+1≠0`, and
+  `(SQRT(A)-1)×X=1` has `SQRT(A)-1≠0` (A≠1).
 - **A row on an odd power** is written as it is: `(A^3-1)×X=1` has `A^3-1≠0`, where CAS 023's rows would write A≠1.
 - **No ABS(u)≤1 or ABS(u)<1 row:** ASIN, ACOS and ATANH of a letter decline.
 - **pw's first refusal decides** whether letters are read: `X^2÷X×A=1` stops at ÷X (NOT_POLYNOMIAL), and `A×X^2÷X=1`

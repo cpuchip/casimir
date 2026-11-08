@@ -9541,8 +9541,11 @@ static __attribute__((noinline)) bool ls_solve(ctx *c, out_t *w, int var)
     }
     if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;
     x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));
-    z = ib_at(c, e, var, x);
-    z = expand_fully(c, z);
+    /* checked as two identities, L - R = a×var + b and a×x + b = 0, so a sum a cancels as one factor (put back whole,
+       A×X+B-X at X = -B÷(A-1) expands to terms over A-1 that never meet: abacus #13700) */
+    z = expand_fully(c, add2(c, e, ib_neg(c, add2(c, mul2(c, a, leaf(c, K_VAR, var)), b))));
+    if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;
+    z = expand_fully(c, ib_canon(c, add2(c, mul2(c, a, x), b)));
     if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;
     /* a≠0 as the typed conditions read a divisor (td_canon: each factor, a power's base, LN(u)'s u≠1, none for one
        never 0), then the typed text's at var = x, each side of an equation (td_walk stops at K_REQ) */

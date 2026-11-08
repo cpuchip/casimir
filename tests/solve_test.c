@@ -641,6 +641,10 @@ static void letters(void)
         {"(X+A)÷B=C", 'X', "SOLVED: X=B×(C-A÷B); B≠0"},
         {"X×Y÷Y=3", 'X', "SOLVED: X=3; Y≠0"},
         {"X×A=X", 'X', "SOLVED: X=0; A≠1"},
+        {"A×X+B=C×X+D", 'X', "SOLVED: X=-(B-D)÷(A-C); A-C≠0"},       /* var on both sides (abacus #13700) */
+        {"A×X+B=X", 'X', "SOLVED: X=-B÷(A-1); A≠1"},
+        {"(1÷2)×X+3=B×X+5", 'X', "SOLVED: X=-2÷(B-1÷2); B≠1÷2"},
+        {"(A-1)×(X+B)=LN(C)", 'X', "SOLVED: X=(B+LN(C)-A×B)÷(A-1); A≠1; C>0"},
         {"X×(X+A)÷(X+A)=B", 'X', "SOLVED: X=B; A+B≠0"},
         {"(A^2-1)×X=A+1", 'X', "SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1"},
         {"X×(A+B)=A^2-B^2", 'X', "SOLVED: X=(A^2-B^2)÷(A+B); A+B≠0"},
@@ -711,9 +715,9 @@ static void letters(void)
     ce_angle(angle);
     for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
     /* steps: BAD_ARG for a letter solve, out "" (at the calculator's arena, where only plain solve fits beside the
-       answer's slot, 1,900 B, and past it, 2,400 B, where the steps' own room doesn't) */
+       answer's slot, 2,000 B, and past it, 2,400 B, where the steps' own room doesn't) */
     for (int a = 0; a < 4; a++) {
-        size_t cap = a == 0 ? sizeof arena : a == 1 ? sizeof small : a == 2 ? 1900 : 2400;
+        size_t cap = a == 0 ? sizeof arena : a == 1 ? sizeof small : a == 2 ? 2000 : 2400;
         unsigned char *m = a == 0 ? arena : small;
         casim_req rq = {CASIM_SOLVE, "A×X+B=C", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
         casim_step_info info;
