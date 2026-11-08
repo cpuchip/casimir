@@ -630,7 +630,7 @@ static void visible(void)
 /* CAS 038 (work/038-letters-in-solve.md): an equation linear in var with letters or π as coefficients. Each text
    exactly; each answer put back on the core at letter values every row holds at; and at each row's edge on one letter
    (L≠r, L>r, L≥r, L<r, L≤r: L at r, or r ∓ 1÷2 for ≥ and ≤) the equation has no value as typed, or no longer
-   depends on var (every value or none). Steps are BAD_ARG, at every arena; the declines keep 1.5.0's NOT_NUMERIC */
+   depends on var (every value or none). The declines keep 1.5.0's NOT_NUMERIC; steps page these (CAS 039, below) */
 static void letters(void)
 {
     static const struct { const char *eqn; char var; const char *want; } rows[] = {
