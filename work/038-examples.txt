@@ -80,6 +80,8 @@
 | `casim solve 'X=ASIN(A)' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'X=ATANH(A)' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'i×X=A' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X×A=i' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X=i×A' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'X×(X-A)÷(X-A)=A' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'X^2÷X×A=1' X RAD` | `NOT_POLYNOMIAL` |
 

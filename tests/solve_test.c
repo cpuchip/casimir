@@ -656,7 +656,7 @@ static void letters(void)
         {"SIN(π÷6)×X=1", 'X', "SOLVED: X=2"},
     };
     static const char *const declined[] = {"A×(X-1)=A×X", "X^2=A", "A×SIN(X)=B", "X=ASIN(A)", "i×X=A", "SQRT(2)×X=1",
-                                           "SIN(1)×X=1", "X÷0=1", "X^2=π", "X×(X-A)÷(X-A)=A"};
+                                           "SIN(1)×X=1", "X÷0=1", "X^2=π", "X×(X-A)÷(X-A)=A", "X×A=i", "X=i×A"};
     static const char *const ops[] = {"\xe2\x89\xa0", "\xe2\x89\xa5", "\xe2\x89\xa4", ">", "<"};
     static unsigned char small[8800];
     char out[OUT];
