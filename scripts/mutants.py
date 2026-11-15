@@ -1517,7 +1517,7 @@ MUTANTS = {
     "ls038-i-off": [("src/casim.c", "!contains(c, e, var) || contains(c, e, 26)) goto no;", "!contains(c, e, var)) goto no;")],
     "ls038-drops-out": [("src/casim.c", "    if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;\n    /* CAS 040: a that reads 0",
                          "    if (c->st != CASIM_OK) goto no;\n    /* CAS 040: a that reads 0"),
-                        ("src/casim.c", "    x = ls_zero(c, a) ? a : ib_canon(", "    x = 0 ? a : ib_canon(")],
+                        ("src/casim.c", "    x = ls_zero(c, a) ? a : ib_canon(", "    x = ((void)ls_zero, 0) ? a : ib_canon(")],
     "ls038-sign": [("src/casim.c", " : ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));",
                     " : ib_canon(c, mul2(c, b, power(c, a, small(c, C_M1))));")],
     "ls038-check-off-deg2": [("src/casim.c", "|| k < 0 || k > 1) goto no;", "|| k < 0 || k > 2) goto no;"),
@@ -1571,7 +1571,7 @@ MUTANTS = {
                           "w.cap = o->cap, w.n = 0, w.full = false, puts_(&w, T);")],
     # CAS 040 (work/cas040.md): the point test's call, its six points (the large two among them), the sign rule, each
     # reading (not 0, reads 0, an exact 0, no value), the bound, the count's floor and the arena's drop
-    "ls040-off": [("src/casim.c", "    x = ls_zero(c, a) ? a : ib_canon(", "    x = 0 ? a : ib_canon(")],
+    "ls040-off": [("src/casim.c", "    x = ls_zero(c, a) ? a : ib_canon(", "    x = ((void)ls_zero, 0) ? a : ib_canon(")],
     "ls040-status-off": [("src/casim.c", "    if (z) c->st = CASIM_NOT_NUMERIC;\n", "")],
     "ls040-one-point": [("src/casim.c", "    for (int j = 0; j < 6; j++) {\n        ref u = a;", "    for (int j = 0; j < 1; j++) {\n        ref u = a;")],
     "ls040-small-only": [("src/casim.c", "    for (int j = 0; j < 6; j++) {\n        ref u = a;", "    for (int j = 0; j < 4; j++) {\n        ref u = a;")],
