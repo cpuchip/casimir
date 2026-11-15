@@ -44,7 +44,8 @@ typedef enum {
                                    power not a whole number >= 0; out is "" */
     CASIM_NOT_NUMERIC,          /* CAS 005, solve: a coefficient not an exact rational number (another letter,
                                    π, SQRT(2), a draw), where CAS 038 doesn't answer: an equation linear in var with
-                                   letters or π as typed is solved, with its rows; out is "" */
+                                   letters or π as typed is solved, with its rows, unless its coefficient reads 0
+                                   at CAS 040's points; out is "" */
     CASIM_NOT_INTEGRABLE,       /* CAS 006, integrate: not one of the table's forms as typed, or an answer the
                                    derive-back check could not close; out is "" */
     CASIM_PARTIAL,              /* CAS 007, factor: out holds a correct factorization (it reads back as the

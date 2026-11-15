@@ -9504,10 +9504,45 @@ static __attribute__((noinline)) void ls_print(ctx *c, out_t *w, const cdset *S)
     rows_put(c, w, rows, n, true);
 }
 
+/* ---- CAS 040 (work/cas040.md): a coefficient that is 0 where canon can't see it ----
+   a (free of var) at six fixed points, letter l (n = l+1) at point j being ±(R n + K)÷(n + D), each read by rule 8's
+   bound as lm_sgn reads a sign. True, with c->st NOT_NUMERIC, where a reads 0 at one point or more and is shown not 0
+   at none: solve refuses (CAS 022 rule 1: a value is never taken as 0 from its digits). A point with no value
+   (UNDEFINED, not real) or one s_eval can't read (IP, a function in an exponent) counts neither way */
+static __attribute__((noinline)) bool ls_zero(ctx *c, ref a)
+{
+    static const uint8_t PT[6][3] = {{1, 1, 9}, {1, 3, 5}, {2, 7, 3}, {6, 13, 2}, {47, 100, 3}, {53, 22, 1}};
+    size_t mark = c->used;
+    int z = 0;
+    for (int j = 0; j < 6; j++) {
+        ref u = a;
+        abn x, b;
+        for (int l = 0; l < 26 && c->st == CASIM_OK; l++)
+            if (contains(c, u, l)) {
+                int n = l + 1;                                  /* ir_rat: pw's mark, if any, prints nothing here */
+                u = ib_at(c, u, l, ir_rat(c, (((l ^ j ^ (j >> 1)) & 1) ? -1 : 1) * (PT[j][0] * n + PT[j][1]),
+                                         n + PT[j][2]));
+            }
+        if (c->st == CASIM_UNDEFINED) c->st = CASIM_OK;                 /* no value here */
+        else if (c->st != CASIM_OK) return false;                         /* NO_ROOM: ls_solve's to print */
+        else if (const_val(c, u, &x) == CV_OK && (is_num(c, u) || s_eval(c, u, &x, &b, S_DEEP) == CV_OK)) {
+            if (is_num(c, u) ? !abn_is_zero(&x) : s_lt(&b, &x, 8)) {
+                td_drop(c, mark);
+                return false;                                               /* not 0 here */
+            }
+            z++;
+        }
+        td_drop(c, mark);
+    }
+    if (z) c->st = CASIM_NOT_NUMERIC;
+    return z > 0;
+}
+
 /* ---- CAS 038 (work/038-letters-in-solve.md): solve for var in an equation linear in it, letters as coefficients ----
    L - R as a×var + b, a and b free of var: var = -b÷a, with a≠0 and each typed condition read at that value as a row.
-   Checked by putting the answer back. False: not this shape, c->st back to pw's refusal. Its answer marks do_solve's
-   first coefficient (q 0, which pw never leaves): show steps has no page for it (do_ssteps) */
+   Checked by putting the answer back. False: not this shape, or a coefficient that reads 0 (CAS 040), c->st back to
+   pw's refusal. Its answer marks do_solve's first coefficient (q 0, which pw never leaves): show steps has no page for
+   it (do_ssteps) */
 static __attribute__((noinline)) bool ls_solve(ctx *c, out_t *w, int var)
 {
     casim_status was = c->st;
@@ -9544,7 +9579,9 @@ static __attribute__((noinline)) bool ls_solve(ctx *c, out_t *w, int var)
         else b = add2(c, b, co);
     }
     if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;
-    x = ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));
+    /* CAS 040: a that reads 0 sets NOT_NUMERIC, which the check below takes to no (pw's refusal), x unread. A test of
+       its own here moves ls_solve's frame, and one after the rows costs their arena */
+    x = ls_zero(c, a) ? a : ib_canon(c, mul2(c, ib_neg(c, b), power(c, a, small(c, C_M1))));
     /* checked as two identities, L - R = a×var + b and a×x + b = 0, so a sum a cancels as one factor (put back whole,
        A×X+B-X at X = -B÷(A-1) expands to terms over A-1 that never meet: abacus #13700) */
     z = expand_fully(c, add2(c, e, ib_neg(c, add2(c, mul2(c, a, leaf(c, K_VAR, var)), b))));

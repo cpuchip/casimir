@@ -742,10 +742,100 @@ static void letters(void)
     }
 }
 
+/* CAS 040 (work/cas040.md): X's coefficient 0 where canon can't see it, read at six fixed points. Each zero row is
+   refused (NOT_NUMERIC, as a 0 canon sees), and its coefficient is checked to be 0 on the core at values of each sign;
+   a coefficient shown not 0 at a point answers as at 1.6.0; the named shapes as the unit's table prints them */
+static void zeros(void)
+{
+    static const struct { const char *eqn, *coef; } zero[] = {
+        {"(SIN(A)^2+COS(A)^2-1)×X=1", "SIN(A)^2+COS(A)^2-1"},
+        {"(SIN(A)^2+COS(A)^2-1)×X=0", "SIN(A)^2+COS(A)^2-1"},
+        {"(SIN(A)^2+COS(A)^2-1)×X=SIN(A)^2+COS(A)^2-1", "SIN(A)^2+COS(A)^2-1"},
+        {"(SIN(A)^2+COS(A)^2-1)×B×X=C", "(SIN(A)^2+COS(A)^2-1)×B"},
+        {"(EXP(A+B)-EXP(A)×EXP(B))×X=C", "EXP(A+B)-EXP(A)×EXP(B)"},
+        {"(COSH(A)^2-SINH(A)^2-1)×X=1", "COSH(A)^2-SINH(A)^2-1"},
+        {"(TAN(A)×COS(A)-SIN(A))×X=1", "TAN(A)×COS(A)-SIN(A)"},
+        {"(SIN(2×A)-2×SIN(A)×COS(A))×X=B", "SIN(2×A)-2×SIN(A)×COS(A)"},
+        {"(SIN(A+B)-SIN(A)×COS(B)-COS(A)×SIN(B))×X=1", "SIN(A+B)-SIN(A)×COS(B)-COS(A)×SIN(B)"},
+        {"(EXP(A^2)×(SIN(A)^2+COS(A)^2-1))×X=1", NULL},                     /* EXP(A^2) to 1E79 on the core */
+        {"(A^2-(A-B)×(A+B)-B^2)×X=1", "A^2-(A-B)×(A+B)-B^2"},         /* canon's gap (abacus #14991) */
+        {"(A^2-(A-B)×(A+B)-B^2)×X=0", NULL},             /* a×x+b expands to 0 for any x: the status refuses */
+        {"(1÷(A-1)-1÷(A+1)-2÷(A^2-1))×X=1", "1÷(A-1)-1÷(A+1)-2÷(A^2-1)"},
+        {"(LN(A^2)-2×LN(A))×X=1", NULL},                                   /* 0 where it has a value: A>0 */
+        {"(2×LN(A-7)-LN((A-7)^2))×X=1", NULL},                              /* read at A = 147/4 only */
+        {"(SQRT(A)^2-A)×X+X=X", NULL},
+        {"(SIN(A)^2+COS(A)^2-1)÷(A-1÷5)×X=1", NULL},                         /* no value at A = 1/5, its pole */
+    };
+    static const struct { const char *eqn; const char *want; } kept[] = {
+        {"(SIN(A)^2+COS(A)^2)×X=1", "SOLVED: X=1÷(SIN(A)^2+COS(A)^2); SIN(A)^2+COS(A)^2≠0"},
+        {"(SIN(A)^2+COS(A)^2-1+B)×X=1", "SOLVED: X=1÷(B+SIN(A)^2+COS(A)^2-1); B+SIN(A)^2+COS(A)^2-1≠0"},
+        {"(ATAN(1÷A)+ATAN(A)-π÷2)×X=1",
+         "SOLVED: X=-2÷(π-2×ATAN(A)-2×ATAN(1÷A)); A≠0; -π÷2+ATAN(A)+ATAN(1÷A)≠0"},          /* 0 for A>0 only */
+        {"(A-2×B+C)×X=1", "SOLVED: X=1÷(A-2×B+C); A-2×B+C≠0"},
+        {"(3×A+2×B)×X=1", "SOLVED: X=1÷3÷(A+2×B÷3); 3×A+2×B≠0"},
+        {"SIN(A)×X=1", "SOLVED: X=1÷SIN(A); SIN(A)≠0"},
+        {"(ABS(A+5)-(A+5))×X=1", "SOLVED: X=-1÷(A-ABS(A+5)+5); -A+ABS(A+5)-5≠0"},             /* a large point reads it */
+        {"(ABS(A-10)+(A-10))×X=1", "SOLVED: X=1÷(A+ABS(A-10)-10); A+ABS(A-10)-10≠0"},
+        {"(3×A-19)×SQRT(A-6)×X=1", "SOLVED: X=1÷3÷(A-19÷3)÷SQRT(A-6); A>6; A≠19÷3"},
+        {"(IP(A)+FP(A)-A)×X=1", "SOLVED: X=-1÷(A-IP(A)-FP(A)); -A+IP(A)+FP(A)≠0"},              /* not read */
+        {"(10^LOG(A)-A)×X=1", "SOLVED: X=-1÷(A-10^LOG(A)); A>0; -A+10^LOG(A)≠0"},
+        {"(2×LN(A-60)-LN((A-60)^2))×X=1",
+         "SOLVED: X=-1÷(LN((A-60)^2)-2×LN(A-60)); A>60; -LN((A-60)^2)+2×LN(A-60)≠0; (A-60)^2>0"},  /* no value anywhere */
+    };
+    /* the shapes refused though not 0 (work/cas040.md): a region holding the points, a part under 1E-31, one point */
+    static const char *const shapes[] = {"(ABS(A+40)-(A+40))×X=1", "(SIN(A)^2+COS(A)^2-1+10^-40)×X=1",
+                                         "(4×A-147)×SQRT(A-30)×X=1",
+                                         "(A-1÷5)×(A+2÷3)×(A+9÷4)×(A-19÷3)×(A-147÷4)×(A+75÷2)×SIN(A)×X=1"};
+    static const char *const vals[] = {"0.37", "-1.9", "4.2", "-13.5"};
+    static unsigned char small[8800];
+    abn tiny = ce_num("1E-25");
+    int angle = (int)ce_calc->angle;
+    char out[OUT];
+    ce_angle(CASIM_RAD);
+    for (size_t i = 0; i < sizeof zero / sizeof zero[0]; i++) {
+        refused(zero[i].eqn, CASIM_NOT_NUMERIC);
+        for (int v = 0; zero[i].coef && v < 4; v++) {
+            abn f, mag;
+            ce_set('A', vals[v]), ce_set('B', vals[3 - v]), ce_set('C', "2.5");
+            CHECK(ce_eval(zero[i].coef, &f) == ABN_OK && (mag = abn_abs(&f), abn_cmp(&mag, &tiny) < 0), "%s at A=%s: %s",
+                  zero[i].coef, vals[v], ce_text(&f));
+        }
+    }
+    ce_angle(angle);
+    for (size_t i = 0; i < sizeof kept / sizeof kept[0]; i++) is(kept[i].eqn, kept[i].want);
+    for (size_t i = 0; i < sizeof shapes / sizeof shapes[0]; i++) refused(shapes[i], CASIM_NOT_NUMERIC);
+    /* the angle modes, the complex bit and the models refuse alike */
+    for (int m = 0; m < 6; m++) {
+        int ang = m == 1 ? CASIM_DEG : m == 2 ? CASIM_GRAD : CASIM_RAD;
+        int model = m == 3 ? CASIM_MODEL_33 : m == 4 ? CASIM_MODEL_STU : CASIM_MODEL_35;
+        casim_req rq = {CASIM_SOLVE, "(SIN(A)^2+COS(A)^2-1)×X=1", model, 'X' - 'A', NULL, 0,
+                        ang | (m == 5 ? CASIM_COMPLEX : 0), NULL};
+        casim_status st = casim_run(&rq, out, OUT, arena, sizeof arena);
+        CHECK(st == CASIM_NOT_NUMERIC, "solve (SIN(A)^2+COS(A)^2-1)×X=1, case %d: %d \"%s\"", m, (int)st, out);
+    }
+    /* steps refuse a refused row with solve's status; the least arenas: the refusal from 2,104 B, an 8-letter
+       coefficient's answer from 2,328 B (1.6.0: 2,216), each NO_ROOM 16 B under */
+    {
+        casim_req rq = {CASIM_SOLVE, "(SIN(A)^2+COS(A)^2-1)×X=1", CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
+        casim_step_info info;
+        casim_status st = casim_step(&rq, -1, 0, &info, out, OUT, arena, sizeof arena);
+        CHECK(st == CASIM_NOT_NUMERIC, "steps solve (SIN(A)^2+COS(A)^2-1)×X=1: %d", (int)st);
+        for (int k = 0; k < 4; k++) {
+            casim_req r2 = rq;
+            if (k >= 2) r2.eqn = "(A+B+C+D+E+F+G+H)×X=1";
+            size_t cap = (k >= 2 ? 2328 : 2104) - (k & 1) * 16;
+            st = casim_run(&r2, out, OUT, small, cap);
+            CHECK(st == ((k & 1) ? CASIM_NO_ROOM : k ? CASIM_OK : CASIM_NOT_NUMERIC), "solve %s at %zu B: %d \"%s\"",
+                  r2.eqn, cap, (int)st, out);
+        }
+    }
+}
+
 int main(void)
 {
     ce_init();
     letters();
+    zeros();
     visible();
     exact();
     left_out();

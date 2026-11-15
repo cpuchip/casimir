@@ -186,10 +186,16 @@ A condition with no letter that fails is UNDEFINED, as a ÷0 is. The text is can
 writes: (X+A)÷B=C is `X=B×(C-A÷B); B≠0`. A text with neither a letter nor π is read as before, so SIN(1)×X=1 is still
 NOT_NUMERIC. Show steps pages these as it pages a linear equation (below).
 
+A coefficient a that canon doesn't see is 0 (CAS 040) is read at six fixed points, each letter its own value, by the
+bound every printed sign rests on (CAS 022 rule 8). Shown not 0 at a point, a answers as above. Read 0 at each point
+where it has a value, and not 0 at none, it is refused NOT_NUMERIC, as a 0 canon sees is (A×X−A×X=1), and never taken
+as 0 from its digits: (SIN(A)^2+COS(A)^2−1)×X=1 is NOT_NUMERIC. A coefficient no point reads (IP, FP, a function in an
+exponent, or a domain holding no point) answers as above. work/cas040.md names the rows refused though not 0.
+
 Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is not an exact rational, where letters as coefficients
 don't answer: degree 2 or more with a letter, var inside a function or a denominator, var dropping out, a condition no
-row writes (ASIN's ABS(u)≤1, ATANH's ABS(u)<1), model 33's i, or a constant with neither a letter nor π, SQRT(2) or
-SIN(1)), NO_ROOM (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
+row writes (ASIN's ABS(u)≤1, ATANH's ABS(u)<1), model 33's i, a coefficient that reads 0 (CAS 040), or a constant
+with neither a letter nor π, SQRT(2) or SIN(1)), NO_ROOM (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
 
 | Command | Prints |
 |---|---|
@@ -210,6 +216,7 @@ SIN(1)), NO_ROOM (degree past 12, or a coefficient past 10^7 once the polynomial
 | `casim solve "X=SQRT(A)÷B" X RAD` | `SOLVED: X=SQRT(A)÷B; A≥0; B≠0` |
 | `casim solve "π×X=1" X RAD` | `SOLVED: X=1÷π` |
 | `casim solve "A×(X-1)=A×X" X RAD` | `NOT_NUMERIC` |
+| `casim solve "(SIN(A)^2+COS(A)^2-1)×X=1" X RAD` | `NOT_NUMERIC` |
 | `casim solve "A×X^2-1" X RAD` | `NOT_NUMERIC` |
 | `casim solve "X^14-1" X RAD` | `NO_ROOM` |
 
