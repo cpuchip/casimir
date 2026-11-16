@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.6.0.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.7.0.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -83,7 +83,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (410,435 bytes of code, 1,765,480 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (411,004 bytes of code, 1,765,498 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
@@ -148,9 +148,10 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 576 deliberate faults, each of which the tests must
-  catch, but six named. At 1.6.0's tree (175c160) `make test` caught 570 of 576 (work/v1.6.0-mutants.txt): the six
-  are 1.5.0's, and searched again there each moves exactly the lines it moved at 1.5.0's tree. At CAS 038's accepted
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 588 deliberate faults, each of which the tests must
+  catch, but six named. At CAS 040's accepted tree (69b97e6) `make test` caught its 12 new and the three CAS 038
+  mutants whose anchors it moved (work/cas040.md). At 1.6.0's tree (175c160) `make test` caught 570 of 576
+  (work/v1.6.0-mutants.txt): the six are 1.5.0's, and searched again there each moves exactly the lines it moved at 1.5.0's tree. At CAS 038's accepted
   tree (eedbf16) `make test` caught its 25 (work/038-letters-in-solve.md), and at CAS 039's (771fdbd) 34 of the 35
   run on 038's and 039's; the one that survived, ls038-steps-fallback, is equivalent there (work/039-letter-steps.md)
   and is retired. At 1.5.0's tree (cd7db86) `make test` caught 537 of 543 (work/v1.5.0-mutants.txt), which
