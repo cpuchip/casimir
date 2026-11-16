@@ -150,7 +150,9 @@ gzipped), most of it the decimal library's tables.
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 588 deliberate faults, each of which the tests must
   catch, but six named. At CAS 040's accepted tree (69b97e6) `make test` caught its 12 new and the three CAS 038
-  mutants whose anchors it moved (work/cas040.md). At 1.6.0's tree (175c160) `make test` caught 570 of 576
+  mutants whose anchors it moved (work/cas040.md). At 1.7.0's tree (8a76a80) `make test` caught 582 of 588
+  (work/v1.7.0-mutants.txt): the six are 1.6.0's, and searched again there each moves exactly the lines it moved at
+  1.6.0's tree. At 1.6.0's tree (175c160) `make test` caught 570 of 576
   (work/v1.6.0-mutants.txt): the six are 1.5.0's, and searched again there each moves exactly the lines it moved at 1.5.0's tree. At CAS 038's accepted
   tree (eedbf16) `make test` caught its 25 (work/038-letters-in-solve.md), and at CAS 039's (771fdbd) 34 of the 35
   run on 038's and 039's; the one that survived, ls038-steps-fallback, is equivalent there (work/039-letter-steps.md)
