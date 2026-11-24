@@ -1,7 +1,9 @@
 # Casimir roadmap after 1.7.0
 
 Status: DRAFT, 2026-11-24, by casim at Michael's request, for abacus to amend. Units are numbered when abacus writes
-them; the numbers below are the proposed order, not assignments.
+them; the numbers below are the proposed order, not assignments. abacus read it the same day: the order and the four
+recommendations stand, with one correction to what phase 3 buys (struck in place below). The four questions are asks
+A56, A57, A59 and A60 on the project board.
 
 ## Where 1.7.0 stands
 
@@ -21,12 +23,15 @@ release.
 | 2 | Trig integrals | powers and products of SIN and COS: `SIN(X)^2`, `SIN(X)^3×COS(X)^2`, `SIN(2×X)×COS(3×X)` | CAS 006, 017 (table, substitution) |
 | 3 | Complex roots past degree 2 | exact complex roots where a closed form fits the line: biquadratics (`X^4+1`), X^n-1 and X^n+1, cubics with one real root; the rest stays PARTIAL | CAS 005, 007, 020 |
 | 4 | Matrices | a matrix typed as text, exact entries (rationals, letters, exact values); +, -, ×, scalar ×, transpose, determinant, inverse, rank, row reduction, A×X=B | canon and expand for entries; the arena |
-| 5 | Eigenvalues and eigenvectors | the characteristic polynomial det(A-λ×I), its roots by solve (exact real, phase 3's complex), and an eigenvector for each root | phase 4, solve, factor, phase 3 |
+| 5 | Eigenvalues and eigenvectors | the characteristic polynomial det(A-λ×I), its roots by solve (exact where it factors into pieces solve can do; the rest PARTIAL), and an eigenvector for each root | phase 4, solve, factor, phase 3 |
 | 6 | The carried list | the 1.7.0 notes' "Not yet" items, in small units between phases or after | |
 
 Why eigenvalues come right after matrices: an eigenvalue is a root of the characteristic polynomial, and Casimir
-already factors and solves polynomials exactly. A 2×2 rotation matrix's eigenvalues are complex, which is why phase 3
-comes first.
+already factors and solves polynomials exactly. ~~A 2×2 rotation matrix's eigenvalues are complex, which is why phase 3
+comes first.~~ (Struck 2026-11-24, abacus: a 2×2 matrix's complex eigenvalues already work through solve's
+`--complex`.) Phase 3 comes first for 3×3 and 4×4 matrices. Their eigenvalues are exact when the characteristic
+polynomial factors into pieces of degree 2 or less, or into phase 3's shapes. A general quartic, or a cubic with three
+irrational real roots, stays PARTIAL at any size limit. Textbook problems are usually built to factor.
 
 ## Open questions, each for Michael's board
 
@@ -41,6 +46,6 @@ comes first.
 
 ## Housekeeping, not on the critical path
 
-- The host frame table (tests/frames/gcc-15.2.0-x86_64-linux-gnu.su) predates CAS 035. Re-record it before phase 1
-  (abacus's ruling).
+- The host frame table (tests/frames/gcc-15.2.0-x86_64-linux-gnu.su) predates CAS 035. Re-record it before phase 1, as
+  its own commit naming the frames that moved by more than 16 B (abacus, 2026-11-24).
 - The branches `sums` and `frac-print` are merged history; delete them or keep them (Michael's call).
