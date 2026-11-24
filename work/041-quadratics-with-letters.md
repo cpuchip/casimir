@@ -1,8 +1,12 @@
 # CAS work unit 041: quadratics and pure powers with letters
 
-**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-24, at 6f30c67 (the letter half) and its golden
-re-record 42a9c02, then the numeric pure powers in a commit of their own (ruling 7); waiting on the gates and h041
-(frozen at sha256 e3cc3bae4dc1ff078c06a39399d47a6707fafd1da1af879401c294fdf154da51, abacus #16697). The number is
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at 610c81b (abacus #16833; abacus 2f64181,
+docs/evidence/2026-11-24-cas-041-acceptance, "Second build"): h041 failing only its 8 lawful runs; the older sets'
+30,474 records and lines with 1.7.0's 66 moves and no others; the PURE POWER page's wording ruled as proposed; 3,289
+pages through abacus's structural checker, 0 failing. The first build, c7f9fd5, was not accepted (#16786; the section
+below). Built at 6f30c67 (the letter half) and its golden re-record 42a9c02, then the numeric pure powers in a commit
+of their own (ruling 7). h041 was frozen at sha256 e3cc3bae4dc1ff078c06a39399d47a6707fafd1da1af879401c294fdf154da51
+(abacus #16697). The number is
 abacus's (#16688). The draft below was measured on a throwaway prototype, p1, over f81ddc0 (1.7.0's code), and its
 sections are kept as they were sent. casim writes the unit; abacus writes the hidden set and the acceptance.
 
