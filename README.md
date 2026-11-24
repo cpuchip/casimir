@@ -2,7 +2,7 @@
 
 Exact computer algebra in portable C11: derivatives, simplification, expansion, solving, integrals, factoring and
 partial fractions, from text to text. It was written for a calculator, the STU-32 (an ESP32-S3), and runs anywhere C
-does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.7.0.
+does: as a C library, as an ESP-IDF component, and in the browser through WebAssembly. Version 1.8.0.
 
 ```
 $ build/casim derive "X^2×SIN(X)" X RAD
@@ -83,7 +83,7 @@ With CMake: `add_subdirectory(casimir)` and `target_link_libraries(app PRIVATE c
 `cmake -B build-cmake && cmake --build build-cmake && ctest --test-dir build-cmake`.
 
 In an ESP-IDF project, depend on it from `main/idf_component.yml` (idf_component.yml says how). On the ESP32-S3 the
-library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (411,004 bytes of code, 1,765,498 of read-only data,
+library builds with ESP-IDF 5.4. It takes about 2.2 MB of flash (422,310 bytes of code, 1,765,522 of read-only data,
 most of it the decimal library's tables) and 32,512 bytes of RAM for initialised data (the S3 bench's build).
 
 src/casim.h is the whole interface. Nothing allocates: the caller gives the output buffer and an arena (16,384 bytes is the
@@ -148,8 +148,10 @@ gzipped), most of it the decimal library's tables.
 
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
-- **Mutants** (scripts/mutants.py, run locally because it is slow): 588 deliberate faults, each of which the tests must
-  catch, but six named. At CAS 040's accepted tree (69b97e6) `make test` caught its 12 new and the three CAS 038
+- **Mutants** (scripts/mutants.py, run locally because it is slow): 615 deliberate faults, each of which the tests must
+  catch, but eight named. At CAS 041's accepted tree (610c81b) `make test` caught 25 of its 27 new and the four CAS 038
+  and 039 mutants whose anchors it moved; lq041-check-d-off and lq041-check-root-off are equivalent there: each drops one of the
+  two identity checks on the roots, and each identity holds by construction (work/041-quadratics-with-letters.md). At CAS 040's accepted tree (69b97e6) `make test` caught its 12 new and the three CAS 038
   mutants whose anchors it moved (work/cas040.md). At 1.7.0's tree (8a76a80) `make test` caught 582 of 588
   (work/v1.7.0-mutants.txt): the six are 1.6.0's, and searched again there each moves exactly the lines it moved at
   1.6.0's tree. At 1.6.0's tree (175c160) `make test` caught 570 of 576
