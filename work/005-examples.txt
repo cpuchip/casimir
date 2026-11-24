@@ -16,7 +16,7 @@ V0010 | solve | X^2+X+1 | X | 35 | NO REAL ROOTS
 V0011 | solve | X+1=X | X | 35 | NO SOLUTION
 V0012 | solve | 2×X=X+X | X | 35 | EVERY X
 V0013 | solve | T^2-T-6 | T | 35 | SOLVED: T=-2; T=3
-V0014 | solve | X^3^2-64 | X | STU | PARTIAL, DEGREE 9 LEFT
+V0014 | solve | X^3^2-64 | X | STU | SOLVED, 8 CPLX: X=4^(1÷3)
 V0015 | solve | X^3^2-64 | X | 35 | SOLVED, 4 CPLX: X=-2; X=2
 V0016 | solve | SIN(X)=0.5 | X | 35 | NOT_POLYNOMIAL
 V0017 | solve | A×X^2-1 | X | 35 | SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0

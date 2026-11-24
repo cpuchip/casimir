@@ -173,7 +173,12 @@ leaves a root's text as it is.
 **Roots left out** (CAS 028): without the bit, and always in model 33, the roots it would print are counted after
 SOLVED's or PARTIAL's status as `, n CPLX`, n with their multiplicities: `(X-2)×(X^2+1)` is `SOLVED, 2 CPLX: X=2`.
 n counts only the roots factoring finds, the quadratic factors with no real root. A factor of degree 3 or more left
-whole adds none, so `X^4+1` is `PARTIAL, DEGREE 4 LEFT`, with no note. NO REAL ROOTS says it already and has none. Where
+whole adds none, so `X^3-2×X-5` is `PARTIAL, DEGREE 3 LEFT`, with no note. NO REAL ROOTS says it already and has none.
+A pure power x^n = c (CAS 041), n ≥ 3 and c a number, has at most two real roots and solve gives them all, so it is
+SOLVED with n less its real roots as the note: X^3=2 is `SOLVED, 2 CPLX: X=2^(1÷3)`, c's numerator and denominator
+each taken out as a power where they are one (X^9=8 is `SOLVED, 8 CPLX: X=2^(1÷3)`), the roots factoring finds printed
+as it prints them (X^6=8 is `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)`), and an even n with c < 0 NO REAL ROOTS (X^4+1).
+Where
 the note would take the line past 191 bytes, the line is printed without it.
 
 **Letters as coefficients** (CAS 038): an equation linear in var whose coefficients hold another letter or π, as
@@ -220,7 +225,10 @@ with neither a letter nor π, SQRT(2) or SIN(1)), NO_ROOM (degree past 12, or a 
 | `casim solve "(X+3)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT: X=-3` |
 | `casim solve "(X-2)×(X^2+1)" X RAD` | `SOLVED, 2 CPLX: X=2` |
 | `casim solve "(X^2+1)×(X^3-2×X-5)" X RAD` | `PARTIAL, DEGREE 3 LEFT, 2 CPLX` |
-| `casim solve "X^4+1" X RAD` | `PARTIAL, DEGREE 4 LEFT` |
+| `casim solve "X^4+1" X RAD` | `NO REAL ROOTS` |
+| `casim solve "X^3=2" X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)` |
+| `casim solve "X^9=8" X RAD` | `SOLVED, 8 CPLX: X=2^(1÷3)` |
+| `casim solve "X^6=8" X RAD` | `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)` |
 | `casim solve "SIN(X)=0.5" X RAD` | `NOT_POLYNOMIAL` |
 | `casim solve "V=I×R" R RAD` | `SOLVED: R=V÷I; I≠0` |
 | `casim solve "(A^2-1)×X=A+1" X RAD` | `SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |

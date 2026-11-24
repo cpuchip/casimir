@@ -4792,6 +4792,95 @@ static __attribute__((noinline)) void put_left_out(out_t *w, const solve_ws *s)
     w->n += k;
 }
 
+static int64_t lq_iroot(int64_t n, int k);
+static ref ib_canon(ctx *c, ref r);
+static ref ib_neg(ctx *c, ref r);
+static ref ir_rat(ctx *c, int64_t p, int64_t q);
+static void td_drop(ctx *c, size_t mark);
+
+/* CAS 041 ruling 7: a PARTIAL line, its typed text read again; when it is x^n = c (n ≥ 3, c ≠ 0, a number), its real
+   roots are all of them (at most two): the ones factoring printed (the line's own), else c^(1÷n) with c's numerator and
+   denominator each reduced (the largest m-th power, m dividing n: X^9=8 is 2^(1÷3)), each put back. The line becomes
+   SOLVED with the complex count, or NO REAL ROOTS for an even n and c < 0. Left as it is (the arena and status as they
+   were) for any other text, or where factoring found some real roots but not all. A pass after put_solution, so no
+   accepted frame holds it */
+static __attribute__((noinline)) void pp_fix(ctx *c, out_t *w, int var)
+{
+    size_t mark = c->used;
+    const char *col;
+    int nr = 0;
+    char name[2] = {(char)('A' + var), '\0'};
+    ref e, *t, cn = 0, c0 = 0, r, x[2], u[2];
+    long k, n = 0;
+    int nt, want, left;
+    int64_t p, q, part[2];
+    if (strncmp(w->o, "PARTIAL, DEGREE ", 16) != 0) return;
+    if ((col = strchr(w->o, ':')))
+        for (const char *q2 = col; *q2; q2++) nr += *q2 == '=';
+    e = parse(c);
+    if (c->st == CASIM_OK) e = canon(c, e);
+    if (c->st == CASIM_OK && nd(c, e)->kind == K_EQ) e = add2(c, nd(c, e)->a, ib_neg(c, nd(c, e)->b));
+    c->sub_var = var;
+    if (c->st == CASIM_OK) e = expand_fully(c, e);
+    c->sub_var = -1;
+    if (c->st != CASIM_OK || nd(c, e)->kind != K_ADD || nd(c, e)->n != 2) goto no;
+    t = list(c, nd(c, e)->a), nt = 2;
+    for (int i = 0; i < nt; i++) {
+        ref co;
+        if (!as_power(c, t[i], var, &k, &co) || !is_num(c, co)) goto no;
+        if (k == 0) c0 = co;
+        else if (k >= 3) n = k, cn = co;
+    }
+    if (!c0 || !cn) goto no;
+    r = ib_canon(c, mul2(c, ib_neg(c, c0), power(c, cn, small(c, C_M1))));
+    if (c->st != CASIM_OK || !is_num(c, r)) goto no;
+    p = val(c, r)->p, q = val(c, r)->q;
+    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n - want;
+    if (!want) {
+        td_drop(c, mark);
+        w->n = 0, w->o[0] = '\0', puts_(w, "NO REAL ROOTS");
+        return;
+    }
+    if (nr && nr != want) goto no;
+    if (!nr) {
+        part[0] = p < 0 ? -p : p, part[1] = q;
+        for (int j = 0; j < 2; j++) {                   /* numerator and denominator apart */
+            long m = n;
+            int64_t b = part[j];
+            for (; m > 1; m--)
+                if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;
+            if (m == 1) b = part[j];
+            u[j] = power(c, ir_rat(c, b, 1), ir_rat(c, j ? -1 : 1, n / m));
+        }
+        x[1] = ib_canon(c, mul2(c, u[0], u[1]));
+        if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));
+        x[0] = want == 2 ? ib_canon(c, ib_neg(c, x[1])) : x[1];
+        for (int i = 2 - want; i < 2; i++) {
+            ref z = expand_fully(c, ib_canon(c, add2(c, power(c, x[i], ir_rat(c, n, 1)), ib_neg(c, r))));
+            if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;
+        }
+    }
+    if (nr) {                                           /* factoring's roots, as it printed them: the status only */
+        char head[20] = "SOLVED, ";
+        size_t hl = 8, tail = strlen(col);
+        if (left >= 10) head[hl++] = (char)('0' + left / 10);
+        head[hl++] = (char)('0' + left % 10);
+        memcpy(head + hl, " CPLX", 5), hl += 5;
+        memmove(w->o + hl, col, tail + 1);
+        memcpy(w->o, head, hl);
+        w->n = hl + tail;
+        return;
+    }
+    w->n = 0, w->o[0] = '\0';
+    puts_(w, "SOLVED, "), put_int(w, left), puts_(w, " CPLX");
+    for (int i = 0; i < want; i++) puts_(w, i ? "; " : ": "), puts_(w, name), puts_(w, "="), print(c, w, x[2 - want + i]);
+    return;
+no:
+    c->sub_var = -1;
+    td_drop(c, mark);
+    c->st = CASIM_OK;
+}
+
 /* The answer's text (abacus #4841): its status first, then each root once, ascending, "; " between. */
 static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, int var, solve_ws *s, int32_t *dq)
 {
@@ -4881,6 +4970,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
     dq = grab(&c, SOLVE_DIVS * sizeof(int32_t));
     if (c.st == CASIM_OK && clear(&c, (rat *)(void *)nd(&c, cr), &f))
         put_solution(&c, &w, &f, var, (solve_ws *)(void *)nd(&c, ws), (int32_t *)(void *)nd(&c, dq));
+    if (c.st == CASIM_OK && !w.full && !(c.nm & NM_CX)) pp_fix(&c, &w, var);            /* CAS 041: x^n = c */
     if (w.full && c.st == CASIM_OK) c.st = CASIM_TOO_LONG;
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
     return CASIM_OK;

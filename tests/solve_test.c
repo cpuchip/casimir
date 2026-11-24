@@ -73,7 +73,7 @@ static void exact(void)
     is("X^2+1", "NO REAL ROOTS");
     is("(X^2+1)×(X^2+X+1)", "NO REAL ROOTS");
     is("(X-1)×(X^2+1)", "SOLVED, 2 CPLX: X=1");           /* a quadratic without real roots adds no root (CAS 028) */
-    is("X^3-2", "PARTIAL, DEGREE 3 LEFT");
+    is("X^3-2", "SOLVED, 2 CPLX: X=2^(1÷3)");                 /* CAS 041: a pure power, solved whole */
     is("(X-1)×(X^3-2)", "PARTIAL, DEGREE 3 LEFT: X=1");
     is("(X^3-2)^2", "PARTIAL, DEGREE 6 LEFT");
     is("X^4-10×X^2+1", "PARTIAL, DEGREE 4 LEFT");         /* irreducible, with real roots ±√2±√3 */
@@ -85,7 +85,7 @@ static void exact(void)
     CHECK(solve("T^2-4", 'T' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "SOLVED: T=-2; T=2") == 0,
           "solve T^2-4 in T: \"%s\"", out);
     /* the stamp (rule 7): X^3^2-1 is X^9-1 read as STU, X^6-1 read as 35 */
-    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_STU, out) == CASIM_OK && strcmp(out, "PARTIAL, DEGREE 6 LEFT, 2 CPLX: X=1") == 0,
+    CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_STU, out) == CASIM_OK && strcmp(out, "SOLVED, 8 CPLX: X=1") == 0,
           "solve X^3^2-1 (STU): \"%s\"", out);
     CHECK(solve("X^3^2-1", 'X' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "SOLVED, 4 CPLX: X=-1; X=1") == 0,
           "solve X^3^2-1 (35): \"%s\"", out);
@@ -348,6 +348,11 @@ static void seeded(void)
             fs[nf] = f, mults[nf] = m, nf++;
         }
         if (fail || deg == 0) { over += fail; continue; }
+        {                                               /* CAS 041: x^n = c is solved whole (quads()), not judged here */
+            int nz = 0;
+            for (int i = 0; i <= deg; i++) nz += p[i] != 0;
+            if (nz == 2 && p[0] && deg >= 3) continue;
+        }
         /* the text, the expected roots (by value) and the degree left */
         {
             int len = 0;
@@ -565,8 +570,8 @@ static void left_out(void)
         {CASIM_MODEL_33, CASIM_COMPLEX, "(X-2)×(X^2+1)", "SOLVED, 2 CPLX: X=2"},
         {CASIM_MODEL_35, CASIM_COMPLEX, "(X-2)×(X^2+1)", "SOLVED: X=2; X=-0i1; X=0i1"},
         {CASIM_MODEL_35, 0, "X^4+4", "NO REAL ROOTS"},
-        {CASIM_MODEL_35, 0, "X^4+1", "PARTIAL, DEGREE 4 LEFT"},
-        {CASIM_MODEL_35, 0, "X^3-2", "PARTIAL, DEGREE 3 LEFT"},
+        {CASIM_MODEL_35, 0, "X^4+1", "NO REAL ROOTS"},
+        {CASIM_MODEL_35, 0, "X^3-2", "SOLVED, 2 CPLX: X=2^(1÷3)"},
         {CASIM_MODEL_35, 0, "X^4+X^2=0", "SOLVED, 2 CPLX: X=0 (MULT 2)"},
         /* the widest statuses: degree left + n <= 12 (soroban #10154: the report's row is 31 cells) */
         {CASIM_MODEL_35, 0, "(X^2+1)×(X^10+X+1)", "PARTIAL, DEGREE 10 LEFT, 2 CPLX"},
@@ -822,6 +827,36 @@ static void quads(void)
                   rows[i].eqn);
         }
     }
+    /* ruling 7: x^n = c with numbers, every real root (factoring's form where it reaches them), each put back */
+    static const struct { const char *eqn, *want; } pows[] = {
+        {"X^3=2", "SOLVED, 2 CPLX: X=2^(1÷3)"}, {"X^6=8", "SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)"},
+        {"X^4=4", "SOLVED, 2 CPLX: X=-SQRT(2); X=SQRT(2)"}, {"X^9=8", "SOLVED, 8 CPLX: X=2^(1÷3)"},
+        {"X^3=-2", "SOLVED, 2 CPLX: X=-2^(1÷3)"}, {"X^12=4096", "SOLVED, 10 CPLX: X=-2; X=2"},
+        {"X^4=2", "SOLVED, 2 CPLX: X=-2^(1÷4); X=2^(1÷4)"}, {"X^3=2÷27", "SOLVED, 2 CPLX: X=2^(1÷3)÷3"},
+        {"X^5=-3÷32", "SOLVED, 4 CPLX: X=-3^(1÷5)÷2"}, {"X^12-2", "SOLVED, 10 CPLX: X=-2^(1÷12); X=2^(1÷12)"},
+        {"X^12-1", "SOLVED, 10 CPLX: X=-1; X=1"}, {"X^4=-16", "NO REAL ROOTS"}, {"X^4+1", "NO REAL ROOTS"},
+    };
+    for (size_t i = 0; i < sizeof pows / sizeof pows[0]; i++) {
+        casim_status st = solve(pows[i].eqn, 'X' - 'A', CASIM_MODEL_35, out);
+        char *p;
+        CHECK(st == CASIM_OK && strcmp(out, pows[i].want) == 0, "solve %s: %d \"%s\", want \"%s\"", pows[i].eqn, (int)st, out,
+              pows[i].want);
+        for (p = strstr(out, "X="); st == CASIM_OK && p; p = strstr(p + 1, "X=")) {
+            char text[OUT], *q;
+            abn x, f;
+            snprintf(text, sizeof text, "%s", p + 2);
+            if ((q = strstr(text, "; "))) *q = '\0';
+            if (ce_eval(text, &x) != ABN_OK) {
+                CHECK(false, "%s: %s does not evaluate", pows[i].eqn, text);
+                continue;
+            }
+            ce_set_abn('X', x);
+            CHECK(ce_eval(pows[i].eqn, &f) == ABN_OK && (f = abn_abs(&f), abn_cmp(&f, &tiny) < 0), "%s at X=%s: %s",
+                  pows[i].eqn, text, ce_text(&f));
+        }
+    }
+    CHECK(solve("X^3-2×X-5", 'X' - 'A', CASIM_MODEL_35, out) == CASIM_OK && strcmp(out, "PARTIAL, DEGREE 3 LEFT") == 0,
+          "solve X^3-2×X-5: \"%s\" (not a pure power: PARTIAL as before)", out);
     ce_angle(angle);
     for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
     is("A×X^2+1÷A=0", "NO REAL ROOTS; A≠0");

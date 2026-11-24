@@ -32,8 +32,8 @@
 | Command | Prints |
 |---|---|
 | `casim solve 'X^4+4' X RAD` | `NO REAL ROOTS` |
-| `casim solve 'X^4+1' X RAD` | `PARTIAL, DEGREE 4 LEFT` |
-| `casim solve 'X^3-2' X RAD` | `PARTIAL, DEGREE 3 LEFT` |
+| `casim solve 'X^4+1' X RAD` | `NO REAL ROOTS` |
+| `casim solve 'X^3-2' X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)` |
 
 # - The widest status, 31 cells (the degree left and n are at most 12 together; soroban #10154):
 
