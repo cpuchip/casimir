@@ -13,9 +13,9 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-024.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-028.txt"), os.path.join(GOLDEN, "moved", "cas-032.txt"),
-         os.path.join(GOLDEN, "moved", "cas-035.txt"), os.path.join(GOLDEN, "moved", "cas-036.txt"),
-         os.path.join(GOLDEN, "moved", "cas-041.txt")]
+LATER = [os.path.join(GOLDEN, "moved", "cas-041.txt"),   # latest first: a line two units moved goes back in turn
+         os.path.join(GOLDEN, "moved", "cas-028.txt"), os.path.join(GOLDEN, "moved", "cas-032.txt"),
+         os.path.join(GOLDEN, "moved", "cas-035.txt"), os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "305bd84"
 
 
