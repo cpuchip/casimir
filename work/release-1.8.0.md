@@ -53,6 +53,7 @@ New with quadratics and pure powers (CAS 041), each a refusal or a row, never a 
 - **An even root of a perfect power is left as a power:** `X^4=A^4` is `SOLVED: X=(A^4)^(1÷4); X=-(A^4)^(1÷4)`, where ABS(A) is the plain form.
 - **A row for nothing:** `X^2=A×SQRT(A)` prints `A^(3÷2)≥0` beside `A≥0`.
 - **Refused, as outside the unit:** a pure power of a linear u (`(X+1)^3=A` is NOT_NUMERIC), a letter in an exponent (`A=P×(1+R)^N` for R), and degree 3 or more with letters but a pure power. With `--complex`, a letter quadratic prints as without it.
+- **x^n = c under `--complex` prints 1.7.0's line:** `X^3=2` is `PARTIAL, DEGREE 3 LEFT`, without the real root 2^(1÷3) it prints with no bit; `X^4=-16` is `PARTIAL, DEGREE 4 LEFT`, where NO REAL ROOTS holds; and `X^12=4096` is `PARTIAL, DEGREE 4 LEFT` with the 8 roots its factors give (`X=-2; X=2` among them). A refusal, never a wrong value. Whether the bit should answer these is open.
 
 Carried from 1.7.0, each example run again on this tag's command line, where it prints as at 1.7.0 unless it says otherwise. New with the zero test (CAS 040), each a refusal or 1.6.0's line, never a wrong value:
 
