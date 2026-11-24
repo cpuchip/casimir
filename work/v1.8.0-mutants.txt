@@ -1,0 +1,34 @@
+# The mutant count at the v1.8.0 tag: 607 of 615 caught at the tag's tree, from one run of every mutant (2026-11-24);
+# the eight survivors are 1.7.0's six and CAS 041's two equivalent ones, named below (abacus #16833).
+#
+# The tree: c564e41, the version commit on e5b40c1 (CAS 041 as accepted at 610c81b), which changes only README.md,
+# idf_component.yml and src/casim.h's version text. The bench's code size (422,310 B, scripts/device.sh --build at
+# 16,384 B) was measured at e5b40c1, whose code is 610c81b's.
+#
+# The control: a worktree made at c564e41 with no build folder, then make test there with the firmware's core at
+# CORE_PIN: all green, 20 tests, 118,813 checks, golden reporting "Casimir 1.8.0" (15:13:42Z to 15:24:15Z). The run
+# used that worktree as its tree, so every copy (cp -a, which keeps timestamps) starts from objects built from
+# c564e41's own sources, and make rebuilds only what depends on the file a mutant rewrites.
+#
+# The run (15:24:47Z to 20:04:25Z, 6 shards of 102 or 103, scripts/mutants.py on copies of that tree, nice 19, under a
+# claim):
+#   607 of 615 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache, cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value,
+#     factor026-letter-off: 1.7.0's six, as at 1.5.0 (work/v1.5.0-mutants.txt names what masks each).
+#   SURVIVED lq041-check-d-off, lq041-check-root-off: CAS 041's two, equivalent at its accepted tree. Each drops one of
+#     the two identity checks on a letter quadratic's roots (r^2 = D, and (2aX+b)^2 - r^2 = 0), and each identity
+#     holds by construction, r being built from D and each root from r (work/041-quadratics-with-letters.md).
+#   Searched again at this tree (host only, 20:08:14Z to 20:09:47Z, 1,758 jobs, none failing), with 1.5.0's inputs
+#     and 30,000 aimed solves added for CAS 041's two (gen41.py, seeded: letter quadratics, products typed expanded
+#     and pure powers, at 65,536 and 8,800 B; 27,754 of them answer OK, 14,683 with a root sign): 2,250,577 lines
+#     through golden_check --record on the build and each of the eight, and 1,011,695 through the series-only build
+#     (CASIM_SER=2) for the two ser-*. Each of the six moves byte for byte the lines it moved at 1.7.0's tree:
+#     div-letter-off the same 16 sum lines, ser-ln-no-value the same one limit line in the series-only build, the
+#     other four none. lq041-check-d-off and lq041-check-root-off move none, the aimed solves included. The unmutated
+#     build's own lines on 1.5.0's inputs are 1.7.0's, every one of the 244 files byte for byte.
+#   The 27 new since 1.7.0 (lq041-*, ls041-*, pp041-*) are caught but those two, and so are the four CAS 038 and 039
+#     mutants CAS 041 re-anchored.
+#
+# Peaks: the run's resident memory summed over every process whose working directory is one of its six copies,
+# sampled every 5 s: 1,892,728 KiB at most (15:37:07Z). /tmp and /dev/shm together 164 KiB when that peak was read,
+# box-wide, so not this run's alone. The copies on disk weren't sampled.
