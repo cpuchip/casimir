@@ -1,9 +1,11 @@
 # Casimir roadmap after 1.7.0
 
-Status: DRAFT, 2026-11-24, by casim at Michael's request, for abacus to amend. Units are numbered when abacus writes
+Status: AGREED, 2026-11-24, by casim at Michael's request, for abacus to amend. Units are numbered when abacus writes
 them; the numbers below are the proposed order, not assignments. abacus read it the same day: the order and the four
-recommendations stand, with one correction to what phase 3 buys (struck in place below). The four questions are asks
-A56, A57, A59 and A60 on the project board.
+recommendations stand, with one correction to what phase 3 buys (struck in place below). Michael took all four
+recommendations the same day: this order, code room raised per unit on its measured size, matrices in the library
+and command line first with the calculator's screens after, and matrices up to 4×4. The plan is with counsel for a
+further read before phase 1's blueprint.
 
 ## Where 1.7.0 stands
 
@@ -33,7 +35,7 @@ comes first.~~ (Struck 2026-11-24, abacus: a 2×2 matrix's complex eigenvalues a
 polynomial factors into pieces of degree 2 or less, or into phase 3's shapes. A general quartic, or a cubic with three
 irrational real roots, stays PARTIAL at any size limit. Textbook problems are usually built to factor.
 
-## Open questions, each for Michael's board
+## The four questions (decided by Michael, 2026-11-24, each as recommended)
 
 1. **The order above,** or matrices and eigenvalues first.
 2. **Code room.** Phases 1 to 3 should fit in the 30 KB left. Phases 4 and 5 likely don't. Raise the line per unit
