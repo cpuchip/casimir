@@ -91,9 +91,9 @@ c^(1÷n)×(COS(2kπ÷n)+SIN(2kπ÷n)×0i1) with k/n reduced, exact by de Moivre,
 core at CAS 008 rule 6's 1E-24, a miss refusing. (c) It prints only where the whole line fits, else 2 CPLX or
 PARTIAL as now. Viète's form and Cardano's complex pair stay PARTIAL.
 
-**Not on the list yet, candidates for Michael to place** (abacus: new content, so his to rank; not adopted without
-him) (counsel's ranking is its judgment of Algebra 1 to a first
-linear algebra course, not a syllabus count):
+**New items, on the roadmap by Michael's word, their places still to rank** (abacus: new content, so his to rank.
+Michael, 2026-11-24: "I like the additions and new items." The ranking is one ask on T99 after CAS 041's blueprint.
+counsel's ranking below is its judgment of Algebra 1 to a first linear algebra course, not a syllabus count):
 
 1. **The equations solve refuses** (NOT_POLYNOMIAL): the variable in a denominator (`1÷X+1÷(X-1)=2`), under a root
    (`SQRT(X+3)=X-3`), in ABS (`ABS(2×X-1)=5`), in one EXP or LN (`2^X=8`, `LN(X)+LN(X-1)=LN(2)`) or one trig layer
@@ -106,6 +106,24 @@ linear algebra course, not a syllabus count):
    print surds, so this sets their form too.
 4. **Vectors** (dot, cross, norm, projection), almost free after phase 4.
 5. **Differential equations** (constant coefficients) and **nonlinear systems**, last if at all.
+
+## The long horizon
+
+Michael, 2026-11-24: "I wouldn't mind streaming to ode and pde one day or even laplace transforms too, linear
+algebra, etc." None of these is sized or ordered yet. Each would get a blueprint and a measured prototype like any
+phase, and the 191-byte line will decide how much of each a calculator can show. What each builds on:
+
+- **Laplace transforms:** a table of transforms and their rules (shift, derivative, convolution), and the inverse
+  transform through partial fractions, which Casimir has (CAS 012). Complex roots (phase 3) give the sine and cosine
+  terms.
+- **Ordinary differential equations:** linear with constant coefficients first, by the characteristic polynomial's
+  roots (solve, phase 3) and a template, or by Laplace with initial values; each answer checked by derive put back in
+  the equation, as integrate checks itself. First-order separable and linear ones by integrate.
+- **Partial differential equations:** the textbook separable cases (heat, wave and Laplace's equation on simple
+  regions), as a series solution with its coefficients from defint. Furthest out: their answers are long, and most
+  won't fit one line, so this is likely steps and pages, or the command line and web build only.
+- **More linear algebra, after phase 5:** diagonalization (P and D), orthogonality and Gram-Schmidt, projections and
+  least squares, null space and column space as bases, and vectors (item 4 above).
 
 ## The four questions (decided by Michael, 2026-11-24, each as recommended)
 
