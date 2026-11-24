@@ -574,6 +574,18 @@ def all_cases():
         rows.append((f"ls STU chain A^ {n}", "X=" + "^".join(["A"] * n), "X", "RAD", "solve", None, "STU"))
         rows.append((f"ls SIN nest {n}", "X=" + nest, "X", "RAD", "solve", None, "35"))
         rows.append((f"ls var SIN nest {n}", "X×(X+" + nest + ")÷(X+" + nest + ")=B", "X", "RAD", "solve", None, "35"))
+    # CAS 041 (work/041-quadratics-with-letters.md): quadratics and pure powers with letters at depth, across the
+    # guard: the discriminant's square root (lq_sqrt) and its square content (lq_out) run canon and expand_fully inside
+    # their own frames below ls_solve's, and the witness reads every row at 22 points; and a perfect square of a long
+    # sum, which runs lq_sqrt's long division to its end
+    for n in range(34, 48):
+        nest = "SIN(" * n + "A" + ")" * n
+        rows.append((f"lq SIN nest {n}", "X^2=" + nest, "X", "RAD", "solve", None, "35"))
+        rows.append((f"lq pow SIN nest {n}", "X^3=" + nest, "X", "RAD", "solve", None, "35"))
+        rows.append((f"lq STU chain A^ {n}", "X^2=" + "^".join(["A"] * n), "X", "RAD", "solve", None, "STU"))
+    rows.append(("lq square of a sum", "X^2-2×(A+B+C+D+E)×X+(A+B+C+D+E)^2=0", "X", "RAD", "solve", None, "35"))
+    rows.append(("lq formula", "A×X^2+B×X+C=0", "X", "RAD", "solve", None, "35"))
+    rows.append(("lq x^n = c", "X^9=8", "X", "RAD", "solve", None, "35"))
     rows = [r if len(r) == 7 else r + ("35",) for r in rows + SHAPES003]
     # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
     for r in rows[:]:

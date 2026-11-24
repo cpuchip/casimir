@@ -781,6 +781,7 @@ static void quads(void)
         {"A×X^3=8", 'X', "SOLVED: X=(8÷A)^(1÷3); A≠0; 1÷A≥0", "A=2.75"},
     };
     static const char *const declined[] = {"X^2+1+A^2=0", "X^2+A^2=0", "(5×A-1)×X^2+(5×A-1)÷4=0", "A×X^3+X^2=1",
+                                           "X^2+(5×A-1)^2=0",       /* D = -m^2, m 0 at a witness point (A = 1/5) */
                                            "(SIN(A)^2+COS(A)^2-1)×X^2=1"};
     abn tiny = ce_num("1E-24");
     int angle = (int)ce_calc->angle;

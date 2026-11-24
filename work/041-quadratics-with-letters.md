@@ -166,3 +166,24 @@ the degree reading in ls_solve. It isn't committed. casim sends it on request.
   Examples: docs/language.md's NOT_NUMERIC row for another letter is now `A×X^3+X=1`; work/005's V0014 and V0017,
   work/028's `X^4+1` (NO REAL ROOTS) and `X^3-2`, and work/038's and 039's `X^2=A` rows.
 
+## The gates (2026-11-24)
+
+- **make test:** 20 tests, 118,774 checks, green at 9d5d23e (both halves), and again after the examples and mutants.
+- **S3:** 281,896 B (+11,486 on 1.7.0's 270,410: 10,477 for the letter half at 6f30c67, 1,009 for the numeric pass at
+  9d5d23e), 19,160 B under decision 94's 301,056. No accepted frame moved on the host (the table re-recorded at
+  6312839) or on the S3 (every row of the table diffed). New on the S3: lq_sqrt 400 B, lq_out 336, lq_typed 240,
+  lq_nroot 208, lq_quad 160, lq_pow 160, pp_fix 128, lq_witness 96, lq_mono 64, lq_put 64, ls_unit 32.
+- **The device bench** at db43726, 16,384 B, with 45 CAS 041 cases added to scripts/measure.py (a SIN nest under X^2
+  and X^3 across the guard, STU's A^ chain under X^2, a square of a five-term sum, the formula, X^9=8): DEVICE PASS,
+  1,499 cases byte-identical to the host, 298 steps pages. Worst stack 11,360 B masked + 384 = 11,744 of 12,288,
+  unchanged (STU chain X^ 44, derive); CAS 041's deepest is 9,824 B (lq SIN nest 41), the formula 2,816 B.
+- **wasm** at fe36cc8: the golden corpus through the module, 10,822 checks, 0 failed; the control refused.
+- **Mutants:** 28 run (CAS 041's 24 and the 4 re-anchored CAS 038 and 039 ones): 26 caught. Two didn't build at first
+  (a variable left unused under -Werror; fixed with `(void)`), and one of those then survived for a test gap:
+  lq041-negsq-off (no D = −m^2 refusal) needed a D whose zero falls on a witness point, `X^2+(5×A-1)^2=0` (A = 1/5 at
+  point 0), now in quads() and catching it. Two survive as equivalent: lq041-check-d-off and lq041-check-root-off each
+  drop one identity check of the two, and each holds by construction (r is built from D, and each root from r), so a
+  test can't fail them without a fault elsewhere.
+- **Not measured well:** the mutant run's memory peak. The sampler summed every python3 and make process on the box,
+  other seats' included, and read 6.9 GB; the run's own use is below that and wasn't isolated.
+
