@@ -1,8 +1,10 @@
 # CAS work unit 041: quadratics and pure powers with letters
 
-**From:** casim · **To:** abacus · **Status:** DRAFT, 2026-11-24, measured on a throwaway prototype, p1, over f81ddc0
-(1.7.0's code). The number is the roadmap's proposed one until abacus writes the unit. casim writes the unit; abacus
-writes the hidden set and the acceptance.
+**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-24, at 6f30c67 (the letter half) and its golden
+re-record 42a9c02, then the numeric pure powers in a commit of their own (ruling 7); waiting on the gates and h041
+(frozen at sha256 e3cc3bae4dc1ff078c06a39399d47a6707fafd1da1af879401c294fdf154da51, abacus #16697). The number is
+abacus's (#16688). The draft below was measured on a throwaway prototype, p1, over f81ddc0 (1.7.0's code), and its
+sections are kept as they were sent. casim writes the unit; abacus writes the hidden set and the acceptance.
 
 - **Why now:** phase 1 of the roadmap (work/roadmap.md), agreed with Michael 2026-11-24, with counsel's two additions
   adopted by abacus (#16650): the perfect-square discriminant and pure powers.
@@ -123,3 +125,44 @@ Built equations and drawn ones, both judged outside casim:
 
 p1 is a patch on f81ddc0 in a throwaway worktree: lq_isqrt, lq_mono, lq_sqrt, lq_pow and lq_quad before ls_solve, and
 the degree reading in ls_solve. It isn't committed. casim sends it on request.
+
+## Rulings (abacus #16688)
+
+1. **Form:** the square content comes out inside solve, the numeric square and each letter's even power, safe because
+   the roots print as a ± pair. The row is on the radicand printed, never the original D: `X^2=A^2×B` prints
+   `X=A×SQRT(B); X=-A×SQRT(B); B≥0`. Every SQRT printed carries its own radicand's ≥0 row unless it's shown ≥0.
+2. **Order:** canon's (cmp), whatever the typing or a's sign.
+3. **A row that never holds:** all the rows read together at each point; a point is a witness only where every row
+   holds surely (≠ and > read not 0 with the sign by CAS 022 rule 8, ≥ that or an exact 0). One witness prints the
+   answer; none refuses NOT_NUMERIC. D alone isn't enough: a = 5×A−1, k = (5×A−1)÷4, b = 0 gives D = −(5×A−1)^2,
+   exactly 0 at A = 1/5, where a is 0 too.
+4. **D a negative number:** NO REAL ROOTS with a's rows, where a≠0 has a witness. The real input is `A×X^2+1÷A=0`
+   (D = −4); the draft's "letters only in a" can't happen.
+5. **Pure powers:** as p1, and an odd n's exact root drops the r≥0 row (`X^5=32×A^5` is `X=2×A`). Even n stays
+   r^(1÷n) with r≥0, no ABS. The limit is named: for odd n with letters, r < 0 has a real root the answer doesn't give.
+6. **Rows ÷ a positive constant:** yes, for a number above 0, π, and products of them; h038 and h039 are run and every
+   moved byte listed. Combining rows (8÷A≥0 beside A≠0 as A>0) is out of this ruling.
+7. **Numeric pure powers:** in this unit, as their own commit with their own size line, printed as factoring prints a
+   root it reaches (`X^6=8` is ±SQRT(2) with the rest complex), and SOLVED, k CPLX (`X^3=2` is
+   `SOLVED, 2 CPLX: X=2^(1÷3)`).
+8. **Out:** a power of a linear u, letter exponents, `--complex` with letters, steps (BAD_ARG). One root alone only
+   where the reader proves its condition holds wherever the rows hold and the other root's fails; otherwise the whole
+   answer declines, as p1 does.
+
+## As built
+
+- **The witness points (a departure from ruling 3's wording, for abacus to confirm):** CAS 040's six points can't
+  witness a row on two letters of unlike parity, since there such letters always differ in sign (letter l's sign at
+  point j is the parity of l ^ j ^ (j >> 1)): A×B≥0 holds at none of them, so `A×X^2=B` and `A×X^2+B×X+C=0` were
+  refused. lq_at adds 16 points with the same magnitudes and letter l's sign bit l mod 4 of j − 6, so A, B, C and D meet
+  every sign pattern. Measured: both rows answer, and every planted never-holding row still refuses.
+- **The check:** as identities, as CAS 038's is, so a sum a cancels as one factor: r^2 = D, and (2×a×x + b)^2 − r^2 = 0
+  for each root. Putting the root back whole fails for `(A+D)×X^2+B×X+C=0` (terms over A+D that never meet).
+- **The numeric pure powers** run as a pass after put_solution (pp_fix), rewriting a PARTIAL line whose typed text is
+  x^n = c, so put_solution's S3 frame stays at 400 B (a hook inside it moved it to 416). c's numerator and denominator
+  are each taken out as the largest power that divides n's root: `X^3=2÷27` is `X=2^(1÷3)÷3`.
+- **Moved, on purpose:** golden `solve A×X^2-1` (3 lines, and 3 under →DEC) with the letter half; `X^12-1`,
+  `X^12-2` and `X^3^2-64` (7, and 7 under →DEC) with the numeric half, each in tests/golden/moved/cas-041.txt.
+  Examples: docs/language.md's NOT_NUMERIC row for another letter is now `A×X^3+X=1`; work/005's V0014 and V0017,
+  work/028's `X^4+1` (NO REAL ROOTS) and `X^3-2`, and work/038's and 039's `X^2=A` rows.
+

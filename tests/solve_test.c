@@ -767,6 +767,7 @@ static void quads(void)
         {"X^2=8×A", 'X', "SOLVED: X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0", "A=0.5"},
         {"X^2=A^2×B", 'X', "SOLVED: X=A×SQRT(B); X=-A×SQRT(B); B≥0", "A=-1.5 B=2.25"},
         {"X^2=π", 'X', "SOLVED: X=SQRT(π); X=-SQRT(π)", ""},
+        {"X^2=LN(A)", 'X', "SOLVED: X=SQRT(LN(A)); X=-SQRT(LN(A)); A>0; LN(A)≥0", "A=4"},       /* a typed condition */
         {"X^2+X=A", 'X', "SOLVED: X=-SQRT(4×A+1)÷2-1÷2; X=SQRT(4×A+1)÷2-1÷2; A≥-1÷4", "A=0.25"},
         {"X^2+A×X+1=0", 'X', "SOLVED: X=-A÷2-SQRT(A^2-4)÷2; X=-A÷2+SQRT(A^2-4)÷2; ABS(A)≥2", "A=-2.5"},
         {"A×X^2=B", 'X', "SOLVED: X=SQRT(A×B)÷A; X=-SQRT(A×B)÷A; A≠0; A×B≥0", "A=-2 B=-4.5"},

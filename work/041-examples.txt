@@ -1,0 +1,72 @@
+# CAS 041's examples (work/041-quadratics-with-letters.md; abacus #16650, #16688, h041 #16697): a quadratic or a
+# pure power in var, letters as coefficients, by the formula with an exact square root where D has one, every root put
+# back, rows on what is printed and read together at a witness point; and x^n = c with numbers, solved whole. Each
+# row is run by scripts/doc-examples.py, and again with the series route compiled out (CAS 021) and through the value
+# check's build (CAS 022 rule 5).
+
+# - Part 1: the formula, and a perfect square
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve 'A×X^2+B×X+C=0' X RAD` | `SOLVED: X=-(B+SQRT(B^2-4×A×C))÷2÷A; X=-(B-SQRT(B^2-4×A×C))÷2÷A; A≠0; B^2-4×A×C≥0` |
+| `casim solve '(A+D)×X^2+B×X+C=0' X RAD` | `SOLVED: X=-(B+SQRT(B^2-4×A×C-4×C×D))÷2÷(A+D); X=-(B-SQRT(B^2-4×A×C-4×C×D))÷2÷(A+D); A+D≠0; B^2-4×A×C-4×C×D≥0` |
+| `casim solve 'X^2-(A+B)×X+A×B=0' X RAD` | `SOLVED: X=A; X=B` |
+| `casim solve 'X^2-2×A×X+A^2-B^2=0' X RAD` | `SOLVED: X=A+B; X=A-B` |
+| `casim solve '(A-1)×X^2+A×X+1=0' X RAD` | `SOLVED: X=-1÷(A-1); X=-1; A≠1` |
+| `casim solve 'X^2+2×A×X+A^2=0' X RAD` | `SOLVED: X=-A (MULT 2)` |
+| `casim solve '4×X^2-12×A×X+9×A^2=0' X RAD` | `SOLVED: X=3×A÷2 (MULT 2)` |
+| `casim solve 'X^2+A×X+1=0' X RAD` | `SOLVED: X=-A÷2-SQRT(A^2-4)÷2; X=-A÷2+SQRT(A^2-4)÷2; ABS(A)≥2` |
+| `casim solve 'X^2+X=A' X RAD` | `SOLVED: X=-SQRT(4×A+1)÷2-1÷2; X=SQRT(4×A+1)÷2-1÷2; A≥-1÷4` |
+| `casim solve '(X-A)^2=B' X RAD` | `SOLVED: X=A+SQRT(B); X=A-SQRT(B); B≥0` |
+
+# - Part 2: square content out of the root, the row on the radicand printed (ruling 1), rows dropping a constant (6)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve 'X^2=A' X RAD` | `SOLVED: X=SQRT(A); X=-SQRT(A); A≥0` |
+| `casim solve 'X^2=8×A' X RAD` | `SOLVED: X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0` |
+| `casim solve 'X^2=A^2×B' X RAD` | `SOLVED: X=A×SQRT(B); X=-A×SQRT(B); B≥0` |
+| `casim solve 'X^2=π' X RAD` | `SOLVED: X=SQRT(π); X=-SQRT(π)` |
+| `casim solve 'X^2=12×π×A' X RAD` | `SOLVED: X=-2×SQRT(3×A×π); X=2×SQRT(3×A×π); A≥0` |
+| `casim solve 'A×X^2=B' X RAD` | `SOLVED: X=SQRT(A×B)÷A; X=-SQRT(A×B)÷A; A≠0; A×B≥0` |
+| `casim solve 'E=M×C^2' C RAD` | `SOLVED: C=SQRT(E×M)÷M; C=-SQRT(E×M)÷M; M≠0; E×M≥0` |
+| `casim solve 'S=1÷2×G×T^2' T RAD` | `SOLVED: T=SQRT(2×G×S)÷G; T=-SQRT(2×G×S)÷G; G≠0; G×S≥0` |
+| `casim solve 'A×X^2-1' X RAD` | `SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0` |
+
+# - Part 3: pure powers with letters (ruling 5)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve 'V=4÷3×π×R^3' R RAD` | `SOLVED: R=(3×V÷4÷π)^(1÷3); V≥0` |
+| `casim solve 'X^4=A' X RAD` | `SOLVED: X=A^(1÷4); X=-A^(1÷4); A≥0` |
+| `casim solve 'X^3+A=0' X RAD` | `SOLVED: X=(-A)^(1÷3); A≤0` |
+| `casim solve 'X^5=32×A^5' X RAD` | `SOLVED: X=2×A` |
+| `casim solve 'A×X^3=8' X RAD` | `SOLVED: X=(8÷A)^(1÷3); A≠0; 1÷A≥0` |
+
+# - Part 4: refused or no real roots (rulings 3 and 4), and steps (ruling 8)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve 'X^2+1+A^2=0' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X^2+A^2=0' X RAD` | `NOT_NUMERIC` |
+| `casim solve '(5×A-1)×X^2+(5×A-1)÷4=0' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'A×X^2+1÷A=0' X RAD` | `NO REAL ROOTS; A≠0` |
+| `casim solve 'A×X^3+X^2=1' X RAD` | `NOT_NUMERIC` |
+| `casim steps solve 'X^2=A' X RAD` | `BAD_ARG` |
+| `casim steps solve 'A×X^2+B×X+C=0' X RAD` | `BAD_ARG` |
+
+# - Part 5: x^n = c with numbers, every real root (ruling 7)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve 'X^3=2' X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)` |
+| `casim solve 'X^6=8' X RAD` | `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)` |
+| `casim solve 'X^4=4' X RAD` | `SOLVED, 2 CPLX: X=-SQRT(2); X=SQRT(2)` |
+| `casim solve 'X^9=8' X RAD` | `SOLVED, 8 CPLX: X=2^(1÷3)` |
+| `casim solve 'X^3=-2' X RAD` | `SOLVED, 2 CPLX: X=-2^(1÷3)` |
+| `casim solve 'X^4=-16' X RAD` | `NO REAL ROOTS` |
+| `casim solve 'X^12=4096' X RAD` | `SOLVED, 10 CPLX: X=-2; X=2` |
+| `casim solve 'X^4=2' X RAD` | `SOLVED, 2 CPLX: X=-2^(1÷4); X=2^(1÷4)` |
+| `casim solve 'X^3=2÷27' X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)÷3` |
+| `casim solve 'X^5=-3÷32' X RAD` | `SOLVED, 4 CPLX: X=-3^(1÷5)÷2` |
+| `casim solve 'X^3-2×X-5' X RAD` | `PARTIAL, DEGREE 3 LEFT` |

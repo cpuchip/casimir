@@ -92,7 +92,9 @@ core at CAS 008 rule 6's 1E-24, a miss refusing. (c) It prints only where the wh
 PARTIAL as now. Viète's form and Cardano's complex pair stay PARTIAL.
 
 **New items, on the roadmap by Michael's word, their places still to rank** (abacus: new content, so his to rank.
-Michael, 2026-11-24: "I like the additions and new items." The ranking is one ask on T99 after CAS 041's blueprint.
+Michael, 2026-11-24: "I like the additions and new items." Ranked by him the same day on T99 (ask A63, "As
+recommended"): radicals in simplify after phase 1, inequalities after phase 2, vectors with phase 4, and the refused
+equations after phase 5.
 counsel's ranking below is its judgment of Algebra 1 to a first linear algebra course, not a syllabus count):
 
 1. **The equations solve refuses** (NOT_POLYNOMIAL): the variable in a denominator (`1÷X+1÷(X-1)=2`), under a root

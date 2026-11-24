@@ -1591,6 +1591,35 @@ MUTANTS = {
     "ls040-floor-two": [("src/casim.c", "    if (z) c->st = CASIM_NOT_NUMERIC;\n    return z > 0;\n}",
                          "    if (z > 1) c->st = CASIM_NOT_NUMERIC;\n    return z > 1;\n}")],
     "ls040-no-drop": [("src/casim.c", "            z++;\n        }\n        td_drop(c, mark);", "            z++;\n        }\n        (void)mark;")],
+    # CAS 041 (work/041-quadratics-with-letters.md): quadratics and pure powers with letters, and x^n = c with numbers:
+    # the routing, the formula's sign, both identity checks, the exact square root, D = -m^2, the witness (off, six
+    # points, ≥ read as =), the radicand's row (off, on D), the square content, the order, the odd exact root and its
+    # row, NO REAL ROOTS, the typed conditions, steps, rows ÷ a constant, and the numeric pass (off, its count, its
+    # reduction, a negative c)
+    "lq041-off": [("src/casim.c", "            } else if (k == 2) a2 = add2(c, a2, co);", "            } else if (k == 2) goto no;")],
+    "lq041-pow-off": [("src/casim.c", "    if (ls_zero(c, a)) return false;\n    r = ib_canon(c, mul2(c, ib_neg(c, k), power(c, a, small(c, C_M1))));", "    if (1 || ls_zero(c, a)) return false;\n    r = ib_canon(c, mul2(c, ib_neg(c, k), power(c, a, small(c, C_M1))));")],
+    "lq041-sign": [("src/casim.c", "        x[i] = ib_canon(c, mul2(c, add2(c, ib_neg(c, b), i ? r : ib_neg(c, r)),", "        x[i] = ib_canon(c, mul2(c, add2(c, b, i ? r : ib_neg(c, r)),")],
+    "lq041-check-d-off": [("src/casim.c", "        ref z = expand_fully(c, ib_canon(c, add2(c, power(c, r, small(c, C_2)), ib_neg(c, D))));\n        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return false;", "        ref z = expand_fully(c, ib_canon(c, add2(c, power(c, r, small(c, C_2)), ib_neg(c, D))));\n        if (c->st != CASIM_OK) return false;\n        (void)z;")],
+    "lq041-check-root-off": [("src/casim.c", "        z = expand_fully(c, ib_canon(c, mul2(c, add2(c, u, r), add2(c, u, ib_neg(c, r)))));\n        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return false;", "        z = expand_fully(c, ib_canon(c, mul2(c, add2(c, u, r), add2(c, u, ib_neg(c, r)))));\n        if (c->st != CASIM_OK) return false;")],
+    "lq041-sqrt-off": [("src/casim.c", "    if (is_num(c, D)) {\n        const rat *v = val(c, D);\n        int64_t p = lq_isqrt(v->p), q = lq_isqrt(v->q);\n        return p >= 0", "    if (D) return 0;\n    if (is_num(c, D)) {\n        const rat *v = val(c, D);\n        int64_t p = lq_isqrt(v->p), q = lq_isqrt(v->q);\n        return p >= 0")],
+    "lq041-negsq-off": [("src/casim.c", "        if (c->st != CASIM_OK || m) return false;                      /* D = -m^2: real only where m is 0 */", "        if (c->st != CASIM_OK) return false;                      /* D = -m^2: real only where m is 0 */")],
+    "lq041-witness-off": [("src/casim.c", "    size_t mark = c->used;\n    for (int j = 0; j < LQ_POINTS; j++) {", "    size_t mark = c->used;\n    if (mark) return true;\n    for (int j = 0; j < LQ_POINTS; j++) {")],
+    "lq041-witness-six": [("src/casim.c", "#define LQ_POINTS 22", "#define LQ_POINTS 6")],
+    "lq041-witness-ge-zero": [("src/casim.c", "            if (is_num(c, u)) ok = S->op[i] == 'g' ? !abn_is_negative(&x) :", "            if (is_num(c, u)) ok = S->op[i] == 'g' ? abn_is_zero(&x) :")],
+    "lq041-radicand-row-off": [("src/casim.c", "    if (D1 && !(is_num(c, D1))) cd_note(c, &S, D1, 'g', var);", "    (void)D1;")],
+    "lq041-row-on-d": [("src/casim.c", "    if (D1 && !(is_num(c, D1))) cd_note(c, &S, D1, 'g', var);", "    if (D1 && !(is_num(c, D1))) cd_note(c, &S, D, 'g', var);")],
+    "lq041-out-off": [("src/casim.c", "    return c->st == CASIM_OK && !is_k(c, *h, 1, 1);\n}", "    return false;\n}")],
+    "lq041-order-off": [("src/casim.c", "    if (nx == 2 && cmp(c, x[0], x[1]) > 0) h = x[0], x[0] = x[1], x[1] = h;", "    (void)h;")],
+    "lq041-nroot-off": [("src/casim.c", "    if (!(n & 1) || !lq_mono(c, r, ex, &co)) return 0;", "    if (n || !lq_mono(c, r, ex, &co)) return 0;")],
+    "lq041-pow-row-off": [("src/casim.c", "    if (!lq_nroot(c, r, n)) cd_note(c, &S, r, 'g', var);", "    (void)0;")],
+    "lq041-norealroots-off": [("src/casim.c", "    if (is_num(c, D) && val(c, D)->p < 0) {                         /* ruling 4: A×X^2+1÷A=0 */", "    if (0) {                         /* ruling 4: A×X^2+1÷A=0 */")],
+    "lq041-typed-off": [("src/casim.c", "    side[0] = parse(c);\n    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)", "    return true;\n    side[0] = parse(c);\n    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)")],
+    "lq041-steps-off": [("src/casim.c", "            if (k > 1) return CASIM_BAD_ARG;                /* CAS 041: a quadratic or a power has no page */", "            (void)0;                /* CAS 041: a quadratic or a power has no page */")],
+    "ls041-unit-off": [("src/casim.c", "    if (nd(c, e)->kind != K_MUL) return e;\n    n = nd(c, e)->n;", "    if (nd(c, e)->kind != K_MUL || op) return e;\n    n = nd(c, e)->n;")],
+    "pp041-off": [("src/casim.c", "    if (c.st == CASIM_OK && !w.full && !(c.nm & NM_CX)) pp_fix(&c, &w, var);            /* CAS 041: x^n = c */", "    (void)pp_fix;            /* CAS 041: x^n = c */")],
+    "pp041-count": [("src/casim.c", "    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n - want;", "    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n;")],
+    "pp041-reduce-off": [("src/casim.c", "                if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;", "                if (0) break;")],
+    "pp041-neg-off": [("src/casim.c", "        if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));", "        (void)0;")],
 }
 
 
