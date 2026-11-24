@@ -5,7 +5,7 @@ them; the numbers below are the proposed order, not assignments. abacus read it 
 recommendations stand, with one correction to what phase 3 buys (struck in place below). Michael took all four
 recommendations the same day: this order, code room raised per unit on its measured size, matrices in the library
 and command line first with the calculator's screens after, and matrices up to 4×4. The plan is with counsel for a
-further read before phase 1's blueprint.
+further read before phase 1's blueprint; its read is folded in below.
 
 ## Where 1.7.0 stands
 
@@ -31,9 +31,81 @@ release.
 Why eigenvalues come right after matrices: an eigenvalue is a root of the characteristic polynomial, and Casimir
 already factors and solves polynomials exactly. ~~A 2×2 rotation matrix's eigenvalues are complex, which is why phase 3
 comes first.~~ (Struck 2026-11-24, abacus: a 2×2 matrix's complex eigenvalues already work through solve's
-`--complex`.) Phase 3 comes first for 3×3 and 4×4 matrices. Their eigenvalues are exact when the characteristic
+`--complex`.) ~~Phase 3 comes first for 3×3 and 4×4 matrices.~~ (Struck 2026-11-24, counsel: characteristic
+polynomials are almost never phase 3's shapes, so matrices don't wait on it; see below.) 3×3 and 4×4 eigenvalues are exact when the characteristic
 polynomial factors into pieces of degree 2 or less, or into phase 3's shapes. A general quartic, or a cubic with three
 irrational real roots, stays PARTIAL at any size limit. Textbook problems are usually built to factor.
+
+## counsel's read (2026-11-24), and what it changes
+
+Michael asked that the plan go to counsel, the house's consulting seat, for further input. Its review read this file,
+the README, docs/language.md, docs/canonical-form.md and the 005, 008, 020 and 1.7.0 notes, and none of the C. Its
+numbers come from four standard-library Python scripts of its own (textbook methods only, no CAS read or run), so
+byte counts are its bracket form and its texts, read as ratios rather than budgets. Checked on 1.7.0's command line:
+`X^3=2`, `X^4-4×X^2+2`, `X^4-10×X^2+1`, `X^4+1` (also with `--complex`) and `X^3+X+1` are PARTIAL;
+`SQRT(X+3)=X-3` and `2^X=8` are NOT_POLYNOMIAL; `SQRT(8)` simplifies to `SQRT(8)`.
+
+**Within the agreed order, adopted by abacus the same day for the blueprints** (casim sizes each in its blueprint;
+abacus reviews and writes it):
+
+- **Matrices don't depend on phase 3.** Built textbook matrices factor into linear and quadratic pieces, which solve
+  finishes today; random ones give irreducible cubics, which phase 3 mostly leaves PARTIAL (of 20,000 random 3×3 with
+  entries -9 to 9, 8.3% have a characteristic polynomial solve can finish). The order stands on its own merits.
+- **Phase 1 adds three things:** a discriminant that is a perfect square (`X^2-(A+B)×X+A×B=0` should print X=A and
+  X=B, not SQRT((A-B)^2) with a row that always holds; [[A,B],[B,A]]'s eigenvalues are this case); pure powers u^n=c
+  with u linear in the variable (`V=4÷3×π×R^3` for R, `A=P×(1+R)^N` for R, and `X^3=2` with numbers); and a ruling on
+  the printed form, as CAS 005 ruled it for numeric roots.
+- **Phase 2's check needs trig equality decided first.** integrate differentiates its answer and compares exactly, and
+  ∫SIN(X)^2's derivative equals SIN(X)^2 only through an identity. A small normal form decides it: everything in SIN
+  and COS of the base angle, SIN^2 replaced by 1-COS^2, so each expression is p(COS)+SIN×q(COS) one way. It would also
+  read `SIN(A)^2+COS(A)^2-1` as 0, which CAS 040 refuses by its point test.
+- **Phase 3, cut to what earns its place, in this order:** (1) X^n=c's real roots (`X^3=2` would be about 26 B; cube
+  roots of positives only, a negative c's odd root written `-2^(1÷3)`); (2) biquadratics, real roots first, denested
+  where p^2-q^2×r is a rational square (`X^4-10×X^2+1` gives ±SQRT(2)±SQRT(3)), then `X^4+1` and `X^4-X^2+1`;
+  (3) X^n=c's complex roots at n = 3, 4 and 6 (X^3±1, X^4-1 and X^6-1 already work with `--complex`). Optional:
+  Cardano's one real root (about 63 B for X^3+X+1; all three roots are far past 191 B). Left PARTIAL: n = 5 and past
+  unless a COS and SIN form fits (below), and three real irrational roots (a symmetric matrix's
+  irreducible cubic is always this case).
+- **Phase 4:** a wide checked integer for the work, Bareiss elimination for numbers and cofactors for determinants
+  (no division, so it works with letters); the refusal rule stated on the answer ("an answer whose every number is
+  below 2^62 is printed"), so a hidden set can count a refused answer that fits; the inverse printed as an integer
+  matrix over one positive number (counsel's 4×4 two-digit sample: entry by entry over 191 B in 1,997 of 2,000, as
+  integers over one number in 0); letters only where no division or zero test is needed (+, -, ×, transpose, the
+  determinant, the inverse as cofactors over the determinant after CAS 040's point test), and perhaps only to 3×3;
+  rank, RREF and A×X=B with numbers first; singular and inconsistent as statuses, not refusals; matrices kept out of
+  canon, which sorts factors; the work area in the arena (a 4×4 of 64-byte integers is the whole 1 KiB frame allowance).
+- **Phase 5:** eigenvectors for a surd or complex eigenvalue in Q[λ]/(m), m the quadratic factor solve finds, every
+  entry u+w×λ with u and w rational: (b, λ-a) for a 2×2, a column of adj(λ×I-A) for larger, checked (A-λ×I)×v=0
+  exactly before printing (counsel verified 6,000 built matrices this way). One eigenvalue's answer per page, the
+  count of independent eigenvectors stated (fewer than the multiplicity means not diagonalizable), a repeated quadratic
+  factor refused, and an eigenvector normalized so its first nonzero entry is 1. A hidden set judges eigenvectors by
+  property, since they aren't unique, and the form separately, and takes counsel's other cases: Jordan blocks,
+  repeated eigenvalues, eigenvalue 0, quadratic and cubic companion blocks, small random matrices beside built
+  ones, and refusals counted against the stated rule.
+
+**abacus's ruling on phase 3's cosine form:** `COS(2×π÷5)+SIN(2×π÷5)×0i1` is an exact answer under the guarantee, on
+three conditions. (a) It prints in canon's own form: an angle the exact-value table doesn't hold (CAS 008 rule 2)
+stays as written, and multiples of π/6 and π/4 reduce through the table as now; π/5 radicals in the table would
+change simplify everywhere, so they'd be a unit of their own. (b) It's checked before printing: built as
+c^(1÷n)×(COS(2kπ÷n)+SIN(2kπ÷n)×0i1) with k/n reduced, exact by de Moivre, and read back into the polynomial on the
+core at CAS 008 rule 6's 1E-24, a miss refusing. (c) It prints only where the whole line fits, else 2 CPLX or
+PARTIAL as now. Viète's form and Cardano's complex pair stay PARTIAL.
+
+**Not on the list yet, candidates for Michael to place** (abacus: new content, so his to rank; not adopted without
+him) (counsel's ranking is its judgment of Algebra 1 to a first
+linear algebra course, not a syllabus count):
+
+1. **The equations solve refuses** (NOT_POLYNOMIAL): the variable in a denominator (`1÷X+1÷(X-1)=2`), under a root
+   (`SQRT(X+3)=X-3`), in ABS (`ABS(2×X-1)=5`), in one EXP or LN (`2^X=8`, `LN(X)+LN(X-1)=LN(2)`) or one trig layer
+   (`2×SIN(X)^2-SIN(X)-1=0`). Each reduces to a polynomial and checks every candidate in the typed equation, which is
+   what drops an extraneous root. Against: the calculator's numeric SOLVE answers these near a guess, trig needs a
+   notation for a family of solutions, and an irrational candidate can be shown unequal but not equal by the sign
+   bound, so these are the hardest to finish honestly.
+2. **Inequalities:** linear, quadratic and polynomial, as solve's roots plus the sign between them (CAS 022).
+3. **Radicals in simplify:** `SQRT(8)` stays `SQRT(8)` and nothing rationalizes a denominator. Phases 1, 3 and 5 all
+   print surds, so this sets their form too.
+4. **Vectors** (dot, cross, norm, projection), almost free after phase 4.
+5. **Differential equations** (constant coefficients) and **nonlinear systems**, last if at all.
 
 ## The four questions (decided by Michael, 2026-11-24, each as recommended)
 
