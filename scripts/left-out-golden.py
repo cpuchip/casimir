@@ -19,7 +19,8 @@ GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-028.txt")
 CLI = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "build", "casim")
 LATER = [os.path.join(GOLDEN, "moved", "cas-032.txt"), os.path.join(GOLDEN, "moved", "cas-035.txt"),
-         os.path.join(GOLDEN, "moved", "cas-036.txt")]
+         os.path.join(GOLDEN, "moved", "cas-036.txt"),
+         os.path.join(GOLDEN, "moved", "cas-041.txt")]
 BASE = "c96b328"
 MODEL = {"1": "STU", "33": "35", "35": "35"}
 bad = 0

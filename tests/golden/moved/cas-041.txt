@@ -1,0 +1,25 @@
+# The golden lines CAS 041 (quadratics and pure powers with letters: work/041-quadratics-with-letters.md) moved. Each
+# line's inputs, then its status and answer before (f81ddc0, 1.7.0's tree) and after. Putting every before back gives
+# f81ddc0's files byte for byte (their sha256 below). Each is solve A×X^2-1, docs/language.md's example of another
+# letter, NOT_NUMERIC before and its two roots with their row after. The corpus: 3 inputs; →DEC's below.
+# f81ddc0 corpus.txt sha256 52c745039a8df44f0e806030ca5600df2709e76707af1f25b2e554b333f8837c
+# f81ddc0 decimal.txt sha256 e8dccac73291d2eee53bb46f67b9af8d84f5ae916ded0c936c6e1f741710d127
+solve	35	23	1	35	65536	65536	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
+solve	35	23	1	35	8800	192	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
+solve	35	23	1	35	8800	65536	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
+# Under →DEC (tests/golden/decimal.txt): 3 inputs
+solve	35	23	1	35	65536	65536	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
+solve	35	23	1	35	8800	192	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
+solve	35	23	1	35	8800	65536	A×X^2-1	\N	\N
+  before	NOT_NUMERIC	
+  after	OK	SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0

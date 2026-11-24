@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CAS 036's boundary (make check; work/036-missing-values.md). The unit moves the golden lines
 tests/golden/moved/cas-036.txt lists, and no others: with each listed line put back at its before, the corpus and
-→DEC's file are 1.4.0's 6090b8c byte for byte (the sha256s in the list's header), and each listed line's after is the
+→DEC's file are 1.4.0's 6090b8c byte for byte, once later units' moves (LATER) are put back first (the sha256s in the list's header), and each listed line's after is the
 file's. Every after keeps its before's status, its first part and its rows in order, and adds one or more rows. Each
 added row is judged apart from the code that adds it: at a letter's value it excludes and the old rows don't (0, ±1,
 ±2, ½, ±π÷2, π, one letter at a time, the others generic), the after's answer has no value at the empty sum
@@ -18,6 +18,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-036.txt")
+LATER = [os.path.join(GOLDEN, "moved", "cas-041.txt")]   # a later unit's moves, put back at their before first
 BASE = "6090b8c"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
 sv = importlib.util.module_from_spec(_spec)
@@ -85,9 +86,16 @@ def names(row, old, answer, lo):
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after): (failures, its sha256)"""
     bad, out, hit = 0, [], set()
+    later = {}
+    for path in LATER:
+        secs, _ = moved(path)
+        later.update(secs[0 if name == "corpus.txt" else 1])
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if ln and not ln.startswith("#") and key in later:
+            f = f[:10] + later[key][0][:2]
+            ln = "\t".join(f)
         if ln and not ln.startswith("#") and key in mv:
             b, a = mv[key]
             hit.add(key)
