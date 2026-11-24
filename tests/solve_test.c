@@ -99,7 +99,7 @@ static void exact(void)
     is("Y×X-1", "SOLVED: X=1÷Y; Y≠0");                   /* CAS 038: letters, linear in X (letters()) */
     is("π×X-1", "SOLVED: X=1÷π");
     refused("SQRT(2)×X-1", CASIM_NOT_NUMERIC);
-    refused("X^2+Y", CASIM_NOT_NUMERIC);
+    is("X^2+Y", "SOLVED: X=SQRT(-Y); X=-SQRT(-Y); Y≤0");   /* CAS 041 (quads()) */
     refused("X^13-1", CASIM_NO_ROOM);                     /* degree past 12 */
     refused("20000000×X-1", CASIM_NO_ROOM);               /* a coefficient past 10^7 after clearing */
     refused("X÷20000000-1", CASIM_NO_ROOM);
@@ -659,8 +659,8 @@ static void letters(void)
         {"π×X=A", 'X', "SOLVED: X=A÷π"},
         {"SIN(π÷6)×X=1", 'X', "SOLVED: X=2"},
     };
-    static const char *const declined[] = {"A×(X-1)=A×X", "X^2=A", "A×SIN(X)=B", "X=ASIN(A)", "i×X=A", "SQRT(2)×X=1",
-                                           "SIN(1)×X=1", "X÷0=1", "X^2=π", "X×(X-A)÷(X-A)=A", "X×A=i", "X=i×A"};
+    static const char *const declined[] = {"A×(X-1)=A×X", "A×X^3+X=1", "A×SIN(X)=B", "X=ASIN(A)", "i×X=A", "SQRT(2)×X=1",
+                                           "SIN(1)×X=1", "X÷0=1", "X^3+X=π", "X×(X-A)÷(X-A)=A", "X×A=i", "X=i×A"};
     static const char *const ops[] = {"\xe2\x89\xa0", "\xe2\x89\xa5", "\xe2\x89\xa4", ">", "<"};
     static unsigned char small[8800];
     char out[OUT];
@@ -740,6 +740,91 @@ static void letters(void)
         }
         CHECK(casim_step(&rq, 3, 0, &info, out, OUT, m, cap) == CASIM_BAD_ARG, "steps solve A×X+B=C page 3 at %zu B", cap);
     }
+}
+
+/* CAS 041 (work/041-quadratics-with-letters.md): a quadratic or a pure power in var, letters as coefficients. Each row's
+   answer as printed; every root put back into the typed equation on the core, at letter values where its rows hold;
+   the refusals (no point where the rows hold together, D = -m^2, a mix of degrees); and steps, BAD_ARG */
+static void quads(void)
+{
+    static const struct { const char *eqn; char var; const char *want, *at; } rows[] = {
+        {"X^2=A", 'X', "SOLVED: X=SQRT(A); X=-SQRT(A); A≥0", "A=2.5"},
+        {"A×X^2+B×X+C=0", 'X', "SOLVED: X=-(B+SQRT(B^2-4×A×C))÷2÷A; X=-(B-SQRT(B^2-4×A×C))÷2÷A; A≠0; B^2-4×A×C≥0",
+         "A=1.5 B=4.25 C=-2"},
+        {"(A+D)×X^2+B×X+C=0", 'X',
+         "SOLVED: X=-(B+SQRT(B^2-4×A×C-4×C×D))÷2÷(A+D); X=-(B-SQRT(B^2-4×A×C-4×C×D))÷2÷(A+D); A+D≠0; B^2-4×A×C-4×C×D≥0",
+         "A=1.5 B=4.25 C=-2 D=0.75"},
+        {"X^2-(A+B)×X+A×B=0", 'X', "SOLVED: X=A; X=B", "A=-1.25 B=3.5"},
+        {"X^2-2×A×X+A^2-B^2=0", 'X', "SOLVED: X=A+B; X=A-B", "A=2.5 B=-0.75"},
+        {"(A-1)×X^2+A×X+1=0", 'X', "SOLVED: X=-1÷(A-1); X=-1; A≠1", "A=3.25"},
+        {"X^2+2×A×X+A^2=0", 'X', "SOLVED: X=-A (MULT 2)", "A=1.75"},
+        {"4×X^2-12×A×X+9×A^2=0", 'X', "SOLVED: X=3×A÷2 (MULT 2)", "A=-2.5"},
+        {"X^2=8×A", 'X', "SOLVED: X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0", "A=0.5"},
+        {"X^2=A^2×B", 'X', "SOLVED: X=A×SQRT(B); X=-A×SQRT(B); B≥0", "A=-1.5 B=2.25"},
+        {"X^2=π", 'X', "SOLVED: X=SQRT(π); X=-SQRT(π)", ""},
+        {"X^2+X=A", 'X', "SOLVED: X=-SQRT(4×A+1)÷2-1÷2; X=SQRT(4×A+1)÷2-1÷2; A≥-1÷4", "A=0.25"},
+        {"X^2+A×X+1=0", 'X', "SOLVED: X=-A÷2-SQRT(A^2-4)÷2; X=-A÷2+SQRT(A^2-4)÷2; ABS(A)≥2", "A=-2.5"},
+        {"A×X^2=B", 'X', "SOLVED: X=SQRT(A×B)÷A; X=-SQRT(A×B)÷A; A≠0; A×B≥0", "A=-2 B=-4.5"},
+        {"E=M×C^2", 'C', "SOLVED: C=SQRT(E×M)÷M; C=-SQRT(E×M)÷M; M≠0; E×M≥0", "E=9 M=0.25"},
+        {"S=1÷2×G×T^2", 'T', "SOLVED: T=SQRT(2×G×S)÷G; T=-SQRT(2×G×S)÷G; G≠0; G×S≥0", "G=9.75 S=3"},
+        {"A×X^2-1", 'X', "SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0", "A=6.25"},
+        {"V=4÷3×π×R^3", 'R', "SOLVED: R=(3×V÷4÷π)^(1÷3); V≥0", "V=12.5"},
+        {"X^4=A", 'X', "SOLVED: X=A^(1÷4); X=-A^(1÷4); A≥0", "A=5"},
+        {"X^3+A=0", 'X', "SOLVED: X=(-A)^(1÷3); A≤0", "A=-6"},
+        {"X^5=32×A^5", 'X', "SOLVED: X=2×A", "A=-1.25"},
+        {"A×X^3=8", 'X', "SOLVED: X=(8÷A)^(1÷3); A≠0; 1÷A≥0", "A=2.75"},
+    };
+    static const char *const declined[] = {"X^2+1+A^2=0", "X^2+A^2=0", "(5×A-1)×X^2+(5×A-1)÷4=0", "A×X^3+X^2=1",
+                                           "(SIN(A)^2+COS(A)^2-1)×X^2=1"};
+    abn tiny = ce_num("1E-24");
+    int angle = (int)ce_calc->angle;
+    char out[OUT];
+    ce_angle(CASIM_RAD);
+    for (size_t i = 0; i < sizeof rows / sizeof rows[0]; i++) {
+        char at[64], *p, *tok;
+        int nroots = 0;
+        casim_status st = solve(rows[i].eqn, rows[i].var - 'A', CASIM_MODEL_35, out);
+        CHECK(st == CASIM_OK && strcmp(out, rows[i].want) == 0, "solve %s for %c: %d \"%s\", want \"%s\"", rows[i].eqn,
+              rows[i].var, (int)st, out, rows[i].want);
+        if (st != CASIM_OK) continue;
+        snprintf(at, sizeof at, "%s", rows[i].at);
+        for (tok = at; *tok; ) {                       /* "L=v L=v": each letter's value */
+            char *sp = strchr(tok, ' ');
+            if (sp) *sp = '\0';
+            ce_set(tok[0], tok + 2);
+            if (!sp) break;
+            tok = sp + 1;
+        }
+        /* each root (a "V=" part), put back into the typed equation, L-R within 1E-24 */
+        for (p = strstr(out, ": ") + 2; p; p = strstr(p, "; ")) {
+            char text[OUT], *q;
+            abn x, f;
+            if (p[0] == ';') p += 2;
+            if (p[0] != rows[i].var || p[1] != '=') break;
+            snprintf(text, sizeof text, "%s", p + 2);
+            if ((q = strstr(text, "; "))) *q = '\0';
+            if ((q = strstr(text, " (MULT"))) *q = '\0';
+            nroots++;
+            if (ce_eval(text, &x) != ABN_OK) {
+                CHECK(false, "%s: %s does not evaluate at %s", rows[i].eqn, text, rows[i].at);
+                continue;
+            }
+            ce_set_abn(rows[i].var, x);
+            CHECK(ce_eval(rows[i].eqn, &f) == ABN_OK && (f = abn_abs(&f), abn_cmp(&f, &tiny) < 0), "%s at %c=%s (%s): %s",
+                  rows[i].eqn, rows[i].var, text, rows[i].at, ce_text(&f));
+        }
+        CHECK(nroots >= 1, "%s: no root read from \"%s\"", rows[i].eqn, out);
+        {
+            casim_req rq = {CASIM_SOLVE, rows[i].eqn, CASIM_MODEL_35, rows[i].var - 'A', NULL, 0, CASIM_RAD, NULL};
+            casim_step_info info;
+            static unsigned char m[16384];
+            CHECK(casim_step(&rq, -1, 0, &info, out, OUT, m, sizeof m) == CASIM_BAD_ARG, "steps solve %s: not BAD_ARG",
+                  rows[i].eqn);
+        }
+    }
+    ce_angle(angle);
+    for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
+    is("A×X^2+1÷A=0", "NO REAL ROOTS; A≠0");
 }
 
 /* CAS 040 (work/cas040.md): X's coefficient 0 where canon can't see it, read at six fixed points. Each zero row is
@@ -836,6 +921,7 @@ int main(void)
     ce_init();
     letters();
     zeros();
+    quads();
     visible();
     exact();
     left_out();

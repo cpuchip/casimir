@@ -19,7 +19,7 @@ V0013 | solve | T^2-T-6 | T | 35 | SOLVED: T=-2; T=3
 V0014 | solve | X^3^2-64 | X | STU | PARTIAL, DEGREE 9 LEFT
 V0015 | solve | X^3^2-64 | X | 35 | SOLVED, 4 CPLX: X=-2; X=2
 V0016 | solve | SIN(X)=0.5 | X | 35 | NOT_POLYNOMIAL
-V0017 | solve | A×X^2-1 | X | 35 | NOT_NUMERIC
+V0017 | solve | A×X^2-1 | X | 35 | SOLVED: X=1÷SQRT(A); X=-1÷SQRT(A); A>0
 V0018 | solve | X^14-1 | X | 35 | NO_ROOM
 V0019 | solve | 230456×X-150565×X^2-146070×X^3+39992×X^4+36244×X^5-6569×X^6-4394×X^7+692×X^8+260×X^9-41×X^10-6×X^11+X^12+255255 | X | 35 | TOO_LONG
 V0020 | solve | (X^2-X-3)×(X^2-X-5)×(X^2-X-7)×(X^2-X-11)×(X^2-X-13)×(X^2-X-17) | X | 35 | TOO_LONG

@@ -192,9 +192,21 @@ where it has a value, and not 0 at none, it is refused NOT_NUMERIC, as a 0 canon
 as 0 from its digits: (SIN(A)^2+COS(A)^2−1)×X=1 is NOT_NUMERIC. A coefficient no point reads (IP, FP, a function in an
 exponent, or a domain holding no point) answers as above. work/cas040.md names the rows refused though not 0.
 
+An equation of degree 2 in var, letters as coefficients (CAS 041), is solved by the formula with D = b²−4×a×k. Where
+D is the square of a polynomial in the letters, its roots print with no root sign and no D row: X^2−(A+B)×X+A×B=0 is
+`X=A; X=B`, and a D of 0 is one root, MULT 2. Else D's square content comes out of the root (X^2=8×A is
+`X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0`), and the row is on the radicand printed. A pure power a×var^n+k, n from 3 to 12,
+is r^(1÷n) with r = −k÷a, ± for an even n, with r≥0; for an odd n an exact root of a monomial (X^5=32×A^5 is `X=2×A`)
+needs no row, and otherwise r < 0 has a real root this answer doesn't give (V<0 in V=4÷3×π×R^3). Each root is put back
+before it prints, the two in canon's order. A D that is a number below 0 is NO REAL ROOTS with a's rows. An answer is
+printed only where its rows all hold at once at one witness point (CAS 040's six and sixteen more of every sign
+pattern), each surely by the bound; otherwise it is NOT_NUMERIC, as X^2+1+A^2=0 is. A row drops a constant factor
+above 0 and π's powers (V≥0, not 3×V÷4÷π≥0). Show steps has no page for these (BAD_ARG).
+
 Statuses: NOT_POLYNOMIAL, NOT_NUMERIC (a coefficient that is not an exact rational, where letters as coefficients
-don't answer: degree 2 or more with a letter, var inside a function or a denominator, var dropping out, a condition no
-row writes (ASIN's ABS(u)≤1, ATANH's ABS(u)<1), model 33's i, a coefficient that reads 0 (CAS 040), or a constant
+don't answer: degree 3 or more with a letter but a pure power, a mix of degree 2 and above, var inside a function or a denominator, var dropping out, a condition no
+row writes (ASIN's ABS(u)≤1, ATANH's ABS(u)<1), model 33's i, a coefficient that reads 0 (CAS 040), rows with no
+witness point (CAS 041), or a constant
 with neither a letter nor π, SQRT(2) or SIN(1)), NO_ROOM (degree past 12, or a coefficient past 10^7 once the polynomial is cleared to integers), TOO_LONG.
 
 | Command | Prints |
@@ -214,10 +226,19 @@ with neither a letter nor π, SQRT(2) or SIN(1)), NO_ROOM (degree past 12, or a 
 | `casim solve "(A^2-1)×X=A+1" X RAD` | `SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |
 | `casim solve "LN(A)×X=1" X RAD` | `SOLVED: X=1÷LN(A); A>0; A≠1` |
 | `casim solve "X=SQRT(A)÷B" X RAD` | `SOLVED: X=SQRT(A)÷B; A≥0; B≠0` |
+| `casim solve "A×X^2+B×X+C=0" X RAD` | `SOLVED: X=-(B+SQRT(B^2-4×A×C))÷2÷A; X=-(B-SQRT(B^2-4×A×C))÷2÷A; A≠0; B^2-4×A×C≥0` |
+| `casim solve "X^2-(A+B)×X+A×B=0" X RAD` | `SOLVED: X=A; X=B` |
+| `casim solve "X^2+2×A×X+A^2=0" X RAD` | `SOLVED: X=-A (MULT 2)` |
+| `casim solve "X^2=8×A" X RAD` | `SOLVED: X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0` |
+| `casim solve "X^2+A×X+1=0" X RAD` | `SOLVED: X=-A÷2-SQRT(A^2-4)÷2; X=-A÷2+SQRT(A^2-4)÷2; ABS(A)≥2` |
+| `casim solve "V=4÷3×π×R^3" R RAD` | `SOLVED: R=(3×V÷4÷π)^(1÷3); V≥0` |
+| `casim solve "X^5=32×A^5" X RAD` | `SOLVED: X=2×A` |
+| `casim solve "A×X^2+1÷A=0" X RAD` | `NO REAL ROOTS; A≠0` |
+| `casim solve "X^2+1+A^2=0" X RAD` | `NOT_NUMERIC` |
 | `casim solve "π×X=1" X RAD` | `SOLVED: X=1÷π` |
 | `casim solve "A×(X-1)=A×X" X RAD` | `NOT_NUMERIC` |
 | `casim solve "(SIN(A)^2+COS(A)^2-1)×X=1" X RAD` | `NOT_NUMERIC` |
-| `casim solve "A×X^2-1" X RAD` | `NOT_NUMERIC` |
+| `casim solve "A×X^3+X=1" X RAD` | `NOT_NUMERIC` |
 | `casim solve "X^14-1" X RAD` | `NO_ROOM` |
 
 ### integrate: an antiderivative

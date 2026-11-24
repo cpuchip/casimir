@@ -9492,11 +9492,30 @@ static __attribute__((noinline)) bool ls_note(ctx *c, cdset *S, const tdc *D, in
 
 /* S as rows after the answer, solved for their letter as CAS 035's are (td_rows): a ≥ or ≤ row with a ≠ row of the same
    sides is > or < (A≠0 and A≤0 are A<0; rows_put leaves out the ≠) */
+/* CAS 041 ruling 6: e's constant factors that a row can drop, a number above 0 and π's powers (any number but 0 for a
+   ≠ row), so 3×V÷4÷π≥0 is V≥0; e itself where it has none, or nothing else */
+static __attribute__((noinline)) ref ls_unit(ctx *c, ref e, char op)
+{
+    ref keep;
+    int n, k = 0;
+    if (nd(c, e)->kind != K_MUL) return e;
+    n = nd(c, e)->n;
+    if (!(keep = grab(c, (size_t)n * sizeof(ref)))) return e;
+    for (int i = 0; i < n; i++) {
+        ref u = list(c, nd(c, e)->a)[i];
+        const node *x = nd(c, u);
+        bool pi = x->kind == K_PI || (x->kind == K_POW && nd(c, x->a)->kind == K_PI && is_num(c, x->b));
+        if (pi || (is_num(c, u) && (op == '!' ? val(c, u)->p != 0 : val(c, u)->p > 0))) continue;
+        list(c, keep)[k++] = u;
+    }
+    return k == n || k == 0 ? e : k == 1 ? list(c, keep)[0] : mul(c, list(c, keep), k);
+}
+
 static __attribute__((noinline)) void ls_print(ctx *c, out_t *w, const cdset *S)
 {
     smrow rows[SM_ROWS];
     int n = 0;
-    for (int i = 0; i < S->n && c->st == CASIM_OK; i++) td_rows(c, rows, &n, S->e[i], S->op[i]);
+    for (int i = 0; i < S->n && c->st == CASIM_OK; i++) td_rows(c, rows, &n, ls_unit(c, S->e[i], S->op[i]), S->op[i]);
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n && (rows[i].op == 'g' || rows[i].op == 'l'); j++)
             if (rows[j].op == '!' && cmp(c, rows[i].l, rows[j].l) == 0 && cmp(c, rows[i].r, rows[j].r) == 0)
@@ -9538,6 +9557,321 @@ static __attribute__((noinline)) bool ls_zero(ctx *c, ref a)
     return z > 0;
 }
 
+/* ---- CAS 041 prototype p1 (throwaway): a quadratic in var, letters as coefficients ---- */
+static int64_t lq_isqrt(int64_t n)
+{
+    int64_t r = 0, b = (int64_t)1 << 62;
+    if (n < 0) return -1;
+    while (b > n) b >>= 2;
+    while (b) {
+        if (n >= r + b) n -= r + b, r = (r >> 1) + b;
+        else r >>= 1;
+        b >>= 2;
+    }
+    return r;
+}
+
+/* t as co × Π L^ex[L], co a number, every ex ≥ 0: false where t isn't such a monomial */
+static bool lq_mono(ctx *c, ref t, long ex[26], ref *co)
+{
+    for (int l = 0; l < 26; l++) {
+        long k;
+        ref r;
+        ex[l] = 0;
+        if (!contains(c, t, l)) continue;
+        if (!as_power(c, t, l, &k, &r) || k < 0) return false;
+        ex[l] = k, t = r;
+    }
+    *co = t;
+    return is_num(c, t);
+}
+
+/* the exact square root of D, an expanded polynomial in letters with rational coefficients, or 0 where D isn't the
+   square of one: the long-division method, leading terms by lex over A..Z */
+static __attribute__((noinline)) ref lq_sqrt(ctx *c, ref D)
+{
+    ref S = small(c, C_0), R = D, lt = 0;
+    long lex[26] = {0};
+    if (is_num(c, D)) {
+        const rat *v = val(c, D);
+        int64_t p = lq_isqrt(v->p), q = lq_isqrt(v->q);
+        return p >= 0 && p * p == v->p && q * q == v->q ? ir_rat(c, p, q) : 0;
+    }
+    for (int it = 0; it < 24 && c->st == CASIM_OK; it++) {
+        ref one = R, *t, co, best = 0, bco = 0;
+        long ex[26], bex[26];
+        int n;
+        if (is_k(c, R, 0, 1)) return lt ? S : 0;
+        t = nd(c, R)->kind == K_ADD ? list(c, nd(c, R)->a) : &one;
+        n = nd(c, R)->kind == K_ADD ? nd(c, R)->n : 1;
+        for (int i = 0; i < n; i++) {
+            int d = 0;
+            if (!lq_mono(c, t[i], ex, &co)) return 0;
+            for (int l = 0; l < 26 && !d && best; l++) d = ex[l] > bex[l] ? 1 : ex[l] < bex[l] ? -1 : 0;
+            if (!best || d > 0) {
+                best = t[i], bco = co;
+                memcpy(bex, ex, sizeof ex);
+            }
+        }
+        if (!lt) {
+            const rat *v = val(c, bco);
+            int64_t p = lq_isqrt(v->p), q = lq_isqrt(v->q);
+            ref m;
+            if (p < 0 || p * p != v->p || q * q != v->q) return 0;
+            m = ir_rat(c, p, q);
+            for (int l = 0; l < 26; l++) {
+                if (bex[l] & 1) return 0;
+                if (bex[l]) m = mul2(c, m, power(c, leaf(c, K_VAR, l), ir_rat(c, bex[l] / 2, 1)));
+            }
+            lt = ib_canon(c, m);
+            if (!lq_mono(c, lt, lex, &co)) return 0;
+            S = lt;
+        } else {
+            ref q = ib_canon(c, mul2(c, best, power(c, mul2(c, small(c, C_2), lt), small(c, C_M1))));
+            if (c->st != CASIM_OK || !lq_mono(c, q, ex, &co)) return 0;
+            S = ib_canon(c, add2(c, S, q));
+        }
+        R = expand_fully(c, ib_canon(c, add2(c, D, ib_neg(c, power(c, S, small(c, C_2))))));
+    }
+    return 0;
+}
+
+/* u at witness point j (c->st UNDEFINED where it has none): 0 to 5 are CAS 040's (ls_zero's values), where letters
+   of unlike parity always differ in sign; 6 to 21 take the same magnitudes with letter l's sign bit l mod 4 of j - 6,
+   so A, B, C and D meet every sign pattern */
+#define LQ_POINTS 22
+static ref lq_at(ctx *c, ref u, int j)
+{
+    static const uint8_t PT[6][3] = {{1, 1, 9}, {1, 3, 5}, {2, 7, 3}, {6, 13, 2}, {47, 100, 3}, {53, 22, 1}};
+    int m = j < 6 ? j : (j - 6) % 6;
+    for (int l = 0; l < 26 && c->st == CASIM_OK; l++)
+        if (contains(c, u, l)) {
+            int n = l + 1, neg = j < 6 ? (l ^ j ^ (j >> 1)) & 1 : ((j - 6) >> (l & 3)) & 1;
+            u = ib_at(c, u, l, ir_rat(c, (neg ? -1 : 1) * (PT[m][0] * n + PT[m][1]), n + PT[m][2]));
+        }
+    return u;
+}
+
+/* ruling 3: one witness point (lq_at) where every row of S holds surely (rule 8's bound: ≠ and > read not 0 with
+   the sign, ≥ that or an exact 0). True where there is one; false where none (solve refuses: no answer whose rows
+   never hold together), or c->st set by NO_ROOM */
+static __attribute__((noinline)) bool lq_witness(ctx *c, const cdset *S)
+{
+    size_t mark = c->used;
+    for (int j = 0; j < LQ_POINTS; j++) {
+        bool ok = true;
+        for (int i = 0; i < S->n && ok; i++) {
+            ref u = lq_at(c, S->e[i], j);
+            abn x, b;
+            int cv;
+            if (c->st == CASIM_UNDEFINED) {
+                c->st = CASIM_OK, ok = false;
+                break;
+            }
+            if (c->st != CASIM_OK) return false;
+            cv = const_val(c, u, &x);
+            if (cv != CV_OK) {
+                ok = false;
+                break;
+            }
+            if (is_num(c, u)) ok = S->op[i] == 'g' ? !abn_is_negative(&x) : !abn_is_zero(&x) && (S->op[i] == '!' || !abn_is_negative(&x));
+            else ok = s_eval(c, u, &x, &b, S_DEEP) == CV_OK && s_lt(&b, &x, 8) && (S->op[i] == '!' || !abn_is_negative(&x));
+        }
+        td_drop(c, mark);
+        if (ok) return true;
+    }
+    return false;
+}
+
+/* n ≥ 1 and k ≥ 2: the integer whose k-th power is n, else -1 */
+static int64_t lq_iroot(int64_t n, int k)
+{
+    int64_t lo = 0, hi = n < 2 ? n : (k == 2 ? lq_isqrt(n) + 1 : 3037000500);
+    if (n < 0) return -1;
+    if (k == 2) return lq_isqrt(n) * lq_isqrt(n) == n ? lq_isqrt(n) : -1;
+    while (lo < hi) {
+        int64_t m = lo + (hi - lo + 1) / 2, v = 1;
+        bool over = false;
+        for (int i = 0; i < k && !over; i++) over = __builtin_mul_overflow(v, m, &v) || v > n;
+        if (over) hi = m - 1;
+        else lo = m;
+    }
+    {
+        int64_t v = 1;
+        for (int i = 0; i < k; i++)
+            if (__builtin_mul_overflow(v, lo, &v)) return -1;
+        return v == n ? lo : -1;
+    }
+}
+
+/* ruling 5: r a monomial (a number × letters) that is an exact n-th power, n odd: its real n-th root, else 0 */
+static ref lq_nroot(ctx *c, ref r, long n)
+{
+    long ex[26];
+    ref co, m;
+    const rat *v;
+    int64_t p, q;
+    if (!(n & 1) || !lq_mono(c, r, ex, &co)) return 0;
+    v = val(c, co);
+    p = lq_iroot(v->p < 0 ? -v->p : v->p, (int)n), q = lq_iroot(v->q, (int)n);
+    if (p < 0 || q < 0) return 0;
+    m = ir_rat(c, v->p < 0 ? -p : p, q);
+    for (int l = 0; l < 26; l++) {
+        if (ex[l] % n) return 0;
+        if (ex[l]) m = mul2(c, m, power(c, leaf(c, K_VAR, l), ir_rat(c, ex[l] / n, 1)));
+    }
+    return ib_canon(c, m);
+}
+
+/* ruling 1: D, an expanded sum, as h^2 × D1, h holding D's numeric square content (each term's number) and, where every
+   term is a monomial in letters, each letter's even power common to all: false where h is 1 */
+static __attribute__((noinline)) bool lq_out(ctx *c, ref D, ref *h, ref *D1)
+{
+    ref one = D, *t, co;
+    long ex[26], lo[26];
+    int64_t G = 0, L = 1, N, s = 1;
+    int n;
+    t = nd(c, D)->kind == K_ADD ? list(c, nd(c, D)->a) : &one;
+    n = nd(c, D)->kind == K_ADD ? nd(c, D)->n : 1;
+    bool mono = true;
+    for (int i = 0; i < n; i++) {                       /* each term's number: itself, or a product's first factor */
+        const rat *v;
+        const node *x = nd(c, t[i]);
+        co = is_num(c, t[i]) ? t[i] : x->kind == K_MUL && is_num(c, list(c, x->a)[0]) ? list(c, x->a)[0] : small(c, C_1);
+        v = val(c, co);
+        G = gcd64(G, v->p < 0 ? -v->p : v->p);
+        if (__builtin_mul_overflow(L / gcd64(L, v->q), v->q, &L)) return false;
+        mono = mono && lq_mono(c, t[i], ex, &co);        /* the letters' even powers only where every term is a monomial */
+        for (int l = 0; l < 26; l++) lo[l] = !mono ? 0 : i ? (ex[l] < lo[l] ? ex[l] : lo[l]) : ex[l];
+    }
+    if (G == 0 || __builtin_mul_overflow(G, L, &N)) return false;
+    for (int64_t d = 2; d <= 10000 && d * d <= N; d++)
+        while (N % (d * d) == 0) N /= d * d, s *= d;
+    if (lq_isqrt(N) * lq_isqrt(N) == N) s *= lq_isqrt(N);
+    *h = ir_rat(c, s, L);
+    for (int l = 0; l < 26; l++)
+        if (lo[l] >= 2) *h = mul2(c, *h, power(c, leaf(c, K_VAR, l), ir_rat(c, lo[l] / 2, 1)));
+    *h = ib_canon(c, *h);
+    *D1 = expand_fully(c, ib_canon(c, mul2(c, D, power(c, *h, ir_rat(c, -2, 1)))));
+    return c->st == CASIM_OK && !is_k(c, *h, 1, 1);
+}
+
+/* the answer's line: SOLVED: var=x0; var=x1 (MULT 2 for one), then S's rows (CAS 038's) */
+static __attribute__((noinline)) void lq_put(ctx *c, out_t *w, int var, ref *x, int nx, bool mult, const cdset *S)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    ((rat *)(void *)nd(c, 2))->q = 0;                  /* do_solve's cr, as ls_solve marks it: steps refuse */
+    puts_(w, "SOLVED: ");
+    for (int i = 0; i < nx; i++) {
+        if (i) puts_(w, "; ");
+        puts_(w, name);
+        puts_(w, "=");
+        print(c, w, x[i]);
+    }
+    if (mult) puts_(w, " (MULT 2)");
+    ls_print(c, w, S);
+}
+
+/* each typed condition (CAS 035, each side of the =) read at each root into S: false where one can't be (ls_note) */
+static __attribute__((noinline)) bool lq_typed(ctx *c, cdset *S, int var, const ref *x, int nx)
+{
+    tdset T;
+    tdc Dc;
+    ref side[2];
+    int ns = 1;
+    side[0] = parse(c);
+    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)
+        side[1] = nd(c, side[0])->b, side[0] = nd(c, side[0])->a, ns = 2;
+    for (int h = 0; h < ns && c->st == CASIM_OK; h++)
+        if (td_raw(c, side[h], &T, -1))
+            for (int q = 0; q < T.n && c->st == CASIM_OK; q++)
+                for (int i = 0; i < nx; i++)
+                    if (!td_entry(c, &T, q, &Dc, -1) || !ls_note(c, S, &Dc, var, x[i])) return false;
+    return true;
+}
+
+/* ---- CAS 041 (work/041-quadratics-with-letters.md): a×var^n + k = 0, n ≥ 3, letters as coefficients ----
+   r = -k÷a: an odd n's exact root of a monomial r with no row (X^5=32×A^5 is X=2×A); else r^(1÷n), ± for an even n,
+   with r≥0 (an odd n with r < 0 has a real root this doesn't give). Each root put back; false: decline */
+static __attribute__((noinline)) bool lq_pow(ctx *c, out_t *w, int var, ref a, long n, ref k)
+{
+    cdset S = {{0}, {0}, 0};
+    tdc Dc;
+    ref r, x[2], q;
+    int nx = 1;
+    char ne = '!';
+    if (ls_zero(c, a)) return false;
+    r = ib_canon(c, mul2(c, ib_neg(c, k), power(c, a, small(c, C_M1))));
+    if (c->st != CASIM_OK || is_num(c, r)) return false;              /* letters in a and k only: pw's numbers */
+    q = lq_nroot(c, r, n);
+    x[0] = q ? q : ib_canon(c, power(c, r, ir_rat(c, 1, n)));
+    if (!(n & 1)) x[1] = x[0], x[0] = ib_canon(c, ib_neg(c, x[1])), nx = 2;
+    if (nx == 2 && cmp(c, x[0], x[1]) > 0) q = x[0], x[0] = x[1], x[1] = q;
+    for (int i = 0; i < nx; i++) {
+        ref z = expand_fully(c, ib_canon(c, add2(c, mul2(c, a, power(c, x[i], ir_rat(c, n, 1))), k)));
+        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return false;
+    }
+    Dc.u = &a, Dc.k = &ne, Dc.n = 1;
+    if (!ls_note(c, &S, &Dc, var, x[0])) return false;
+    if (!lq_nroot(c, r, n)) cd_note(c, &S, r, 'g', var);
+    if (!lq_typed(c, &S, var, x, nx) || !lq_witness(c, &S)) return false;
+    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, false, &S);
+    return true;
+}
+
+/* ---- CAS 041: a×var^2 + b×var + k = 0, letters as coefficients ----
+   D = b^2 - 4×a×k. Its exact root s where D is a perfect square (no row; s = 0 is one root, MULT 2); else h×SQRT(D1)
+   with D = h^2×D1 (ruling 1) and the row D1≥0 on the radicand printed. D a number below 0: NO REAL ROOTS. -D a perfect
+   square, or no point where every row holds (ruling 3): refused. The roots in canon's order (ruling 2), each put
+   back; false: decline */
+static __attribute__((noinline)) bool lq_quad(ctx *c, out_t *w, int var, ref a, ref b, ref k)
+{
+    cdset S = {{0}, {0}, 0};
+    tdc Dc;
+    ref D, s, r, x[2], h, D1 = 0;
+    int nx;
+    char ne = '!';
+    if (ls_zero(c, a)) return false;
+    D = expand_fully(c, ib_canon(c, add2(c, power(c, b, small(c, C_2)), mul2(c, ir_rat(c, -4, 1), mul2(c, a, k)))));
+    if (c->st != CASIM_OK) return false;
+    Dc.u = &a, Dc.k = &ne, Dc.n = 1;
+    if (is_num(c, D) && val(c, D)->p < 0) {                         /* ruling 4: A×X^2+1÷A=0 */
+        if (!ls_note(c, &S, &Dc, var, 0) || !lq_witness(c, &S)) return false;
+        if (c->st == CASIM_OK) ((rat *)(void *)nd(c, 2))->q = 0, puts_(w, "NO REAL ROOTS"), ls_print(c, w, &S);
+        return true;
+    }
+    s = lq_sqrt(c, D);
+    if (c->st != CASIM_OK) return false;
+    if (!s) {
+        ref m = lq_sqrt(c, expand_fully(c, ib_neg(c, D)));
+        if (c->st != CASIM_OK || m) return false;                      /* D = -m^2: real only where m is 0 */
+        if (lq_out(c, D, &h, &D1)) r = mul2(c, h, power(c, D1, small(c, C_HALF)));
+        else D1 = D, r = power(c, D, small(c, C_HALF));
+        if (is_num(c, D1) && val(c, D1)->p < 0) return false;
+    } else r = s;
+    nx = s && is_k(c, s, 0, 1) ? 1 : 2;
+    for (int i = 0; i < nx; i++)
+        x[i] = ib_canon(c, mul2(c, add2(c, ib_neg(c, b), i ? r : ib_neg(c, r)),
+                                power(c, mul2(c, small(c, C_2), a), small(c, C_M1))));
+    if (nx == 2 && cmp(c, x[0], x[1]) > 0) h = x[0], x[0] = x[1], x[1] = h;
+    /* checked as identities, as CAS 038's (a sum a cancels as one factor): r^2 = D, and 2×a×x + b = ∓r for each root,
+       so a×x^2 + b×x + k = ((2×a×x + b)^2 - D)÷(4×a) = 0 */
+    {
+        ref z = expand_fully(c, ib_canon(c, add2(c, power(c, r, small(c, C_2)), ib_neg(c, D))));
+        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return false;
+    }
+    for (int i = 0; i < nx; i++) {
+        ref u = ib_canon(c, add2(c, mul2(c, mul2(c, small(c, C_2), a), x[i]), b)), z;
+        z = expand_fully(c, ib_canon(c, mul2(c, add2(c, u, r), add2(c, u, ib_neg(c, r)))));
+        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return false;
+    }
+    if (!ls_note(c, &S, &Dc, var, x[0])) return false;
+    if (D1 && !(is_num(c, D1))) cd_note(c, &S, D1, 'g', var);
+    if (!lq_typed(c, &S, var, x, nx) || !lq_witness(c, &S)) return false;
+    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, nx == 1, &S);
+    return true;
+}
+
 /* ---- CAS 038 (work/038-letters-in-solve.md): solve for var in an equation linear in it, letters as coefficients ----
    L - R as a×var + b, a and b free of var: var = -b÷a, with a≠0 and each typed condition read at that value as a row.
    Checked by putting the answer back. False: not this shape, or a coefficient that reads 0 (CAS 040), c->st back to
@@ -9572,11 +9906,28 @@ static __attribute__((noinline)) bool ls_solve(ctx *c, out_t *w, int var)
     t = nd(c, e)->kind == K_ADD ? list(c, nd(c, e)->a) : &one;
     nt = nd(c, e)->kind == K_ADD ? nd(c, e)->n : 1;
     a = small(c, C_0), b = small(c, C_0);
-    for (int i = 0; i < nt && c->st == CASIM_OK; i++) {
-        ref co;
-        if (!as_power(c, t[i], var, &k, &co) || k < 0 || k > 1) goto no;
-        if (k) a = add2(c, a, co);
-        else b = add2(c, b, co);
+    {
+        ref a2 = small(c, C_0), an = small(c, C_0);
+        long hi = 0;
+        for (int i = 0; i < nt && c->st == CASIM_OK; i++) {
+            ref co;
+            if (!as_power(c, t[i], var, &k, &co) || k < 0 || k > 12) goto no;
+            if (k > 2) {
+                if (hi && hi != k) goto no;
+                hi = k, an = add2(c, an, co);
+            } else if (k == 2) a2 = add2(c, a2, co);
+            else if (k) a = add2(c, a, co);
+            else b = add2(c, b, co);
+        }
+        if (hi) {
+            if (c->st != CASIM_OK || !is_k(c, a2, 0, 1) || !is_k(c, a, 0, 1)) goto no;
+            if (lq_pow(c, w, var, ib_canon(c, an), hi, ib_canon(c, b))) return true;
+            goto no;
+        }
+        if (c->st == CASIM_OK && !is_k(c, a2, 0, 1)) {
+            if (lq_quad(c, w, var, ib_canon(c, a2), ib_canon(c, a), ib_canon(c, b))) return true;
+            goto no;
+        }
     }
     if (c->st != CASIM_OK || is_k(c, a, 0, 1)) goto no;
     /* CAS 040: a that reads 0 sets NOT_NUMERIC, which the check below takes to no (pw's refusal), x unread. A test of
@@ -9658,7 +10009,10 @@ static __attribute__((noinline)) casim_status ls_steps(const casim_req *rq, walk
     one = e, u = nd(&c, e)->kind == K_ADD ? list(&c, nd(&c, e)->a) : &one, nu = nd(&c, e)->kind == K_ADD ? nd(&c, e)->n : 1;
     a = small(&c, C_0);
     for (int i = 0; i < nu && c.st == CASIM_OK; i++)
-        if (as_power(&c, u[i], rq->var, &k, &co) && k == 1) a = add2(&c, a, co);
+        if (as_power(&c, u[i], rq->var, &k, &co)) {
+            if (k > 1) return CASIM_BAD_ARG;                /* CAS 041: a quadratic or a power has no page */
+            if (k == 1) a = add2(&c, a, co);
+        }
     D.u = &a, D.k = &ne, D.n = 1;
     if (c.st == CASIM_OK) ls_note(&c, &R, &D, rq->var, a);
     if (c.st != CASIM_OK) return c.st;

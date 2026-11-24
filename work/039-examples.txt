@@ -41,7 +41,7 @@
 
 | Command | Prints (lines joined by " / ") |
 |---|---|
-| `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim steps solve 'X^2=A' X RAD` | `BAD_ARG` |
 | `casim steps solve 'A×(X-1)=A×X' X RAD` | `NOT_NUMERIC` |
 | `casim steps solve 'X=A÷(B-B)' X RAD` | `UNDEFINED` |
 | `casim --arena 2104 steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |

@@ -88,7 +88,7 @@
 | Command | Prints |
 |---|---|
 | `casim solve 'A×(X-1)=A×X' X RAD` | `NOT_NUMERIC` |
-| `casim solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim solve 'X^2=A' X RAD` | `SOLVED: X=SQRT(A); X=-SQRT(A); A≥0` |
 | `casim solve 'A×SIN(X)=B' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'A÷X=1' X RAD` | `NOT_NUMERIC` |
 | `casim solve 'X=ASIN(A)' X RAD` | `NOT_NUMERIC` |
@@ -108,5 +108,5 @@
 | `casim steps solve 'π×X=1' X RAD` | `BOTH SIDES: π×X-1=0 /   LINEAR: π×X-1=0: X=1÷π / ANSWER: SOLVED: X=1÷π` |
 | `casim --arena 2000 steps solve 'A×X+B=C' X RAD` | `NO_ROOM` |
 | `casim --arena 2400 steps solve 'A×X+B=C' X RAD` | `BOTH SIDES: A×X+(B-C)=0 /   LINEAR: A×X+(B-C)=0: X=-(B-C)÷A; A≠0 / ANSWER: SOLVED: X=-(B-C)÷A; A≠0` |
-| `casim steps solve 'X^2=A' X RAD` | `NOT_NUMERIC` |
+| `casim steps solve 'X^2=A' X RAD` | `BAD_ARG` |
 | `casim --arena 1000 solve 'A×X+B=C' X RAD` | `NO_ROOM` |

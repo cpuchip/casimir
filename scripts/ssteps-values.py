@@ -637,10 +637,19 @@ def check(e, var, angle, model, counts):
     why = []
     outs = {}
     letters = pc == 0 and LETTER.search(re.sub(rf"(?<![A-Z]){var}(?![A-Z(])", "", e)) is not None
+    deg = 1
+    if letters:                                 # CAS 041: a quadratic or a pure power with letters has no page
+        sides = top_split(e, "=")
+        _, col = run(["--model", model, "collect", f"({sides[0]})-({sides[1]})" if len(sides) > 1 else e, var, angle])
+        deg = max([1] + [int(k) for k in re.findall(rf"(?<![A-Z]){var}\^(\d+)", col)])
     for one in (False, True):
         rc, out = run(["--tsv", "--model", model] + (["--one-line"] if one else []) + ["steps", "solve", e, var, angle])
         outs[one] = (rc, out)
-        if letters:
+        if letters and deg >= 2:
+            counts["letters041"] = counts.get("letters041", 0) + (not one)
+            if rc == 0 or out.strip() != "BAD_ARG":
+                why.append(f"steps {'one line' if one else 'two lines'} of a CAS 041 solve: exit {rc} {out.strip()[-60:]!r}")
+        elif letters:
             if rc != 0:
                 why.append(f"steps {'one line' if one else 'two lines'} of a letter solve: exit {rc} {out.strip()[-60:]!r}")
             else:
