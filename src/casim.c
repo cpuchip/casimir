@@ -3029,7 +3029,7 @@ static const char *const RULE_NAME[] = {"SUM", "CONSTANT", "VARIABLE", "CONSTANT
                                         "ANSWER"};
 static const char *const RULE_EXT_NAME[] = {"POLYNOMIAL PART", "FACTOR", "FORM", "CLEARED", "COVER-UP", "COEFFICIENTS",
                                                "PARTIAL FRACTIONS", "SPLIT", "LOG DERIVATIVE", "COMPLETE THE SQUARE",
-                                               "ARCTANGENT", "SUBSTITUTION", "BY PARTS", "CYCLE"};
+                                               "ARCTANGENT", "SUBSTITUTION", "BY PARTS", "CYCLE", "PURE POWER"};
 
 const char *casim_rule_name(int rule)
 {
@@ -4798,67 +4798,92 @@ static ref ib_neg(ctx *c, ref r);
 static ref ir_rat(ctx *c, int64_t p, int64_t q);
 static void td_drop(ctx *c, size_t mark);
 
+/* CAS 041 ruling 7: x^n = p÷q's real roots into x[2 - want .. 1] (want 0, 1 or 2, or -1 where one doesn't check):
+   c's numerator and denominator each the largest m-th power, m dividing n (X^9=8 is 2^(1÷3)), an odd n's negative c
+   as -(-c)^(1÷n), the pair ± for an even n; c = 0 is the one root 0. Each is put back: x^n - c expands to 0 */
+static __attribute__((noinline)) int pp_roots(ctx *c, long n, int64_t p, int64_t q, ref *x)
+{
+    int want = p == 0 ? 1 : n & 1 ? 1 : p > 0 ? 2 : 0;
+    int64_t part[2] = {p < 0 ? -p : p, q};
+    ref u[2];
+    if (!want) return 0;
+    if (p == 0) return x[1] = small(c, C_0), 1;
+    for (int j = 0; j < 2; j++) {                       /* numerator and denominator apart */
+        long m = n;
+        int64_t b = part[j];
+        for (; m > 1; m--)
+            if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;
+        if (m == 1) b = part[j];
+        u[j] = power(c, ir_rat(c, b, 1), ir_rat(c, j ? -1 : 1, n / m));
+    }
+    x[1] = ib_canon(c, mul2(c, u[0], u[1]));
+    if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));
+    x[0] = want == 2 ? ib_canon(c, ib_neg(c, x[1])) : x[1];
+    for (int i = 2 - want; i < 2; i++) {
+        ref z = expand_fully(c, ib_canon(c, add2(c, power(c, x[i], ir_rat(c, n, 1)), ir_rat(c, -p, q))));
+        if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) return -1;
+    }
+    return want;
+}
+
 /* CAS 041 ruling 7: a PARTIAL line, its typed text read again; when it is x^n = c (n ≥ 3, c ≠ 0, a number), its real
    roots are all of them (at most two): the ones factoring printed (the line's own), else c^(1÷n) with c's numerator and
    denominator each reduced (the largest m-th power, m dividing n: X^9=8 is 2^(1÷3)), each put back. The line becomes
    SOLVED with the complex count, or NO REAL ROOTS for an even n and c < 0. Left as it is (the arena and status as they
    were) for any other text, or where factoring found some real roots but not all. A pass after put_solution, so no
    accepted frame holds it */
-static __attribute__((noinline)) void pp_fix(ctx *c, out_t *w, int var)
+/* the typed text (c's) as x^n = p÷q: n ≥ 3, c a nonzero number, no other term; false otherwise, the arena and status
+   as they were */
+static __attribute__((noinline)) bool pp_read(ctx *c, int var, long *n, int64_t *p, int64_t *q)
 {
     size_t mark = c->used;
-    const char *col;
-    int nr = 0;
-    char name[2] = {(char)('A' + var), '\0'};
-    ref e, *t, cn = 0, c0 = 0, r, x[2], u[2];
-    long k, n = 0;
-    int nt, want, left;
-    int64_t p, q, part[2];
-    if (strncmp(w->o, "PARTIAL, DEGREE ", 16) != 0) return;
-    if ((col = strchr(w->o, ':')))
-        for (const char *q2 = col; *q2; q2++) nr += *q2 == '=';
-    e = parse(c);
+    ref e = parse(c), *t, cn = 0, c0 = 0, r;
+    long k;
+    *n = 0;
     if (c->st == CASIM_OK) e = canon(c, e);
     if (c->st == CASIM_OK && nd(c, e)->kind == K_EQ) e = add2(c, nd(c, e)->a, ib_neg(c, nd(c, e)->b));
     c->sub_var = var;
     if (c->st == CASIM_OK) e = expand_fully(c, e);
     c->sub_var = -1;
     if (c->st != CASIM_OK || nd(c, e)->kind != K_ADD || nd(c, e)->n != 2) goto no;
-    t = list(c, nd(c, e)->a), nt = 2;
-    for (int i = 0; i < nt; i++) {
+    t = list(c, nd(c, e)->a);
+    for (int i = 0; i < 2; i++) {
         ref co;
         if (!as_power(c, t[i], var, &k, &co) || !is_num(c, co)) goto no;
         if (k == 0) c0 = co;
-        else if (k >= 3) n = k, cn = co;
+        else if (k >= 3) *n = k, cn = co;
     }
     if (!c0 || !cn) goto no;
     r = ib_canon(c, mul2(c, ib_neg(c, c0), power(c, cn, small(c, C_M1))));
     if (c->st != CASIM_OK || !is_num(c, r)) goto no;
-    p = val(c, r)->p, q = val(c, r)->q;
-    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n - want;
+    *p = val(c, r)->p, *q = val(c, r)->q;
+    td_drop(c, mark);
+    return true;
+no:
+    c->sub_var = -1;
+    td_drop(c, mark);
+    c->st = CASIM_OK;
+    return false;
+}
+
+static __attribute__((noinline)) void pp_fix(ctx *c, out_t *w, int var)
+{
+    size_t mark = c->used;
+    const char *col;
+    int nr = 0, want, left;
+    char name[2] = {(char)('A' + var), '\0'};
+    ref x[2];
+    long n;
+    int64_t p, q;
+    if (strncmp(w->o, "PARTIAL, DEGREE ", 16) != 0) return;
+    if ((col = strchr(w->o, ':')))
+        for (const char *q2 = col; *q2; q2++) nr += *q2 == '=';
+    if (!pp_read(c, var, &n, &p, &q) || (want = pp_roots(c, n, p, q, x)) < 0 || (nr && nr != want)) goto no;
+    left = (int)n - want;
     if (!want) {
         td_drop(c, mark);
         w->n = 0, w->o[0] = '\0', puts_(w, "NO REAL ROOTS");
         return;
-    }
-    if (nr && nr != want) goto no;
-    if (!nr) {
-        part[0] = p < 0 ? -p : p, part[1] = q;
-        for (int j = 0; j < 2; j++) {                   /* numerator and denominator apart */
-            long m = n;
-            int64_t b = part[j];
-            for (; m > 1; m--)
-                if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;
-            if (m == 1) b = part[j];
-            u[j] = power(c, ir_rat(c, b, 1), ir_rat(c, j ? -1 : 1, n / m));
-        }
-        x[1] = ib_canon(c, mul2(c, u[0], u[1]));
-        if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));
-        x[0] = want == 2 ? ib_canon(c, ib_neg(c, x[1])) : x[1];
-        for (int i = 2 - want; i < 2; i++) {
-            ref z = expand_fully(c, ib_canon(c, add2(c, power(c, x[i], ir_rat(c, n, 1)), ib_neg(c, r))));
-            if (c->st != CASIM_OK || !is_k(c, z, 0, 1)) goto no;
-        }
     }
     if (nr) {                                           /* factoring's roots, as it printed them: the status only */
         char head[20] = "SOLVED, ";
@@ -4876,9 +4901,8 @@ static __attribute__((noinline)) void pp_fix(ctx *c, out_t *w, int var)
     for (int i = 0; i < want; i++) puts_(w, i ? "; " : ": "), puts_(w, name), puts_(w, "="), print(c, w, x[2 - want + i]);
     return;
 no:
-    c->sub_var = -1;
     td_drop(c, mark);
-    c->st = CASIM_OK;
+    if (c->st != CASIM_NO_ROOM) c->st = CASIM_OK;
 }
 
 /* The answer's text (abacus #4841): its status first, then each root once, ascending, "; " between. */
@@ -5017,6 +5041,7 @@ typedef struct {
     ifac fs[SOLVE_DEG];
     iroot r[2];
     char t[SLOT];
+    bool pure;                          /* CAS 041: no root 0 and no complex bit, so x^n = c may have its page */
 } sswork;
 
 /* whether this step is page k (counted either way); out starts afresh for it, but for the answer, already there */
@@ -5204,6 +5229,60 @@ static void ss_quadratic(sstep_t *S, out_t *w, sswork *W, const ifac *x, int var
     }
 }
 
+/* b^(1÷k) as canon prints it: b for k 1, SQRT(b) for k 2, b^(1÷k) past that */
+static void ss_kroot(out_t *w, int64_t b, long k)
+{
+    if (k == 2) puts_(w, "SQRT(");
+    put_int(w, b);
+    if (k == 2) puts_(w, ")");
+    else if (k > 2) puts_(w, "^(1"), puts_(w, DIVIDE), put_int(w, (int64_t)k), puts_(w, ")");
+}
+
+/* x's largest m-th power, m dividing n: the base, with k = n÷m */
+static int64_t ss_kpart(int64_t x, long n, long *k)
+{
+    for (long m = n; m > 1; m--) {
+        int64_t b;
+        if (n % m == 0 && (b = lq_iroot(x, (int)m)) >= 0) return *k = n / m, b;
+    }
+    return *k = n, x;
+}
+
+/* show steps' last page, ANSWER, and before it, for x^n = c (W's g, with factoring's factor left of degree 3 or more,
+   no root 0 and no complex bit), the page that reaches the answer (ruling 7): PURE POWER, x^n = c and then NO REAL ROOTS; its real
+   root or two, as solve prints them, where factoring didn't reach them (c's numerator and denominator each a
+   power's root, k ≥ 3 for one of them); or, where it did, NO OTHER REAL ROOT. Integers only: no tree is built here,
+   so ss_walk's frame is as it was */
+static __attribute__((noinline)) void ss_answer(out_t *w, sstep_t *S, int var, const sswork *W)
+{
+    char name[2] = {(char)('A' + var), '\0'};
+    const ipoly *g = &W->g;
+    int64_t p, q, gc, bp, bq;
+    long n = g->n, kp, kq;
+    bool pure = W->pure && W->cur.n >= 3 && n >= 3 && g->a[0] != 0;
+    for (long i = 1; pure && i < n; i++) pure = g->a[i] == 0;
+    if (pure && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_PURE_POWER)) {
+        p = -g->a[0], q = g->a[n];
+        if (q < 0) p = -p, q = -q;
+        gc = gcd64(p < 0 ? -p : p, q), p /= gc, q /= gc;
+        puts_(w, name), puts_(w, "^"), put_int(w, (int64_t)n), puts_(w, "="), put_int(w, p);
+        if (q != 1) puts_(w, DIVIDE), put_int(w, q);
+        puts_(w, ": ");
+        bp = ss_kpart(p < 0 ? -p : p, n, &kp), bq = ss_kpart(q, n, &kq);
+        if (!(n & 1) && p < 0) puts_(w, "NO REAL ROOTS");
+        else if (kp <= 2 && kq <= 2) puts_(w, "NO OTHER REAL ROOT");
+        else
+            for (int s = (n & 1) ? 1 : -1; s <= 1; s += 2) {
+                if (s > 0 && !(n & 1)) puts_(w, "; ");
+                puts_(w, name), puts_(w, "=");
+                if (s < 0 || p < 0) puts_(w, "-");
+                ss_kroot(w, bp, kp);
+                if (bq != 1) puts_(w, DIVIDE), ss_kroot(w, bq, kq);
+            }
+    }
+    ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+}
+
 static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int var, bool eq, const char *typed,
                                               const rat *co, const ipoly *f0, const solve_ws *s)
 {
@@ -5245,6 +5324,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
         W->g = *f0;
         while (W->g.n >= 1 && W->g.a[0] == 0)
             memmove(W->g.a, W->g.a + 1, (size_t)W->g.n * sizeof W->g.a[0]), W->g.n--, zero++;
+        W->pure = !zero && !(c->nm & NM_CX);
         if (zero && W->g.n >= 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR))
             ss_product(w, var, zero, W->fs, 0, &W->g, nf == 0);
         memcpy(W->fs, s->fac, (size_t)nf * sizeof W->fs[0]);
@@ -5303,7 +5383,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
         if (W->cur.n >= 3 && ss_hit(S, w, 1, CASIM_STEP_RESULT, CASIM_RULE_LEFT))
             ss_left(w, &W->cur, var, false), puts_(w, "=0: DEGREE "), put_int(w, W->cur.n), puts_(w, " LEFT");
     }
-    ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_ANSWER);
+    ss_answer(w, S, var, W);                            /* CAS 041: x^n = c's page, then ANSWER */
 }
 
 static casim_status ls_steps(const casim_req *rq, walk_t *P, out_t *o, const char *ans, void *arena, size_t room);
@@ -9846,19 +9926,22 @@ static __attribute__((noinline)) bool lq_out(ctx *c, ref D, ref *h, ref *D1)
     return c->st == CASIM_OK && !is_k(c, *h, 1, 1);
 }
 
-/* the answer's line: SOLVED: var=x0; var=x1 (MULT 2 for one), then S's rows (CAS 038's) */
-static __attribute__((noinline)) void lq_put(ctx *c, out_t *w, int var, ref *x, int nx, bool mult, const cdset *S)
+/* the answer's line: SOLVED (with cx complex roots left out, as a pure power's), var=x0; var=x1 (MULT mk for one
+   root of that multiplicity), then S's rows (CAS 038's) */
+static __attribute__((noinline)) void lq_put(ctx *c, out_t *w, int var, ref *x, int nx, int mk, int cx, const cdset *S)
 {
     char name[2] = {(char)('A' + var), '\0'};
     ((rat *)(void *)nd(c, 2))->q = 0;                  /* do_solve's cr, as ls_solve marks it: steps refuse */
-    puts_(w, "SOLVED: ");
+    puts_(w, "SOLVED");
+    if (cx) puts_(w, ", "), put_int(w, cx), puts_(w, " CPLX");
+    puts_(w, ": ");
     for (int i = 0; i < nx; i++) {
         if (i) puts_(w, "; ");
         puts_(w, name);
         puts_(w, "=");
         print(c, w, x[i]);
     }
-    if (mult) puts_(w, " (MULT 2)");
+    if (mk > 1) puts_(w, " (MULT "), put_int(w, mk), puts_(w, ")");
     ls_print(c, w, S);
 }
 
@@ -9892,7 +9975,17 @@ static __attribute__((noinline)) bool lq_pow(ctx *c, out_t *w, int var, ref a, l
     char ne = '!';
     if (ls_zero(c, a)) return false;
     r = ib_canon(c, mul2(c, ib_neg(c, k), power(c, a, small(c, C_M1))));
-    if (c->st != CASIM_OK || is_num(c, r)) return false;              /* letters in a and k only: pw's numbers */
+    if (c->st != CASIM_OK) return false;
+    if (is_num(c, r)) {                     /* the letters cancel (B×X^3=8×B): ruling 7's roots, with a's rows */
+        int want = pp_roots(c, n, val(c, r)->p, val(c, r)->q, x);
+        Dc.u = &a, Dc.k = &ne, Dc.n = 1;
+        if (want < 0 || !ls_note(c, &S, &Dc, var, 0) || !lq_typed(c, &S, var, x + 2 - want, want) || !lq_witness(c, &S))
+            return false;
+        if (c->st != CASIM_OK) return true;
+        if (!want) ((rat *)(void *)nd(c, 2))->q = 0, puts_(w, "NO REAL ROOTS"), ls_print(c, w, &S);
+        else lq_put(c, w, var, x + 2 - want, want, val(c, r)->p == 0 ? (int)n : 1, val(c, r)->p == 0 ? 0 : (int)n - want, &S);
+        return true;
+    }
     q = lq_nroot(c, r, n);
     x[0] = q ? q : ib_canon(c, power(c, r, ir_rat(c, 1, n)));
     if (!(n & 1)) x[1] = x[0], x[0] = ib_canon(c, ib_neg(c, x[1])), nx = 2;
@@ -9905,7 +9998,7 @@ static __attribute__((noinline)) bool lq_pow(ctx *c, out_t *w, int var, ref a, l
     if (!ls_note(c, &S, &Dc, var, x[0])) return false;
     if (!lq_nroot(c, r, n)) cd_note(c, &S, r, 'g', var);
     if (!lq_typed(c, &S, var, x, nx) || !lq_witness(c, &S)) return false;
-    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, false, &S);
+    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, 1, 0, &S);
     return true;
 }
 
@@ -9958,7 +10051,7 @@ static __attribute__((noinline)) bool lq_quad(ctx *c, out_t *w, int var, ref a, 
     if (!ls_note(c, &S, &Dc, var, x[0])) return false;
     if (D1 && !(is_num(c, D1))) cd_note(c, &S, D1, 'g', var);
     if (!lq_typed(c, &S, var, x, nx) || !lq_witness(c, &S)) return false;
-    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, nx == 1, &S);
+    if (c->st == CASIM_OK) lq_put(c, w, var, x, nx, nx == 1 ? 2 : 1, 0, &S);
     return true;
 }
 

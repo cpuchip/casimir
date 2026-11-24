@@ -196,7 +196,8 @@ enum {
     CASIM_RULE_ARCTANGENT,      /* integrate: ∫(1 ÷ f) dX by U = X + b÷(2a), to an ATAN */
     CASIM_RULE_SUBSTITUTION,    /* integrate (CAS 017): ∫(f)dX = ∫(G)dU, U = u, with f = G(u)×u' */
     CASIM_RULE_BY_PARTS,        /* integrate (CAS 017): ∫(f)dX = u×v - ∫(v×u')dX, v = ∫(f÷u)dX */
-    CASIM_RULE_CYCLE            /* integrate (CAS 017): two parts back to k×∫(f)dX, so ∫(f)dX = (u×v - u2×v2)÷(1 - k) */
+    CASIM_RULE_CYCLE,           /* integrate (CAS 017): two parts back to k×∫(f)dX, so ∫(f)dX = (u×v - u2×v2)÷(1 - k) */
+    CASIM_RULE_PURE_POWER       /* solve (CAS 041): x^n = c and every real root it has, or NO REAL ROOTS */
 };
 typedef struct {
     int count;                  /* the steps */

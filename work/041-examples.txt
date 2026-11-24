@@ -70,3 +70,24 @@
 | `casim solve 'X^3=2÷27' X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)÷3` |
 | `casim solve 'X^5=-3÷32' X RAD` | `SOLVED, 4 CPLX: X=-3^(1÷5)÷2` |
 | `casim solve 'X^3-2×X-5' X RAD` | `PARTIAL, DEGREE 3 LEFT` |
+
+# - Part 6: a pure power whose letters cancel (abacus #16786): ruling 7's roots and count, with a's row
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim solve '(-B)×X^9+(-B)=0' X RAD` | `SOLVED, 8 CPLX: X=-1; B≠0` |
+| `casim solve 'B×X^3=8×B' X RAD` | `SOLVED, 2 CPLX: X=2; B≠0` |
+| `casim solve 'A×X^4=16×A' X RAD` | `SOLVED, 2 CPLX: X=-2; X=2; A≠0` |
+| `casim solve 'B×X^6=8×B' X RAD` | `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2); B≠0` |
+| `casim solve 'B×X^3=0' X RAD` | `SOLVED: X=0 (MULT 3); B≠0` |
+| `casim solve 'B×X^4=-B' X RAD` | `NO REAL ROOTS; B≠0` |
+
+# - Part 7: x^n = c's steps reach the answer: PURE POWER just before ANSWER (abacus #16786)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim steps solve 'X^9=64' X RAD` | `BOTH SIDES: X^9-64=0 /   LEFT: X^9-64=0: DEGREE 9 LEFT / PURE POWER: X^9=64: X=4^(1÷3) / ANSWER: SOLVED, 8 CPLX: X=4^(1÷3)` |
+| `casim steps solve 'X^4=-16' X RAD` | `BOTH SIDES: X^4+16=0 /   LEFT: X^4+16=0: DEGREE 4 LEFT / PURE POWER: X^4=-16: NO REAL ROOTS / ANSWER: NO REAL ROOTS` |
+| `casim steps solve 'X^3=2÷27' X RAD` | `BOTH SIDES: X^3-2÷27=0 / INTEGER COEFFICIENTS: (X^3-2÷27)×27=0 / INTEGER COEFFICIENTS: 27×X^3-2=0 /   LEFT: 27×X^3-2=0: DEGREE 3 LEFT / PURE POWER: X^3=2÷27: X=2^(1÷3)÷3 / ANSWER: SOLVED, 2 CPLX: X=2^(1÷3)÷3` |
+| `casim steps solve 'X^6=8' X RAD` | `BOTH SIDES: X^6-8=0 / QUADRATIC FACTOR: (X^6-8)÷(X^2-2)=X^4+2×X^2+4 / QUADRATIC FACTOR: (X^2-2)×(X^4+2×X^2+4)=0 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(8)÷2; X=SQRT(8)÷2 /   QUADRATIC FORMULA: X^2-2=0: X=-SQRT(2); X=SQRT(2) /   LEFT: X^4+2×X^2+4=0: DEGREE 4 LEFT / PURE POWER: X^6=8: NO OTHER REAL ROOT / ANSWER: SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)` |
+| `casim steps solve 'X^4=9÷2' X RAD` | `BOTH SIDES: X^4-9÷2=0 / INTEGER COEFFICIENTS: (X^4-9÷2)×2=0 / INTEGER COEFFICIENTS: 2×X^4-9=0 /   LEFT: 2×X^4-9=0: DEGREE 4 LEFT / PURE POWER: X^4=9÷2: X=-SQRT(3)÷2^(1÷4); X=SQRT(3)÷2^(1÷4) / ANSWER: SOLVED, 2 CPLX: X=-SQRT(3)÷2^(1÷4); X=SQRT(3)÷2^(1÷4)` |

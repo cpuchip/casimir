@@ -155,7 +155,12 @@ the degree reading in ls_solve. It isn't committed. casim sends it on request.
   witness a row on two letters of unlike parity, since there such letters always differ in sign (letter l's sign at
   point j is the parity of l ^ j ^ (j >> 1)): A×B≥0 holds at none of them, so `A×X^2=B` and `A×X^2+B×X+C=0` were
   refused. lq_at adds 16 points with the same magnitudes and letter l's sign bit l mod 4 of j − 6, so A, B, C and D meet
-  every sign pattern. Measured: both rows answer, and every planted never-holding row still refuses.
+  every sign pattern. Measured: both rows answer, and every planted never-holding row still refuses. **Ruled accepted
+  as ruling 3** (abacus #16766): each added point is still a witness only where every row surely holds, so it can only
+  find a witness that exists, and a refusal still means none was found. abacus measured, on h041's reference rows, 10
+  rows with rows that find no witness among the six and all 10 find one among the 22. **The limit:** a letter's sign is
+  bit l mod 4, so E has A's sign at every added point (F has B's, and so on), and a row that needs A×E < 0 refuses,
+  lawfully.
 - **The check:** as identities, as CAS 038's is, so a sum a cancels as one factor: r^2 = D, and (2×a×x + b)^2 − r^2 = 0
   for each root. Putting the root back whole fails for `(A+D)×X^2+B×X+C=0` (terms over A+D that never meet).
 - **The numeric pure powers** run as a pass after put_solution (pp_fix), rewriting a PARTIAL line whose typed text is
@@ -186,4 +191,33 @@ the degree reading in ls_solve. It isn't committed. casim sends it on request.
   test can't fail them without a fault elsewhere.
 - **Not measured well:** the mutant run's memory peak. The sampler summed every python3 and make process on the box,
   other seats' included, and read 6.9 GB; the run's own use is below that and wasn't isolated.
+
+## The first acceptance run, and what it found (abacus #16786)
+
+NOT ACCEPTED at c7f9fd5, on two findings, everything else holding (the older sets' 28,304 records with 66 lawful
+moves, h040 unmoved, 17 of 24 mutants caught by h041 alone, CI green):
+1. **A pure power whose letters cancel was refused:** `(-B)×X^9+(-B)=0` printed NOT_NUMERIC, where `X=-1; B≠0` is owed;
+   lq_pow declined when r = −k÷a is a number, and pp_fix never sees a text with a letter. Fixed: lq_pow gives a numeric
+   r ruling 7's roots and complex count (pp_roots, the numeric pass's own builder), with a's rows and the witness.
+   `B×X^3=8×B` is `SOLVED, 2 CPLX: X=2; B≠0`, `A×X^4=16×A` is `SOLVED, 2 CPLX: X=-2; X=2; A≠0`, `B×X^4=-B` is
+   `NO REAL ROOTS; B≠0`, and `B×X^3=0` is `SOLVED: X=0 (MULT 3); B≠0`.
+2. **The steps for x^n = c ended in an answer they don't reach** (`X^9=64`'s page stopped at LEFT, then ANSWER gave
+   `4^(1÷3)`). Fixed with one page, rule PURE POWER (CASIM_RULE_PURE_POWER, the next number after CYCLE), at depth 0
+   just before ANSWER, where a factor of degree 3 or more is left and the text is x^n = c with no root 0 and no complex
+   bit: `X^9=64: X=4^(1÷3)` (the roots as the answer prints them, where factoring didn't reach them),
+   `X^12=4096: NO OTHER REAL ROOT` (the LINEAR pages above found them), `X^4=-16: NO REAL ROOTS`. The wording is
+   abacus's to rule. scripts/ssteps-values.py judges the page (just before ANSWER, x^n = c the typed L−R's, its body by
+   the answer and each root by value, a control that refuses a wrong root); 173 pages from degree 3 to 12 checked
+   against their answers by hand-run sweep, none apart.
+   - **How it stays out of the accepted frames:** the page is written from W's integers alone (ss_answer, ss_kroot,
+     ss_kpart), called as ss_walk's last statement in place of its ANSWER hit, with W's new flag `pure` set where the
+     root 0 and the complex bit are known. A page that read the text again through canon moved do_ssteps' host frame
+     496 to 512 (canon's calls widened what ss_walk is known to clobber), and one that kept f0 or the root count live
+     to the end moved ss_walk.constprop 656 to 672 and to 688. An empty-bodied call moved neither, a misleading
+     control: with IPA-RA a call to an empty function clobbers nothing.
+- **Cost:** S3 283,838 B (+1,942 on c7f9fd5), 17,218 under 301,056, no S3 frame moved; make test 20 tests, 118,813
+  checks. Mutants: pp041-count, -reduce-off and -neg-off re-anchored to pp_roots and pp_fix; new: pp041-page-off,
+  pp041-page-other and lq041-cancel-off. All six caught (two shards on the host).
+- abacus also named one lawful limit of ruling 1 as written: `X^2=(A-1)^2×B` keeps (A−1)^2 inside the root (the square
+  content taken out is numeric squares and single letters' even powers).
 

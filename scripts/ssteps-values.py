@@ -349,13 +349,15 @@ def judge(rows, e, var, model, plain, tv):
             why.append(f"step {b[0]} repeats step {a[0]}: {b[4]}")
     if any(r[3] in ("BOTH SIDES", "POLYNOMIAL") and r[4] in (e, e + "=0") for r in rows):
         why.append("the move repeats the text as typed")
-    d0 = [r for r in rows if r[1] == "0" and r[2] == "R" and r[3] != "ANSWER"]
+    d0 = [r for r in rows if r[1] == "0" and r[2] == "R" and r[3] not in ("ANSWER", "PURE POWER")]
     d1 = [r for r in rows if r[1] == "1" and r[2] == "R"]
     prods, prev = [], None
     for r in rows:
         k, depth, line, rule, text = r
         try:
-            if depth == "0" and line == "R" and rule != "ANSWER":
+            if rule == "PURE POWER":
+                why += pure_power(rows, int(k), text, plain)
+            elif depth == "0" and line == "R" and rule != "ANSWER":
                 lhs = text.removesuffix("=0")
                 vals = [ev(lhs, x).a for x in POINTS]
                 if not proportional([float(v) for v in vals], tv):
@@ -517,6 +519,55 @@ def judge(rows, e, var, model, plain, tv):
     return why
 
 
+PURE_SEEN = [0]
+
+
+def root_value(s):
+    """a pure power's printed root (±b, SQRT(b), b^(1÷k), one ÷ between two of them) as a float, by this reader"""
+    py = s.replace("SQRT(", "sqrt(").replace("^", "**").replace("÷", "/").replace("×", "*")
+    if not re.fullmatch(r"[-0-9sqrt()*/ ]+", py):
+        raise ValueError(s)
+    return eval(py, {"__builtins__": {}}, {"sqrt": math.sqrt})
+
+
+def pure_power(rows, k, text, plain):
+    """CAS 041 (abacus #16786): PURE POWER is the page just before ANSWER, at depth 0, after a factor left; it reads
+    x^n = c, which is the typed L-R's; and its body is NO REAL ROOTS (n even, c < 0: the answer's too), NO OTHER REAL ROOT
+    (the answer SOLVED with all the real roots x^n = c has, found on the pages above), or those roots as the answer
+    prints them, each a real n-th root of c by value"""
+    why = []
+    PURE_SEEN[0] += 1
+    m = re.fullmatch(r"X\^(\d+)=(-?\d+(?:÷\d+)?): (.+)", text)
+    if k != len(rows) - 2 or rows[k][1] != "0" or not any(r[3] == "LEFT" for r in rows[:k]) or not m:
+        return [f"step {k} PURE POWER: {text} is not x^n = c just before ANSWER, after a factor left"]
+    n, c, body = int(m.group(1)), F(m.group(2).replace("÷", "/")), m.group(3)
+    want = 1 if n % 2 else (2 if c > 0 else 0)
+    answer_roots = plain.split(": ", 1)[1].split("; ") if ": " in plain else []
+    if body == "NO REAL ROOTS":
+        if want or plain != "NO REAL ROOTS":
+            why.append(f"step {k}: NO REAL ROOTS for X^{n}={c}, answer {plain}")
+    elif body == "NO OTHER REAL ROOT":
+        if not plain.startswith("SOLVED") or len(answer_roots) != want:
+            why.append(f"step {k}: NO OTHER REAL ROOT, answer {plain}")
+    else:
+        roots = body.split("; ")
+        if [r.removeprefix("X=") for r in roots] != [r.removeprefix("X=") for r in answer_roots] or len(roots) != want:
+            why.append(f"step {k}: {body} is not the answer's {want} root(s) {plain}")
+        for r in roots:
+            v = root_value(r.removeprefix("X="))
+            if abs(v ** n - float(c)) > 1e-9 * max(1.0, abs(float(c))):
+                why.append(f"step {k}: {r} to the {n} is {v ** n}, not {c}")
+    return why
+
+
+def pure_control():
+    """pure_power's control: a page whose root is not the answer's, or not an n-th root of c, is refused"""
+    rows = [["0", "1", "R", "LEFT", "X^3-2=0: DEGREE 3 LEFT"], ["1", "0", "R", "PURE POWER", "X^3=2: X=3^(1÷3)"],
+            ["2", "0", "R", "ANSWER", "SOLVED, 2 CPLX: X=3^(1÷3)"]]
+    good = [r[:4] + [r[4].replace("3^", "2^")] for r in rows]
+    return bool(pure_power(rows, 1, rows[1][4], rows[2][4])) and not pure_power(good, 1, good[1][4], good[2][4])
+
+
 def run(args):
     p = subprocess.run([CLI] + args, stdout=subprocess.PIPE, text=True, encoding="utf-8")
     return p.returncode, p.stdout
@@ -526,7 +577,7 @@ def readback(rows, var, model):
     """each side of every line, read by casim (subst at a point) and by this reader, agree (D2)"""
     why, x = [], F(3, 7)
     for r in rows:
-        if r[3] == "ANSWER":
+        if r[3] in ("ANSWER", "PURE POWER"):            # PURE POWER: judged by pure_power, its roots by value
             continue
         sides = []
         for part in re.split(r"=0: |; |=|<0", r[4]):
@@ -844,8 +895,16 @@ def main():
     if not counts.get("letters"):
         failed += 1
         print("FAIL scripts/ssteps-values.py: no letter solve among the inputs, so CAS 038's BAD_ARG is checked on none")
+    seen = PURE_SEEN[0]
+    if not pure_control():
+        failed += 1
+        print("FAIL scripts/ssteps-values.py: the PURE POWER judge's control (a right page passes, a wrong root fails)")
+    PURE_SEEN[0] = seen
+    if not seen:
+        failed += 1
+        print("FAIL scripts/ssteps-values.py: no PURE POWER page among the inputs (CAS 041)")
     print(f"solve steps: {len(cases)} equations ({len(cases) - n} from the corpus, the docs and aimed ones), {counts['lines']} "
-          f"steps judged exactly and read back by casim (one line past 191 bytes), {counts.get('letters', 0)} letter solves' "
+          f"steps judged exactly and read back by casim (one line past 191 bytes), {PURE_SEEN[0]} PURE POWER pages, {counts.get('letters', 0)} letter solves' "
           f"pages judged by value both ways; the judge refused its nine planted faults and the letter judge its two\n"
           f"checks: {len(cases)} failed: {failed}")
     sys.exit(1 if failed or control else 0)

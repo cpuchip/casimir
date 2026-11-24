@@ -779,6 +779,12 @@ static void quads(void)
         {"X^3+A=0", 'X', "SOLVED: X=(-A)^(1÷3); A≤0", "A=-6"},
         {"X^5=32×A^5", 'X', "SOLVED: X=2×A", "A=-1.25"},
         {"A×X^3=8", 'X', "SOLVED: X=(8÷A)^(1÷3); A≠0; 1÷A≥0", "A=2.75"},
+        /* abacus #16786: a pure power whose letters cancel, ruling 7's roots and count with a's row */
+        {"(-B)×X^9+(-B)=0", 'X', "SOLVED, 8 CPLX: X=-1; B≠0", "B=2.5"},
+        {"B×X^3=8×B", 'X', "SOLVED, 2 CPLX: X=2; B≠0", "B=-1.5"},
+        {"A×X^4=16×A", 'X', "SOLVED, 2 CPLX: X=-2; X=2; A≠0", "A=3"},
+        {"B×X^6=8×B", 'X', "SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2); B≠0", "B=0.5"},
+        {"B×X^3=0", 'X', "SOLVED: X=0 (MULT 3); B≠0", "B=4"},
     };
     static const char *const declined[] = {"X^2+1+A^2=0", "X^2+A^2=0", "(5×A-1)×X^2+(5×A-1)÷4=0", "A×X^3+X^2=1",
                                            "X^2+(5×A-1)^2=0",       /* D = -m^2, m 0 at a witness point (A = 1/5) */
@@ -862,6 +868,27 @@ static void quads(void)
     ce_angle(angle);
     for (size_t i = 0; i < sizeof declined / sizeof declined[0]; i++) refused(declined[i], CASIM_NOT_NUMERIC);
     is("A×X^2+1÷A=0", "NO REAL ROOTS; A≠0");
+    is("B×X^4=-B", "NO REAL ROOTS; B≠0");
+    /* abacus #16786: x^n = c's steps reach their answer, PURE POWER just before ANSWER */
+    {
+        static const struct { const char *eqn, *page; } pp[] = {
+            {"X^9=64", "X^9=64: X=4^(1÷3)"}, {"X^12=4096", "X^12=4096: NO OTHER REAL ROOT"},
+            {"X^4=-16", "X^4=-16: NO REAL ROOTS"}, {"X^3=2÷27", "X^3=2÷27: X=2^(1÷3)÷3"},
+            {"X^4=9÷2", "X^4=9÷2: X=-SQRT(3)÷2^(1÷4); X=SQRT(3)÷2^(1÷4)"}};
+        static unsigned char m[16384];
+        for (size_t i = 0; i < sizeof pp / sizeof pp[0]; i++) {
+            casim_req rq = {CASIM_SOLVE, pp[i].eqn, CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
+            casim_step_info info;
+            casim_status st = casim_step(&rq, -1, 0, &info, out, OUT, m, sizeof m);
+            int count = info.count;
+            CHECK(st == CASIM_OK && count >= 2, "steps solve %s: %d, %d steps", pp[i].eqn, (int)st, count);
+            if (st != CASIM_OK || count < 2) continue;
+            st = casim_step(&rq, count - 2, 0, &info, out, OUT, m, sizeof m);
+            CHECK(st == CASIM_OK && info.rule == CASIM_RULE_PURE_POWER && info.depth == 0 && strcmp(out, pp[i].page) == 0,
+                  "steps solve %s page %d: %d rule %d \"%s\", want PURE POWER \"%s\"", pp[i].eqn, count - 2, (int)st,
+                  info.rule, out, pp[i].page);
+        }
+    }
 }
 
 /* CAS 040 (work/cas040.md): X's coefficient 0 where canon can't see it, read at six fixed points. Each zero row is

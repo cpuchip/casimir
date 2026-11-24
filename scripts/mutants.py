@@ -1617,9 +1617,12 @@ MUTANTS = {
     "lq041-steps-off": [("src/casim.c", "            if (k > 1) return CASIM_BAD_ARG;                /* CAS 041: a quadratic or a power has no page */", "            (void)0;                /* CAS 041: a quadratic or a power has no page */")],
     "ls041-unit-off": [("src/casim.c", "    if (nd(c, e)->kind != K_MUL) return e;\n    n = nd(c, e)->n;", "    if (nd(c, e)->kind != K_MUL || op) return e;\n    n = nd(c, e)->n;")],
     "pp041-off": [("src/casim.c", "    if (c.st == CASIM_OK && !w.full && !(c.nm & NM_CX)) pp_fix(&c, &w, var);            /* CAS 041: x^n = c */", "    (void)pp_fix;            /* CAS 041: x^n = c */")],
-    "pp041-count": [("src/casim.c", "    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n - want;", "    want = n & 1 ? 1 : p > 0 ? 2 : 0, left = (int)n;")],
-    "pp041-reduce-off": [("src/casim.c", "                if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;", "                if (0) break;")],
-    "pp041-neg-off": [("src/casim.c", "        if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));", "        (void)0;")],
+    "pp041-count": [("src/casim.c", "    left = (int)n - want;", "    left = (int)n;")],
+    "pp041-reduce-off": [("src/casim.c", "            if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;", "            if (0) break;")],
+    "pp041-neg-off": [("src/casim.c", "    if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));", "    (void)0;")],
+    "pp041-page-off": [("src/casim.c", "    bool pure = W->pure && W->cur.n >= 3 && n >= 3 && g->a[0] != 0;", "    bool pure = false && W->pure && W->cur.n >= 3 && n >= 3 && g->a[0] != 0;")],
+    "pp041-page-other": [("src/casim.c", "        else if (kp <= 2 && kq <= 2) puts_(w, \"NO OTHER REAL ROOT\");", "        else if (kp <= 2 || kq <= 2) puts_(w, \"NO OTHER REAL ROOT\");")],
+    "lq041-cancel-off": [("src/casim.c", "    if (is_num(c, r)) {                     /* the letters cancel (B×X^3=8×B): ruling 7's roots, with a's rows */", "    if (is_num(c, r)) {                     /* the letters cancel (B×X^3=8×B): ruling 7's roots, with a's rows */\n        if (r) return false;")],
 }
 
 

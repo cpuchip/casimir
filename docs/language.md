@@ -202,7 +202,9 @@ D is the square of a polynomial in the letters, its roots print with no root sig
 `X=A; X=B`, and a D of 0 is one root, MULT 2. Else D's square content comes out of the root (X^2=8×A is
 `X=-2×SQRT(2×A); X=2×SQRT(2×A); A≥0`), and the row is on the radicand printed. A pure power a×var^n+k, n from 3 to 12,
 is r^(1÷n) with r = −k÷a, ± for an even n, with r≥0; for an odd n an exact root of a monomial (X^5=32×A^5 is `X=2×A`)
-needs no row, and otherwise r < 0 has a real root this answer doesn't give (V<0 in V=4÷3×π×R^3). Each root is put back
+needs no row, and otherwise r < 0 has a real root this answer doesn't give (V<0 in V=4÷3×π×R^3). Where the letters
+cancel, so r is a number, the roots and the complex count are a numeric pure power's (below) with a's rows:
+(-B)×X^9+(-B)=0 is `SOLVED, 8 CPLX: X=-1; B≠0`. Each root is put back
 before it prints, the two in canon's order. A D that is a number below 0 is NO REAL ROOTS with a's rows. An answer is
 printed only where its rows all hold at once at one witness point (CAS 040's six and sixteen more of every sign
 pattern), each surely by the bound; otherwise it is NOT_NUMERIC, as X^2+1+A^2=0 is. A row drops a constant factor
@@ -475,6 +477,9 @@ them, in descending powers. The steps are:
   root 0 when k > 1; X alone has no line, the product above shows it); QUADRATIC FORMULA, the formula's values (or
   b^2-4ac when it is negative) then the roots, one line when the values are the roots already; LEFT for a factor of
   degree 3 or more, as (F)^k when it is a power;
+- PURE POWER (CAS 041), for x^n = c where a factor of degree 3 or more is left: x^n = c, then its real roots as the
+  answer prints them, NO OTHER REAL ROOT where the pages above found them all, or NO REAL ROOTS for an even n and
+  c < 0;
 - ANSWER is solve's own answer.
 
 An equation solve answers with letters as coefficients (CAS 038) pages the same way (CAS 039): BOTH SIDES (or
