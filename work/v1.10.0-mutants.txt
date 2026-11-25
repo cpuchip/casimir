@@ -1,0 +1,28 @@
+# The mutant count at the v1.10.0 tag: 636 of 644 caught at the tag's tree, from one run of every mutant (2026-11-25);
+# the eight survivors are 1.9.0's eight, named below (abacus #17339).
+#
+# The tree: 2e62056, the version commit on 4bef7a2 (CAS 043 as accepted at a938637), which changes only README.md,
+# idf_component.yml and src/casim.h's version text. The bench's code size (434,463 B, scripts/device.sh --build at
+# 16,384 B) was measured at 4bef7a2, whose code is a938637's.
+#
+# The control: a worktree made at 2e62056 with no build folder, then make test there with the firmware's core at
+# CORE_PIN: all green, 20 tests, 121,903 checks, golden reporting "Casimir 1.10.0" (17:16:29Z to 17:23:51Z). The run
+# used that worktree as its tree, so every copy (cp -a, which keeps timestamps) starts from objects built from
+# 2e62056's own sources, and make rebuilds only what depends on the file a mutant rewrites.
+#
+# The run (17:23:51Z to 22:21:46Z, 6 shards of 107 or 108, scripts/mutants.py on copies of that tree, nice 19, under a
+# claim):
+#   636 of 644 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache, cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value,
+#     factor026-letter-off: 1.7.0's six, as at 1.5.0 (work/v1.5.0-mutants.txt names what masks each).
+#   SURVIVED lq041-check-d-off, lq041-check-root-off: CAS 041's two, equivalent (work/v1.8.0-mutants.txt).
+#   Searched again at this tree (host only, 22:24:27Z to 22:26:01Z, 1,758 jobs, none failing), with 1.9.0's inputs
+#     (work/v1.9.0-mutants.txt): 2,250,577 lines through golden_check --record on the build and each of the eight, and
+#     1,011,695 through the series-only build for the two ser-*. Each moves byte for byte the lines it moved at 1.9.0's
+#     tree: div-letter-off the same 16 sum lines, ser-ln-no-value the same one limit line in the series-only build, the
+#     other six none. The unmutated build's own lines are 1.9.0's, every one of the 250 files byte for byte.
+#   The 12 new since 1.9.0 (cx043-*) are caught, and so is pp041-off at its new anchor (pp_pass).
+#
+# Peaks: the run's resident memory summed over every process whose working directory is one of its six copies,
+# sampled every 5 s: 1,876,348 KiB at most (17:25:06Z). /tmp and /dev/shm together 160 KiB when that peak was read,
+# box-wide, so not this run's alone. The copies on disk weren't sampled.
