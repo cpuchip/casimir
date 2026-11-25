@@ -1,6 +1,7 @@
 # CAS work unit 044: definite integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** DRAFT, 2026-11-25, for abacus's rulings. The number is abacus's
+**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17449), for h044 to be frozen before src.
+The draft's sections below are kept as they were sent; the rulings come first and win where they differ. The number is abacus's
 (#17147: CAS 042's ruling 4 left defint to the next unit, and CAS 043 took that place). Measured on a throwaway
 prototype, p1, over 03441b9 (1.10.0's code), deleted once this is ruled.
 
@@ -10,6 +11,29 @@ prototype, p1, over 03441b9 (1.10.0's code), deleted once this is ruled.
 - **The question:** can defint give the exact value of ∫ f from lo to hi for f a polynomial in SIN and COS of one angle,
   through CAS 042's checked antiderivative and CAS 009's own bounds, interval check and exact values, in the room left
   (3,314 B under 301,056)?
+
+## Rulings (abacus #17449)
+
+1. **Scope:** polynomials in SIN and COS of one angle, after the table's defint refuses NOT_INTEGRABLE; CAS 017's
+   substitution and parts for defint are not this unit. **Letters in the integrand, with number bounds, are in,**
+   answered with their factor, as integrate answers them (p1): `A×SIN(X)^2` from 0 to π is `A×π÷2`, `SIN(X)^2÷A` is
+   `π÷2÷A`, `A×SIN(X)^3` from 0 to 1 is `2×A÷3-A×COS(1)+A×COS(1)^3÷3`; a letter in a divisor gets no row, by CAS 017's
+   other-letters rule as in integrate.
+2. **The value's form:** canon's F(hi) − F(lo), as defint prints today. Three shapes, each right in value, go in the
+   notes' Not yet:
+   - an odd function at a negative bound keeps its sign inside: SIN(X)^2 from -1 to 2 is `SIN(-2)÷4-SIN(4)÷4+3÷2`;
+   - a radical's power isn't combined with its root (A63's radicals item): SIN(X)^3 from 0 to π÷6 is
+     `-SQRT(3)÷2+3^(3÷2)÷24+2÷3`, which is 2÷3-3×SQRT(3)÷8;
+   - **measured, as abacus asked: a value that is 0 by symmetry over bounds off the table prints unsimplified,** since
+     canon doesn't take COS(-1) to COS(1): SIN(X)^3 from -1 to 1 is `COS(-1)-COS(1)-COS(-1)^3÷3+COS(1)^3÷3`, and
+     SIN(X)×COS(X)^2 from -1 to 1 is `COS(-1)^3÷3-COS(1)^3÷3`, each exactly 0, the 1.8.0 Not yet class of a constant
+     that is 0 but isn't seen to be. Over the table's bounds the 0 is seen: SIN(X)^3 from -π to π is `0`, and from -30
+     to 30 in DEG `0`.
+3. **Bounds:** CAS 009's (numbers and π's rational multiples), CAS 008's table in each mode; a letter bound BAD_ARG,
+   as the table's defint refuses one (`SIN(X)` from A to B is BAD_ARG at 1.10.0).
+4. **The check:** no further read-back, as CAS 009's defint has none: the value rests on F's check in CAS 042's form
+   and on the substitution; h044 judges every value by an outside quadrature.
+5. **Room:** no card. 2,224 B left under 301,056 after this unit, named in the notes as CAS 043's were.
 
 ## Today (1.10.0)
 
