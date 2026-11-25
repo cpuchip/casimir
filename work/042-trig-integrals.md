@@ -1,6 +1,10 @@
 # CAS work unit 042: integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h042 (frozen at sha256 33ac4d3c629ee5ea0f617a8fb40e51e14ceac903318b6f0bffd23318e4e05dbb, 303 rows at 8,800 and 16,384 B, abacus #17132). RULED 2026-11-25 (abacus #17118). The
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at 2977838 (abacus #17206; abacus f709468, docs/evidence/2026-11-25-cas-042-acceptance): h042
+602 of 606 runs passing, 0 WRONG, the 4 failing SIN(24×X)×SIN(X), lawful by ruling 2 as amended; 74 NO_ROOM, counted;
+against 4d52d0c, 17 runs move, each a refusal there answered here and right by value; the older sets 0 moved, h017's 31
+lines at each arena right, h019 0 moved; the 17 mutants each change h042's runs. The first build, 4d52d0c, was not
+accepted (#17188). Built for h042 (frozen at sha256 33ac4d3c629ee5ea0f617a8fb40e51e14ceac903318b6f0bffd23318e4e05dbb, 303 rows at 8,800 and 16,384 B, abacus #17132). RULED 2026-11-25 (abacus #17118). The
 number is abacus's (#17116). Measured on a throwaway prototype, p1, over f942021 (1.8.0's code), then p1 with ruling
 1's parity split; it is deleted once h042 is frozen. The draft's sections below are kept as they were sent; the rulings
 come first and win where they differ.

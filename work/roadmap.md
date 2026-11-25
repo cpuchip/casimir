@@ -22,8 +22,8 @@ release.
 | # | Phase | What a student gets | Builds on |
 |---|---|---|---|
 | 1 | Quadratics with letters (done: CAS 041, accepted at 610c81b, abacus #16833) | `X^2=A` gives both roots, -SQRT(A) and SQRT(A), with the row A≥0 (how two roots and a row share one line is the blueprint's to rule); `A×X^2+B×X+C=0` by the formula, with its rows (A≠0, the discriminant's sign) and its steps | CAS 038, 039 (linear letters), CAS 022 (signs) |
-| 2 | Trig integrals | powers and products of SIN and COS: `SIN(X)^2`, `SIN(X)^3×COS(X)^2`, `SIN(2×X)×COS(3×X)` | CAS 006, 017 (table, substitution) |
-| 3 | Complex roots past degree 2 | exact complex roots where a closed form fits the line: biquadratics (`X^4+1`), X^n-1 and X^n+1, cubics with one real root; the rest stays PARTIAL | CAS 005, 007, 020 |
+| 2 | Trig integrals (done: CAS 042, accepted at 2977838, abacus #17206; definite integrals of these are CAS 044) | powers and products of SIN and COS: `SIN(X)^2`, `SIN(X)^3×COS(X)^2`, `SIN(2×X)×COS(3×X)` | CAS 006, 017 (table, substitution) |
+| 3 | Complex roots past degree 2 (first piece: CAS 043, x^n = c under --complex, never less than without the bit, Michael's T113) | exact complex roots where a closed form fits the line: biquadratics (`X^4+1`), X^n-1 and X^n+1, cubics with one real root; the rest stays PARTIAL | CAS 005, 007, 020 |
 | 4 | Matrices | a matrix typed as text, exact entries (rationals, letters, exact values); +, -, ×, scalar ×, transpose, determinant, inverse, rank, row reduction, A×X=B | canon and expand for entries; the arena |
 | 5 | Eigenvalues and eigenvectors | the characteristic polynomial det(A-λ×I), its roots by solve (exact where it factors into pieces solve can do; the rest PARTIAL), and an eigenvector for each root | phase 4, solve, factor, phase 3 |
 | 6 | The carried list | the 1.7.0 notes' "Not yet" items, in small units between phases or after | |
