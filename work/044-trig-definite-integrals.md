@@ -1,6 +1,9 @@
 # CAS work unit 044: definite integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h044 (frozen at sha256 7196eafaaca0007d719c07afcb5991c17f7c633c58e8a935ff807afb30136f83, 540 rows at 8,800 and 16,384 B, abacus #17455). RULED 2026-11-25 (abacus #17449).
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at dd5edb1 (abacus #17514; docs/evidence/2026-11-25-cas-044-acceptance): h044's 997 answered runs
+right against a 50-digit quadrature, 1.10.0's own rows byte for byte, letter bounds BAD_ARG, the holes refused; the 8
+failing runs abacus's own (drawn sums mixing X and X+1, no common angle, outside the unit); the older sets 0 moved;
+the 4 dt044 mutants each change h044's runs. Built for h044 (frozen at sha256 7196eafaaca0007d719c07afcb5991c17f7c633c58e8a935ff807afb30136f83, 540 rows at 8,800 and 16,384 B, abacus #17455). RULED 2026-11-25 (abacus #17449).
 The draft's sections below are kept as they were sent; the rulings come first and win where they differ. The number is abacus's
 (#17147: CAS 042's ruling 4 left defint to the next unit, and CAS 043 took that place). Measured on a throwaway
 prototype, p1, over 03441b9 (1.10.0's code), deleted once this is ruled.
