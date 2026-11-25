@@ -1,0 +1,20 @@
+# CAS 043's host frame move (abacus #17264 ruling 6, #17279): the frame table re-recorded in a commit of its own.
+# tests/frames/gcc-15.2.0-x86_64-linux-gnu.su, compiled as make check compiles src/casim.c (gcc 15.2.0, -O2). One
+# accepted function's frame moves: do_sum_ 816 -> 832 bytes. On the S3 (xtensa-esp32s3-elf-gcc, scripts/size-s3.sh's
+# flags, build/s3/casim.su against cf11f9f's, by hand) none moves; the new frames are cx_fix 464, cx_den.isra 32,
+# pp_pass 32 and ss_cxpage 32.
+#
+# Hunted, not traced:
+#   - do_sum_'s own inlining decisions (-fopt-info-inline-optimized, cf11f9f's src/casim.c against this commit's) are
+#     the same in both trees.
+#   - It moves under -fno-ipa-ra (832 -> 848 against 1.9.0's 832 there) and -fno-ipa-sra (800 -> 832) alike, so neither
+#     IPA-RA nor IPA-SRA's clones is the cause.
+#   - Variants tried: the new code's small() calls written as ir_rat; its helpers noinline; the pass marked cold (which
+#     also moved pp_fix 160 -> 144 and pp_read 128 -> 144); the pass called from inside pp_fix instead of pp_pass. Each
+#     left do_sum_ at 832. (A fourth variant's zero came from a splice that broke the source, caught on a real build.)
+#   - The nearest change in the dumps, every decision outside the new functions that differs:
+#       <      47 Inlined rat_make into small
+#       >      48 Inlined rat_make into small
+#       >       1 Inlined small into sm_frac.constprop
+#       <      26 optimized:  Inlined put.part.0 into put
+#       >      31 optimized:  Inlined put.part.0 into put

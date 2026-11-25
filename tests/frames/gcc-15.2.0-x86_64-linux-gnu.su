@@ -69,6 +69,8 @@ content_of	48
 copy_up	96
 cterm_product	128
 cv_fn	96
+cx_den.isra	8
+cx_fix	592
 decimal_len	8
 decimal_of.isra	112
 dep	16
@@ -94,7 +96,7 @@ do_solve	400
 do_ssteps	496
 do_subst	240
 do_sum	160
-do_sum_	816
+do_sum_	832
 do_taylor	496
 edge_tol	112
 emit	8
@@ -180,6 +182,7 @@ ir_parts	96
 ir_rat	64
 ir_reduced	128
 ir_term	208
+ir_trig	48
 irec_factor	144
 irec_sum	112
 irec_term.part.0	176
@@ -295,6 +298,7 @@ pow_num	16
 power	144
 power_sum	144
 pp_fix	160
+pp_pass	8
 pp_read	128
 pp_roots	160
 prim_factor	128
@@ -431,6 +435,7 @@ sort	112
 split	480
 split_impure	96
 ss_answer	176
+ss_cxpage	32
 ss_ipoly	272
 ss_kroot	80
 ss_left	208
