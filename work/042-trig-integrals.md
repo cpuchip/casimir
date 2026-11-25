@@ -47,8 +47,12 @@ arena arrays with its frame under 1 KiB (p1's is 944 B, and recursive). If inlin
 comes to abacus before acceptance and is not re-recorded. The hole (`SIN(X)^2×X÷X`) closes by CAS 017 rule 2, and h042
 holds its shapes.
 
-**p1 with the split:** S3 text 292,415 B (+8,577 on 1.8.0), 8,641 under 301,056, and no accepted frame moved, where p1
-without it moved seven: the moves come and go with gcc's inlining, therefore the build checks them at every step.
+**p1 with the split:** S3 text 292,415 B (+8,577 on 1.8.0), 8,641 under 301,056, ~~and no accepted frame moved, where p1
+without it moved seven: the moves come and go with gcc's inlining, therefore the build checks them at every step.~~
+**Struck 2026-11-25, wrong:** that run was scripts/size-s3.sh alone, which measures size and compares no frame. The seven
+moves quoted for the first p1 came from scripts/frame-table.py, run on the same command line. Run on p1 with the
+split, frame-table.py moves eight host frames (angle_factor 64→80, do_sum_ 816→832, ib 240→272, integ_checked
+112→128, lm_sum 112→144, mul 256→272, sm_anti 224→240, td_prop 48→80). No S3 frame table was compared for p1.
 
 ## Today (1.8.0, RAD)
 
