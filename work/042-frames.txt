@@ -1,0 +1,82 @@
+# CAS 042's host frame moves (abacus #17161, #17162): the frame table re-recorded in a commit of its own, with the
+# cause. The table is tests/frames/gcc-15.2.0-x86_64-linux-gnu.su, compiled as make check compiles src/casim.c (gcc
+# 15.2.0, -O2). Seven accepted functions' frames move, in bytes:
+#   angle_factor 64->80, ib 240->272, integ_checked 112->128, lm_sum 112->144, mul 256->272, sm_anti 224->240,
+#   td_prop 48->80.
+# On the S3 (xtensa-esp32s3-elf-gcc, scripts/size-s3.sh's flags, build/s3/casim.su against c564e41's, by hand) one
+# moves: chain 48->64. No new function's frame is over 1 KiB on either; tn_form, the one recursive function, is 112 B
+# on the S3.
+#
+# The cause, measured: gcc's inliner (-fopt-info-inline-optimized, c564e41's src/casim.c against this commit's) inlines
+# small() at 46 call sites where it inlined 30, and every other decision into these seven functions is the same. small
+# is an ordinary static function, inlined under the unit-wide budget, which grows with the unit; no variant of the new
+# code tried (its helpers noinline, inlined more, cold, its small() calls behind one wrapper) brought the moves below
+# seven except one that kept an unused static function, which -Werror refuses.
+#   - small() newly inlined into the function itself: angle_factor (2 sites), lm_sum (3), sm_anti (2 more, 4 in all),
+#     td_prop (1).
+#   - into a function it inlines: integ_checked inlines canon_const, which now inlines small (1 site). mul inlines
+#     exp_of, whose partial clone exp_of.part.0 now inlines small (1 site); with -fno-ipa-sra mul's frame doesn't move.
+#   - ib: not traced. Its inlining decisions are unchanged, and it moves 240->272 under -fno-ipa-ra, -fno-ipa-sra and
+#     -fno-ipa-cp alike. small's new sites in ib_back and ib_sub, which ib calls without inlining, are the nearest
+#     change found.
+#   - Ruled out as the general cause: IPA-RA. With -fno-ipa-ra both trees compiled, the same seven move.
+#
+# Reproduce: cc -std=c11 -O2 -Isrc -Ithird_party/abn -c -o /dev/null -fopt-info-inline-optimized=<file> src/casim.c on
+# each tree, then strip each line's location, node numbers and time/size tail and compare the sorted lines.
+#
+# small()'s inlined sites, c564e41 (count, caller):
+#        1 Inlined small into chain
+#        1 Inlined small into ib_drop
+#        1 Inlined small into ib_inv
+#        1 Inlined small into integ_poly
+#        1 Inlined small into lm_quot
+#        2 Inlined small into lm_split
+#        1 Inlined small into lq_out.constprop
+#        3 Inlined small into neg
+#        1 Inlined small into one_pm_sq
+#        1 Inlined small into poly_tree
+#        1 Inlined small into s_at.isra
+#        1 Inlined small into sm_add
+#        2 Inlined small into sm_anti
+#        2 Inlined small into sm_cmpabs
+#        1 Inlined small into sm_den
+#        2 Inlined small into sm_fits
+#        1 Inlined small into sm_holeb
+#        1 Inlined small into sm_q
+#        1 Inlined small into s_mul
+#        2 Inlined small into s_new
+#        1 Inlined small into s_pair
+#        2 Inlined small into steps_const
+# and at this commit:
+#        2 Inlined small into angle_factor
+#        1 Inlined small into canon_const
+#        1 Inlined small into chain
+#        1 Inlined small into exp_of.part.0
+#        2 Inlined small into ib_back
+#        1 Inlined small into ib_drop
+#        1 Inlined small into ib_inv
+#        1 Inlined small into ib_sub
+#        1 Inlined small into integ_poly
+#        1 Inlined small into integ_poly_r
+#        1 Inlined small into lm_quot
+#        2 Inlined small into lm_split
+#        3 Inlined small into lm_sum
+#        1 Inlined small into lq_out.constprop
+#        3 Inlined small into neg
+#        1 Inlined small into one_pm_sq
+#        1 Inlined small into poly_tree
+#        1 Inlined small into s_at.isra
+#        1 Inlined small into sm_add
+#        4 Inlined small into sm_anti
+#        2 Inlined small into sm_cmpabs
+#        1 Inlined small into sm_den
+#        2 Inlined small into sm_fits
+#        1 Inlined small into sm_groups.constprop
+#        1 Inlined small into sm_holeb
+#        1 Inlined small into sm_q
+#        1 Inlined small into s_mul
+#        2 Inlined small into s_new
+#        1 Inlined small into s_pair
+#        2 Inlined small into steps_const
+#        1 Inlined small into td_prop
+#        1 Inlined small into tn_scale
