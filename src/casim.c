@@ -7691,12 +7691,76 @@ static __attribute__((noinline)) casim_status do_defint(const char *eqn, int var
     return finish(&c, b, out, ocap);
 }
 
+/* ---- CAS 044: definite integrals of polynomials in SIN and COS (work/044-trig-definite-integrals.md) ----
+   do_defint's twin with CAS 042's checked antiderivative: the bounds, the interval check, CAS 035's typed domain and
+   F(hi) - F(lo) by check_rewrite's substitution, CAS 008's exact values applying, all as do_defint does them */
+static __attribute__((noinline)) casim_status do_dtrig(const char *eqn, int var, const char *lo, const char *hi, int angle,
+                                                        char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, F = SPARE, f, a, b;
+    bound ba, bb;
+    int chars = 0, iv;
+    size_t ocap = cap < SLOT ? cap : SLOT;
+    if (cap) out[0] = '\0';
+    if (!eqn || !lo || !hi) return CASIM_BAD_ARG;
+    if (var < 0 || var > 25 || angle < CASIM_DEG || (angle & ~ANGLE_BITS) > CASIM_GRAD) return CASIM_BAD_ARG;
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.var = var;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;         /* an equation */
+    if (c.st == CASIM_OK) {                                             /* CAS 042's F, as integrate makes it */
+        ref t = ib_canon(&c, n);
+        if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;
+        if (c.st == CASIM_OK) F = tn_integ(&c, t, var);
+        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t))     /* CAS 017's other letters */
+            c.st = CASIM_NOT_INTEGRABLE;
+    }
+    if (c.st != CASIM_OK) return finish(&c, F, out, ocap);
+    f = canon(&c, n);                                                   /* the integrand, for the interval check */
+    for (const char *p = eqn; *p; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    a = read_bound(&c, lo, chars + 1, &ba.v);
+    for (const char *p = lo; *p && c.st == CASIM_OK; p++) chars += ((unsigned char)*p & 0xC0) != 0x80;
+    b = c.st == CASIM_OK ? read_bound(&c, hi, chars + 2, &bb.v) : SPARE;
+    c.s = eqn;
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    ba.q = is_num(&c, a) ? val(&c, a) : NULL, bb.q = is_num(&c, b) ? val(&c, b) : NULL;
+    iv = abn_cmp(&ba.v, &bb.v) <= 0 ? interval_walk(&c, f, var, &ba, &bb)
+                                        : interval_walk(&c, f, var, &bb, &ba);
+    if (iv == IV_OK && c.st == CASIM_OK)                               /* CAS 035: the typed integrand */
+        iv = abn_cmp(&ba.v, &bb.v) <= 0 ? td_defint(&c, var, &ba, &bb)
+                                         : td_defint(&c, var, &bb, &ba);      /* CAS 035's, in CAS 044's twin */
+    if (c.st != CASIM_OK) return finish(&c, SPARE, out, ocap);
+    if ((iv & 255) != IV_OK) return c.st = (iv & 255) == IV_LETTER ? CASIM_BAD_ARG : CASIM_IMPROPER, finish(&c, SPARE, out, ocap);
+    c.sub_var = var;
+    c.sub_val = b;
+    b = check_rewrite(&c, F);                                           /* F(hi), CAS 044 */
+    c.sub_val = a;
+    a = check_rewrite(&c, F);                                           /* F(lo), CAS 044 */
+    c.sub_val = 0, c.sub_var = -1;
+    b = add2(&c, b, (neg(&c, a)));                                      /* CAS 044 */
+    if (iv >> 8 && c.st == CASIM_OK) b = ib_canon(&c, b), td_defint_gate(&c, b, (ref)(iv >> 8), var);    /* CAS 035 */
+    return finish(&c, b, out, ocap);
+}
+
+/* CAS 044: the table's defint, then where it refuses NOT_INTEGRABLE, CAS 042's form; out of line, so casim_defint
+   keeps its one call (in defint_ itself it moved casim_defint 80 -> 96) */
+static __attribute__((noinline)) casim_status dt_defint(const char *eqn, int var, const char *lo, const char *hi, int angle,
+                                                         char *out, size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    casim_status st = do_defint(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl);
+    return st == CASIM_NOT_INTEGRABLE ? do_dtrig(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl) : st;
+}
+
 static casim_status defint_(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,
                             size_t cap, void *arena, size_t arena_cap)
 {
     if (cap) out[0] = '\0';
     if (!model_ok(model)) return CASIM_BAD_ARG;
-    return do_defint(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    return dt_defint(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
 }
 
 casim_status casim_defint(const char *eqn, int var, const char *lo, const char *hi, int model, int angle, char *out,

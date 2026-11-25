@@ -1,6 +1,6 @@
 # CAS work unit 044: definite integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17449), for h044 to be frozen before src.
+**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h044 (frozen at sha256 7196eafaaca0007d719c07afcb5991c17f7c633c58e8a935ff807afb30136f83, 540 rows at 8,800 and 16,384 B, abacus #17455). RULED 2026-11-25 (abacus #17449).
 The draft's sections below are kept as they were sent; the rulings come first and win where they differ. The number is abacus's
 (#17147: CAS 042's ruling 4 left defint to the next unit, and CAS 043 took that place). Measured on a throwaway
 prototype, p1, over 03441b9 (1.10.0's code), deleted once this is ruled.
@@ -11,6 +11,24 @@ prototype, p1, over 03441b9 (1.10.0's code), deleted once this is ruled.
 - **The question:** can defint give the exact value of ∫ f from lo to hi for f a polynomial in SIN and COS of one angle,
   through CAS 042's checked antiderivative and CAS 009's own bounds, interval check and exact values, in the room left
   (3,314 B under 301,056)?
+
+## As built
+
+- **Where it runs:** dt_defint, between defint_ and do_defint, calls do_defint and, where it refuses NOT_INTEGRABLE,
+  do_dtrig: p1's shape, with CAS 017's other-letters check (ib_letters_kept) on F added, as integrate's path has it.
+  do_dtrig is do_defint line for line but its F; the lines it shares with do_defint are reflowed or annotated so
+  scripts/mutants.py's anchors stay unique (td035-defint-off, defint-lo-minus-hi, defint-check-walks-F, letter-rule-off
+  and ib-letters-guard-off keep do_defint's and ib's).
+- **Frames:** none moved, on the host (frame-table.py) or the S3 (build/s3's .su against 1.10.0's): do_dtrig 336 B on
+  the host and 208 on the S3, dt_defint 128 and 64.
+- **Room:** S3 text 298,895 B (+1,152 on 1.10.0's 297,743), 2,161 B under 301,056; no card (ruling 5).
+- **Tests:** defint_test's trig044: each ruled text and its value by the core's quadrature, the refusals (a letter
+  bound, the hole, X×SIN(X)^2, TAN(X)^2), 120 integrals over bounds in three modes and 60 drawn products from -π÷6 to
+  π÷4, all 180 answered and judged right; make test 20 tests, 122,238 checks. No golden line moves (the corpus has no
+  defint the table refuses that this path answers).
+- **The device:** DEVICE PASS, 1,521 cases byte-identical to the host at 16,384 B (scripts/measure.py's five CAS 044
+  cases among them), worst stack 11,360 B masked, unchanged, + 384 = 11,744 of 12,288; CAS 044's cases reach 2,032 B.
+- **Mutants:** 4 (dt044-off, -hole-off, -one-bound, -sign), all caught.
 
 ## Rulings (abacus #17449)
 

@@ -596,6 +596,13 @@ def all_cases():
     rows.append(("cx X^6=-1", "X^6=-1", "X", "RAD+C", "solve", None, "35"))
     rows.append(("cx X^9=64 floor", "X^9=64", "X", "RAD+C", "solve", None, "35"))
     rows.append(("cx X^12=4096", "X^12=4096", "X", "GRAD+C", "solve", None, "35"))
+    # CAS 044 (work/044-trig-definite-integrals.md): defint through CAS 042's form, F's check and the substitution at
+    # the bounds, CAS 008's table at π's multiples and a plain bound
+    rows.append(("dt SIN^2 0..π", "SIN(X)^2", "X", "RAD", "defint", "0|π", "35"))
+    rows.append(("dt SIN^5 0..π÷3", "SIN(X)^5", "X", "RAD", "defint", "0|π÷3", "35"))
+    rows.append(("dt SIN^3×COS^2 -1..2", "SIN(X)^3×COS(X)^2", "X", "RAD", "defint", "-1|2", "35"))
+    rows.append(("dt COS^3 30..60 DEG", "COS(X)^3", "X", "DEG", "defint", "30|60", "35"))
+    rows.append(("dt SIN(3X)^2×COS(X)", "SIN(3×X)^2×COS(X)", "X", "RAD", "defint", "π÷4|π÷3", "35"))
     # CAS 042 (work/042-trig-integrals.md): a polynomial in SIN and COS through tn_form, the one recursive function, and
     # the check's expand_fully: a constant factor nested past the guard, a power of a sum (tn_form's power over its sum),
     # the degree-12 power in DEG, a product of angles that differ, and the parity split

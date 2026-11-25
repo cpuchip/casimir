@@ -1660,6 +1660,12 @@ MUTANTS = {
     "cx043-fit": [("src/casim.c", "    if (!b.full && b.n < SLOT) {", "    if (!b.full && b.n < 120) {")],
     "cx043-floor-off": [("src/casim.c", "never less (ruling 2) */\nfloor:\n", "never less (ruling 2) */\nfloor:\n    goto no;\n")],
     "cx043-rho": [("src/casim.c", "pp_roots(c, n, p < 0 ? -p : p, q, rho) < 1) goto no;", "pp_roots(c, n, p, q, rho) < 1) goto no;")],
+    # CAS 044 (work/044-trig-definite-integrals.md): the path off, CAS 017 rule 2's typed checks off, the bounds
+    # swapped, one bound read for both, and the value's sign
+    "dt044-off": [("src/casim.c", "    return st == CASIM_NOT_INTEGRABLE ? do_dtrig(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl) : st;", "    return st == CASIM_NOT_INTEGRABLE && !cap ? do_dtrig(eqn, var, lo, hi, angle, out, cap, arena, arena_cap, rtl) : st;")],
+    "dt044-hole-off": [("src/casim.c", "        if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;\n        if (c.st == CASIM_OK) F = tn_integ(&c, t, var);\n        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t))     /* CAS 017's other letters */\n", "        if (c.st == CASIM_OK) F = tn_integ(&c, t, var);\n        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t))     /* CAS 017's other letters */\n")],
+    "dt044-one-bound": [("src/casim.c", "    a = check_rewrite(&c, F);                                           /* F(lo), CAS 044 */", "    c.sub_val = b, a = check_rewrite(&c, F);                            /* F(lo), CAS 044 */")],
+    "dt044-sign": [("src/casim.c", "    b = add2(&c, b, (neg(&c, a)));                                      /* CAS 044 */", "    b = add2(&c, a, (neg(&c, b)));                                      /* CAS 044 */")],
 }
 
 

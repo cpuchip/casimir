@@ -323,6 +323,74 @@ static void visible(void)
     CHECK(n >= 25, "%d visible examples", n);
 }
 
+/* CAS 044 (work/044-trig-definite-integrals.md, abacus #17449): polynomials in SIN and COS through CAS 042's form,
+   after the table refuses; each text exactly, each value against the core's quadrature; the refusals; and a seeded draw
+   of products and sums over bounds at π's multiples and plain numbers in each mode, every value by quadrature */
+static unsigned seed044 = 44;
+static void trig044(void)
+{
+    static const char *const FS[] = {"SIN(X)^2", "COS(X)^4", "SIN(X)^3×COS(X)^2", "SIN(X)×SIN(3×X)", "COS(2×X+1)^2",
+                                     "SIN(X)^5", "3×SIN(X)^2+COS(X)", "SIN(X)×COS(X)"};
+    static const char *const BR[][2] = {{"0", "π"}, {"0", "π÷2"}, {"0", "π÷6"}, {"π÷4", "π÷3"}, {"0", "1"}, {"-1", "2"},
+                                        {"π", "0"}, {"-π÷3", "π÷4"}};
+    static const char *const BD[][2] = {{"0", "180"}, {"30", "60"}, {"-45", "45"}, {"0", "1"}};
+    static const char *const BG[][2] = {{"0", "200"}, {"50", "150"}, {"0", "1"}};
+    int judged = 0;
+    is("SIN(X)^2", "0", "π", CASIM_RAD, "π÷2");
+    is("COS(X)^4", "0", "π÷2", CASIM_RAD, "3×π÷16");
+    is("SIN(X)^3", "0", "π", CASIM_RAD, "4÷3");
+    is("SIN(X)×SIN(3×X)", "0", "π", CASIM_RAD, "0");
+    is("SIN(X)^2", "0", "π÷6", CASIM_RAD, "π÷12-SQRT(3)÷8");
+    is("SIN(X)^2", "0", "1", CASIM_RAD, "-SIN(2)÷4+1÷2");
+    is("SIN(X)^5", "0", "π÷3", CASIM_RAD, "53÷480");
+    is("SIN(X)^2", "0", "180", CASIM_DEG, "90");
+    is("SIN(X)^2", "0", "45", CASIM_DEG, "-45÷π+45÷2");
+    is("SIN(X)^2", "0", "200", CASIM_GRAD, "100");
+    is("A×SIN(X)^2", "0", "π", CASIM_RAD, "A×π÷2");                   /* letters with number bounds (ruling 1) */
+    is("SIN(X)^2÷A", "0", "π", CASIM_RAD, "π÷2÷A");
+    is("SIN(X)^3", "-π", "π", CASIM_RAD, "0");                         /* the table's bounds see the 0 */
+    is("SIN(X)^3", "-1", "1", CASIM_RAD, "COS(-1)-COS(1)-COS(-1)^3÷3+COS(1)^3÷3");     /* Not yet: a 0 not seen */
+    is("SIN(X)", "0", "π", CASIM_RAD, "2");                            /* the table's, as at 1.10.0 */
+    refused("COS(X)^2", "A", "B", CASIM_RAD, CASIM_BAD_ARG);           /* a letter bound (ruling 3) */
+    refused("SIN(X)^2×X÷X", "-1", "1", CASIM_RAD, CASIM_NOT_INTEGRABLE);   /* CAS 017 rule 2's hole */
+    refused("X×SIN(X)^2", "0", "π", CASIM_RAD, CASIM_NOT_INTEGRABLE);
+    refused("TAN(X)^2", "0", "1", CASIM_RAD, CASIM_NOT_INTEGRABLE);
+    for (int m = 0; m < 3; m++) {
+        int angle = m == 0 ? CASIM_RAD : m == 1 ? CASIM_DEG : CASIM_GRAD, nb = m == 0 ? 8 : m == 1 ? 4 : 3;
+        for (size_t i = 0; i < sizeof FS / sizeof FS[0]; i++)
+            for (int j = 0; j < nb; j++) {
+                const char *lo = m == 0 ? BR[j][0] : m == 1 ? BD[j][0] : BG[j][0], *hi = m == 0 ? BR[j][1] : m == 1 ? BD[j][1] : BG[j][1];
+                char out[OUT];
+                casim_status st = defint(FS[i], lo, hi, angle, CASIM_MODEL_35, out, 16384);
+                CHECK(st == CASIM_OK, "defint %s on [%s, %s] (%s): %d", FS[i], lo, hi, MODE[angle], (int)st);
+                if (st != CASIM_OK) continue;
+                judged++;
+                CHECK(by_value(FS[i], lo, hi, angle, out), "defint %s on [%s, %s] (%s) = %s: not the quadrature", FS[i], lo,
+                      hi, MODE[angle], out);
+            }
+    }
+    for (int t = 0; t < 60; t++) {                                     /* drawn: products of SIN and COS of m×X */
+        char f[160] = "", out[OUT];
+        int terms = 1 + (int)((seed044 = seed044 * 1103515245u + 12345u) >> 16) % 2, angle = CASIM_RAD;
+        for (int i = 0; i < terms; i++) {
+            size_t L = strlen(f);
+            int k = 1 + (int)((seed044 = seed044 * 1103515245u + 12345u) >> 16) % 4;
+            int m1 = 1 + (int)((seed044 = seed044 * 1103515245u + 12345u) >> 16) % 3;
+            int e1 = 1 + (int)((seed044 = seed044 * 1103515245u + 12345u) >> 16) % 3;
+            int m2 = 1 + (int)((seed044 = seed044 * 1103515245u + 12345u) >> 16) % 3;
+            snprintf(f + L, sizeof f - L, "%s%d×SIN(%d×X)^%d×COS(%d×X)", i ? "+" : "", k, m1, e1, m2);
+        }
+        if (defint(f, "-π÷6", "π÷4", angle, CASIM_MODEL_35, out, 16384) != CASIM_OK) {
+            CHECK(false, "defint %s on [-π÷6, π÷4]: %s", f, out);
+            continue;
+        }
+        judged++;
+        CHECK(by_value(f, "-π÷6", "π÷4", angle, out), "defint %s on [-π÷6, π÷4] = %s: not the quadrature", f, out);
+    }
+    printf("defint: CAS 044, %d SIN and COS polynomials judged by value\n", judged);
+    CHECK(judged >= 180, "CAS 044: %d judged", judged);
+}
+
 int main(void)
 {
     ce_init();
@@ -332,5 +400,6 @@ int main(void)
     stamp();
     seeded();
     visible();
+    trig044();
     return check_done();
 }

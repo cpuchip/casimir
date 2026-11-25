@@ -414,6 +414,14 @@ with no real value somewhere on the interval is IMPROPER, as a pole is, so SQRT(
 X from -2 to -1 is -3÷2. A part whose condition holds another letter is BAD_ARG, as a letter in a bound is, unless
 the answer shows the hole itself: X×Y÷Y from 0 to 1 is BAD_ARG, and SQRT(Y) from 0 to 1 is `SQRT(Y)`.
 
+F is the table's (CAS 006). Where the table refuses, a polynomial in SIN and COS of one angle takes CAS 042's checked F
+instead (CAS 044, work/044-trig-definite-integrals.md), with the same bounds, interval check and exact values: SIN(X)^2
+from 0 to π is π÷2, and in DEG from 0 to 45 it is 45÷2−45÷π. Letters in the integrand come out with their factor (A×π÷2
+for A×SIN(X)^2 from 0 to π). The value is canon's form of F(HI) − F(LO), so an odd function at a negative bound keeps
+its sign inside (SIN(-2)), a radical's power isn't combined with its root, and a 0 by symmetry over bounds off the table
+prints as its terms: SIN(X)^3 from -1 to 1 is COS(-1)−COS(1)−COS(-1)^3÷3+COS(1)^3÷3, each exactly 0. Substitution and
+parts don't reach defint.
+
 | Command | Prints |
 |---|---|
 | `casim defint "SIN(X)" X 0 π RAD` | `2` |
@@ -423,6 +431,11 @@ the answer shows the hole itself: X×Y÷Y from 0 to 1 is BAD_ARG, and SQRT(Y) fr
 | `casim defint "X^2" X B 1 RAD` | `BAD_ARG` |
 | `casim defint "SQRT(X)^2" X -2 -1 RAD` | `IMPROPER` |
 | `casim defint "X×Y÷Y" X 0 1 RAD` | `BAD_ARG` |
+| `casim defint "SIN(X)^2" X 0 π RAD` | `π÷2` |
+| `casim defint "SIN(X)^3" X 0 π RAD` | `4÷3` |
+| `casim defint "SIN(X)^2" X 0 45 DEG` | `-45÷π+45÷2` |
+| `casim defint "A×SIN(X)^2" X 0 π RAD` | `A×π÷2` |
+| `casim defint "SIN(X)^3" X -1 1 RAD` | `COS(-1)-COS(1)-COS(-1)^3÷3+COS(1)^3÷3` |
 
 ### factor: over the rationals
 
