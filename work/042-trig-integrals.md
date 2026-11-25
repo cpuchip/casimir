@@ -1,13 +1,54 @@
 # CAS work unit 042: integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** DRAFT, 2026-11-25, for abacus's rulings. The number is abacus's (#17116). Measured on a
-throwaway prototype, p1, over f942021 (1.8.0's code), which is deleted once this is ruled.
+**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17118), for h042 to be frozen before src. The
+number is abacus's (#17116). Measured on a throwaway prototype, p1, over f942021 (1.8.0's code), then p1 with ruling
+1's parity split; it is deleted once h042 is frozen. The draft's sections below are kept as they were sent; the rulings
+come first and win where they differ.
 
 - **Why now:** phase 2 of the roadmap (work/roadmap.md), with counsel's note adopted by abacus (#16650): the check
   needs trig equality decided, by one normal form in SIN and COS of a base angle.
 - **The question:** can integrate answer a polynomial in SIN and COS of linear arguments (SIN(X)^2, SIN(X)^3×COS(X)^2,
   SIN(X)×SIN(3×X), COS(2×X+1)^2), exactly, checked by its own derivative test, in the S3's room and the calculator's
   16,384 B arena, with no accepted frame moved?
+
+## Rulings (abacus #17118)
+
+1. **The printed form: the parity split, one rule over the whole integrand.** With f's form p(C) + S×q(C) in θ:
+   - **every SIN and COS has the one argument θ (m = 1 throughout) and p = 0:** −Q(C), a polynomial in COS(θ), Q' = q.
+     `SIN(X)^3` is `-COS(X)+COS(X)^3÷3`, `SIN(X)^5` is `-COS(X)+2×COS(X)^3÷3-COS(X)^5÷5`, `SIN(X)^3×COS(X)^2` is
+     `-COS(X)^3÷3+COS(X)^5÷5`, and in DEG `SIN(X)^3` is `-180×(COS(X)-COS(X)^3÷3)÷π`;
+   - **m = 1 throughout, q = 0 and p odd:** R(S), a polynomial in SIN(θ). `COS(X)^3` is `SIN(X)-SIN(X)^3÷3`,
+     `SIN(X)^2×COS(X)^3` is `SIN(X)^3÷3-SIN(X)^5÷5`, `COS(2×X+1)^3` is `SIN(2×X+1)÷2-SIN(2×X+1)^3÷6`, and in DEG
+     `COS(X)^3` is `180×(SIN(X)-SIN(X)^3÷3)÷π`;
+   - **everything else, in multiple angles:** both even (`SIN(X)^2` is `X÷2-SIN(2×X)÷4`, in DEG `X÷2-45×SIN(2×X)÷π`),
+     angles that differ (`SIN(X)×SIN(3×X)` is `SIN(2×X)÷4-SIN(4×X)÷8`, `SIN(3×X)^2×COS(X)` is
+     `SIN(X)÷2-SIN(5×X)÷20-SIN(7×X)÷28`), and mixed parities in a sum (`3×SIN(X)^2+COS(X)` is
+     `3×X÷2+SIN(X)-3×SIN(2×X)÷4`).
+   - **An integrand 1.8.0 answers keeps 1.8.0's text**, since the path runs only after the others refuse:
+     `SIN(X)×COS(X)` stays `SIN(X)^2÷2`, though it is p = 0 with m = 1.
+   Each new answer here is p1's text with the split, in work/042-p1-measured.txt; `SIN(X)×COS(X)`, `X÷A` and
+   `SIN(X)÷A` print as at 1.8.0.
+2. **Arguments:** numeric k and b, |m| ≤ 24. Refused, NOT_INTEGRABLE: a letter in an argument (`SIN(A×X)^2`), and
+   arguments with no common base (`SIN(X)^2+SIN(SQRT(2)×X)^2`).
+3. **Room:** rational coefficients take a fast path in number arrays. Each example's least arena is recorded; what still
+   runs out is NO_ROOM. p1 (trees for every coefficient): 41 of 43 rows fit 16,384 B; `SIN(X)^12` in DEG needs 17,104 B
+   and `COS(3×X)^4×SIN(2×X)` 26,648 B.
+4. **defint: out,** the next unit. Exact values at the bounds (SIN at rational multiples of π, DEG bounds) are a
+   different risk with their own hidden set.
+5. **Steps:** BAD_ARG in this unit.
+6. **Out of the unit:** X×SIN(X)^2, TAN, SEC and CSC powers, a quotient of trig polynomials, letters in an argument.
+   **Letters as factors are in** (`A×SIN(X)^3` is `-A×COS(X)+A×COS(X)^3÷3`). **A letter in a divisor is in, by CAS 017's
+   other-letters rule:** an answer may divide only by what the integrand divides by, and it gets no row, as today's
+   `X÷A` is `X^2÷2÷A` and `SIN(X)÷A` is `-COS(X)÷A`. This path divides by nothing new (its divisors are k×g and DEG's
+   and GRAD's π), so `SIN(X)^2÷A` is `X÷2÷A-SIN(2×X)÷4÷A`, defined where the integrand is.
+
+**The gates, as for CAS 041:** no accepted function's frame moves, on the host or the S3, and tn_form's work goes into
+arena arrays with its frame under 1 KiB (p1's is 944 B, and recursive). If inlining can't be undone, the frame table
+comes to abacus before acceptance and is not re-recorded. The hole (`SIN(X)^2×X÷X`) closes by CAS 017 rule 2, and h042
+holds its shapes.
+
+**p1 with the split:** S3 text 292,415 B (+8,577 on 1.8.0), 8,641 under 301,056, and no accepted frame moved, where p1
+without it moved seven: the moves come and go with gcc's inlining, therefore the build checks them at every step.
 
 ## Today (1.8.0, RAD)
 
