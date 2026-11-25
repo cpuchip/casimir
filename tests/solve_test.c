@@ -554,6 +554,101 @@ static void complex_roots(void)
     }
 }
 
+/* CAS 043 (work/043-complex-pure-powers.md, abacus #17264): x^n = c under the bit, every root where the line holds it
+   (ρ×(A±B×0i1)÷D, the cosine form off the table), else the line without the bit; each printed root, set as X, makes
+   x^n - c 0 on the core, n distinct; a line 1.9.0 prints whole keeps its text; model 33 ignores the bit */
+static const int ANGLES[3] = {CASIM_RAD, CASIM_DEG, CASIM_GRAD};
+
+static void pure_complex(void)
+{
+    static const char *const ex[][2] = {
+        {"X^3=2", "SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2"},
+        {"X^4=-16", "SOLVED: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1"},
+        {"X^6=-1", "SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2"},
+        {"X^4=2", "SOLVED: X=-2^(1÷4); X=2^(1÷4); X=-2^(1÷4)×0i1; X=2^(1÷4)×0i1"},
+        {"X^5=32", "SOLVED: X=2; X=2×(COS(2×π÷5)-SIN(2×π÷5)×0i1); X=2×(COS(2×π÷5)+SIN(2×π÷5)×0i1); "
+                   "X=2×(COS(4×π÷5)-SIN(4×π÷5)×0i1); X=2×(COS(4×π÷5)+SIN(4×π÷5)×0i1)"},
+        {"X^9=64", "SOLVED, 8 CPLX: X=4^(1÷3)"},                     /* ruling 2: the line without the bit */
+        {"X^7=1", "SOLVED, 6 CPLX: X=1"},
+        {"X^3=1", "SOLVED: X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2"},   /* 1.9.0's, CAS 020's order */
+        {"X^6=64", "SOLVED: X=-2; X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1"},
+    };
+    static const char *const cs[] = {"1", "-1", "2", "-2", "3", "-3", "8", "-8", "16", "-27", "1÷2", "-1÷3", "9÷4", "64"};
+    int all = 0, floor = 0, judged = 0, pages = 0;
+    for (size_t i = 0; i < sizeof ex / sizeof ex[0]; i++) {
+        char out[OUT], m33[OUT], plain[OUT];
+        casim_status st = solve_bits(ex[i][0], 'X' - 'A', CASIM_MODEL_35, CASIM_COMPLEX, out);
+        CHECK(st == CASIM_OK && strcmp(out, ex[i][1]) == 0, "solve --complex %s: %d \"%s\", want \"%s\"", ex[i][0], (int)st,
+              out, ex[i][1]);
+        solve(ex[i][0], 'X' - 'A', CASIM_MODEL_33, plain);
+        solve_bits(ex[i][0], 'X' - 'A', CASIM_MODEL_33, CASIM_COMPLEX, m33);
+        CHECK(strcmp(m33, plain) == 0, "solve --complex --model 33 %s: \"%s\", want \"%s\"", ex[i][0], m33, plain);
+    }
+    for (int angle = 0; angle < 3; angle++)
+        for (int n = 2; n <= 12; n++)
+            for (size_t j = 0; j < sizeof cs / sizeof cs[0]; j++) {
+                char eq[64], poly[96], out[OUT], plain[OUT], roots[32][256];
+                int rm[32], k;
+                ab_val z[32];
+                casim_req rq = {CASIM_SOLVE, eq, CASIM_MODEL_35, 'X' - 'A', NULL, 0, ANGLES[angle] | CASIM_COMPLEX, NULL};
+                casim_req r0 = {CASIM_SOLVE, eq, CASIM_MODEL_35, 'X' - 'A', NULL, 0, ANGLES[angle], NULL};
+                snprintf(eq, sizeof eq, "X^%d=%s", n, cs[j]);
+                snprintf(poly, sizeof poly, "X^%d-(%s)", n, cs[j]);
+                if (casim_run(&rq, out, OUT, arena, sizeof arena) != CASIM_OK || casim_run(&r0, plain, OUT, arena, sizeof arena) != CASIM_OK) {
+                    CHECK(false, "solve %s (angle %d): no answer", eq, ANGLES[angle]);
+                    continue;
+                }
+                if (strncmp(out, "SOLVED: ", 8) != 0) {
+                    floor++;
+                    CHECK(strcmp(out, plain) == 0, "solve --complex %s (angle %d): \"%s\", neither every root nor \"%s\"", eq,
+                          ANGLES[angle], out, plain);
+                    continue;
+                }
+                all++;
+                {
+                    /* abacus #17279: the PURE POWER page, the last before ANSWER, has the answer's roots */
+                    casim_step_info info;
+                    char page[OUT];
+                    const char *col;
+                    if (casim_step(&rq, -1, 0, &info, page, OUT, arena, sizeof arena) == CASIM_OK && info.count >= 2 &&
+                        casim_step(&rq, info.count - 2, 0, &info, page, OUT, arena, sizeof arena) == CASIM_OK &&
+                        info.rule == CASIM_RULE_PURE_POWER) {
+                        pages++;
+                        col = strstr(page, ": ");                 /* the page is x^n = c: then its roots */
+                        CHECK(col && strcmp(col + 2, out + 8) == 0, "steps --complex %s: page \"%s\", answer \"%s\"", eq,
+                              page, out);
+                    }
+                }
+                k = parse_roots(out, roots, rm, 32);
+                CHECK(k == n, "solve --complex %s: %d roots, want %d (\"%s\")", eq, k, n, out);
+                ce_angle(ANGLES[angle]);
+                for (int r = 0; r < k && r < 32; r++) {
+                    ab_val f;
+                    abn tiny = ce_num("1E-24"), mr, mi;
+                    judged++;
+                    if (ce_eval_val(roots[r], &z[r]) != ABN_OK) {
+                        CHECK(false, "%s: root %s does not evaluate", eq, roots[r]);
+                        continue;
+                    }
+                    ce_set_val('X', &z[r]);
+                    CHECK(ce_eval_val(poly, &f) == ABN_OK && (mr = abn_abs(&f.re), mi = abn_abs(&f.im),
+                          abn_cmp(&mr, &tiny) < 0 && abn_cmp(&mi, &tiny) < 0), "%s at X=%s: %s %s", poly, roots[r],
+                          ce_text(&f.re), ce_text(&f.im));
+                    for (int q = 0; q < r; q++) {
+                        abn dr, di, eps = ce_num("1E-20");
+                        abn_sub(&dr, &z[r].re, &z[q].re), abn_sub(&di, &z[r].im, &z[q].im);
+                        dr = abn_abs(&dr), di = abn_abs(&di);
+                        CHECK(abn_cmp(&dr, &eps) > 0 || abn_cmp(&di, &eps) > 0, "%s: roots %d and %d are one", eq, q, r);
+                    }
+                }
+                ce_angle(CASIM_RAD);
+            }
+    printf("solve --complex x^n = c: %d with every root (%d roots judged on the core, %d PURE POWER pages equal to the"
+           " answer), %d the line without the bit\n", all, judged, pages, floor);
+    CHECK(all > 150 && floor > 150 && pages > 100, "x^n = c under the bit: %d every root, %d pages, %d the floor", all,
+          pages, floor);
+}
+
 /* CAS 028 (work/028-complex-left-out.md): without the bit, each quadratic factor with no real root is counted, with its
    multiplicity, as ", n CPLX" after the status, beside real roots or PARTIAL's factor; NO REAL ROOTS keeps its text, and
    a factor of degree 3 or more left whole adds nothing (n counts the roots factoring finds). Model 33 ignores the bit,
@@ -995,5 +1090,6 @@ int main(void)
     seeded();
     roots_are_roots();
     complex_roots();
+    pure_complex();
     return check_done();
 }

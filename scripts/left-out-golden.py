@@ -73,6 +73,9 @@ def noted(b, n):
     return f"{st}, {n} CPLX{sep}{rest}"
 
 
+skipped = [0]
+
+
 def before(name, mv, keep=None):
     """the file with mv's lines at their before (keep: one input left at its after), each line judged: its sha256"""
     out, hit = [], set()
@@ -80,9 +83,16 @@ def before(name, mv, keep=None):
     for path in LATER:                                  # a later unit's moves, at their before first
         (c_mv, d_mv), _ = moved(path)
         later.update(c_mv if name == "corpus.txt" else d_mv)
+    # CAS 043: under the bit x^n = c prints every root (or the line without it), not factoring's pairs, so the bit no
+    # longer counts the roots CAS 028's note counts for a pure power; the pure powers CAS 041 moved are judged by its
+    # boundary and CAS 043's tests, and not here
+    (c41, d41), _ = moved(os.path.join(GOLDEN, "moved", "cas-041.txt"))
+    pure = set(c41 if name == "corpus.txt" else d41)
     for ln in open(os.path.join(GOLDEN, name), encoding="utf-8").read().split("\n"):
         f = ln.split("\t")
         key = "\t".join(f[:10])
+        if keep is None and key in pure and ln and not ln.startswith("#"):
+            skipped[0] += 1
         if ln and not ln.startswith("#") and key in later:
             f = f[:10] + later[key][0][:2]
         if ln and not ln.startswith("#") and key in mv:
@@ -91,14 +101,14 @@ def before(name, mv, keep=None):
             if keep is None:
                 if f[10:12] != a[:2]:
                     fail(f"{name} has {f[10:12]} where cas-028.txt's after is {a}: {key}")
-                on = with_bit(f)
+                on = None if key in pure else with_bit(f)
                 n = on and count(on) - count(b[1])
-                if a[0] != b[0] or not n or a[1] != noted(b[1], n) or len(a[1].encode("utf-8")) > 191:
+                if key not in pure and (a[0] != b[0] or not n or a[1] != noted(b[1], n) or len(a[1].encode("utf-8")) > 191):
                     fail(f"{name}: its after isn't its before with \", n CPLX\" (n = {n} with the bit): {key}")
             if key != keep:
                 f = f[:10] + b[:2]
         elif keep is None and ln and not ln.startswith("#") and f[0] == "solve" and f[10] == "OK" and \
-                f[11].startswith(("SOLVED", "PARTIAL")):
+                f[11].startswith(("SOLVED", "PARTIAL")) and key not in pure:
             on = with_bit(f)
             n = on and count(on) - count(f[11])
             if n and len(noted(f[11], n).encode("utf-8")) <= 191:
@@ -118,7 +128,8 @@ def main():
         fail("its control passed (a moved line left at its after)")
     print(f"left-out boundary: {len(corpus_mv)} moved in the corpus, {len(dec_mv)} under →DEC, each its before with "
           f"\", n CPLX\", n what the bit adds; every other solve line has none the note fits; with the moves put back, "
-          f"both files are {BASE}'s; the control refused\n"
+          f"both files are {BASE}'s; the control refused; {skipped[0]} pure-power lines of CAS 041's left to its boundary and "
+          f"CAS 043's tests (the bit prints every root there)\n"
           f"checks: {2 * (len(corpus_mv) + len(dec_mv)) + 3} failed: {bad}")
     sys.exit(1 if bad else 0)
 

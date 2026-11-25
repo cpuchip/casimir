@@ -1,6 +1,6 @@
 # CAS work unit 043: x^n = c under --complex, every root where the line holds it
 
-**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17264), for h043 to be frozen before src.
+**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h043 (frozen at sha256 27493ef2f93bcbd440a878806d0940d835dd589e20960262a0066b8fe6e185b2, 326 rows at 8,800 and 16,384 B, abacus #17269). RULED 2026-11-25 (abacus #17264, #17279).
 The number is abacus's (#17147). Measured on a throwaway prototype, p1, over 401bbe1 (1.9.0's code), then p1 with
 ruling 1's form; deleted once h043 is frozen. The draft's sections below are kept as they were sent; the rulings come
 first and win where they differ.
@@ -42,6 +42,50 @@ first and win where they differ.
 201 the line without the bit byte for byte, none anything else; every root of the 162 judged right outside casim; the
 72 lines 1.9.0 prints whole under the bit are byte for byte 1.9.0's. By n in RAD: every c tried fits at n = 2, 3, 4
 and 6; n = 5 at ±1; n = 8 at 1 and 16; n = 7 and 9 to 12 at none of them.
+
+## As built
+
+- **Where it runs:** cx_fix, after put_solution, from do_solve's one call site of CAS 041's pass: that call now goes to
+  pp_pass, which takes cx_fix under the bit and pp_fix without it, so do_solve gains no branch. The line is built in the
+  arena (SLOT bytes), not on the stack.
+- **The form** (ruling 1): cx_put prints ρ×(A±B×0i1)÷D with A and B COS(θ) and SIN(θ) times their common denominator
+  D, ρ and D left out where they are 1; a number ρ folds into A, B and D (X^4=-16 is SQRT(2)-SQRT(2)×0i1); where θ
+  isn't the table's, ρ×(COS(θ)±SIN(θ)×0i1). X^3=1, X^4=16, X^6=64 and every line 1.9.0 prints whole under the bit
+  keep their bytes (cx_fix leaves a SOLVED: line as it is).
+- **The read-back** (ruling (b), kept): cx_check, (re + im i)^n in abn against c, each part within a relative 1E-24 of
+  |c|. A miss falls to the floor, the line without the bit, never numeric solve's PARTIAL (p1 left PARTIAL there, which
+  says less than the floor; found when the slip mutant was built by hand). cx043-slip plants a wrong angle for one pair
+  (θ's denominator n+1 at k = 1): the read-back refuses it and X^3=2 prints SOLVED, 2 CPLX: X=2^(1÷3), so the whole lines
+  go red; cx043-slip-unchecked plants the same with the read-back off, and X^3=2 prints SOLVED: X=2^(1÷3);
+  X=-2^(1÷3)×0i1; X=2^(1÷3)×0i1, red by value on the core.
+- **Every root or none:** cx_fix counts what it prints, the real roots and two a pair, and falls to the floor unless it
+  is n. Without it, a slip that pushed θ to a half turn ended the pairs early and printed SOLVED: X=2^(1÷3) for X^3=2, a
+  line that claims every root and has one (the first slip mutant, built by hand, found it); cx043-count-off goes red.
+- **The steps** (abacus #17279, (a)): the PURE POWER page runs under the bit too (W->pure no longer excludes it), and
+  do_ssteps, which already puts the answer on the ANSWER page, gives the page the answer's roots where the answer is
+  every root (ss_cxpage): `PURE POWER: X^3=2: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=…`. Elsewhere it is CAS
+  041's page, as without the bit (`X^9=64: X=4^(1÷3)`, `X^7=1: NO OTHER REAL ROOT`). solve_test pins the page's roots
+  to the answer's over the sweep (115 pages); cx043-page-off and cx043-page-roots go red. ss_walk's frame doesn't move.
+- **CAS 028's boundary** (scripts/left-out-golden.py) judged each solve line's note by counting what the bit prints.
+  Under CAS 043 the bit prints every root of a pure power, not factoring's pairs, so the 20 pure-power lines CAS 041
+  moved are left to its boundary and to CAS 043's tests, and the script says how many.
+- **Room** (ruling 5): S3 text 297,742 B, 3,314 B under decision 94's 301,056 B; the next unit that needs more brings
+  Michael its measured size.
+- **Frames** (ruling 6): on the S3 no accepted frame moves (build/s3's .su against 1.9.0's; cx_fix 464 B, the largest
+  new). On the host do_sum_ 816 → 832 moves and was hunted: its own inlining decisions are unchanged; it moves under
+  -fno-ipa-ra and -fno-ipa-sra alike; the new code's small() calls behind ir_rat, its helpers noinline and the pass
+  marked cold each left it (cold moved two more); the nearest change found is small() newly inlined into
+  sm_frac.constprop. A fourth shape's zero came from a splice that broke the source and was caught on a real build.
+  The host table is re-recorded in a commit of its own (work/043-frames.txt).
+- **The device:** DEVICE PASS, 1,516 cases byte-identical to the host at 16,384 B (scripts/measure.py's six CAS 043
+  cases, the bench's first run under the complex bit, among them: device_cases.py ORs CASIM_COMPLEX into an angle written
+  RAD+C), 298 steps pages; worst stack 11,360 B masked (STU chain X^ 44, derive), unchanged, + 384 = 11,744 of 12,288.
+  CAS 043's cases reach 2,224 B (X^3=2 in DEG, and X^9=64's floor).
+- **Mutants:** 13 (cx043-*, 12, and pp041-off re-anchored to pp_pass), all caught.
+- **Tests:** make test 20 tests, 121,903 checks (with the host table re-recorded). solve_test's pure_complex: each
+  ruling's text, model 33 as without the bit, and a sweep of n 2..12 over 14 values of c in three modes, 199 lines with
+  every root (800 roots judged on the core, n distinct), 115 PURE POWER pages equal to their answers, 263 the line
+  without the bit byte for byte.
 
 ## Today (1.9.0, RAD)
 

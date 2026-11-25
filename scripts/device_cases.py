@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import measure  # noqa: E402
 
-ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2}
+ANGLES = {"DEG": 0, "RAD": 1, "GRAD": 2, "DEG+C": 0 | 32, "RAD+C": 1 | 32, "GRAD+C": 2 | 32}   # CAS 043: | CASIM_COMPLEX
 STATUS = {"TOO_LONG": 3, "BAD_ARG": 4, "NO_ROOM": 5, "NOT_POLYNOMIAL": 6, "NOT_NUMERIC": 7, "NOT_INTEGRABLE": 8,
           "PARTIAL": 9, "UNDEFINED": 10, "IMPROPER": 11, "UNDECIDED": 12, "NO_CLOSED_FORM": 13, "DECIMAL_FORM": 14}
 

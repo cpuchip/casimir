@@ -180,6 +180,13 @@ each taken out as a power where they are one (X^9=8 is `SOLVED, 8 CPLX: X=2^(1÷
 as it prints them (X^6=8 is `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)`), and an even n with c < 0 NO REAL ROOTS (X^4+1).
 Where
 the note would take the line past 191 bytes, the line is printed without it.
+With the bit (CAS 043, work/043-complex-pure-powers.md), x^n = c gives every root where the line holds them: the real
+ones as above, then each conjugate pair, minus first, going round by angle θ = (2k+[c<0])÷n of a half turn, each
+ρ×(A±B×0i1)÷D with ρ = |c|^(1÷n) and COS(θ) = A÷D, SIN(θ) = B÷D the exact-value table's values over their common
+denominator (a number ρ folded in, ρ and D left out where they are 1). An angle the table doesn't hold keeps the cosine
+form, ρ×(COS(θ)±SIN(θ)×0i1). Each root is read back before it prints, its n-th power against c within a relative
+1E-24. Where every root doesn't fit the line, it prints the line without the bit, every real root and the complex
+count. A line the bit already printed whole keeps it, and steps' PURE POWER page has the answer's roots.
 
 **Letters as coefficients** (CAS 038): an equation linear in var whose coefficients hold another letter or π, as
 typed, is solved for var. L−R is read as a×var+b, a and b free of var, and var=−b÷a prints as canon prints it once
@@ -231,6 +238,10 @@ with neither a letter nor π, SQRT(2) or SIN(1)), NO_ROOM (degree past 12, or a 
 | `casim solve "X^3=2" X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)` |
 | `casim solve "X^9=8" X RAD` | `SOLVED, 8 CPLX: X=2^(1÷3)` |
 | `casim solve "X^6=8" X RAD` | `SOLVED, 4 CPLX: X=-SQRT(2); X=SQRT(2)` |
+| `casim --complex solve "X^3=2" X RAD` | `SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve "X^4=-16" X RAD` | `SOLVED: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1` |
+| `casim --complex solve "X^5=32" X RAD` | `SOLVED: X=2; X=2×(COS(2×π÷5)-SIN(2×π÷5)×0i1); X=2×(COS(2×π÷5)+SIN(2×π÷5)×0i1); X=2×(COS(4×π÷5)-SIN(4×π÷5)×0i1); X=2×(COS(4×π÷5)+SIN(4×π÷5)×0i1)` |
+| `casim --complex solve "X^9=64" X RAD` | `SOLVED, 8 CPLX: X=4^(1÷3)` |
 | `casim solve "SIN(X)=0.5" X RAD` | `NOT_POLYNOMIAL` |
 | `casim solve "V=I×R" R RAD` | `SOLVED: R=V÷I; I≠0` |
 | `casim solve "(A^2-1)×X=A+1" X RAD` | `SOLVED: X=(A+1)÷(A^2-1); A≠-1; A≠1` |

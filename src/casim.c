@@ -4905,6 +4905,134 @@ no:
     if (c->st != CASIM_NO_ROOM) c->st = CASIM_OK;
 }
 
+/* ---- CAS 043: x^n = c under the complex bit, every root (work/043-complex-pure-powers.md, abacus #17264) ----
+   The real roots as CAS 041 builds them; each complex pair ρ×(COS(θ) ± SIN(θ)×0i1), ρ = |c|^(1÷n), θ a rational
+   multiple of a half turn in the mode's unit, canon's table reducing π/6 and π/4; each root read back in abn,
+   (re + im i)^n against c within a relative 1E-24 (ruling (b)). Where the line doesn't fit, the line without the bit
+   (ruling 2). */
+static bool cx_check(ctx *c, ref re, ref im, long n, int64_t p, int64_t q)
+{
+    abn a, b, x = abn_from_int(1), y = abn_zero(), t, u, cc, num, den, tol, d1, d2, m;
+    if (const_val(c, re, &a) != CV_OK || const_val(c, im, &b) != CV_OK) return false;
+    for (long i = 0; i < n; i++) {                       /* (x + y i)(a + b i) */
+        abn ax, by, ay, bx;
+        abn_mul(&ax, &x, &a), abn_mul(&by, &y, &b), abn_mul(&ay, &y, &a), abn_mul(&bx, &x, &b);
+        abn_sub(&t, &ax, &by), abn_add(&u, &ay, &bx);
+        x = t, y = u;
+    }
+    num = abn_from_int((int32_t)p), den = abn_from_int((int32_t)q);
+    abn_div(&cc, &num, &den);
+    tol = abn_from_int(10);
+    abn_ipow(&tol, -24);
+    m = abn_abs(&cc);
+    abn_mul(&tol, &tol, &m);
+    abn_sub(&d1, &x, &cc);
+    d1 = abn_abs(&d1), d2 = abn_abs(&y);
+    return abn_cmp(&d1, &tol) <= 0 && abn_cmp(&d2, &tol) <= 0;
+}
+
+/* a number's denominator in a term: the term's leading number, 1 where there is none */
+static int64_t tn_gcd(int64_t a, int64_t b);
+static int64_t cx_den(ctx *c, ref t)
+{
+    const node *x = nd(c, t);
+    if (x->kind == K_NUM) return val(c, t)->q;
+    if (x->kind == K_MUL && is_num(c, list(c, x->a)[0])) return val(c, list(c, x->a)[0])->q;
+    return 1;
+}
+
+/* ruling 1: ρ×(A±B×0i1)÷D with COS(θ) = A÷D, SIN(θ) = B÷D in canon's terms; ρ and D left out where they are 1; the
+   cosine form ρ×(COS(θ)±SIN(θ)×0i1) where θ isn't the table's */
+static void cx_put(ctx *c, out_t *w, const char *name, ref rho, ref cth, ref sth, int sign)
+{
+    bool r1 = is_k(c, rho, 1, 1), table = nd(c, cth)->kind != K_FN && nd(c, sth)->kind != K_FN;
+    int64_t d = 1, a = table ? cx_den(c, cth) : 1, b = table ? cx_den(c, sth) : 1;
+    ref A = cth, B = sth;
+    bool a0, b1, wrap;
+    if (table) {
+        int64_t g = tn_gcd(a, b);
+        d = a / g * b;
+        A = ib_canon(c, mul2(c, cth, ir_rat(c, d, 1))), B = ib_canon(c, mul2(c, sth, ir_rat(c, d, 1)));
+    }
+    a0 = is_k(c, A, 0, 1), b1 = is_k(c, B, 1, 1);
+    wrap = !a0 && (!r1 || d != 1);
+    puts_(w, name), puts_(w, "=");
+    if (a0 && sign < 0) puts_(w, "-");
+    if (!r1) print(c, w, rho), puts_(w, "×");
+    if (wrap) puts_(w, "(");
+    if (!a0) print(c, w, A), puts_(w, sign < 0 ? "-" : "+");
+    if (!b1) print(c, w, B), puts_(w, "×");
+    puts_(w, "0i1");
+    if (wrap) puts_(w, ")");
+    if (d != 1) puts_(w, "÷"), put_int(w, d);
+}
+
+static __attribute__((noinline)) void cx_fix(ctx *c, out_t *w, int var)
+{
+    size_t mark = c->used;
+    long n;
+    int64_t p, q;
+    ref x[2], rho[2], unit;
+    int want, got;
+    char name[2] = {(char)('A' + var), '\0'}, *buf;
+    ref lr = grab(c, SLOT);
+    out_t b;
+    if (strncmp(w->o, "SOLVED: ", 8) == 0 || !lr) return;      /* CAS 020's whole line, as 1.9.0 (ruling 3) */
+    buf = (char *)(void *)nd(c, lr), b = (out_t){buf, SLOT, 0, false};
+    if (!pp_read(c, var, &n, &p, &q)) return;
+    if ((want = pp_roots(c, n, p, q, x)) < 0 || pp_roots(c, n, p < 0 ? -p : p, q, rho) < 1) goto no;
+    unit = c->angle == CASIM_RAD ? (c->pi && c->pi != SPARE ? c->pi : (c->pi = leaf(c, K_PI, 0))) : small(c, c->angle == CASIM_DEG ? C_180 : C_200);
+    puts_(&b, "SOLVED");
+    for (int i = 0; i < want; i++) puts_(&b, i ? "; " : ": "), puts_(&b, name), puts_(&b, "="), print(c, &b, x[2 - want + i]);
+    got = want;
+    /* θ = (2k + (p < 0)) ÷ n half turns, k from 0, the upper half plane only (0 < θ < 1 half turn) */
+    for (long k = 0; c->st == CASIM_OK; k++) {
+        rat r;
+        ref th, re, im;
+        if (!rat_make(&r, 2 * k + (p < 0), n)) goto no;
+        if (r.p >= r.q) break;
+        if (r.p == 0) continue;
+        th = mul2(c, num(c, &r), unit);
+        ref ct = ib_canon(c, fn(c, F_COS, th)), st = ib_canon(c, fn(c, F_SIN, th));
+        re = ib_canon(c, mul2(c, rho[1], ct));
+        im = ib_canon(c, mul2(c, rho[1], st));
+        if (c->st != CASIM_OK) goto no;
+        if (!cx_check(c, re, im, n, p, q)) goto floor;          /* a slip: the floor, never a wrong root */
+        /* a number ρ folds into the table's numbers (ruling 1, canon's terms) */
+        if (is_num(c, rho[1]) && nd(c, ct)->kind != K_FN && nd(c, st)->kind != K_FN) ct = re, st = im;
+        for (int s = -1; s <= 1; s += 2)
+            puts_(&b, b.n > 6 && buf[6] == ':' ? "; " : ": "), cx_put(c, &b, name, is_num(c, rho[1]) && ct == re ? small(c, C_1) : rho[1], ct, st, s);
+        got += 2;
+    }
+    /* every root or none: n of them, the real ones and each pair, else the line as numeric solve left it */
+    if (c->st != CASIM_OK) goto no;
+    if (got != n) goto floor;
+    if (!b.full && b.n < SLOT) {
+        w->n = 0, w->o[0] = '\0', puts_(w, buf);
+        return;
+    }
+    /* the line doesn't fit (or a root didn't read back): the line without the bit, never less (ruling 2) */
+floor:
+    w->n = 0, w->o[0] = '\0';
+    if (!want) {
+        puts_(w, "NO REAL ROOTS");
+        return;
+    }
+    puts_(w, "SOLVED, "), put_int(w, n - want), puts_(w, " CPLX");
+    for (int i = 0; i < want; i++) puts_(w, i ? "; " : ": "), puts_(w, name), puts_(w, "="), print(c, w, x[2 - want + i]);
+    return;
+no:
+    td_drop(c, mark);
+    if (c->st != CASIM_NO_ROOM) c->st = CASIM_OK;
+}
+
+/* the pass after put_solution: CAS 041's without the bit, CAS 043's under it */
+static __attribute__((noinline)) void pp_pass(ctx *c, out_t *w, int var)
+{
+    if (c->nm & NM_CX) cx_fix(c, w, var);
+    else pp_fix(c, w, var);
+}
+
 /* The answer's text (abacus #4841): its status first, then each root once, ascending, "; " between. */
 static __attribute__((noinline)) void put_solution(ctx *c, out_t *w, ipoly *f, int var, solve_ws *s, int32_t *dq)
 {
@@ -4994,7 +5122,7 @@ static __attribute__((noinline)) casim_status do_solve(const char *eqn, int var,
     dq = grab(&c, SOLVE_DIVS * sizeof(int32_t));
     if (c.st == CASIM_OK && clear(&c, (rat *)(void *)nd(&c, cr), &f))
         put_solution(&c, &w, &f, var, (solve_ws *)(void *)nd(&c, ws), (int32_t *)(void *)nd(&c, dq));
-    if (c.st == CASIM_OK && !w.full && !(c.nm & NM_CX)) pp_fix(&c, &w, var);            /* CAS 041: x^n = c */
+    if (c.st == CASIM_OK && !w.full) pp_pass(&c, &w, var);            /* CAS 041 and 043: x^n = c */
     if (w.full && c.st == CASIM_OK) c.st = CASIM_TOO_LONG;
     if (c.st != CASIM_OK) return finish(&c, SPARE, out, cap < SLOT ? cap : SLOT);
     return CASIM_OK;
@@ -5041,7 +5169,7 @@ typedef struct {
     ifac fs[SOLVE_DEG];
     iroot r[2];
     char t[SLOT];
-    bool pure;                          /* CAS 041: no root 0 and no complex bit, so x^n = c may have its page */
+    bool pure;                          /* CAS 041: no root 0, so x^n = c may have its page (CAS 043: bit or not) */
 } sswork;
 
 /* whether this step is page k (counted either way); out starts afresh for it, but for the answer, already there */
@@ -5324,7 +5452,7 @@ static __attribute__((noinline)) void ss_walk(ctx *c, out_t *w, sstep_t *S, int 
         W->g = *f0;
         while (W->g.n >= 1 && W->g.a[0] == 0)
             memmove(W->g.a, W->g.a + 1, (size_t)W->g.n * sizeof W->g.a[0]), W->g.n--, zero++;
-        W->pure = !zero && !(c->nm & NM_CX);
+        W->pure = !zero;                        /* CAS 043: under the bit too (abacus #17279) */
         if (zero && W->g.n >= 1 && ss_hit(S, w, 0, CASIM_STEP_RESULT, CASIM_RULE_COMMON_FACTOR))
             ss_product(w, var, zero, W->fs, 0, &W->g, nf == 0);
         memcpy(W->fs, s->fac, (size_t)nf * sizeof W->fs[0]);
@@ -5399,6 +5527,17 @@ static casim_status ls_steps(const casim_req *rq, walk_t *P, out_t *o, const cha
 #else
 #define SS_KEEP_ARGS __attribute__((noipa))
 #endif
+/* CAS 043 (abacus #17279): an x^n = c answer of every root (SOLVED: with no count, which only the complex bit gives,
+   x^n = c having at most two real roots for n ≥ 3) gives the PURE POWER page its roots: the page's x^n = c and then
+   the answer's, so the page reaches the answer; any other answer leaves CAS 041's page as it is */
+static __attribute__((noinline)) void ss_cxpage(out_t *w, const char *ans)
+{
+    char *col;
+    if (strncmp(ans, "SOLVED: ", 8) != 0 || !(col = strstr(w->o, ": "))) return;
+    w->n = (size_t)(col - w->o) + 2, w->o[w->n] = '\0', w->full = false;
+    puts_(w, ans + 8);
+}
+
 static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t *o, void *arena,
                                                          size_t arena_cap)
 {
@@ -5452,7 +5591,8 @@ static SS_KEEP_ARGS casim_status do_ssteps(const casim_req *rq, walk_t *P, out_t
         if (info->rule == CASIM_RULE_ANSWER) {
             w.n = 0, w.full = false;
             puts_(&w, ans);
-        }
+        } else if (info->rule == CASIM_RULE_PURE_POWER)
+            ss_cxpage(&w, ans);
         if (w.full) return out[0] = '\0', CASIM_TOO_LONG;
     }
     return CASIM_OK;

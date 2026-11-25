@@ -1,0 +1,63 @@
+# CAS 043's examples (work/043-complex-pure-powers.md; abacus #17147, #17264, #17279, h043 #17269): x^n = c under
+# --complex, every root where the line holds them, each pair ρ×(A±B×0i1)÷D in canon's terms (the cosine form off the
+# table), read back before printing; else the line without the bit. Each row is run by scripts/doc-examples.py, at
+# the CLI's 8,800 B, and again with the series route compiled out (CAS 021) and through the value check's build.
+
+# - Part 1: every root, the table
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --complex solve 'X^3=2' X RAD` | `SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve 'X^3=-2' X RAD` | `SOLVED: X=-2^(1÷3); X=2^(1÷3)×(1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve 'X^4=-16' X RAD` | `SOLVED: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1` |
+| `casim --complex solve 'X^4=-1' X RAD` | `SOLVED: X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2` |
+| `casim --complex solve 'X^4=2' X RAD` | `SOLVED: X=-2^(1÷4); X=2^(1÷4); X=-2^(1÷4)×0i1; X=2^(1÷4)×0i1` |
+| `casim --complex solve 'X^6=-1' X RAD` | `SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2` |
+| `casim --complex solve 'X^8=1' X RAD` | `SOLVED: X=-1; X=1; X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2` |
+| `casim --complex solve 'X^3=1÷2' X RAD` | `SOLVED: X=1÷2^(1÷3); X=1÷2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷3)×(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve 'X^4=1÷16' X RAD` | `SOLVED: X=-1÷2; X=1÷2; X=-0i1÷2; X=0i1÷2` |
+
+# - Part 2: off the table, the cosine form
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --complex solve 'X^5=1' X RAD` | `SOLVED: X=1; X=COS(2×π÷5)-SIN(2×π÷5)×0i1; X=COS(2×π÷5)+SIN(2×π÷5)×0i1; X=COS(4×π÷5)-SIN(4×π÷5)×0i1; X=COS(4×π÷5)+SIN(4×π÷5)×0i1` |
+| `casim --complex solve 'X^5=32' X RAD` | `SOLVED: X=2; X=2×(COS(2×π÷5)-SIN(2×π÷5)×0i1); X=2×(COS(2×π÷5)+SIN(2×π÷5)×0i1); X=2×(COS(4×π÷5)-SIN(4×π÷5)×0i1); X=2×(COS(4×π÷5)+SIN(4×π÷5)×0i1)` |
+| `casim --complex solve 'X^5=1' X DEG` | `SOLVED: X=1; X=COS(72)-SIN(72)×0i1; X=COS(72)+SIN(72)×0i1; X=COS(144)-SIN(144)×0i1; X=COS(144)+SIN(144)×0i1` |
+| `casim --complex solve 'X^5=-1' X GRAD` | `SOLVED: X=-1; X=COS(40)-SIN(40)×0i1; X=COS(40)+SIN(40)×0i1; X=COS(120)-SIN(120)×0i1; X=COS(120)+SIN(120)×0i1` |
+
+# - Part 3: the line without the bit, where every root does not fit (ruling 2)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --complex solve 'X^9=64' X RAD` | `SOLVED, 8 CPLX: X=4^(1÷3)` |
+| `casim solve 'X^9=64' X RAD` | `SOLVED, 8 CPLX: X=4^(1÷3)` |
+| `casim --complex solve 'X^7=1' X RAD` | `SOLVED, 6 CPLX: X=1` |
+| `casim --complex solve 'X^10=-1' X RAD` | `NO REAL ROOTS` |
+| `casim solve 'X^10=-1' X RAD` | `NO REAL ROOTS` |
+
+# - Part 4: what 1.9.0 prints whole under the bit keeps its text, CAS 020 order included (ruling 3)
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --complex solve 'X^3=1' X RAD` | `SOLVED: X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve 'X^4=16' X RAD` | `SOLVED: X=-2; X=2; X=-2×0i1; X=2×0i1` |
+| `casim --complex solve 'X^6=64' X RAD` | `SOLVED: X=-2; X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1` |
+| `casim --complex solve 'X^2=-4' X RAD` | `SOLVED: X=-2×0i1; X=2×0i1` |
+
+# - Part 5: scope (ruling 4): letters and model 33 as at 1.9.0
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --complex solve 'X^3=A' X RAD` | `SOLVED: X=A^(1÷3); A≥0` |
+| `casim --complex --model 33 solve 'X^3=2' X RAD` | `SOLVED, 2 CPLX: X=2^(1÷3)` |
+| `casim --complex --model STU solve 'X^3=2' X RAD` | `SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2` |
+| `casim --complex solve '(X+1)^3=2' X RAD` | `PARTIAL, DEGREE 3 LEFT` |
+
+# - Part 6: the steps, the PURE POWER page reaching the answer under the bit
+
+| Command | Prints (lines joined by " / ") |
+|---|---|
+| `casim --one-line --complex steps solve 'X^3=2' X RAD` | `BOTH SIDES: X^3-2=0 /   LEFT: X^3-2=0: DEGREE 3 LEFT / PURE POWER: X^3=2: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2 / ANSWER: SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2` |
+| `casim --one-line --complex steps solve 'X^9=64' X RAD` | `BOTH SIDES: X^9-64=0 /   LEFT: X^9-64=0: DEGREE 9 LEFT / PURE POWER: X^9=64: X=4^(1÷3) / ANSWER: SOLVED, 8 CPLX: X=4^(1÷3)` |
+| `casim --one-line --complex steps solve 'X^4=-16' X RAD` | `BOTH SIDES: X^4+16=0 /   LEFT: X^4+16=0: DEGREE 4 LEFT / PURE POWER: X^4=-16: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1 / ANSWER: SOLVED: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1` |

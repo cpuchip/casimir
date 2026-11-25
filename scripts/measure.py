@@ -106,6 +106,8 @@ SHAPES192 = {
 def cli_args(expr, var, angle, op, repl=None, model="35"):
     """The CLI's arguments for one case (model: the text's stamp, CAS 004; the replacement's too)."""
     m = ["--model", model, "--repl-model", model]
+    if angle.endswith("+C"):                            # CAS 043: the complex bit, as --complex
+        m, angle = m + ["--complex"], angle[:-2]
     if op in ("derive", "collect", "solve", "integrate", "factor", "cancel", "partfrac"):
         return m + [op, expr, var, angle]
     if op in ("subst", "pdiv", "pgcd"):
@@ -586,6 +588,14 @@ def all_cases():
     rows.append(("lq square of a sum", "X^2-2×(A+B+C+D+E)×X+(A+B+C+D+E)^2=0", "X", "RAD", "solve", None, "35"))
     rows.append(("lq formula", "A×X^2+B×X+C=0", "X", "RAD", "solve", None, "35"))
     rows.append(("lq x^n = c", "X^9=8", "X", "RAD", "solve", None, "35"))
+    # CAS 043 (work/043-complex-pure-powers.md): x^n = c under the complex bit, its pass (cx_fix) building each pair
+    # from canon's table and reading it back in abn, where every root fits, off the table, and the line without the bit
+    rows.append(("cx X^8=1", "X^8=1", "X", "RAD+C", "solve", None, "35"))
+    rows.append(("cx X^5=32", "X^5=32", "X", "RAD+C", "solve", None, "35"))
+    rows.append(("cx X^3=2 DEG", "X^3=2", "X", "DEG+C", "solve", None, "35"))
+    rows.append(("cx X^6=-1", "X^6=-1", "X", "RAD+C", "solve", None, "35"))
+    rows.append(("cx X^9=64 floor", "X^9=64", "X", "RAD+C", "solve", None, "35"))
+    rows.append(("cx X^12=4096", "X^12=4096", "X", "GRAD+C", "solve", None, "35"))
     # CAS 042 (work/042-trig-integrals.md): a polynomial in SIN and COS through tn_form, the one recursive function, and
     # the check's expand_fully: a constant factor nested past the guard, a power of a sum (tn_form's power over its sum),
     # the degree-12 power in DEG, a product of angles that differ, and the parity split

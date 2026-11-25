@@ -1616,7 +1616,7 @@ MUTANTS = {
     "lq041-typed-off": [("src/casim.c", "    side[0] = parse(c);\n    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)", "    return true;\n    side[0] = parse(c);\n    if (c->st == CASIM_OK && nd(c, side[0])->kind == K_REQ)")],
     "lq041-steps-off": [("src/casim.c", "            if (k > 1) return CASIM_BAD_ARG;                /* CAS 041: a quadratic or a power has no page */", "            (void)0;                /* CAS 041: a quadratic or a power has no page */")],
     "ls041-unit-off": [("src/casim.c", "    if (nd(c, e)->kind != K_MUL) return e;\n    n = nd(c, e)->n;", "    if (nd(c, e)->kind != K_MUL || op) return e;\n    n = nd(c, e)->n;")],
-    "pp041-off": [("src/casim.c", "    if (c.st == CASIM_OK && !w.full && !(c.nm & NM_CX)) pp_fix(&c, &w, var);            /* CAS 041: x^n = c */", "    (void)pp_fix;            /* CAS 041: x^n = c */")],
+    "pp041-off": [("src/casim.c", "    else pp_fix(c, w, var);", "    else (void)pp_fix;")],
     "pp041-count": [("src/casim.c", "    left = (int)n - want;", "    left = (int)n;")],
     "pp041-reduce-off": [("src/casim.c", "            if (n % m == 0 && (b = lq_iroot(part[j], (int)m)) >= 0) break;", "            if (0) break;")],
     "pp041-neg-off": [("src/casim.c", "    if (p < 0) x[1] = ib_canon(c, ib_neg(c, x[1]));", "    (void)0;")],
@@ -1643,6 +1643,23 @@ MUTANTS = {
     "tn042-room-off": [("src/casim.c", "    if (r == CASIM_OK || st == CASIM_NOT_INTEGRABLE) return r;", "    if (st == CASIM_NOT_INTEGRABLE) return r;")],
     "tn042-print-unchecked": [("src/casim.c", "        else F = E;", "        F = E;")],
     "tn042-const-num": [("src/casim.c", "        if (is_num(c, r)) o->p[0].r = *val(c, r);", "        if (is_num(c, r)) rat_int(&o->p[0].r, 1);")],
+    # CAS 043 (work/043-complex-pure-powers.md): the pass off, the read-back (a slip alone, refused to the floor; the
+    # slip with the read-back off, printed), the page under the bit (off, and its roots not the answer's), ρ's fold,
+    # the common denominator, a pair's order, the fit, the floor off, and ρ's sign
+    "cx043-off": [("src/casim.c", "    if (c->nm & NM_CX) cx_fix(c, w, var);", "    if (c->nm & NM_CX) (void)cx_fix;")],
+    "cx043-slip": [("src/casim.c", "        if (!rat_make(&r, 2 * k + (p < 0), n)) goto no;", "        if (!rat_make(&r, 2 * k + (p < 0), n + (k == 1))) goto no;")],
+    "cx043-slip-unchecked": [("src/casim.c", "        if (!rat_make(&r, 2 * k + (p < 0), n)) goto no;", "        if (!rat_make(&r, 2 * k + (p < 0), n + (k == 1))) goto no;"),
+                             ("src/casim.c", "    return abn_cmp(&d1, &tol) <= 0 && abn_cmp(&d2, &tol) <= 0;", "    return abn_cmp(&d1, &tol) <= 0 || 1 || abn_cmp(&d2, &tol) <= 0;")],
+    "cx043-count-off": [("src/casim.c", "    if (got != n) goto floor;", "    (void)got;"),
+                        ("src/casim.c", "        if (r.p >= r.q) break;", "        if (r.p >= r.q || k == 2) break;")],
+    "cx043-page-off": [("src/casim.c", "        W->pure = !zero;", "        W->pure = !zero && !(c->nm & NM_CX);")],
+    "cx043-page-roots": [("src/casim.c", "    if (strncmp(ans, \"SOLVED: \", 8) != 0 || !(col = strstr(w->o, \": \"))) return;", "    if (1 || strncmp(ans, \"SOLVED: \", 8) != 0 || !(col = strstr(w->o, \": \"))) return;")],
+    "cx043-fold-off": [("src/casim.c", "        if (is_num(c, rho[1]) && nd(c, ct)->kind != K_FN && nd(c, st)->kind != K_FN) ct = re, st = im;", "        if (0 && is_num(c, rho[1]) && nd(c, ct)->kind != K_FN && nd(c, st)->kind != K_FN) ct = re, st = im;")],
+    "cx043-den": [("src/casim.c", "        d = a / g * b;", "        d = a * b;\n        (void)g;")],
+    "cx043-order": [("src/casim.c", "    if (!a0) print(c, w, A), puts_(w, sign < 0 ? \"-\" : \"+\");", "    if (!a0) print(c, w, A), puts_(w, sign < 0 ? \"+\" : \"-\");")],
+    "cx043-fit": [("src/casim.c", "    if (!b.full && b.n < SLOT) {", "    if (!b.full && b.n < 120) {")],
+    "cx043-floor-off": [("src/casim.c", "never less (ruling 2) */\nfloor:\n", "never less (ruling 2) */\nfloor:\n    goto no;\n")],
+    "cx043-rho": [("src/casim.c", "pp_roots(c, n, p < 0 ? -p : p, q, rho) < 1) goto no;", "pp_roots(c, n, p, q, rho) < 1) goto no;")],
 }
 
 
