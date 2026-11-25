@@ -6466,11 +6466,15 @@ static __attribute__((noinline)) ref tn_integ(ctx *c, ref f, int var)
         return SPARE;
     }
     if ((F = tn_parity(c, o, B)) == SPARE && c->st == CASIM_OK) F = tn_multiple(c, o, B, var);
-    if (c->st == CASIM_OK && F != SPARE) F = expand_fully(c, F);
-    if (c->st == CASIM_OK) {
-        z = F != SPARE && tn_zero(c, add2(c, deriv(c, F), neg(c, f)), B);
+    if (c->st == CASIM_OK && F != SPARE) {
+        ref E = expand_fully(c, F);
+        z = c->st == CASIM_OK && tn_zero(c, add2(c, deriv(c, E), neg(c, f)), B);
+        /* expanded, a letter's sum under DEG's or GRAD's π reads π÷(π+A^2×π) beside 1÷(A^2+1), which expand_fully doesn't
+           cancel: the answer as built, checked the same way (abacus #17188 (b)) */
+        if (!z && c->st == CASIM_OK && B->trees) z = tn_zero(c, add2(c, deriv(c, F), neg(c, f)), B);
+        else F = E;
         if (!z && c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;      /* never an unchecked answer */
-    }
+    } else if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
     return c->st == CASIM_OK ? F : SPARE;
 }
 
@@ -6495,6 +6499,17 @@ static __attribute__((noinline)) casim_status do_itrig(const char *eqn, int var,
     return finish(&c, F, out, cap < SLOT ? cap : SLOT);
 }
 
+/* CAS 042 after CAS 017's path refused, NOT_INTEGRABLE or NO_ROOM (its search ran out: abacus #17188); that refusal
+   stands where this path doesn't answer */
+static __attribute__((noinline)) casim_status ir_trig(casim_status st, const char *eqn, int var, int angle, char *out,
+                                                       size_t cap, void *arena, size_t arena_cap, bool rtl)
+{
+    casim_status r = do_itrig(eqn, var, angle, out, cap, arena, arena_cap, rtl);
+    if (r == CASIM_OK || st == CASIM_NOT_INTEGRABLE) return r;
+    if (cap) out[0] = '\0';
+    return st;
+}
+
 static casim_status integrate_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                                size_t arena_cap)
 {
@@ -6506,7 +6521,7 @@ static casim_status integrate_(const char *eqn, int var, int model, int angle, c
     /* CAS 017: when both refuse, substitution and parts */
     if (st == CASIM_NOT_INTEGRABLE) st = ir_parts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     /* CAS 042: when those refuse too, a polynomial in SIN and COS of one angle */
-    return st == CASIM_NOT_INTEGRABLE ? do_itrig(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
+    return st == CASIM_NOT_INTEGRABLE || st == CASIM_NO_ROOM ? ir_trig(st, eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
 }
 
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,

@@ -1626,7 +1626,7 @@ MUTANTS = {
     # CAS 042 (work/042-trig-integrals.md): the path off, the product to sum's half, the parity split (off, every p
     # read odd), Chebyshev's U, S^2 = 1-C^2's sign, the common angle's offset, rule 2's hole, steps BAD_ARG, the angle
     # factor, the gcd, the multiple angles off, a SIN(kθ) term's second half, and a constant's number
-    "tn042-off": [("src/casim.c", "    return st == CASIM_NOT_INTEGRABLE ? do_itrig(", "    return st == CASIM_NOT_INTEGRABLE && !arena_cap ? do_itrig(")],
+    "tn042-off": [("src/casim.c", "    casim_status r = do_itrig(eqn, var, angle, out, cap, arena, arena_cap, rtl);\n    if (r == CASIM_OK || st", "    casim_status r = CASIM_NOT_INTEGRABLE;\n    (void)eqn, (void)var, (void)angle, (void)arena, (void)arena_cap, (void)rtl;\n    if (r == CASIM_OK || st")],
     "tn042-half": [("src/casim.c", "    rat_make(&half, 1, 2);", "    rat_make(&half, 1, 3);")],
     "tn042-parity-off": [("src/casim.c", "    if (pz == qz || (!pz && !podd)) return SPARE;", "    if (pz == qz || (!pz && !podd) || o) return SPARE;")],
     "tn042-parity-even": [("src/casim.c", "    if (pz == qz || (!pz && !podd)) return SPARE;", "    if (pz == qz) return SPARE;\n    (void)podd;")],
@@ -1639,6 +1639,9 @@ MUTANTS = {
     "tn042-gcd-first": [("src/casim.c", "        p = tn_gcd(p, B->k[i].p), q = q / d * B->k[i].q;", "        if (!i) p = B->k[i].p < 0 ? -B->k[i].p : B->k[i].p, q = B->k[i].q;\n        (void)d;")],
     "tn042-multiple-off": [("src/casim.c", "    if ((F = tn_parity(c, o, B)) == SPARE && c->st == CASIM_OK) F = tn_multiple(c, o, B, var);", "    F = tn_parity(c, o, B);\n    (void)tn_multiple;")],
     "tn042-sin-half": [("src/casim.c", "                if (k > 1) {", "                if (k > 1 && 0) {")],
+    "tn042-fallback-off": [("src/casim.c", "        if (!z && c->st == CASIM_OK && B->trees) z = tn_zero(", "        if (!z && c->st == CASIM_OK && B->trees && 0) z = tn_zero(")],
+    "tn042-room-off": [("src/casim.c", "    if (r == CASIM_OK || st == CASIM_NOT_INTEGRABLE) return r;", "    if (st == CASIM_NOT_INTEGRABLE) return r;")],
+    "tn042-print-unchecked": [("src/casim.c", "        else F = E;", "        F = E;")],
     "tn042-const-num": [("src/casim.c", "        if (is_num(c, r)) o->p[0].r = *val(c, r);", "        if (is_num(c, r)) rat_int(&o->p[0].r, 1);")],
 }
 

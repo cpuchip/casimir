@@ -343,7 +343,8 @@ integrated term by term (SIN(X)^2 is X÷2−SIN(2×X)÷4, SIN(X)×SIN(3×X) is S
 in the same form: F′−f has every coefficient 0, which the derivative check alone could not see. The typed-divisor and
 domain rules above hold here too (SIN(X)^2×X÷X is refused), letters are constants as above (SIN(X)^2÷A answers with no
 row, as X÷A does), and a letter in an argument is refused (SIN(A×X)^2). An integrand the paths above answer keeps
-their answer (SIN(X)×COS(X) stays SIN(X)^2÷2), and where CAS 017's search runs out, NO_ROOM stands. Its steps are
+their answer (SIN(X)×COS(X) stays SIN(X)^2÷2); it runs after CAS 017's search runs out too, and that NO_ROOM
+stands where it doesn't answer. Its steps are
 BAD_ARG; definite integrals of these are not yet here (defint still refuses them).
 
 It refuses (NOT_INTEGRABLE):

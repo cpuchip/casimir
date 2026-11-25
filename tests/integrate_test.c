@@ -490,6 +490,16 @@ static void trig(void)
     is("A×SIN(X)^3", CASIM_RAD, "-A×COS(X)+A×COS(X)^3÷3");
     is("SIN(X)^2÷A", CASIM_RAD, "X÷2÷A-SIN(2×X)÷4÷A");
     is("π×COS(X)^2", CASIM_RAD, "X×π÷2+π×SIN(2×X)÷4");
+    /* a letter's sum under DEG's π: the answer as built where its expansion's π÷(π+A^2×π) isn't seen as 0 (#17188 (b)) */
+    is("SIN(X)^3÷(A^2+1)", CASIM_DEG, "-180×(COS(X)÷(A^2+1)-COS(X)^3÷3÷(A^2+1))÷π");
+    is("SIN(X)^2÷(A^2+1)", CASIM_GRAD, "X÷2÷(A^2+1)-50×SIN(2×X)÷π÷(A^2+1)");
+    {
+        /* after CAS 017's search runs out (#17188): 1.8.0's NO_ROOM answered at the calculator's arena */
+        char out[OUT], why[256] = "";
+        casim_status st = integ("SIN(4×X)×COS(2×X)^2", CASIM_DEG, CASIM_MODEL_35, out, 16384);
+        CHECK(st == CASIM_OK && by_value("SIN(4×X)×COS(2×X)^2", out, CASIM_DEG, why, sizeof why),
+              "SIN(4×X)×COS(2×X)^2 at 16,384 B in DEG: %d \"%s\" %s", (int)st, out, why);
+    }
     /* 1.8.0's answers keep their text */
     is("SIN(X)×COS(X)", CASIM_RAD, "SIN(X)^2÷2");
     is("SIN(X)×COS(X)^5", CASIM_RAD, "-COS(X)^6÷6");
