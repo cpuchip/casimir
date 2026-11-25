@@ -107,8 +107,8 @@
 | `casim --arena 65536 integrate "((ATAN(SQ(7)))×(((X)×(2))×((7)+(0.5))))×((Y)÷(LN((-4)+(X))))" X GRAD` | `NOT_INTEGRABLE` |
 | `casim --arena 65536 integrate "(8×X-7)×(2×X+5)÷(2×X+5)^2" X RAD` | `4×X-27×LN(ABS(2×X+5))÷2` |
 | `casim --arena 65536 integrate "X×ATAN(X)" X RAD` | `-X÷2+ATAN(X)÷2+X^2×ATAN(X)÷2` |
-| `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
-| `casim integrate "COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X)^2" X RAD` | `X÷2-SIN(2×X)÷4` |
+| `casim integrate "COS(X)^2" X RAD` | `X÷2+SIN(2×X)÷4` |
 | `casim integrate "TAN(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "X×COS(X)^2" X RAD` | `NOT_INTEGRABLE` |
 | `casim integrate "1÷SQRT(1-X^2)" X RAD` | `NOT_INTEGRABLE` |

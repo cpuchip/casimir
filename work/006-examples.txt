@@ -30,7 +30,7 @@ I0021 | integrate | X^2^3 | X | RAD | 35 | X^7÷7
 I0022 | integrate | X×LN(X) | X | RAD | 35 | -X^2÷4+X^2×LN(X)÷2
 I0023 | integrate | X×EXP(X^2) | X | RAD | 35 | EXP(X^2)÷2
 I0024 | integrate | 1÷(X^2-1) | X | RAD | 35 | -LN(ABS(X+1))÷2+LN(ABS(X-1))÷2
-I0025 | integrate | SIN(X)^2 | X | RAD | 35 | NOT_INTEGRABLE
+I0025 | integrate | SIN(X)^2 | X | RAD | 35 | X÷2-SIN(2×X)÷4
 I0026 | integrate | X^2÷X | X | RAD | 35 | NOT_INTEGRABLE
 I0027 | integrate | 2^X | X | RAD | 35 | NOT_INTEGRABLE
 I0028 | integrate | X=1 | X | RAD | 35 | BAD_ARG

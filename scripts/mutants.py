@@ -1623,6 +1623,23 @@ MUTANTS = {
     "pp041-page-off": [("src/casim.c", "    bool pure = W->pure && W->cur.n >= 3 && n >= 3 && g->a[0] != 0;", "    bool pure = false && W->pure && W->cur.n >= 3 && n >= 3 && g->a[0] != 0;")],
     "pp041-page-other": [("src/casim.c", "        else if (kp <= 2 && kq <= 2) puts_(w, \"NO OTHER REAL ROOT\");", "        else if (kp <= 2 || kq <= 2) puts_(w, \"NO OTHER REAL ROOT\");")],
     "lq041-cancel-off": [("src/casim.c", "    if (is_num(c, r)) {                     /* the letters cancel (B×X^3=8×B): ruling 7's roots, with a's rows */", "    if (is_num(c, r)) {                     /* the letters cancel (B×X^3=8×B): ruling 7's roots, with a's rows */\n        if (r) return false;")],
+    # CAS 042 (work/042-trig-integrals.md): the path off, the product to sum's half, the parity split (off, every p
+    # read odd), Chebyshev's U, S^2 = 1-C^2's sign, the common angle's offset, rule 2's hole, steps BAD_ARG, the angle
+    # factor, the gcd, the multiple angles off, a SIN(kθ) term's second half, and a constant's number
+    "tn042-off": [("src/casim.c", "    return st == CASIM_NOT_INTEGRABLE ? do_itrig(", "    return st == CASIM_NOT_INTEGRABLE && !arena_cap ? do_itrig(")],
+    "tn042-half": [("src/casim.c", "    rat_make(&half, 1, 2);", "    rat_make(&half, 1, 3);")],
+    "tn042-parity-off": [("src/casim.c", "    if (pz == qz || (!pz && !podd)) return SPARE;", "    if (pz == qz || (!pz && !podd) || o) return SPARE;")],
+    "tn042-parity-even": [("src/casim.c", "    if (pz == qz || (!pz && !podd)) return SPARE;", "    if (pz == qz) return SPARE;\n    (void)podd;")],
+    "tn042-cheb-u": [("src/casim.c", "    a[0] = 1, b[1] = sin ? 2 : 1;", "    a[0] = 1, b[1] = 1;\n    (void)sin;")],
+    "tn042-s2-sign": [("src/casim.c", "m.r = k.r, m.r.p = -m.r.p", "m.r = k.r, m.r.p = m.r.p")],
+    "tn042-offset-off": [("src/casim.c", "    return rat_mul(&mb, &q, &B->b0) && rat_cmp(&mb, b) == 0;", "    return rat_mul(&mb, &q, &B->b0) && (b || 1);")],
+    "tn042-hole-off": [("src/casim.c", "    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;\n    if (c.st == CASIM_OK) F = tn_integ", "    if (c.st == CASIM_OK) F = tn_integ")],
+    "tn042-steps-off": [("src/casim.c", "        st = CASIM_BAD_ARG;", "        st = st;")],
+    "tn042-angle-off": [("src/casim.c", "    return mul2(c, angle_factor(c, true), power(c, num(c, &kg), small(c, C_M1)));", "    return mul2(c, small(c, C_1), power(c, num(c, &kg), small(c, C_M1)));")],
+    "tn042-gcd-first": [("src/casim.c", "        p = tn_gcd(p, B->k[i].p), q = q / d * B->k[i].q;", "        if (!i) p = B->k[i].p < 0 ? -B->k[i].p : B->k[i].p, q = B->k[i].q;\n        (void)d;")],
+    "tn042-multiple-off": [("src/casim.c", "    if ((F = tn_parity(c, o, B)) == SPARE && c->st == CASIM_OK) F = tn_multiple(c, o, B, var);", "    F = tn_parity(c, o, B);\n    (void)tn_multiple;")],
+    "tn042-sin-half": [("src/casim.c", "                if (k > 1) {", "                if (k > 1 && 0) {")],
+    "tn042-const-num": [("src/casim.c", "        if (is_num(c, r)) o->p[0].r = *val(c, r);", "        if (is_num(c, r)) rat_int(&o->p[0].r, 1);")],
 }
 
 

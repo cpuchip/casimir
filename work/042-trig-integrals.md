@@ -1,6 +1,6 @@
 # CAS work unit 042: integrals of powers and products of SIN and COS
 
-**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17118), for h042 to be frozen before src. The
+**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h042 (frozen at sha256 33ac4d3c629ee5ea0f617a8fb40e51e14ceac903318b6f0bffd23318e4e05dbb, 303 rows at 8,800 and 16,384 B, abacus #17132). RULED 2026-11-25 (abacus #17118). The
 number is abacus's (#17116). Measured on a throwaway prototype, p1, over f942021 (1.8.0's code), then p1 with ruling
 1's parity split; it is deleted once h042 is frozen. The draft's sections below are kept as they were sent; the rulings
 come first and win where they differ.
@@ -53,6 +53,49 @@ without it moved seven: the moves come and go with gcc's inlining, therefore the
 moves quoted for the first p1 came from scripts/frame-table.py, run on the same command line. Run on p1 with the
 split, frame-table.py moves eight host frames (angle_factor 64→80, do_sum_ 816→832, ib 240→272, integ_checked
 112→128, lm_sum 112→144, mul 256→272, sm_anti 224→240, td_prop 48→80). No S3 frame table was compared for p1.
+
+## As built
+
+- **Where it runs:** do_itrig, after CAS 017's path refuses NOT_INTEGRABLE, in integrate_'s last line (as p1). Where
+  CAS 017's search runs out, its NO_ROOM stands and this path doesn't run: SIN(3×X)^2×COS(X) and SIN(X)^2×COS(2×X) are
+  NO_ROOM at 8,800 B and answer at 16,384 B; COS(3×X)^4×SIN(2×X) is NO_ROOM at 16,384 B and answers at 65,536 B. A
+  build that also ran this path after that NO_ROOM answered COS(3×X)^4×SIN(2×X) at 16,384 B and moved the same seven
+  host frames. It was not kept, since p1 ran after NOT_INTEGRABLE only and the rulings were made on p1; it is abacus's
+  to ask for.
+- **The form** (tn_form): a coefficient is a number plus a tree for what isn't one (ruling 3's fast path), SPARE where
+  there is none; each polynomial is sized by a bound on its degree (tn_deg), and the work arrays of a subtree whose
+  coefficients are numbers go back to the arena when it returns. tn_form is 112 B on the S3 and the only recursive
+  function; Chebyshev's polynomials are made in the arena (tn_cheb).
+- **The degree:** 24 in C at most, over the whole integrand as well as each argument (|m| ≤ 24): SIN(X)^25 and
+  COS(25×X)×COS(X) are refused NOT_INTEGRABLE.
+- **The check:** F′ − f through the same form (tn_zero), every coefficient 0; a number by its value, a tree by
+  expand_fully. A check that runs out of room reports NO_ROOM, never NOT_INTEGRABLE.
+- **CAS 017's rules:** do_itrig reads the integrand as do_iparts does: ib_canon, then rule 2's typed divisors and
+  domains (ib_typed_ok), and its other-letters rule on the answer (ib_letters_kept).
+- **Steps** (ruling 5): ib_steps' call to do_iparts goes through ib_parts_steps, which answers BAD_ARG where parts
+  refuses and this path answers. Every page the other paths give is unchanged.
+- **The printed form in DEG and GRAD:** ruling 1's text for `SIN(X)^3` in DEG was p1's, `-180×(COS(X)-COS(X)^3÷3)÷π`;
+  the build prints the same polynomial term by term, `-180×COS(X)÷π+60×COS(X)^3÷π`, since its coefficients are numbers
+  before the angle factor multiplies them out. `COS(X)^3` in DEG is `180×SIN(X)÷π-60×SIN(X)^3÷π`.
+- **Room, least arena** (`--arena 65536 --min-arena`): SIN(X)^2 3,736 B (p1 3,840), SIN(X)^3×COS(X)^2 4,880 (p1
+  6,840), A×SIN(X)^2 5,568, SIN(X)^6 in DEG 7,144 (p1 7,960), SIN(X)^12 in DEG 11,920 (p1 17,104).
+- **The frames** (abacus #17161, #17162): seven host frames move, and one on the S3 (chain 48→64). The cause is gcc's
+  inlining of small() at 16 more sites; work/042-frames.txt has the moves, the cause traced per function, and the
+  dumps' small() sites. The host table is re-recorded in a commit of its own; on the S3 every new frame is 176 B or less.
+- **The device** (abacus #17162's condition 1): DEVICE PASS, 1,510 cases byte-identical to the host at 16,384 B (the
+  11 CAS 042 cases in scripts/measure.py among them), 298 steps pages. Worst stack 11,360 B masked (STU chain X^ 44,
+  derive), unchanged from 1.8.0, + 384 = 11,744 of 12,288; inside 11,888 masked. **Where chain sits:** canon's loop over
+  a typed chain of + and − or × and ÷, entered once per level of a nest of them, so its 16 B add once a level: the
+  bench's deepest ÷ nest (sweep 1÷(1+ 56, refused at the guard) goes 4,492 → 5,196 B (44 levels × 16) and its − nest
+  (sweep -(X+ 56) 3,436 → 3,788 B. The worst path, a chain of ^, goes through canon's power and never reaches chain.
+  CAS 042's deepest case is 4,768 B (tn SIN nest 42), the power of a sum 1,792 B.
+- **Mutants:** 14 (tn042-*), all caught; tn042-multiple-off first failed to build (tn_multiple unused under -Werror)
+  and was rerun with a (void). The run's memory peak wasn't sampled.
+- **Tests:** make test 20 tests, 119,045 checks (with the host table re-recorded). integrate_test's trig(): each branch
+  of ruling 1 against a hand-written F in RAD, DEG and GRAD, a seeded draw of products and sums judged on the core by
+  value (F′ and a quadrature), the refusals, steps BAD_ARG. scripts/istep-values.py knows rule 5 (a polynomial in SIN
+  and COS, read from the text, pages to BAD_ARG), with a control on its reading.
+
 
 ## Today (1.8.0, RAD)
 

@@ -332,8 +332,23 @@ The rational path takes rational coefficients only. Inside this path a constant 
 another letter, or the 180÷π that DEG puts in ATAN's derivative) comes out first and goes back on each term of the
 answer. So X^2÷(X^2+1)÷π answers, and X×ATAN(X) and ATAN(X+1) answer in DEG and GRAD as in RAD, at 65,536 bytes.
 
+Last, a polynomial in SIN and COS (CAS 042, work/042-trig-integrals.md). Every SIN and COS holding X must have a
+numeric linear argument, and the arguments a common angle θ = g×X+b0 of which each is a whole multiple m×θ, |m| up to
+24; X may appear nowhere else. Each SIN(m×θ) and COS(m×θ) is written by Chebyshev's polynomials in C = COS(θ) and
+S = SIN(θ), and products are multiplied out with S^2 = 1−C^2, so the integrand is p(C)+S×q(C) one way, of degree at most
+24 in C. The answer is printed by one rule over the whole integrand. With one angle throughout, p = 0 integrates to a
+polynomial in COS(θ) (SIN(X)^3 is −COS(X)+COS(X)^3÷3) and q = 0 with p odd to a polynomial in SIN(θ) (COS(X)^3 is
+SIN(X)−SIN(X)^3÷3); everything else is written in multiple angles, COS(k×θ) and SIN(k×θ) by product to sum, and
+integrated term by term (SIN(X)^2 is X÷2−SIN(2×X)÷4, SIN(X)×SIN(3×X) is SIN(2×X)÷4−SIN(4×X)÷8). The answer is checked
+in the same form: F′−f has every coefficient 0, which the derivative check alone could not see. The typed-divisor and
+domain rules above hold here too (SIN(X)^2×X÷X is refused), letters are constants as above (SIN(X)^2÷A answers with no
+row, as X÷A does), and a letter in an argument is refused (SIN(A×X)^2). An integrand the paths above answer keeps
+their answer (SIN(X)×COS(X) stays SIN(X)^2÷2), and where CAS 017's search runs out, NO_ROOM stands. Its steps are
+BAD_ARG; definite integrals of these are not yet here (defint still refuses them).
+
 It refuses (NOT_INTEGRABLE):
-- powers and products of SIN, COS and TAN of one argument (SIN(X)^2, TAN(X)^2), which need identities;
+- powers of TAN, SEC and CSC (TAN(X)^2), a quotient of SIN and COS polynomials (SIN(X)^2÷COS(X)), and a power or
+  product of SIN and COS times X (X×SIN(X)^2), which need more than CAS 042's form;
 - forms whose antiderivative is an inverse function the table doesn't hold (1÷SQRT(1−X^2));
 - integrands with no elementary antiderivative (EXP(X^2), SIN(X)÷X).
 
@@ -365,7 +380,14 @@ half a walk.
 | `casim --arena 65536 integrate "X×ATAN(X)" X DEG` | `ATAN(X)÷2-90×X÷π+X^2×ATAN(X)÷2` |
 | `casim --arena 65536 integrate "X^2÷(X^2+1)÷π" X RAD` | `X÷π-ATAN(X)÷π` |
 | `casim integrate "X^2÷X×EXP(X)" X RAD` | `NOT_INTEGRABLE` |
-| `casim integrate "SIN(X)^2" X RAD` | `NOT_INTEGRABLE` |
+| `casim integrate "SIN(X)^2" X RAD` | `X÷2-SIN(2×X)÷4` |
+| `casim integrate "SIN(X)^3" X RAD` | `-COS(X)+COS(X)^3÷3` |
+| `casim integrate "COS(X)^3" X RAD` | `SIN(X)-SIN(X)^3÷3` |
+| `casim integrate "SIN(X)×SIN(3×X)" X RAD` | `SIN(2×X)÷4-SIN(4×X)÷8` |
+| `casim integrate "SIN(X)^2" X DEG` | `X÷2-45×SIN(2×X)÷π` |
+| `casim integrate "SIN(X)^2÷A" X RAD` | `X÷2÷A-SIN(2×X)÷4÷A` |
+| `casim integrate "SIN(X)^2×X÷X" X RAD` | `NOT_INTEGRABLE` |
+| `casim steps integrate "SIN(X)^2" X RAD` | `BAD_ARG` |
 | `casim steps integrate "X×EXP(X)" X RAD` | `BY PARTS: ∫(X×EXP(X))dX = X×EXP(X)-∫(EXP(X))dX, U=X, V=∫(EXP(X))dX /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   CHECK: d/dX(EXP(X)) = EXP(X) /   EXP: ∫(EXP(X))dX = EXP(X) /   CHECK: d/dX(-EXP(X)+X×EXP(X)) = X×EXP(X) / BY PARTS: ∫(X×EXP(X))dX = -EXP(X)+X×EXP(X)` |
 
 ### defint: a definite integral, exactly

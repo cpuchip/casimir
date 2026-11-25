@@ -236,7 +236,7 @@ static void outside(void)
     refused("SIN(X^2)", CASIM_NOT_INTEGRABLE);
     refused("1÷(X^2-2)", CASIM_NOT_INTEGRABLE);             /* D > 0, not a square (CAS 013 rule 5) */
     refused("1÷(X^2+1)^2", CASIM_NOT_INTEGRABLE);           /* a quadratic squared (CAS 013 rule 5) */
-    refused("SIN(X)^2", CASIM_NOT_INTEGRABLE);
+    is("SIN(X)^2", CASIM_RAD, "X÷2-SIN(2×X)÷4");               /* refused until CAS 042 (its form, ruling 1) */
     refused("X×COS(X)^2", CASIM_NOT_INTEGRABLE);            /* CAS 017 rule 7: trig powers need identities */
     refused("(X+A)÷(X^2-1)", CASIM_NOT_INTEGRABLE);         /* another letter: integrate's status kept (CAS 013, #6686) */
     refused("1÷(X^3-2)", CASIM_NOT_INTEGRABLE);             /* a cubic factor */
@@ -453,6 +453,101 @@ static void angles(void)
         }
 }
 
+/* CAS 042: polynomials in SIN and COS of one angle (work/042-trig-integrals.md, abacus #17118). Each branch of ruling 1
+   against a hand-written F, in each angle mode; then a seeded draw of products and sums of SIN(m×θ) and COS(m×θ),
+   θ = g×X+b0, every answer by value on the core (F' and a quadrature); the refusals; steps BAD_ARG (ruling 5). */
+static unsigned long long seed042 = 0x042u;
+static int rnd042(int lo, int hi)
+{
+    seed042 = seed042 * 6364136223846793005ull + 1442695040888963407ull;
+    return lo + (int)((seed042 >> 33) % (unsigned long long)(hi - lo + 1));
+}
+
+static void trig(void)
+{
+    /* ruling 1: one angle and S×q(C), a polynomial in COS */
+    is("SIN(X)^3", CASIM_RAD, "-COS(X)+COS(X)^3÷3");
+    is("SIN(X)^3×COS(X)^2", CASIM_RAD, "-COS(X)^3÷3+COS(X)^5÷5");
+    is("SIN(2×X+1)^3", CASIM_RAD, "-COS(2×X+1)÷2+COS(2×X+1)^3÷6");
+    is("SIN(X)^3", CASIM_DEG, "-180×COS(X)÷π+60×COS(X)^3÷π");
+    is("SIN(X)^3", CASIM_GRAD, "-200×COS(X)÷π+200×COS(X)^3÷3÷π");
+    /* one angle, q = 0 and p odd, a polynomial in SIN */
+    is("COS(X)^3", CASIM_RAD, "SIN(X)-SIN(X)^3÷3");
+    is("SIN(X)^2×COS(X)^3", CASIM_RAD, "SIN(X)^3÷3-SIN(X)^5÷5");
+    is("COS(X÷3)^3", CASIM_RAD, "3×SIN(X÷3)-SIN(X÷3)^3");
+    is("COS(X)^3", CASIM_DEG, "180×SIN(X)÷π-60×SIN(X)^3÷π");
+    /* everything else in multiple angles: both even, angles that differ, mixed parities in a sum */
+    is("SIN(X)^2", CASIM_RAD, "X÷2-SIN(2×X)÷4");
+    is("COS(X)^4", CASIM_RAD, "3×X÷8+SIN(2×X)÷4+SIN(4×X)÷32");
+    is("SIN(X)^2", CASIM_DEG, "X÷2-45×SIN(2×X)÷π");
+    is("SIN(X)^2", CASIM_GRAD, "X÷2-50×SIN(2×X)÷π");
+    is("COS(2×X+1)^2", CASIM_RAD, "X÷2+SIN(4×X+2)÷8");
+    is("SIN(X)×SIN(3×X)", CASIM_RAD, "SIN(2×X)÷4-SIN(4×X)÷8");
+    is("SIN(3×X)^2×COS(X)", CASIM_RAD, "SIN(X)÷2-SIN(5×X)÷20-SIN(7×X)÷28");
+    is("3×SIN(X)^2+COS(X)", CASIM_RAD, "3×X÷2+SIN(X)-3×SIN(2×X)÷4");
+    is("SIN(X)^3+2", CASIM_RAD, "2×X-3×COS(X)÷4+COS(3×X)÷12");
+    /* letters as factors; a letter in a divisor by CAS 017's other-letters rule, no row */
+    is("A×SIN(X)^3", CASIM_RAD, "-A×COS(X)+A×COS(X)^3÷3");
+    is("SIN(X)^2÷A", CASIM_RAD, "X÷2÷A-SIN(2×X)÷4÷A");
+    is("π×COS(X)^2", CASIM_RAD, "X×π÷2+π×SIN(2×X)÷4");
+    /* 1.8.0's answers keep their text */
+    is("SIN(X)×COS(X)", CASIM_RAD, "SIN(X)^2÷2");
+    is("SIN(X)×COS(X)^5", CASIM_RAD, "-COS(X)^6÷6");
+    /* refused: ruling 2's arguments, ruling 6's shapes, CAS 017 rule 2's hole, and past degree 24 */
+    refused("SIN(A×X)^2", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)^2+SIN(SQRT(2)×X)^2", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)×SIN(X+1)", CASIM_NOT_INTEGRABLE);    /* no common angle: X+1 isn't a whole multiple of X */
+    refused("SIN(X^2)^2", CASIM_NOT_INTEGRABLE);
+    refused("X×SIN(X)^2", CASIM_NOT_INTEGRABLE);
+    refused("TAN(X)^2", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)^2÷COS(X)", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)^2×X÷X", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)^2×TAN(X)^0", CASIM_NOT_INTEGRABLE);
+    refused("LN(X)-LN(X)+SIN(X)^2", CASIM_NOT_INTEGRABLE);
+    refused("SIN(X)^25", CASIM_NOT_INTEGRABLE);
+    refused("COS(25×X)×COS(X)", CASIM_NOT_INTEGRABLE);
+    {
+        /* ruling 5: the steps are BAD_ARG where this path answers; a page integrate's other paths give is unchanged */
+        static const char *const S[] = {"SIN(X)^2", "COS(X)^3", "SIN(X)×SIN(3×X)"};
+        char out[OUT];
+        for (int i = 0; i < 3; i++) {
+            casim_req rq = {CASIM_INTEGRATE, S[i], CASIM_MODEL_35, 'X' - 'A', NULL, 0, CASIM_RAD, NULL};
+            casim_step_info info;
+            casim_status st = casim_step(&rq, -1, 0, &info, out, OUT, arena, sizeof arena);
+            CHECK(st == CASIM_BAD_ARG, "steps integrate %s: %d, want BAD_ARG", S[i], (int)st);
+        }
+    }
+    {
+        /* the draw: up to three terms, each a small rational times up to three powers of SIN or COS of m×θ */
+        static const char *const G[] = {"", "2×", "1÷2×"}, *const B0[] = {"", "+1", "-1÷3"};
+        int answered = 0, n = 0;
+        for (int t = 0; t < 120; t++) {
+            char f[512] = "", out[OUT], why[256] = "";
+            int g = rnd042(0, 2), b = rnd042(0, 2), terms = rnd042(1, 3), deg = 0, angle = ANGLES[rnd042(0, 2)];
+            for (int i = 0; i < terms; i++) {
+                int k = rnd042(-5, 5), fs = rnd042(1, 3);
+                char term[160];
+                snprintf(term, sizeof term, "%s%d", i ? "+" : "", k ? k : 1);
+                for (int j = 0; j < fs; j++) {
+                    int m = rnd042(1, 4), e = rnd042(1, 3);
+                    size_t L = strlen(term);
+                    deg += m * e;
+                    snprintf(term + L, sizeof term - L, "×%s(%d×(%sX%s))^%d", rnd042(0, 1) ? "SIN" : "COS", m, G[g], B0[b], e);
+                }
+                strncat(f, term, sizeof f - strlen(f) - 1);
+            }
+            if (deg > 16) continue;
+            n++;
+            casim_status st = integ(f, angle, CASIM_MODEL_35, out, sizeof arena);
+            CHECK(st == CASIM_OK || st == CASIM_NO_ROOM, "drawn %s (angle %d): %d", f, angle, (int)st);
+            if (st != CASIM_OK) continue;
+            answered++;
+            CHECK(by_value(f, out, angle, why, sizeof why), "drawn %s (angle %d) = %s: %s", f, angle, out, why);
+        }
+        CHECK(answered * 10 >= n * 9, "the draw: %d of %d answered", answered, n);
+    }
+}
+
 int main(void)
 {
     ce_init();
@@ -464,5 +559,6 @@ int main(void)
     angles();
     visible013();
     rational();
+    trig();
     return check_done();
 }

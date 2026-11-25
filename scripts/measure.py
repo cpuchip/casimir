@@ -586,6 +586,16 @@ def all_cases():
     rows.append(("lq square of a sum", "X^2-2×(A+B+C+D+E)×X+(A+B+C+D+E)^2=0", "X", "RAD", "solve", None, "35"))
     rows.append(("lq formula", "A×X^2+B×X+C=0", "X", "RAD", "solve", None, "35"))
     rows.append(("lq x^n = c", "X^9=8", "X", "RAD", "solve", None, "35"))
+    # CAS 042 (work/042-trig-integrals.md): a polynomial in SIN and COS through tn_form, the one recursive function, and
+    # the check's expand_fully: a constant factor nested past the guard, a power of a sum (tn_form's power over its sum),
+    # the degree-12 power in DEG, a product of angles that differ, and the parity split
+    for n in range(30, 46, 3):
+        rows.append((f"tn SIN nest {n}", "SIN(X)^2×" + "SIN(" * n + "A" + ")" * n, "X", "RAD", "integrate", None, "35"))
+    rows.append(("tn power of a sum", "(SIN(X)+COS(X)+SIN(2×X))^4", "X", "RAD", "integrate", None, "35"))
+    rows.append(("tn SIN^12 DEG", "SIN(X)^12", "X", "DEG", "integrate", None, "35"))
+    rows.append(("tn angles differ", "SIN(3×X)^2×COS(X)×SIN(2×X)", "X", "RAD", "integrate", None, "35"))
+    rows.append(("tn parity", "SIN(X)^5×COS(X)^4", "X", "RAD", "integrate", None, "35"))
+    rows.append(("tn SIN^2", "SIN(X)^2", "X", "RAD", "integrate", None, "35"))
     rows = [r if len(r) == 7 else r + ("35",) for r in rows + SHAPES003]
     # CAS 004: the heavy shapes again, read as STU (^ right to left), and STU's right chains across the guard
     for r in rows[:]:

@@ -328,6 +328,7 @@ def rational_wrong(e, var, angle, model, rows, one):
 
 rational_n = [0]
 ib_n = [0]
+trig_n = [0]
 
 
 def rational(e, var, model):
@@ -644,6 +645,30 @@ def check_caps():
     return failed
 
 
+def trig042(e, var="X"):
+    """CAS 042 rule 5: a polynomial in SIN and COS, whose steps are BAD_ARG: every var in e sits inside a SIN or COS
+    argument and no other function's (read by the text alone, apart from casim)"""
+    stack, i, seen = [], 0, False
+    while i < len(e):
+        m = re.match(r"[A-Z]{2,}\(", e[i:])
+        if m:
+            stack.append(m.group(0)[:-1])
+            i += len(m.group(0))
+            continue
+        ch = e[i]
+        if ch == "(":
+            stack.append("")
+        elif ch == ")":
+            stack and stack.pop()
+        elif ch == var:
+            named = [f for f in stack if f]
+            if not named or named[0] not in ("SIN", "COS") or any(f not in ("SIN", "COS") for f in named):
+                return False
+            seen = True
+        i += 1
+    return seen
+
+
 def check_known():
     """every known integrate input integrate answers must page to the end, right by value; returns the failures"""
     failed = n = 0
@@ -656,7 +681,9 @@ def check_known():
         rc, out = steps(e, False, False, var=var, angle=angle, model=model)
         last = out.rstrip("\n").split("\n")[-1]
         why = []
-        if rc != 0 and last != "NO_ROOM":
+        if rc != 0 and last == "BAD_ARG" and trig042(e, var):
+            trig_n[0] += 1                  # CAS 042 rule 5: its steps are BAD_ARG
+        elif rc != 0 and last != "NO_ROOM":
             why.append(f"integrate answers, its steps end {last}")
         elif rc == 0:
             rows = [r.split("\t") for r in out.rstrip("\n").split("\n")]
@@ -676,8 +703,14 @@ def check_known():
         if why:
             failed += 1
             print(f"FAIL scripts/istep-values.py: {e} ({var}, {angle}, model {model})\n  " + "\n  ".join(why))
+    for e, want in (("SIN(X)^2", True), ("COS(2×X+1)^3×SIN(X)", True), ("X×SIN(X)^2", False), ("SIN(X^2)", True),
+                    ("EXP(SIN(X))", False), ("SIN(X)^2÷A", True), ("LN(X)", False), ("SIN(LN(X))", False)):
+        if trig042(e) != want:
+            failed += 1
+            print(f"FAIL scripts/istep-values.py: its CAS 042 reading of {e} is {not want}")
     print(f"integrate steps on the corpus, the docs and {len(AIMED)} aimed inputs: {n} integrate answers, {failed} failed"
-          f" ({rational_n[0]} rational ones through CAS 013's walk, {ib_n[0]} through CAS 017's)")
+          f" ({rational_n[0]} rational ones through CAS 013's walk, {ib_n[0]} through CAS 017's, {trig_n[0]} CAS 042"
+          f" polynomials in SIN and COS whose steps are BAD_ARG)")
     return failed
 
 

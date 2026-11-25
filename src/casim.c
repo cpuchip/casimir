@@ -6033,6 +6033,468 @@ static __attribute__((noinline)) casim_status ir_parts(const char *eqn, int var,
     return st == CASIM_NOT_INTEGRABLE && r == CASIM_NO_ROOM ? r : st;
 }
 
+/* ---- CAS 042: integrals of polynomials in SIN and COS of one angle ----
+   Every SIN(m×θ) and COS(m×θ), θ = g×X + b0 (g the gcd of the arguments' X coefficients), is written by Chebyshev's
+   polynomials in C = COS(θ) and S = SIN(θ), products multiplied out with S^2 = 1 - C^2: p(C) + S×q(C), one way. A
+   coefficient is a number (the fast path, ruling 3) plus a tree for what isn't one (a letter, π), SPARE when there is
+   none. The answer is checked in the same form: F' - f has every coefficient 0. */
+#define TN_DEG 24
+#define TN_ARGS 12
+typedef struct { rat r; ref t; } tncoef;
+typedef struct { int n; tncoef *p, *q; } tnpoly;    /* n coefficients each, in the arena after the header */
+typedef struct { rat g, b0, k[TN_ARGS], b[TN_ARGS]; int var, n; unsigned trees; } tnbase;
+
+static bool lin_term(ctx *c, ref t, int var, rat *l);
+static bool ib_letters_kept(ctx *c, ref r, int var, ref t);
+static bool ib_typed_ok(ctx *c, ref r, ref t, int var);
+
+static ref tn_int(ctx *c, int64_t k)
+{
+    rat v;
+    rat_make(&v, k, 1);
+    return num(c, &v);
+}
+
+static bool tn_lin(ctx *c, ref u, int var, rat *l)
+{
+    const node *x = nd(c, u);
+    rat_int(&l[0], 0), rat_int(&l[1], 0);
+    for (int v = 0; v < 27; v++)
+        if (v != var && contains(c, u, v)) return false;
+    if (x->kind == K_ADD) {
+        for (int i = 0; i < x->n; i++)
+            if (!lin_term(c, list(c, x->a)[i], var, l)) return false;
+        return l[1].p != 0;
+    }
+    return lin_term(c, u, var, l) && l[1].p != 0;
+}
+
+/* ruling 2: every SIN and COS holding var has a numeric linear argument, and nothing else holds var but sums, products
+   and whole powers up to TN_DEG */
+static bool tn_collect(ctx *c, ref r, tnbase *B)
+{
+    const node *x = nd(c, r);
+    bool ok = false;
+    if (!contains(c, r, B->var)) return true;
+    if (!enter(c)) return false;
+    if (x->kind == K_FN && (x->id == F_SIN || x->id == F_COS)) {
+        rat l[2];
+        int i = 0;
+        if (tn_lin(c, x->a, B->var, l)) {
+            while (i < B->n && !(rat_cmp(&B->k[i], &l[1]) == 0 && rat_cmp(&B->b[i], &l[0]) == 0)) i++;
+            if (i < TN_ARGS) {
+                if (i == B->n) B->k[i] = l[1], B->b[i] = l[0], B->n++;
+                ok = true;
+            }
+        }
+    } else if (x->kind == K_POW) {
+        long e;
+        ok = is_num(c, x->b) && rat_whole(val(c, x->b), &e) && e >= 0 && e <= TN_DEG && tn_collect(c, x->a, B);
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        ok = true;
+        for (int i = 0; i < nd(c, r)->n && ok; i++) ok = tn_collect(c, list(c, nd(c, r)->a)[i], B);
+    }
+    c->depth--;
+    return ok;
+}
+
+static int64_t tn_gcd(int64_t a, int64_t b)
+{
+    if (a < 0) a = -a;
+    if (b < 0) b = -b;
+    while (b) {
+        int64_t t = a % b;
+        a = b, b = t;
+    }
+    return a;
+}
+
+/* m = k÷g, whole and within TN_DEG, with b = m×b0 */
+static bool tn_mult(const tnbase *B, const rat *k, const rat *b, long *m)
+{
+    rat inv, q, mb;
+    if (!rat_make(&inv, B->g.q, B->g.p) || !rat_mul(&q, k, &inv) || q.q != 1 || q.p > TN_DEG || q.p < -TN_DEG) return false;
+    *m = (long)q.p;
+    return rat_mul(&mb, &q, &B->b0) && rat_cmp(&mb, b) == 0;
+}
+
+/* g: the gcd of the k (a positive rational); b0 with b = (k÷g)×b0 for every argument */
+static bool tn_base(tnbase *B)
+{
+    int64_t p = 0, q = 1;
+    if (B->n == 0) return false;
+    for (int i = 0; i < B->n; i++) {
+        int64_t d = tn_gcd(q, B->k[i].q);
+        if (q / d > INT64_MAX / B->k[i].q) return false;
+        p = tn_gcd(p, B->k[i].p), q = q / d * B->k[i].q;
+    }
+    if (!rat_make(&B->g, p, q)) return false;
+    rat_int(&B->b0, 0);
+    for (int i = 0; i < B->n; i++) {
+        rat inv, kq;
+        long m;
+        if (!rat_make(&inv, B->g.q, B->g.p) || !rat_mul(&kq, &B->k[i], &inv) || kq.q != 1) return false;
+        if (i == 0 && (!rat_make(&inv, 1, kq.p) || !rat_mul(&B->b0, &B->b[0], &inv))) return false;
+        if (!tn_mult(B, &B->k[i], &B->b[i], &m)) return false;
+    }
+    return true;
+}
+
+/* coefficient arithmetic: x + y, and x × y; false when a number overflows */
+static bool tn_add(ctx *c, tncoef *o, const tncoef *x, const tncoef *y)
+{
+    tncoef v;
+    if (!rat_add(&v.r, &x->r, &y->r)) return false;
+    v.t = x->t == SPARE ? y->t : y->t == SPARE ? x->t : add2(c, x->t, y->t);
+    *o = v;
+    return c->st == CASIM_OK;
+}
+
+static bool tn_mulc(ctx *c, tnbase *B, tncoef *o, const tncoef *x, const tncoef *y)
+{
+    tncoef v;
+    if (!rat_mul(&v.r, &x->r, &y->r)) return false;
+    v.t = SPARE;
+    if (x->t != SPARE || y->t != SPARE) {
+        ref a = x->t == SPARE ? small(c, C_0) : x->t, b = y->t == SPARE ? small(c, C_0) : y->t;
+        v.t = add2(c, mul2(c, a, b), add2(c, mul2(c, num(c, &x->r), b), mul2(c, num(c, &y->r), a)));
+        B->trees++;
+    }
+    *o = v;
+    return c->st == CASIM_OK;
+}
+
+static bool tn_zc(const tncoef *x)
+{
+    return x->r.p == 0 && x->t == SPARE;
+}
+
+static void tn_clear(tnpoly *t)
+{
+    for (int i = 0; i < t->n; i++) {
+        rat_int(&t->p[i].r, 0), rat_int(&t->q[i].r, 0);
+        t->p[i].t = t->q[i].t = SPARE;
+    }
+}
+
+static tnpoly *tn_new(ctx *c, int n)
+{
+    ref r = grab(c, sizeof(tnpoly) + 2 * (size_t)n * sizeof(tncoef));
+    tnpoly *t;
+    if (!r) return NULL;
+    t = (tnpoly *)(void *)nd(c, r);
+    t->n = n, t->p = (tncoef *)(void *)(t + 1), t->q = t->p + n;
+    tn_clear(t);
+    return t;
+}
+
+static void tn_copy(tnpoly *o, const tnpoly *x)
+{
+    for (int i = 0; i < o->n; i++) o->p[i] = x->p[i], o->q[i] = x->q[i];
+}
+
+/* a bound on r's degree in C (each SIN and COS of m×θ counts |m|), -1 past TN_DEG or where the form can't take r */
+static int tn_deg(ctx *c, ref r, const tnbase *B)
+{
+    const node *x = nd(c, r);
+    int d = -1;
+    if (!contains(c, r, B->var)) return 0;
+    if (!enter(c)) return -1;
+    if (x->kind == K_FN) {
+        rat l[2];
+        long m;
+        if ((x->id == F_SIN || x->id == F_COS) && tn_lin(c, x->a, B->var, l) && tn_mult(B, &l[1], &l[0], &m))
+            d = (int)(m < 0 ? -m : m);
+    } else if (x->kind == K_POW) {
+        long e;
+        int b;
+        if (is_num(c, x->b) && rat_whole(val(c, x->b), &e) && e >= 0 && e <= TN_DEG && (b = tn_deg(c, nd(c, r)->a, B)) >= 0)
+            d = (int)e * b;
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        d = 0;
+        for (int i = 0; i < nd(c, r)->n && d >= 0; i++) {
+            int e = tn_deg(c, list(c, nd(c, r)->a)[i], B);
+            d = e < 0 ? -1 : nd(c, r)->kind == K_ADD ? (e > d ? e : d) : d + e;
+        }
+    }
+    c->depth--;
+    return d > TN_DEG ? -1 : d;
+}
+
+/* o = x × y, with S^2 = 1 - C^2 */
+static __attribute__((noinline)) bool tn_mul(ctx *c, tnbase *B, tnpoly *o, const tnpoly *x, const tnpoly *y)
+{
+    tn_clear(o);
+    for (int i = 0; i < x->n; i++)
+        for (int j = 0; j < y->n; j++) {
+            tncoef k;
+            if (!tn_zc(&x->p[i]) && !tn_zc(&y->p[j])) {
+                if (i + j >= o->n || !tn_mulc(c, B, &k, &x->p[i], &y->p[j]) || !tn_add(c, &o->p[i + j], &o->p[i + j], &k))
+                    return false;
+            }
+            if (!tn_zc(&x->q[i]) && !tn_zc(&y->q[j])) {
+                tncoef m;
+                if (i + j + 2 >= o->n || !tn_mulc(c, B, &k, &x->q[i], &y->q[j]) ||
+                    !tn_add(c, &o->p[i + j], &o->p[i + j], &k))
+                    return false;
+                m.r = k.r, m.r.p = -m.r.p, m.t = k.t == SPARE ? SPARE : neg(c, k.t);
+                if (!tn_add(c, &o->p[i + j + 2], &o->p[i + j + 2], &m)) return false;
+            }
+            if (!tn_zc(&x->p[i]) && !tn_zc(&y->q[j])) {
+                if (i + j >= o->n || !tn_mulc(c, B, &k, &x->p[i], &y->q[j]) || !tn_add(c, &o->q[i + j], &o->q[i + j], &k))
+                    return false;
+            }
+            if (!tn_zc(&x->q[i]) && !tn_zc(&y->p[j])) {
+                if (i + j >= o->n || !tn_mulc(c, B, &k, &x->q[i], &y->p[j]) || !tn_add(c, &o->q[i + j], &o->q[i + j], &k))
+                    return false;
+            }
+        }
+    return true;
+}
+
+/* T_m (COS) or U_(m-1) (SIN over S), m > 0, into o's p or q, sign s */
+static __attribute__((noinline)) bool tn_cheb(ctx *c, tnpoly *o, int m, bool sin, int s)
+{
+    ref w = grab(c, 3 * (TN_DEG + 1) * sizeof(int64_t));
+    int64_t *a, *b, *t;
+    int n = sin ? m - 1 : m;
+    if (!w) return false;
+    a = (int64_t *)(void *)nd(c, w), b = a + TN_DEG + 1, t = b + TN_DEG + 1;
+    memset(a, 0, 3 * (TN_DEG + 1) * sizeof(int64_t));
+    a[0] = 1, b[1] = sin ? 2 : 1;                        /* T_0, T_1 or U_0, U_1 */
+    for (int i = 1; i < n; i++) {
+        for (int j = 0; j <= TN_DEG; j++) t[j] = (j ? 2 * b[j - 1] : 0) - a[j];
+        memcpy(a, b, (TN_DEG + 1) * sizeof(int64_t)), memcpy(b, t, (TN_DEG + 1) * sizeof(int64_t));
+    }
+    if (n == 0) b = a;
+    for (int j = 0; j <= TN_DEG; j++)
+        if (b[j] && (j >= o->n || !rat_make(sin ? &o->q[j].r : &o->p[j].r, s * b[j], 1))) return false;
+    return true;
+}
+
+/* r's form into o (o cleared by the caller); a number, or an expression free of var, is a coefficient of C^0 */
+static bool tn_form(ctx *c, ref r, tnbase *B, tnpoly *o)
+{
+    const node *x = nd(c, r);
+    size_t mark;
+    unsigned trees;
+    tnpoly *t, *u;
+    bool ok = false;
+    if (!contains(c, r, B->var)) {
+        if (is_num(c, r)) o->p[0].r = *val(c, r);
+        else o->p[0].t = r, B->trees++;
+        return true;
+    }
+    if (!enter(c)) return false;
+    mark = c->used, trees = B->trees;
+    if (x->kind == K_FN) {
+        rat l[2];
+        long m;
+        if ((x->id == F_SIN || x->id == F_COS) && tn_lin(c, x->a, B->var, l) && tn_mult(B, &l[1], &l[0], &m)) {
+            bool s = nd(c, r)->id == F_SIN;
+            ok = tn_cheb(c, o, (int)(m < 0 ? -m : m), s, s && m < 0 ? -1 : 1);
+            c->used = mark;                              /* tn_cheb's work, numbers only */
+        }
+    } else if (x->kind == K_POW) {
+        long e;
+        int b;
+        if (is_num(c, x->b) && rat_whole(val(c, x->b), &e) && e >= 0 && e <= TN_DEG &&
+            (b = tn_deg(c, nd(c, r)->a, B)) >= 0 && (t = tn_new(c, b + 1)) && (u = tn_new(c, o->n)) &&
+            tn_form(c, nd(c, r)->a, B, t)) {
+            tn_clear(o);
+            rat_int(&o->p[0].r, 1);
+            ok = true;
+            for (long i = 0; i < e && ok; i++) ok = tn_mul(c, B, u, o, t), tn_copy(o, u);
+        }
+    } else if (x->kind == K_ADD || x->kind == K_MUL) {
+        bool add = x->kind == K_ADD;
+        if ((t = tn_new(c, o->n)) && (u = tn_new(c, o->n))) {
+            ok = true;
+            if (!add) rat_int(&o->p[0].r, 1);
+            for (int i = 0; i < nd(c, r)->n && ok; i++) {
+                tn_clear(t);
+                ok = tn_form(c, list(c, nd(c, r)->a)[i], B, t);
+                if (ok && add)
+                    for (int j = 0; j < o->n && ok; j++)
+                        ok = tn_add(c, &o->p[j], &o->p[j], &t->p[j]) && tn_add(c, &o->q[j], &o->q[j], &t->q[j]);
+                else if (ok) ok = tn_mul(c, B, u, o, t), tn_copy(o, u);
+            }
+        }
+    }
+    if (ok && B->trees == trees) c->used = mark;        /* the work arrays, where no tree points into them */
+    c->depth--;
+    return ok && c->st == CASIM_OK;
+}
+
+/* whether every coefficient of d's form is 0 */
+static __attribute__((noinline)) bool tn_zero(ctx *c, ref d, tnbase *B)
+{
+    int n = tn_deg(c, d, B);
+    tnpoly *o = n < 0 ? NULL : tn_new(c, n + 1);
+    if (!o || !tn_form(c, d, B, o)) return false;
+    for (int i = 0; i < o->n; i++)
+        for (int s = 0; s < 2; s++) {
+            const tncoef *k = s ? &o->q[i] : &o->p[i];
+            if (k->t == SPARE ? k->r.p != 0 : !is_k(c, expand_fully(c, add2(c, num(c, &k->r), k->t)), 0, 1)) return false;
+            if (c->st != CASIM_OK) return false;
+        }
+    return true;
+}
+
+static ref tn_coef(ctx *c, const tncoef *k)
+{
+    ref n = k->r.p ? num(c, &k->r) : SPARE;
+    return k->t == SPARE ? n : n == SPARE ? k->t : add2(c, n, k->t);
+}
+
+/* k×θ */
+static ref tn_angle(ctx *c, const tnbase *B, long k)
+{
+    rat kg, kb, kk;
+    rat_int(&kk, (int)k);
+    if (!rat_mul(&kg, &B->g, &kk) || !rat_mul(&kb, &B->b0, &kk)) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+    return add2(c, mul2(c, num(c, &kg), leaf(c, K_VAR, B->var)), num(c, &kb));
+}
+
+/* angle_factor(inverse) ÷ (k×g) */
+static ref tn_scale(ctx *c, const tnbase *B, long k)
+{
+    rat kg, kk;
+    rat_int(&kk, (int)k);
+    if (!rat_mul(&kg, &B->g, &kk)) return c->st = CASIM_NOT_INTEGRABLE, SPARE;
+    return mul2(c, angle_factor(c, true), power(c, num(c, &kg), small(c, C_M1)));
+}
+
+/* ruling 1: one angle θ throughout and the form S×q(C) gives -Q(C) in COS(θ); q = 0 with p odd gives R(S) in SIN(θ).
+   SPARE where neither holds */
+static __attribute__((noinline)) ref tn_parity(ctx *c, const tnpoly *o, const tnbase *B)
+{
+    bool pz = true, qz = true, podd = true;
+    long m;
+    ref F = small(c, C_0), w;
+    if (B->n != 1 || !tn_mult(B, &B->k[0], &B->b[0], &m) || m != 1) return SPARE;
+    for (int d = 0; d < o->n; d++) {
+        if (!tn_zc(&o->p[d])) pz = false, podd = podd && (d & 1);
+        if (!tn_zc(&o->q[d])) qz = false;
+    }
+    if (pz == qz || (!pz && !podd)) return SPARE;
+    w = fn(c, qz ? F_SIN : F_COS, tn_angle(c, B, 1));
+    for (int d = 0; d < o->n && c->st == CASIM_OK; d++) {
+        if (!qz) {                                       /* ∫ S×C^d = -C^(d+1)÷(d+1) */
+            rat r;
+            if (tn_zc(&o->q[d])) continue;
+            rat_make(&r, -1, d + 1);
+            F = add2(c, F, mul3(c, tn_coef(c, &o->q[d]), power(c, w, tn_int(c, d + 1)), num(c, &r)));
+        } else if (d & 1) {                              /* C^d = C×(1 - S^2)^h; ∫ C×S^2j = S^(2j+1)÷(2j+1) */
+            int h = (d - 1) / 2;
+            int64_t b = 1;
+            if (tn_zc(&o->p[d])) continue;
+            for (int j = 0; j <= h; j++) {
+                rat r;
+                rat_make(&r, (j & 1) ? -b : b, 2 * j + 1);
+                F = add2(c, F, mul3(c, tn_coef(c, &o->p[d]), power(c, w, tn_int(c, 2 * j + 1)), num(c, &r)));
+                b = b * (h - j) / (j + 1);
+            }
+        }
+    }
+    return c->st == CASIM_OK ? mul2(c, F, tn_scale(c, B, 1)) : SPARE;
+}
+
+/* the form as Σ A_k COS(kθ) + Σ B_k SIN(kθ) (C×COS(kθ) and S×COS(kθ) by product to sum), each by the table */
+static __attribute__((noinline)) ref tn_multiple(ctx *c, const tnpoly *o, tnbase *B, int var)
+{
+    int n = o->n + 1;
+    ref w = grab(c, 2 * (size_t)n * sizeof(rat));
+    rat *cs, *nx, half;
+    tnpoly *L = tn_new(c, n);                            /* L->p[k]: A_k; L->q[k]: B_k */
+    ref F = small(c, C_0);
+    if (!w || !L) return SPARE;
+    cs = (rat *)(void *)nd(c, w), nx = cs + n;
+    rat_make(&half, 1, 2);
+    for (int k = 0; k < n; k++) rat_int(&cs[k], 0);
+    rat_int(&cs[0], 1);                                  /* C^0 = COS(0θ) */
+    for (int d = 0; d < o->n; d++) {
+        if (d) {                                         /* C×COS(kθ) = (COS((k+1)θ) + COS((k-1)θ))÷2 */
+            for (int k = 0; k < n; k++) rat_int(&nx[k], 0);
+            for (int k = 0; k < d; k++) {
+                rat h;
+                if (cs[k].p == 0) continue;
+                if (!rat_mul(&h, &cs[k], &half) || !rat_add(&nx[k + 1], &nx[k + 1], &h) ||
+                    !rat_add(&nx[k ? k - 1 : 1], &nx[k ? k - 1 : 1], &h))
+                    return SPARE;
+            }
+            memcpy(cs, nx, (size_t)n * sizeof(rat));
+        }
+        for (int k = 0; k <= d; k++) {
+            tncoef ck = {cs[k], SPARE}, v;
+            if (cs[k].p == 0) continue;
+            if (!tn_zc(&o->p[d]) && (!tn_mulc(c, B, &v, &ck, &o->p[d]) || !tn_add(c, &L->p[k], &L->p[k], &v))) return SPARE;
+            if (!tn_zc(&o->q[d])) {                      /* S×COS(kθ) = (SIN((k+1)θ) - SIN((k-1)θ))÷2; S×1 = SIN(θ) */
+                if (k && !rat_mul(&ck.r, &ck.r, &half)) return SPARE;
+                if (k + 1 >= n || !tn_mulc(c, B, &v, &ck, &o->q[d]) || !tn_add(c, &L->q[k + 1], &L->q[k + 1], &v))
+                    return SPARE;
+                if (k > 1) {
+                    v.r.p = -v.r.p, v.t = v.t == SPARE ? SPARE : neg(c, v.t);
+                    if (!tn_add(c, &L->q[k - 1], &L->q[k - 1], &v)) return SPARE;
+                }
+            }
+        }
+    }
+    if (!tn_zc(&L->p[0])) F = add2(c, F, mul2(c, tn_coef(c, &L->p[0]), leaf(c, K_VAR, var)));
+    for (int k = 1; k < n && c->st == CASIM_OK; k++) {
+        if (!tn_zc(&L->p[k]))
+            F = add2(c, F, mul3(c, tn_coef(c, &L->p[k]), fn(c, F_SIN, tn_angle(c, B, k)), tn_scale(c, B, k)));
+        if (!tn_zc(&L->q[k]))
+            F = add2(c, F, neg(c, mul3(c, tn_coef(c, &L->q[k]), fn(c, F_COS, tn_angle(c, B, k)), tn_scale(c, B, k))));
+    }
+    return c->st == CASIM_OK ? F : SPARE;
+}
+
+static __attribute__((noinline)) ref tn_integ(ctx *c, ref f, int var)
+{
+    tnbase *B;
+    tnpoly *o;
+    ref w = grab(c, sizeof(tnbase)), F;
+    int d;
+    bool z;
+    if (!w) return SPARE;
+    B = (tnbase *)(void *)nd(c, w);
+    memset(B, 0, sizeof *B);
+    B->var = var;
+    if (!tn_collect(c, f, B) || !tn_base(B) || (d = tn_deg(c, f, B)) < 0 || !(o = tn_new(c, d + 1)) || !tn_form(c, f, B, o)) {
+        if (c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;
+        return SPARE;
+    }
+    if ((F = tn_parity(c, o, B)) == SPARE && c->st == CASIM_OK) F = tn_multiple(c, o, B, var);
+    if (c->st == CASIM_OK && F != SPARE) F = expand_fully(c, F);
+    if (c->st == CASIM_OK) {
+        z = F != SPARE && tn_zero(c, add2(c, deriv(c, F), neg(c, f)), B);
+        if (!z && c->st == CASIM_OK) c->st = CASIM_NOT_INTEGRABLE;      /* never an unchecked answer */
+    }
+    return c->st == CASIM_OK ? F : SPARE;
+}
+
+/* CAS 042 after CAS 017's path refused: its own ctx, CAS 017's rule 2 on the typed text and its rule on other letters */
+static __attribute__((noinline)) casim_status do_itrig(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                        void *arena, size_t arena_cap, bool rtl)
+{
+    ctx c;
+    ref n = SPARE, t = SPARE, F = SPARE;
+    if (cap) out[0] = '\0';
+    start(&c, eqn, angle, arena, arena_cap);
+    c.rtl = rtl;
+    c.opaque = true;
+    c.var = var;
+    c.sub_var = -1;
+    if (c.st == CASIM_OK) n = parse(&c);
+    if (c.st == CASIM_OK && nd(&c, n)->kind == K_REQ) return CASIM_BAD_ARG;
+    if (c.st == CASIM_OK) t = ib_canon(&c, n);
+    if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;
+    if (c.st == CASIM_OK) F = tn_integ(&c, t, var);
+    if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t)) c.st = CASIM_NOT_INTEGRABLE;
+    return finish(&c, F, out, cap < SLOT ? cap : SLOT);
+}
+
 static casim_status integrate_(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
                                size_t arena_cap)
 {
@@ -6042,7 +6504,9 @@ static casim_status integrate_(const char *eqn, int var, int model, int angle, c
     st = do_integrate(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     if (st == CASIM_NOT_INTEGRABLE) st = do_irational(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
     /* CAS 017: when both refuse, substitution and parts */
-    return st == CASIM_NOT_INTEGRABLE ? ir_parts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
+    if (st == CASIM_NOT_INTEGRABLE) st = ir_parts(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU);
+    /* CAS 042: when those refuse too, a polynomial in SIN and COS of one angle */
+    return st == CASIM_NOT_INTEGRABLE ? do_itrig(eqn, var, angle, out, cap, arena, arena_cap, model == CASIM_MODEL_STU) : st;
 }
 
 casim_status casim_integrate(const char *eqn, int var, int model, int angle, char *out, size_t cap, void *arena,
@@ -12482,6 +12946,21 @@ static __attribute__((noinline)) casim_status ib_walk(const casim_req *rq, int k
 
 /* rule 8: integrate's one page for an integrand only this path answers, ∫(f)dX = F under ANSWER (the working pages are
    the unit's second build) */
+static casim_status do_itrig(const char *eqn, int var, int angle, char *out, size_t cap, void *arena, size_t arena_cap,
+                             bool rtl);
+
+/* CAS 042 rule 5: where substitution and parts refuse and the SIN and COS path answers, the steps are BAD_ARG (a page
+   for it is a follow-on unit, as CAS 038's letter solves were) */
+static __attribute__((noinline)) casim_status ib_parts_steps(const char *eqn, int var, int angle, char *out, size_t cap,
+                                                              void *arena, size_t arena_cap, bool rtl)
+{
+    casim_status st = do_iparts(eqn, var, angle, out, cap, arena, arena_cap, rtl);
+    if ((st == CASIM_NOT_INTEGRABLE || st == CASIM_NO_ROOM) && do_itrig(eqn, var, angle, out, cap, arena, arena_cap, rtl) == CASIM_OK)
+        st = CASIM_BAD_ARG;
+    if (st != CASIM_OK && cap) out[0] = '\0';
+    return st;
+}
+
 static __attribute__((noinline)) casim_status ib_steps(const casim_req *rq, int k, casim_step_info *info, char *out,
                                                         size_t cap, void *arena, size_t arena_cap)
 {
@@ -12490,7 +12969,7 @@ static __attribute__((noinline)) casim_status ib_steps(const casim_req *rq, int 
     memset(info, 0, sizeof *info);
     if (cap) out[0] = '\0';
     if (cap == 0 && k >= 0) return CASIM_TOO_LONG;
-    st = do_iparts(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
+    st = ib_parts_steps(rq->eqn, rq->var, rq->angle, out, cap, arena, arena_cap, rq->model == CASIM_MODEL_STU);
     if (st == CASIM_OK) info->count = 1, info->line = CASIM_STEP_RESULT, info->rule = CASIM_RULE_ANSWER;
     if (st != CASIM_OK || k < 0 || k >= 1) {
         if (cap) out[0] = '\0';
