@@ -1,7 +1,8 @@
-# CAS 043's prototype p1 (throwaway, over 401bbe1): x^n = c under --complex, n 2..12, eleven values of c, in RAD,
-# DEG and GRAD (363 equations). Each row: the mode, the equation, the line's bytes, whether it is every root (ALL)
-# or the line without the bit (FLOOR), and the line. Every ALL line's roots judged outside casim (z^n against c in
-# Python's complex arithmetic, relative 1e-9, n distinct roots): 123 ALL, 240 FLOOR, 0 other, 0 judged wrong.
+# CAS 043's prototype p1 with ruling 1's form (throwaway, over 401bbe1): x^n = c under --complex, n 2..12, eleven
+# values of c, in RAD, DEG and GRAD (363 equations). Each row: the mode, the equation, the line's bytes, whether it is
+# every root (ALL) or the line without the bit (FLOOR), and the line. Every ALL line's roots judged outside casim (z^n
+# against c in Python's complex arithmetic, relative 1e-9, n distinct roots): 162 ALL, 201 FLOOR, 0 other, 0 judged
+# wrong; the 72 lines 1.9.0 already prints whole under the bit are byte for byte 1.9.0's.
 RAD | X^2=1 | 17 | ALL | SOLVED: X=-1; X=1
 RAD | X^2=-1 | 21 | ALL | SOLVED: X=-0i1; X=0i1
 RAD | X^2=2 | 29 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2)
@@ -15,26 +16,26 @@ RAD | X^2=3 | 29 | ALL | SOLVED: X=-SQRT(3); X=SQRT(3)
 RAD | X^2=-27 | 45 | ALL | SOLVED: X=-3×SQRT(3)×0i1; X=3×SQRT(3)×0i1
 RAD | X^3=1 | 59 | ALL | SOLVED: X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2
 RAD | X^3=-1 | 58 | ALL | SOLVED: X=-1; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-RAD | X^3=2 | 102 | ALL | SOLVED: X=2^(1÷3); X=-2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=-2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
-RAD | X^3=-2 | 101 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
+RAD | X^3=2 | 86 | ALL | SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+RAD | X^3=-2 | 85 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)×(1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(1+SQRT(3)×0i1)÷2
 RAD | X^3=8 | 49 | ALL | SOLVED: X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1
 RAD | X^3=-8 | 48 | ALL | SOLVED: X=-2; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-RAD | X^3=16 | 107 | ALL | SOLVED: X=16^(1÷3); X=-16^(1÷3)÷2-SQRT(3)×16^(1÷3)÷2×0i1; X=-16^(1÷3)÷2+SQRT(3)×16^(1÷3)÷2×0i1
+RAD | X^3=16 | 89 | ALL | SOLVED: X=16^(1÷3); X=16^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=16^(1÷3)×(-1+SQRT(3)×0i1)÷2
 RAD | X^3=64 | 55 | ALL | SOLVED: X=4; X=-2-2×SQRT(3)×0i1; X=-2+2×SQRT(3)×0i1
-RAD | X^3=1÷2 | 111 | ALL | SOLVED: X=1÷2^(1÷3); X=-1÷2÷2^(1÷3)-SQRT(3)÷2÷2^(1÷3)×0i1; X=-1÷2÷2^(1÷3)+SQRT(3)÷2÷2^(1÷3)×0i1
-RAD | X^3=3 | 84 | ALL | SOLVED: X=3^(1÷3); X=-3^(1÷3)÷2-3^(5÷6)÷2×0i1; X=-3^(1÷3)÷2+3^(5÷6)÷2×0i1
+RAD | X^3=1÷2 | 95 | ALL | SOLVED: X=1÷2^(1÷3); X=1÷2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+RAD | X^3=3 | 86 | ALL | SOLVED: X=3^(1÷3); X=3^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷3)×(-1+SQRT(3)×0i1)÷2
 RAD | X^3=-27 | 64 | ALL | SOLVED: X=-3; X=(3-3×SQRT(3)×0i1)÷2; X=(3+3×SQRT(3)×0i1)÷2
 RAD | X^4=1 | 32 | ALL | SOLVED: X=-1; X=1; X=-0i1; X=0i1
-RAD | X^4=-1 | 128 | ALL | SOLVED: X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+RAD | X^4=-1 | 124 | ALL | SOLVED: X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 RAD | X^4=2 | 66 | ALL | SOLVED: X=-2^(1÷4); X=2^(1÷4); X=-2^(1÷4)×0i1; X=2^(1÷4)×0i1
-RAD | X^4=-2 | 136 | ALL | SOLVED: X=2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=2^(3÷4)÷2+2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2+2^(3÷4)÷2×0i1
+RAD | X^4=-2 | 164 | ALL | SOLVED: X=2^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 RAD | X^4=8 | 66 | ALL | SOLVED: X=-8^(1÷4); X=8^(1÷4); X=-8^(1÷4)×0i1; X=8^(1÷4)×0i1
-RAD | X^4=-8 | 13 | FLOOR | NO REAL ROOTS
+RAD | X^4=-8 | 164 | ALL | SOLVED: X=8^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 RAD | X^4=16 | 38 | ALL | SOLVED: X=-2; X=2; X=-2×0i1; X=2×0i1
 RAD | X^4=64 | 74 | ALL | SOLVED: X=-2×SQRT(2); X=2×SQRT(2); X=-2×SQRT(2)×0i1; X=2×SQRT(2)×0i1
 RAD | X^4=1÷2 | 78 | ALL | SOLVED: X=-1÷2^(1÷4); X=1÷2^(1÷4); X=-1÷2^(1÷4)×0i1; X=1÷2^(1÷4)×0i1
 RAD | X^4=3 | 66 | ALL | SOLVED: X=-3^(1÷4); X=3^(1÷4); X=-3^(1÷4)×0i1; X=3^(1÷4)×0i1
-RAD | X^4=-27 | 13 | FLOOR | NO REAL ROOTS
+RAD | X^4=-27 | 168 | ALL | SOLVED: X=27^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 RAD | X^5=1 | 155 | ALL | SOLVED: X=1; X=COS(2×π÷5)-SIN(2×π÷5)×0i1; X=COS(2×π÷5)+SIN(2×π÷5)×0i1; X=COS(4×π÷5)-SIN(4×π÷5)×0i1; X=COS(4×π÷5)+SIN(4×π÷5)×0i1
 RAD | X^5=-1 | 144 | ALL | SOLVED: X=-1; X=COS(π÷5)-SIN(π÷5)×0i1; X=COS(π÷5)+SIN(π÷5)×0i1; X=COS(3×π÷5)-SIN(3×π÷5)×0i1; X=COS(3×π÷5)+SIN(3×π÷5)×0i1
 RAD | X^5=2 | 26 | FLOOR | SOLVED, 4 CPLX: X=2^(1÷5)
@@ -47,15 +48,15 @@ RAD | X^5=1÷2 | 29 | FLOOR | SOLVED, 4 CPLX: X=1÷2^(1÷5)
 RAD | X^5=3 | 26 | FLOOR | SOLVED, 4 CPLX: X=3^(1÷5)
 RAD | X^5=-27 | 28 | FLOOR | SOLVED, 4 CPLX: X=-27^(1÷5)
 RAD | X^6=1 | 111 | ALL | SOLVED: X=-1; X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-RAD | X^6=-1 | 119 | ALL | SOLVED: X=SQRT(3)÷2-1÷2×0i1; X=SQRT(3)÷2+1÷2×0i1; X=-0i1; X=0i1; X=-SQRT(3)÷2-1÷2×0i1; X=-SQRT(3)÷2+1÷2×0i1
-RAD | X^6=2 | 39 | FLOOR | SOLVED, 4 CPLX: X=-2^(1÷6); X=2^(1÷6)
-RAD | X^6=-2 | 13 | FLOOR | NO REAL ROOTS
-RAD | X^6=8 | 187 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1
-RAD | X^6=-8 | 13 | FLOOR | NO REAL ROOTS
-RAD | X^6=16 | 39 | FLOOR | SOLVED, 4 CPLX: X=-4^(1÷3); X=4^(1÷3)
+RAD | X^6=-1 | 103 | ALL | SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2
+RAD | X^6=2 | 165 | ALL | SOLVED: X=-2^(1÷6); X=2^(1÷6); X=2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+RAD | X^6=-2 | 163 | ALL | SOLVED: X=2^(1÷6)×(SQRT(3)-0i1)÷2; X=2^(1÷6)×(SQRT(3)+0i1)÷2; X=-2^(1÷6)×0i1; X=2^(1÷6)×0i1; X=2^(1÷6)×(-SQRT(3)-0i1)÷2; X=2^(1÷6)×(-SQRT(3)+0i1)÷2
+RAD | X^6=8 | 159 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)×(1-SQRT(3)×0i1)÷2; X=SQRT(2)×(1+SQRT(3)×0i1)÷2; X=SQRT(2)×(-1-SQRT(3)×0i1)÷2; X=SQRT(2)×(-1+SQRT(3)×0i1)÷2
+RAD | X^6=-8 | 157 | ALL | SOLVED: X=SQRT(2)×(SQRT(3)-0i1)÷2; X=SQRT(2)×(SQRT(3)+0i1)÷2; X=-SQRT(2)×0i1; X=SQRT(2)×0i1; X=SQRT(2)×(-SQRT(3)-0i1)÷2; X=SQRT(2)×(-SQRT(3)+0i1)÷2
+RAD | X^6=16 | 165 | ALL | SOLVED: X=-4^(1÷3); X=4^(1÷3); X=4^(1÷3)×(1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(1+SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1+SQRT(3)×0i1)÷2
 RAD | X^6=64 | 91 | ALL | SOLVED: X=-2; X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-RAD | X^6=1÷2 | 45 | FLOOR | SOLVED, 4 CPLX: X=-1÷2^(1÷6); X=1÷2^(1÷6)
-RAD | X^6=3 | 161 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=3^(1÷6)÷2+3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2+3^(2÷3)÷2×0i1
+RAD | X^6=1÷2 | 183 | ALL | SOLVED: X=-1÷2^(1÷6); X=1÷2^(1÷6); X=1÷2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+RAD | X^6=3 | 165 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)×(1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(1+SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1+SQRT(3)×0i1)÷2
 RAD | X^6=-27 | 133 | ALL | SOLVED: X=(-3-SQRT(3)×0i1)÷2; X=(-3+SQRT(3)×0i1)÷2; X=-SQRT(3)×0i1; X=SQRT(3)×0i1; X=(3-SQRT(3)×0i1)÷2; X=(3+SQRT(3)×0i1)÷2
 RAD | X^7=1 | 19 | FLOOR | SOLVED, 6 CPLX: X=1
 RAD | X^7=-1 | 20 | FLOOR | SOLVED, 6 CPLX: X=-1
@@ -68,7 +69,7 @@ RAD | X^7=64 | 27 | FLOOR | SOLVED, 6 CPLX: X=64^(1÷7)
 RAD | X^7=1÷2 | 29 | FLOOR | SOLVED, 6 CPLX: X=1÷2^(1÷7)
 RAD | X^7=3 | 26 | FLOOR | SOLVED, 6 CPLX: X=3^(1÷7)
 RAD | X^7=-27 | 28 | FLOOR | SOLVED, 6 CPLX: X=-27^(1÷7)
-RAD | X^8=1 | 154 | ALL | SOLVED: X=-1; X=1; X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-0i1; X=0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+RAD | X^8=1 | 150 | ALL | SOLVED: X=-1; X=1; X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 RAD | X^8=-1 | 13 | FLOOR | NO REAL ROOTS
 RAD | X^8=2 | 39 | FLOOR | SOLVED, 6 CPLX: X=-2^(1÷8); X=2^(1÷8)
 RAD | X^8=-2 | 13 | FLOOR | NO REAL ROOTS
@@ -136,47 +137,47 @@ DEG | X^2=3 | 29 | ALL | SOLVED: X=-SQRT(3); X=SQRT(3)
 DEG | X^2=-27 | 45 | ALL | SOLVED: X=-3×SQRT(3)×0i1; X=3×SQRT(3)×0i1
 DEG | X^3=1 | 59 | ALL | SOLVED: X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2
 DEG | X^3=-1 | 58 | ALL | SOLVED: X=-1; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-DEG | X^3=2 | 102 | ALL | SOLVED: X=2^(1÷3); X=-2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=-2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
-DEG | X^3=-2 | 101 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
+DEG | X^3=2 | 86 | ALL | SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+DEG | X^3=-2 | 85 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)×(1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(1+SQRT(3)×0i1)÷2
 DEG | X^3=8 | 49 | ALL | SOLVED: X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1
 DEG | X^3=-8 | 48 | ALL | SOLVED: X=-2; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-DEG | X^3=16 | 107 | ALL | SOLVED: X=16^(1÷3); X=-16^(1÷3)÷2-SQRT(3)×16^(1÷3)÷2×0i1; X=-16^(1÷3)÷2+SQRT(3)×16^(1÷3)÷2×0i1
+DEG | X^3=16 | 89 | ALL | SOLVED: X=16^(1÷3); X=16^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=16^(1÷3)×(-1+SQRT(3)×0i1)÷2
 DEG | X^3=64 | 55 | ALL | SOLVED: X=4; X=-2-2×SQRT(3)×0i1; X=-2+2×SQRT(3)×0i1
-DEG | X^3=1÷2 | 111 | ALL | SOLVED: X=1÷2^(1÷3); X=-1÷2÷2^(1÷3)-SQRT(3)÷2÷2^(1÷3)×0i1; X=-1÷2÷2^(1÷3)+SQRT(3)÷2÷2^(1÷3)×0i1
-DEG | X^3=3 | 84 | ALL | SOLVED: X=3^(1÷3); X=-3^(1÷3)÷2-3^(5÷6)÷2×0i1; X=-3^(1÷3)÷2+3^(5÷6)÷2×0i1
+DEG | X^3=1÷2 | 95 | ALL | SOLVED: X=1÷2^(1÷3); X=1÷2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+DEG | X^3=3 | 86 | ALL | SOLVED: X=3^(1÷3); X=3^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷3)×(-1+SQRT(3)×0i1)÷2
 DEG | X^3=-27 | 64 | ALL | SOLVED: X=-3; X=(3-3×SQRT(3)×0i1)÷2; X=(3+3×SQRT(3)×0i1)÷2
 DEG | X^4=1 | 32 | ALL | SOLVED: X=-1; X=1; X=-0i1; X=0i1
-DEG | X^4=-1 | 128 | ALL | SOLVED: X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+DEG | X^4=-1 | 124 | ALL | SOLVED: X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 DEG | X^4=2 | 66 | ALL | SOLVED: X=-2^(1÷4); X=2^(1÷4); X=-2^(1÷4)×0i1; X=2^(1÷4)×0i1
-DEG | X^4=-2 | 136 | ALL | SOLVED: X=2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=2^(3÷4)÷2+2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2+2^(3÷4)÷2×0i1
+DEG | X^4=-2 | 164 | ALL | SOLVED: X=2^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 DEG | X^4=8 | 66 | ALL | SOLVED: X=-8^(1÷4); X=8^(1÷4); X=-8^(1÷4)×0i1; X=8^(1÷4)×0i1
-DEG | X^4=-8 | 13 | FLOOR | NO REAL ROOTS
+DEG | X^4=-8 | 164 | ALL | SOLVED: X=8^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 DEG | X^4=16 | 38 | ALL | SOLVED: X=-2; X=2; X=-2×0i1; X=2×0i1
 DEG | X^4=64 | 74 | ALL | SOLVED: X=-2×SQRT(2); X=2×SQRT(2); X=-2×SQRT(2)×0i1; X=2×SQRT(2)×0i1
 DEG | X^4=1÷2 | 78 | ALL | SOLVED: X=-1÷2^(1÷4); X=1÷2^(1÷4); X=-1÷2^(1÷4)×0i1; X=1÷2^(1÷4)×0i1
 DEG | X^4=3 | 66 | ALL | SOLVED: X=-3^(1÷4); X=3^(1÷4); X=-3^(1÷4)×0i1; X=3^(1÷4)×0i1
-DEG | X^4=-27 | 13 | FLOOR | NO REAL ROOTS
+DEG | X^4=-27 | 168 | ALL | SOLVED: X=27^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 DEG | X^5=1 | 111 | ALL | SOLVED: X=1; X=COS(72)-SIN(72)×0i1; X=COS(72)+SIN(72)×0i1; X=COS(144)-SIN(144)×0i1; X=COS(144)+SIN(144)×0i1
 DEG | X^5=-1 | 112 | ALL | SOLVED: X=-1; X=COS(36)-SIN(36)×0i1; X=COS(36)+SIN(36)×0i1; X=COS(108)-SIN(108)×0i1; X=COS(108)+SIN(108)×0i1
-DEG | X^5=2 | 26 | FLOOR | SOLVED, 4 CPLX: X=2^(1÷5)
-DEG | X^5=-2 | 27 | FLOOR | SOLVED, 4 CPLX: X=-2^(1÷5)
-DEG | X^5=8 | 26 | FLOOR | SOLVED, 4 CPLX: X=8^(1÷5)
-DEG | X^5=-8 | 27 | FLOOR | SOLVED, 4 CPLX: X=-8^(1÷5)
-DEG | X^5=16 | 27 | FLOOR | SOLVED, 4 CPLX: X=16^(1÷5)
-DEG | X^5=64 | 27 | FLOOR | SOLVED, 4 CPLX: X=64^(1÷5)
-DEG | X^5=1÷2 | 29 | FLOOR | SOLVED, 4 CPLX: X=1÷2^(1÷5)
-DEG | X^5=3 | 26 | FLOOR | SOLVED, 4 CPLX: X=3^(1÷5)
-DEG | X^5=-27 | 28 | FLOOR | SOLVED, 4 CPLX: X=-27^(1÷5)
+DEG | X^5=2 | 166 | ALL | SOLVED: X=2^(1÷5); X=2^(1÷5)×(COS(72)-SIN(72)×0i1); X=2^(1÷5)×(COS(72)+SIN(72)×0i1); X=2^(1÷5)×(COS(144)-SIN(144)×0i1); X=2^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=-2 | 167 | ALL | SOLVED: X=-2^(1÷5); X=2^(1÷5)×(COS(36)-SIN(36)×0i1); X=2^(1÷5)×(COS(36)+SIN(36)×0i1); X=2^(1÷5)×(COS(108)-SIN(108)×0i1); X=2^(1÷5)×(COS(108)+SIN(108)×0i1)
+DEG | X^5=8 | 166 | ALL | SOLVED: X=8^(1÷5); X=8^(1÷5)×(COS(72)-SIN(72)×0i1); X=8^(1÷5)×(COS(72)+SIN(72)×0i1); X=8^(1÷5)×(COS(144)-SIN(144)×0i1); X=8^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=-8 | 167 | ALL | SOLVED: X=-8^(1÷5); X=8^(1÷5)×(COS(36)-SIN(36)×0i1); X=8^(1÷5)×(COS(36)+SIN(36)×0i1); X=8^(1÷5)×(COS(108)-SIN(108)×0i1); X=8^(1÷5)×(COS(108)+SIN(108)×0i1)
+DEG | X^5=16 | 171 | ALL | SOLVED: X=16^(1÷5); X=16^(1÷5)×(COS(72)-SIN(72)×0i1); X=16^(1÷5)×(COS(72)+SIN(72)×0i1); X=16^(1÷5)×(COS(144)-SIN(144)×0i1); X=16^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=64 | 171 | ALL | SOLVED: X=64^(1÷5); X=64^(1÷5)×(COS(72)-SIN(72)×0i1); X=64^(1÷5)×(COS(72)+SIN(72)×0i1); X=64^(1÷5)×(COS(144)-SIN(144)×0i1); X=64^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=1÷2 | 181 | ALL | SOLVED: X=1÷2^(1÷5); X=1÷2^(1÷5)×(COS(72)-SIN(72)×0i1); X=1÷2^(1÷5)×(COS(72)+SIN(72)×0i1); X=1÷2^(1÷5)×(COS(144)-SIN(144)×0i1); X=1÷2^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=3 | 166 | ALL | SOLVED: X=3^(1÷5); X=3^(1÷5)×(COS(72)-SIN(72)×0i1); X=3^(1÷5)×(COS(72)+SIN(72)×0i1); X=3^(1÷5)×(COS(144)-SIN(144)×0i1); X=3^(1÷5)×(COS(144)+SIN(144)×0i1)
+DEG | X^5=-27 | 172 | ALL | SOLVED: X=-27^(1÷5); X=27^(1÷5)×(COS(36)-SIN(36)×0i1); X=27^(1÷5)×(COS(36)+SIN(36)×0i1); X=27^(1÷5)×(COS(108)-SIN(108)×0i1); X=27^(1÷5)×(COS(108)+SIN(108)×0i1)
 DEG | X^6=1 | 111 | ALL | SOLVED: X=-1; X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-DEG | X^6=-1 | 119 | ALL | SOLVED: X=SQRT(3)÷2-1÷2×0i1; X=SQRT(3)÷2+1÷2×0i1; X=-0i1; X=0i1; X=-SQRT(3)÷2-1÷2×0i1; X=-SQRT(3)÷2+1÷2×0i1
-DEG | X^6=2 | 39 | FLOOR | SOLVED, 4 CPLX: X=-2^(1÷6); X=2^(1÷6)
-DEG | X^6=-2 | 13 | FLOOR | NO REAL ROOTS
-DEG | X^6=8 | 187 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1
-DEG | X^6=-8 | 13 | FLOOR | NO REAL ROOTS
-DEG | X^6=16 | 39 | FLOOR | SOLVED, 4 CPLX: X=-4^(1÷3); X=4^(1÷3)
+DEG | X^6=-1 | 103 | ALL | SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2
+DEG | X^6=2 | 165 | ALL | SOLVED: X=-2^(1÷6); X=2^(1÷6); X=2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+DEG | X^6=-2 | 163 | ALL | SOLVED: X=2^(1÷6)×(SQRT(3)-0i1)÷2; X=2^(1÷6)×(SQRT(3)+0i1)÷2; X=-2^(1÷6)×0i1; X=2^(1÷6)×0i1; X=2^(1÷6)×(-SQRT(3)-0i1)÷2; X=2^(1÷6)×(-SQRT(3)+0i1)÷2
+DEG | X^6=8 | 159 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)×(1-SQRT(3)×0i1)÷2; X=SQRT(2)×(1+SQRT(3)×0i1)÷2; X=SQRT(2)×(-1-SQRT(3)×0i1)÷2; X=SQRT(2)×(-1+SQRT(3)×0i1)÷2
+DEG | X^6=-8 | 157 | ALL | SOLVED: X=SQRT(2)×(SQRT(3)-0i1)÷2; X=SQRT(2)×(SQRT(3)+0i1)÷2; X=-SQRT(2)×0i1; X=SQRT(2)×0i1; X=SQRT(2)×(-SQRT(3)-0i1)÷2; X=SQRT(2)×(-SQRT(3)+0i1)÷2
+DEG | X^6=16 | 165 | ALL | SOLVED: X=-4^(1÷3); X=4^(1÷3); X=4^(1÷3)×(1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(1+SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1+SQRT(3)×0i1)÷2
 DEG | X^6=64 | 91 | ALL | SOLVED: X=-2; X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-DEG | X^6=1÷2 | 45 | FLOOR | SOLVED, 4 CPLX: X=-1÷2^(1÷6); X=1÷2^(1÷6)
-DEG | X^6=3 | 161 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=3^(1÷6)÷2+3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2+3^(2÷3)÷2×0i1
+DEG | X^6=1÷2 | 183 | ALL | SOLVED: X=-1÷2^(1÷6); X=1÷2^(1÷6); X=1÷2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+DEG | X^6=3 | 165 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)×(1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(1+SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1+SQRT(3)×0i1)÷2
 DEG | X^6=-27 | 133 | ALL | SOLVED: X=(-3-SQRT(3)×0i1)÷2; X=(-3+SQRT(3)×0i1)÷2; X=-SQRT(3)×0i1; X=SQRT(3)×0i1; X=(3-SQRT(3)×0i1)÷2; X=(3+SQRT(3)×0i1)÷2
 DEG | X^7=1 | 19 | FLOOR | SOLVED, 6 CPLX: X=1
 DEG | X^7=-1 | 20 | FLOOR | SOLVED, 6 CPLX: X=-1
@@ -189,7 +190,7 @@ DEG | X^7=64 | 27 | FLOOR | SOLVED, 6 CPLX: X=64^(1÷7)
 DEG | X^7=1÷2 | 29 | FLOOR | SOLVED, 6 CPLX: X=1÷2^(1÷7)
 DEG | X^7=3 | 26 | FLOOR | SOLVED, 6 CPLX: X=3^(1÷7)
 DEG | X^7=-27 | 28 | FLOOR | SOLVED, 6 CPLX: X=-27^(1÷7)
-DEG | X^8=1 | 154 | ALL | SOLVED: X=-1; X=1; X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-0i1; X=0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+DEG | X^8=1 | 150 | ALL | SOLVED: X=-1; X=1; X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 DEG | X^8=-1 | 13 | FLOOR | NO REAL ROOTS
 DEG | X^8=2 | 39 | FLOOR | SOLVED, 6 CPLX: X=-2^(1÷8); X=2^(1÷8)
 DEG | X^8=-2 | 13 | FLOOR | NO REAL ROOTS
@@ -257,47 +258,47 @@ GRAD | X^2=3 | 29 | ALL | SOLVED: X=-SQRT(3); X=SQRT(3)
 GRAD | X^2=-27 | 45 | ALL | SOLVED: X=-3×SQRT(3)×0i1; X=3×SQRT(3)×0i1
 GRAD | X^3=1 | 59 | ALL | SOLVED: X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2
 GRAD | X^3=-1 | 58 | ALL | SOLVED: X=-1; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-GRAD | X^3=2 | 102 | ALL | SOLVED: X=2^(1÷3); X=-2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=-2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
-GRAD | X^3=-2 | 101 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)÷2-2^(1÷3)×SQRT(3)÷2×0i1; X=2^(1÷3)÷2+2^(1÷3)×SQRT(3)÷2×0i1
+GRAD | X^3=2 | 86 | ALL | SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+GRAD | X^3=-2 | 85 | ALL | SOLVED: X=-2^(1÷3); X=2^(1÷3)×(1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(1+SQRT(3)×0i1)÷2
 GRAD | X^3=8 | 49 | ALL | SOLVED: X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1
 GRAD | X^3=-8 | 48 | ALL | SOLVED: X=-2; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-GRAD | X^3=16 | 107 | ALL | SOLVED: X=16^(1÷3); X=-16^(1÷3)÷2-SQRT(3)×16^(1÷3)÷2×0i1; X=-16^(1÷3)÷2+SQRT(3)×16^(1÷3)÷2×0i1
+GRAD | X^3=16 | 89 | ALL | SOLVED: X=16^(1÷3); X=16^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=16^(1÷3)×(-1+SQRT(3)×0i1)÷2
 GRAD | X^3=64 | 55 | ALL | SOLVED: X=4; X=-2-2×SQRT(3)×0i1; X=-2+2×SQRT(3)×0i1
-GRAD | X^3=1÷2 | 111 | ALL | SOLVED: X=1÷2^(1÷3); X=-1÷2÷2^(1÷3)-SQRT(3)÷2÷2^(1÷3)×0i1; X=-1÷2÷2^(1÷3)+SQRT(3)÷2÷2^(1÷3)×0i1
-GRAD | X^3=3 | 84 | ALL | SOLVED: X=3^(1÷3); X=-3^(1÷3)÷2-3^(5÷6)÷2×0i1; X=-3^(1÷3)÷2+3^(5÷6)÷2×0i1
+GRAD | X^3=1÷2 | 95 | ALL | SOLVED: X=1÷2^(1÷3); X=1÷2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷3)×(-1+SQRT(3)×0i1)÷2
+GRAD | X^3=3 | 86 | ALL | SOLVED: X=3^(1÷3); X=3^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷3)×(-1+SQRT(3)×0i1)÷2
 GRAD | X^3=-27 | 64 | ALL | SOLVED: X=-3; X=(3-3×SQRT(3)×0i1)÷2; X=(3+3×SQRT(3)×0i1)÷2
 GRAD | X^4=1 | 32 | ALL | SOLVED: X=-1; X=1; X=-0i1; X=0i1
-GRAD | X^4=-1 | 128 | ALL | SOLVED: X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+GRAD | X^4=-1 | 124 | ALL | SOLVED: X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 GRAD | X^4=2 | 66 | ALL | SOLVED: X=-2^(1÷4); X=2^(1÷4); X=-2^(1÷4)×0i1; X=2^(1÷4)×0i1
-GRAD | X^4=-2 | 136 | ALL | SOLVED: X=2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=2^(3÷4)÷2+2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2-2^(3÷4)÷2×0i1; X=-2^(3÷4)÷2+2^(3÷4)÷2×0i1
+GRAD | X^4=-2 | 164 | ALL | SOLVED: X=2^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=2^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 GRAD | X^4=8 | 66 | ALL | SOLVED: X=-8^(1÷4); X=8^(1÷4); X=-8^(1÷4)×0i1; X=8^(1÷4)×0i1
-GRAD | X^4=-8 | 13 | FLOOR | NO REAL ROOTS
+GRAD | X^4=-8 | 164 | ALL | SOLVED: X=8^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=8^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 GRAD | X^4=16 | 38 | ALL | SOLVED: X=-2; X=2; X=-2×0i1; X=2×0i1
 GRAD | X^4=64 | 74 | ALL | SOLVED: X=-2×SQRT(2); X=2×SQRT(2); X=-2×SQRT(2)×0i1; X=2×SQRT(2)×0i1
 GRAD | X^4=1÷2 | 78 | ALL | SOLVED: X=-1÷2^(1÷4); X=1÷2^(1÷4); X=-1÷2^(1÷4)×0i1; X=1÷2^(1÷4)×0i1
 GRAD | X^4=3 | 66 | ALL | SOLVED: X=-3^(1÷4); X=3^(1÷4); X=-3^(1÷4)×0i1; X=3^(1÷4)×0i1
-GRAD | X^4=-27 | 13 | FLOOR | NO REAL ROOTS
+GRAD | X^4=-27 | 168 | ALL | SOLVED: X=27^(1÷4)×(SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(SQRT(2)+SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)-SQRT(2)×0i1)÷2; X=27^(1÷4)×(-SQRT(2)+SQRT(2)×0i1)÷2
 GRAD | X^5=1 | 111 | ALL | SOLVED: X=1; X=COS(80)-SIN(80)×0i1; X=COS(80)+SIN(80)×0i1; X=COS(160)-SIN(160)×0i1; X=COS(160)+SIN(160)×0i1
 GRAD | X^5=-1 | 112 | ALL | SOLVED: X=-1; X=COS(40)-SIN(40)×0i1; X=COS(40)+SIN(40)×0i1; X=COS(120)-SIN(120)×0i1; X=COS(120)+SIN(120)×0i1
-GRAD | X^5=2 | 26 | FLOOR | SOLVED, 4 CPLX: X=2^(1÷5)
-GRAD | X^5=-2 | 27 | FLOOR | SOLVED, 4 CPLX: X=-2^(1÷5)
-GRAD | X^5=8 | 26 | FLOOR | SOLVED, 4 CPLX: X=8^(1÷5)
-GRAD | X^5=-8 | 27 | FLOOR | SOLVED, 4 CPLX: X=-8^(1÷5)
-GRAD | X^5=16 | 27 | FLOOR | SOLVED, 4 CPLX: X=16^(1÷5)
-GRAD | X^5=64 | 27 | FLOOR | SOLVED, 4 CPLX: X=64^(1÷5)
-GRAD | X^5=1÷2 | 29 | FLOOR | SOLVED, 4 CPLX: X=1÷2^(1÷5)
-GRAD | X^5=3 | 26 | FLOOR | SOLVED, 4 CPLX: X=3^(1÷5)
-GRAD | X^5=-27 | 28 | FLOOR | SOLVED, 4 CPLX: X=-27^(1÷5)
+GRAD | X^5=2 | 166 | ALL | SOLVED: X=2^(1÷5); X=2^(1÷5)×(COS(80)-SIN(80)×0i1); X=2^(1÷5)×(COS(80)+SIN(80)×0i1); X=2^(1÷5)×(COS(160)-SIN(160)×0i1); X=2^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=-2 | 167 | ALL | SOLVED: X=-2^(1÷5); X=2^(1÷5)×(COS(40)-SIN(40)×0i1); X=2^(1÷5)×(COS(40)+SIN(40)×0i1); X=2^(1÷5)×(COS(120)-SIN(120)×0i1); X=2^(1÷5)×(COS(120)+SIN(120)×0i1)
+GRAD | X^5=8 | 166 | ALL | SOLVED: X=8^(1÷5); X=8^(1÷5)×(COS(80)-SIN(80)×0i1); X=8^(1÷5)×(COS(80)+SIN(80)×0i1); X=8^(1÷5)×(COS(160)-SIN(160)×0i1); X=8^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=-8 | 167 | ALL | SOLVED: X=-8^(1÷5); X=8^(1÷5)×(COS(40)-SIN(40)×0i1); X=8^(1÷5)×(COS(40)+SIN(40)×0i1); X=8^(1÷5)×(COS(120)-SIN(120)×0i1); X=8^(1÷5)×(COS(120)+SIN(120)×0i1)
+GRAD | X^5=16 | 171 | ALL | SOLVED: X=16^(1÷5); X=16^(1÷5)×(COS(80)-SIN(80)×0i1); X=16^(1÷5)×(COS(80)+SIN(80)×0i1); X=16^(1÷5)×(COS(160)-SIN(160)×0i1); X=16^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=64 | 171 | ALL | SOLVED: X=64^(1÷5); X=64^(1÷5)×(COS(80)-SIN(80)×0i1); X=64^(1÷5)×(COS(80)+SIN(80)×0i1); X=64^(1÷5)×(COS(160)-SIN(160)×0i1); X=64^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=1÷2 | 181 | ALL | SOLVED: X=1÷2^(1÷5); X=1÷2^(1÷5)×(COS(80)-SIN(80)×0i1); X=1÷2^(1÷5)×(COS(80)+SIN(80)×0i1); X=1÷2^(1÷5)×(COS(160)-SIN(160)×0i1); X=1÷2^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=3 | 166 | ALL | SOLVED: X=3^(1÷5); X=3^(1÷5)×(COS(80)-SIN(80)×0i1); X=3^(1÷5)×(COS(80)+SIN(80)×0i1); X=3^(1÷5)×(COS(160)-SIN(160)×0i1); X=3^(1÷5)×(COS(160)+SIN(160)×0i1)
+GRAD | X^5=-27 | 172 | ALL | SOLVED: X=-27^(1÷5); X=27^(1÷5)×(COS(40)-SIN(40)×0i1); X=27^(1÷5)×(COS(40)+SIN(40)×0i1); X=27^(1÷5)×(COS(120)-SIN(120)×0i1); X=27^(1÷5)×(COS(120)+SIN(120)×0i1)
 GRAD | X^6=1 | 111 | ALL | SOLVED: X=-1; X=1; X=(-1-SQRT(3)×0i1)÷2; X=(-1+SQRT(3)×0i1)÷2; X=(1-SQRT(3)×0i1)÷2; X=(1+SQRT(3)×0i1)÷2
-GRAD | X^6=-1 | 119 | ALL | SOLVED: X=SQRT(3)÷2-1÷2×0i1; X=SQRT(3)÷2+1÷2×0i1; X=-0i1; X=0i1; X=-SQRT(3)÷2-1÷2×0i1; X=-SQRT(3)÷2+1÷2×0i1
-GRAD | X^6=2 | 39 | FLOOR | SOLVED, 4 CPLX: X=-2^(1÷6); X=2^(1÷6)
-GRAD | X^6=-2 | 13 | FLOOR | NO REAL ROOTS
-GRAD | X^6=8 | 187 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2-SQRT(2)×SQRT(3)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)×SQRT(3)÷2×0i1
-GRAD | X^6=-8 | 13 | FLOOR | NO REAL ROOTS
-GRAD | X^6=16 | 39 | FLOOR | SOLVED, 4 CPLX: X=-4^(1÷3); X=4^(1÷3)
+GRAD | X^6=-1 | 103 | ALL | SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2
+GRAD | X^6=2 | 165 | ALL | SOLVED: X=-2^(1÷6); X=2^(1÷6); X=2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+GRAD | X^6=-2 | 163 | ALL | SOLVED: X=2^(1÷6)×(SQRT(3)-0i1)÷2; X=2^(1÷6)×(SQRT(3)+0i1)÷2; X=-2^(1÷6)×0i1; X=2^(1÷6)×0i1; X=2^(1÷6)×(-SQRT(3)-0i1)÷2; X=2^(1÷6)×(-SQRT(3)+0i1)÷2
+GRAD | X^6=8 | 159 | ALL | SOLVED: X=-SQRT(2); X=SQRT(2); X=SQRT(2)×(1-SQRT(3)×0i1)÷2; X=SQRT(2)×(1+SQRT(3)×0i1)÷2; X=SQRT(2)×(-1-SQRT(3)×0i1)÷2; X=SQRT(2)×(-1+SQRT(3)×0i1)÷2
+GRAD | X^6=-8 | 157 | ALL | SOLVED: X=SQRT(2)×(SQRT(3)-0i1)÷2; X=SQRT(2)×(SQRT(3)+0i1)÷2; X=-SQRT(2)×0i1; X=SQRT(2)×0i1; X=SQRT(2)×(-SQRT(3)-0i1)÷2; X=SQRT(2)×(-SQRT(3)+0i1)÷2
+GRAD | X^6=16 | 165 | ALL | SOLVED: X=-4^(1÷3); X=4^(1÷3); X=4^(1÷3)×(1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(1+SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=4^(1÷3)×(-1+SQRT(3)×0i1)÷2
 GRAD | X^6=64 | 91 | ALL | SOLVED: X=-2; X=2; X=-1-SQRT(3)×0i1; X=-1+SQRT(3)×0i1; X=1-SQRT(3)×0i1; X=1+SQRT(3)×0i1
-GRAD | X^6=1÷2 | 45 | FLOOR | SOLVED, 4 CPLX: X=-1÷2^(1÷6); X=1÷2^(1÷6)
-GRAD | X^6=3 | 161 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=3^(1÷6)÷2+3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2-3^(2÷3)÷2×0i1; X=-3^(1÷6)÷2+3^(2÷3)÷2×0i1
+GRAD | X^6=1÷2 | 183 | ALL | SOLVED: X=-1÷2^(1÷6); X=1÷2^(1÷6); X=1÷2^(1÷6)×(1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(1+SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=1÷2^(1÷6)×(-1+SQRT(3)×0i1)÷2
+GRAD | X^6=3 | 165 | ALL | SOLVED: X=-3^(1÷6); X=3^(1÷6); X=3^(1÷6)×(1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(1+SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1-SQRT(3)×0i1)÷2; X=3^(1÷6)×(-1+SQRT(3)×0i1)÷2
 GRAD | X^6=-27 | 133 | ALL | SOLVED: X=(-3-SQRT(3)×0i1)÷2; X=(-3+SQRT(3)×0i1)÷2; X=-SQRT(3)×0i1; X=SQRT(3)×0i1; X=(3-SQRT(3)×0i1)÷2; X=(3+SQRT(3)×0i1)÷2
 GRAD | X^7=1 | 19 | FLOOR | SOLVED, 6 CPLX: X=1
 GRAD | X^7=-1 | 20 | FLOOR | SOLVED, 6 CPLX: X=-1
@@ -310,7 +311,7 @@ GRAD | X^7=64 | 27 | FLOOR | SOLVED, 6 CPLX: X=64^(1÷7)
 GRAD | X^7=1÷2 | 29 | FLOOR | SOLVED, 6 CPLX: X=1÷2^(1÷7)
 GRAD | X^7=3 | 26 | FLOOR | SOLVED, 6 CPLX: X=3^(1÷7)
 GRAD | X^7=-27 | 28 | FLOOR | SOLVED, 6 CPLX: X=-27^(1÷7)
-GRAD | X^8=1 | 154 | ALL | SOLVED: X=-1; X=1; X=SQRT(2)÷2-SQRT(2)÷2×0i1; X=SQRT(2)÷2+SQRT(2)÷2×0i1; X=-0i1; X=0i1; X=-SQRT(2)÷2-SQRT(2)÷2×0i1; X=-SQRT(2)÷2+SQRT(2)÷2×0i1
+GRAD | X^8=1 | 150 | ALL | SOLVED: X=-1; X=1; X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2
 GRAD | X^8=-1 | 13 | FLOOR | NO REAL ROOTS
 GRAD | X^8=2 | 39 | FLOOR | SOLVED, 6 CPLX: X=-2^(1÷8); X=2^(1÷8)
 GRAD | X^8=-2 | 13 | FLOOR | NO REAL ROOTS

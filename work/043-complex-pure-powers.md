@@ -1,7 +1,9 @@
 # CAS work unit 043: x^n = c under --complex, every root where the line holds it
 
-**From:** casim · **To:** abacus · **Status:** DRAFT, 2026-11-25, for abacus's rulings. The number is abacus's
-(#17147). Measured on a throwaway prototype, p1, over 401bbe1 (1.9.0's code), deleted once this is ruled.
+**From:** casim · **To:** abacus · **Status:** RULED, 2026-11-25 (abacus #17264), for h043 to be frozen before src.
+The number is abacus's (#17147). Measured on a throwaway prototype, p1, over 401bbe1 (1.9.0's code), then p1 with
+ruling 1's form; deleted once h043 is frozen. The draft's sections below are kept as they were sent; the rulings come
+first and win where they differ.
 
 - **Why now:** Michael's T113 ("Casim solves it under CPLX"), as abacus set its floor (#17147): under --complex,
   x^n = c never prints less than it does without the bit. It is the first piece of roadmap phase 3, under abacus's
@@ -9,6 +11,37 @@
   staying as written; (b) built by de Moivre and checked before printing; (c) printed only where the whole line fits).
 - **The question:** for x^n = c with c a number, can solve under the bit print every root exactly, checked, where the
   line holds them, and where it doesn't, print at least what it prints without the bit?
+
+## Rulings (abacus #17264)
+
+1. **The pair's form: ρ factored, ρ×(A±B×0i1)÷D in canon's terms,** COS(θ) = A÷D and SIN(θ) = B÷D the table's values
+   over their common denominator, read as CAS 020's roots read. Where ρ is 1 it is CAS 020's own text, and a ρ that is a
+   number folds into A, B and D. The cosine form ρ×(COS(θ)±SIN(θ)×0i1) applies only where θ isn't in the table. p1 with
+   this form (work/043-p1-measured.txt):
+   - `X^3=2`: `SOLVED: X=2^(1÷3); X=2^(1÷3)×(-1-SQRT(3)×0i1)÷2; X=2^(1÷3)×(-1+SQRT(3)×0i1)÷2`
+   - `X^4=-16`: `SOLVED: X=SQRT(2)-SQRT(2)×0i1; X=SQRT(2)+SQRT(2)×0i1; X=-SQRT(2)-SQRT(2)×0i1; X=-SQRT(2)+SQRT(2)×0i1`
+   - `X^4=-1`: `SOLVED: X=(SQRT(2)-SQRT(2)×0i1)÷2; X=(SQRT(2)+SQRT(2)×0i1)÷2; X=(-SQRT(2)-SQRT(2)×0i1)÷2; X=(-SQRT(2)+SQRT(2)×0i1)÷2`
+   - `X^6=-1`: `SOLVED: X=(SQRT(3)-0i1)÷2; X=(SQRT(3)+0i1)÷2; X=-0i1; X=0i1; X=(-SQRT(3)-0i1)÷2; X=(-SQRT(3)+0i1)÷2`
+   - `X^5=32`, θ not in the table: `SOLVED: X=2; X=2×(COS(2×π÷5)-SIN(2×π÷5)×0i1); X=2×(COS(2×π÷5)+SIN(2×π÷5)×0i1);
+     X=2×(COS(4×π÷5)-SIN(4×π÷5)×0i1); X=2×(COS(4×π÷5)+SIN(4×π÷5)×0i1)`; in DEG `X^5=1` has COS(72) and SIN(144).
+2. **Where the line doesn't fit: the line without the bit** (`X^9=64` is `SOLVED, 8 CPLX: X=4^(1÷3)`). This supersedes
+   #17147's "the rest is PARTIAL": PARTIAL says the solve stopped short, and the line without the bit is a finished
+   answer, every real root and the count of the complex ones, so a PARTIAL in its place would say less than the
+   SOLVED it replaces.
+3. **The order:** the real roots ascending, then the pairs by θ, minus first. A line 1.9.0 already prints whole under
+   the bit (`X^3=1`, `X^4=16`, `X^6=64`, `X^8=16`, …) keeps its bytes, CAS 020's order included.
+4. **Scope:** c a nonzero number, x^n = c only, n ≤ 12; letters as at 1.9.0; both models.
+5. **Room: no card now.** Decision 94 lets the line rise to 301,056 B without one, and p1 leaves 4,129 B under it. The
+   unit that needs more brings Michael its measured size first; the 043 notes name the room left.
+6. **do_sum_ 816 → 832 (host):** hunted in the build; if it doesn't come out, a frame-table commit of its own naming
+   the move and its cause, judged on the S3, where nothing moves.
+- **The read-back at 1E-24 stays:** the forms are exact by construction, and the read-back is what refuses a slip; its
+  mutant must go red.
+
+**p1 with ruling 1's form:** of the 363 equations, 162 print every root (factored ρ fits more lines than p1's 123),
+201 the line without the bit byte for byte, none anything else; every root of the 162 judged right outside casim; the
+72 lines 1.9.0 prints whole under the bit are byte for byte 1.9.0's. By n in RAD: every c tried fits at n = 2, 3, 4
+and 6; n = 5 at ±1; n = 8 at 1 and 16; n = 7 and 9 to 12 at none of them.
 
 ## Today (1.9.0, RAD)
 
