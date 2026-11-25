@@ -18,7 +18,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-036.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-041.txt")]   # a later unit's moves, put back at their before first
+LATER = [os.path.join(GOLDEN, "moved", "cas-042.txt"), os.path.join(GOLDEN, "moved", "cas-041.txt")]   # a later unit's moves, put back at their before first
 BASE = "6090b8c"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
 sv = importlib.util.module_from_spec(_spec)

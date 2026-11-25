@@ -1,0 +1,43 @@
+# The golden lines CAS 042 (integrals of powers and products of SIN and COS: work/042-trig-integrals.md) moved.
+# Each line's inputs, then its status and answer before (c564e41, 1.8.0's tree) and after. Putting every before
+# back gives c564e41's files byte for byte (their sha256 below). Each is integrate SIN(X)^2 or COS(X)^2,
+# NOT_INTEGRABLE before and its multiple-angle answer after (ruling 1).
+# c564e41 corpus.txt sha256 b0535df82ac8cb82d283d82db2c1649c5860bd1485f63e4019d197f864ccb9c3
+# c564e41 decimal.txt sha256 8c36dea0299222089bf4106d3c72dc1a4c6695c8e1e7cc186618744a21bc2ab0
+integrate	35	23	1	35	65536	65536	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2-SIN(2×X)÷4
+integrate	35	23	1	35	8800	192	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2-SIN(2×X)÷4
+integrate	35	23	1	35	8800	65536	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2-SIN(2×X)÷4
+integrate	35	23	1	35	8800	65536	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2+SIN(2×X)÷4
+integrate	35	23	1	35	65536	65536	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2+SIN(2×X)÷4
+integrate	35	23	1	35	8800	192	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	X÷2+SIN(2×X)÷4
+# Under →DEC (tests/golden/decimal.txt): 6 lines
+integrate	35	23	1	35	65536	65536	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X-0.25×SIN(2×X)
+integrate	35	23	1	35	8800	192	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X-0.25×SIN(2×X)
+integrate	35	23	1	35	8800	65536	SIN(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X-0.25×SIN(2×X)
+integrate	35	23	1	35	8800	65536	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X+0.25×SIN(2×X)
+integrate	35	23	1	35	65536	65536	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X+0.25×SIN(2×X)
+integrate	35	23	1	35	8800	192	COS(X)^2	\N	\N
+  before	NOT_INTEGRABLE	
+  after	OK	0.5×X+0.25×SIN(2×X)

@@ -22,7 +22,7 @@ from decimal import Decimal as D
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "tests", "golden")
 MOVED = os.path.join(GOLDEN, "moved", "cas-035.txt")
-LATER = [os.path.join(GOLDEN, "moved", "cas-041.txt"),   # latest first: a line two units moved goes back in turn
+LATER = [os.path.join(GOLDEN, "moved", "cas-042.txt"), os.path.join(GOLDEN, "moved", "cas-041.txt"),   # latest first: a line two units moved goes back in turn
          os.path.join(GOLDEN, "moved", "cas-036.txt")]
 BASE = "cda0fcb"
 _spec = importlib.util.spec_from_file_location("sv", os.path.join(ROOT, "scripts", "sum-values.py"))
