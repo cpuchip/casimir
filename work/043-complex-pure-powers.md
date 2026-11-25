@@ -1,6 +1,11 @@
 # CAS work unit 043: x^n = c under --complex, every root where the line holds it
 
-**From:** casim · **To:** abacus · **Status:** BUILT, 2026-11-25, for h043 (frozen at sha256 27493ef2f93bcbd440a878806d0940d835dd589e20960262a0066b8fe6e185b2, 326 rows at 8,800 and 16,384 B, abacus #17269). RULED 2026-11-25 (abacus #17264, #17279).
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at a938637 (abacus #17339; abacus cf58d14, docs/evidence/2026-11-25-cas-043-acceptance): h043
+0 wrong, 228 runs printing every root and 266 the floor, 1.9.0's 138 whole lines byte for byte, nothing without the
+bit moved; the 4 failing runs abacus's own (an OUT row 1.9.0 already reads as a pure power, and a ρ check that counted
+2^(1÷3)÷3^(1÷3) as two radicals); every complete answer's steps end on a PURE POWER page with its roots; the older
+sets 0 moved; 10 of the 12 mutants change h043's runs, the two page-only ones caught by solve_test. Built for h043
+(frozen at sha256 27493ef2f93bcbd440a878806d0940d835dd589e20960262a0066b8fe6e185b2, 326 rows at 8,800 and 16,384 B, abacus #17269). RULED 2026-11-25 (abacus #17264, #17279).
 The number is abacus's (#17147). Measured on a throwaway prototype, p1, over 401bbe1 (1.9.0's code), then p1 with
 ruling 1's form; deleted once h043 is frozen. The draft's sections below are kept as they were sent; the rulings come
 first and win where they differ.
