@@ -150,7 +150,8 @@ gzipped), most of it the decimal library's tables.
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 632 deliberate faults, each of which the tests must
   catch, but eight named. At CAS 042's accepted tree (2977838) `make test` caught its 17 new (work/042-trig-integrals.md).
-  At CAS 041's accepted tree (610c81b) `make test` caught 25 of its 27 new and the four CAS 038
+  At 1.9.0's tree (cf11f9f) `make test` caught 624 of 632 (work/v1.9.0-mutants.txt): the eight are 1.8.0's, and searched
+  again there each moves exactly the lines it moved at 1.8.0's tree. At CAS 041's accepted tree (610c81b) `make test` caught 25 of its 27 new and the four CAS 038
   and 039 mutants whose anchors it moved; lq041-check-d-off and lq041-check-root-off are equivalent there: each drops one of the
   two identity checks on the roots, and each identity holds by construction (work/041-quadratics-with-letters.md). At 1.8.0's tree (c564e41) `make test`
   caught 607 of 615 (work/v1.8.0-mutants.txt): six are 1.7.0's and two CAS 041's, and searched again there each of the
