@@ -1,4 +1,4 @@
-Casimir 1.9.0: integrate answers powers and products of SIN and COS of one angle, checked exactly through one form in SIN and COS. `SIN(X)^2` is `X÷2-SIN(2×X)÷4`, `SIN(X)^3` is `-COS(X)+COS(X)^3÷3` and `SIN(X)×SIN(3×X)` is `SIN(2×X)÷4-SIN(4×X)÷8`, where 1.8.0 printed NOT_INTEGRABLE.
+Casimir 1.9.0: integrate answers powers and products of SIN and COS of multiples of one angle, checked exactly through one form in SIN and COS. `SIN(X)^2` is `X÷2-SIN(2×X)÷4`, `SIN(X)^3` is `-COS(X)+COS(X)^3÷3` and `SIN(X)×SIN(3×X)` is `SIN(2×X)÷4-SIN(4×X)÷8`, where 1.8.0 printed NOT_INTEGRABLE.
 
 ## What's new since 1.8.0
 
@@ -45,7 +45,7 @@ New with SIN and COS integrals (CAS 042), each a refusal, never a wrong value:
 - **A sum with letter or π coefficients runs out of room** at the calculator's 16,384 B more often than one with numbers, since each such coefficient is kept as an expression: `A×SIN(X)^8` needs 17,808 B, `A×SIN(X)^6+π×COS(X)^4` 20,704 B.
 - **The degree is 24 in COS(θ) over the whole integrand,** so `SIN(24×X)×SIN(X)` and `SIN(X)^25` are refused though each argument is within 24 times θ.
 - **expand doesn't cancel a rational coefficient in letters once π is multiplied in** (π÷(π+A^2×π) beside 1÷(A^2+1)). integrate's check works around it by checking the answer as built; the cause is expand's.
-- **Refused, as outside the unit:** a letter in an argument (`SIN(A×X)^2`), arguments with no common angle (`SIN(X)×SIN(X+1)`, `SIN(X)^2+SIN(SQRT(2)×X)^2`), a power of SIN or COS times X (`X×SIN(X)^2`), a quotient (`SIN(X)^2÷COS(X)`), and powers of TAN (`TAN(X)^2`). Definite integrals of these (defint) are refused as at 1.8.0; they are the next unit's.
+- **Refused, as outside the unit:** a letter in an argument (`SIN(A×X)^2`), arguments with no common angle (`SIN(X)×SIN(X+1)`, `SIN(X)^2+SIN(SQRT(2)×X)^2`), a power of SIN or COS times X (`X×SIN(X)^2`), a quotient (`SIN(X)^2÷COS(X)`), and powers of TAN (`TAN(X)^2`). Definite integrals of these (defint) are refused as at 1.8.0; they are CAS 044's.
 - **Where substitution and parts run out of room first,** NO_ROOM stands when this path doesn't fit either: `COS(3×X)^4×SIN(2×X)` is NO_ROOM at 8,800 B and answers at 16,384 B.
 
 Carried from 1.8.0, each example run again on this tag's command line, where it prints as at 1.8.0. With quadratics and pure powers (CAS 041), each a refusal or a row, never a wrong value:
