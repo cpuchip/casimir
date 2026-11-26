@@ -1,0 +1,45 @@
+# The mutant count at the v1.11.0 tag: 640 of 648 caught at the tag's tree, from one run of every mutant (2026-11-26);
+# the eight survivors are 1.10.0's eight, named below (abacus #17514, #17683).
+#
+# The tree: 84da80f, the version commit on 61ac67c (CAS 044 as accepted at dd5edb1), which changes only README.md,
+# idf_component.yml and src/casim.h's version text. The bench's code size (435,431 B, scripts/device.sh --build at
+# 16,384 B) was measured at 61ac67c, whose code is dd5edb1's.
+#
+# The control: a worktree made at 84da80f with no build folder, then make test there with the firmware's core at
+# CORE_PIN: all green, 20 tests, 122,238 checks, golden reporting "Casimir 1.11.0" (2026-11-25 23:51:43Z to
+# 2026-11-26 00:00:49Z). The run used that worktree as its tree, so every copy (cp -a, which keeps timestamps) starts
+# from objects built from 84da80f's own sources, and make rebuilds only what depends on the file a mutant rewrites.
+#
+# The run (00:00:49Z to 05:33:29Z, 6 shards of 108, scripts/mutants.py on copies of that tree, nice 19, under a
+# claim):
+#   640 of 648 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache, cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value,
+#     factor026-letter-off: 1.7.0's six, as at 1.5.0 (work/v1.5.0-mutants.txt names what masks each).
+#   SURVIVED lq041-check-d-off, lq041-check-root-off: CAS 041's two, equivalent (work/v1.8.0-mutants.txt).
+#   Searched again at this tree (host only, 05:37:18Z to 05:39:43Z, 1,758 jobs, none failing), with 1.10.0's inputs
+#     (work/v1.10.0-mutants.txt): 2,250,577 lines through golden_check --record on the build and each of the eight, and
+#     1,011,695 through the series-only build for the two ser-*. Each moves byte for byte the lines it moved at 1.10.0's
+#     tree: div-letter-off the same 16 sum lines, ser-ln-no-value the same one limit line in the series-only build, the
+#     other six none.
+#   The unmutated build's own lines moved against 1.10.0's, as CAS 044 means: 23,657 of the 2,250,577 and 4,517 of the
+#     1,011,695 (28,174), every one a defint 1.10.0 refused NOT_INTEGRABLE, none in another command (s1110's
+#     basecmp.py, moves.py, qcheck.py, ucheck.py). Now:
+#     - answered (6,704 lines): 2,277 distinct integrals, each value right against a composite Gauss-Legendre
+#       quadrature in floats (4,554 values, the letter K at 1.37 and -0.61; the check flagged 25 of 25 planted wrong
+#       values, then passed);
+#     - UNDEFINED (7,572 lines): 690 distinct integrands, each with no value anywhere on its interval, tried at 201
+#       points with SIN(π) and TAN(π) taken as the 0 they are: an exact zero divisor (÷((X)-(X)), ÷SIN(π)), LOG or LN
+#       of zero (LOG(X-X), LN(LOG(1))), or TAN at π÷2 (TAN(ASIN(1)), TAN(ACOS(0)));
+#     - BAD_ARG (30 lines): 3 integrands with a letter in a divisor ((SIN(X)×COS(X))÷K), CAS 017's other-letters rule,
+#       as ruled (abacus #17449);
+#     - NO_ROOM (13,860 lines): 231 integrands outside CAS 042's form, at a 2,048 B arena only, none at 8,800 B or more;
+#     - IMPROPER (8 lines): 4 integrands, LN(EXP(u)) with X inside u (COS(LN(EXP(X+1))) from 1 to 2, LN(EXP(SIN(X)))
+#       from 0 to 2, LN(EXP(SIN(X+1))) from 2 to 3, LN(EXP(COS(X+1))) from -1 to 0.5). A refusal with a false
+#       reason, the integrand being finite: CAS 042's form reads LN(EXP(u)) as u, the interval check reads the
+#       integrand as typed and can't bound EXP's range. Ruled (abacus #17683): tag as it is, named in the notes' Not
+#       yet; the fix, the interval check reading the canonical form, is a later unit's.
+#   The 4 new since 1.10.0 (dt044-*) are caught.
+#
+# Peaks: the run's resident memory summed over every process whose working directory is one of its six copies,
+# sampled every 5 s: 1,991,152 KiB at most (00:01:14Z). /tmp and /dev/shm together 168 KiB when that peak was read,
+# box-wide, so not this run's alone. The copies on disk weren't sampled.

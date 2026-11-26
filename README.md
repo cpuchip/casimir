@@ -149,8 +149,9 @@ gzipped), most of it the decimal library's tables.
   The golden test is regression only: it shows nothing moved, not that an answer is right. What makes an answer right
   is the library's own checks above and the developer tests.
 - **Mutants** (scripts/mutants.py, run locally because it is slow): 648 deliberate faults, each of which the tests must
-  catch, but eight named. At CAS 044's accepted tree (dd5edb1) `make test` caught its 4 new
-  (work/044-trig-definite-integrals.md). At CAS 043's accepted tree (a938637) `make test` caught its 12 new and
+  catch, but eight named. At 1.11.0's tree (84da80f) `make test` caught 640 of 648 (work/v1.11.0-mutants.txt): the eight
+  are 1.10.0's, and searched again there each moves exactly the lines it moved at 1.10.0's tree. At CAS 044's accepted
+  tree (dd5edb1) `make test` caught its 4 new (work/044-trig-definite-integrals.md). At CAS 043's accepted tree (a938637) `make test` caught its 12 new and
   pp041-off at its new anchor (work/043-complex-pure-powers.md). At 1.10.0's tree (2e62056) `make test` caught 636 of 644 (work/v1.10.0-mutants.txt):
   the eight are 1.9.0's, and searched again there each moves exactly the lines it moved at 1.9.0's tree. At CAS 042's accepted tree (2977838) `make test` caught its 17 new (work/042-trig-integrals.md).
   At 1.9.0's tree (cf11f9f) `make test` caught 624 of 632 (work/v1.9.0-mutants.txt): the eight are 1.8.0's, and searched

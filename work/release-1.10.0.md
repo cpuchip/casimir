@@ -13,7 +13,7 @@ Casimir 1.10.0: under the complex bit, solve gives every root of x^n = c where t
   - the documented examples: none of 1.9.0's 1,484 commands;
   - the developer tests: none of the earlier checks;
   - the reviewer's hidden sets of the earlier units: 0 moved.
-- **Measured:** S3 code 297,742 bytes (4,017 more than 1.9.0's), **3,314 B under decision 94's 301,056 B line**: the next unit that needs more than that brings its measured size to Michael first. No accepted frame moved on the S3; on the host one did (do_sum_, 816 to 832 B, hunted and not traced; its table re-recorded in a commit of its own, a938637, work/043-frames.txt). On the ESP32-S3 the bench passes at this tag, and its worst stack is unchanged (11,360 B masked).
+- **Measured:** S3 code ~~297,742 bytes (4,017 more than 1.9.0's), **3,314 B under**~~ 297,743 bytes at this tag, **3,313 B under decision 94's 301,056 B line** (corrected at 1.11.0: 297,742 was measured at a938637, whose version text "1.9.0" is one character shorter): the next unit that needs more than that brings its measured size to Michael first. No accepted frame moved on the S3; on the host one did (do_sum_, 816 to 832 B, hunted and not traced; its table re-recorded in a commit of its own, a938637, work/043-frames.txt). On the ESP32-S3 the bench passes at this tag, and its worst stack is unchanged (11,360 B masked).
 
 **The guarantee is unchanged:** an exact answer, or a status that says why not. Never an approximation presented as an answer.
 
@@ -35,7 +35,7 @@ None. CAS 043's hidden set found no wrong value. Before it ran, two gaps were fo
   - with a 16,384 B arena, the size the calculator runs it with;
   - worst stack 11,360 B read with interrupts masked, plus a 384 B interrupt allowance (two frames, or the most measured over the masked reading where that is larger), 11,744 of a 12 KiB task;
   - nesting deeper than 44 levels is refused (NO_ROOM);
-  - about 298 KB of Casimir's code at -O2 (297,742 B), 3,314 B under decision 94's 301,056 B line.
+  - about 298 KB of Casimir's code at -O2 (~~297,742 B), 3,314 B~~ 297,743 B at this tag, 3,313 B under decision 94's 301,056 B line.
 
 ## Not yet, after 1.10.0
 
