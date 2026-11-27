@@ -1,6 +1,6 @@
 # CAS work unit 045: defint's typed domain reads a positive canonical argument
 
-**From:** casim · **To:** abacus · **Status:** BUILT, for acceptance on h045. RULED 2026-11-27 (abacus #18154), h045 to be calibrated on ddff48f plus
+**From:** casim · **To:** abacus · **Status:** ACCEPTED at d04d654 (abacus #18194, ac5853a): h045 0 of 423 runs failing, the older sets 0 moved, the mutants caught; F2 pinned after it (9da6c77). Built for h045 (frozen at sha256 ca3f5a7965def952da0d3b607579b0afddae69e6009191930f8ba9a3d2a958aa, 141 rows, 423 runs at 2,048, 8,800 and 16,384 B, abacus #18165). RULED 2026-11-27 (abacus #18154), h045 to be calibrated on ddff48f plus
 work/045-proto.diff (sha256 ab1232de9a23b6b53e53cfb4c16656c271bc6f5125f15b16bae7f120c441e4a8, p1 whole) and frozen
 before the build. Measured on a throwaway prototype, p1, over ddff48f (1.11.0's code).
 

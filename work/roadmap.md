@@ -26,7 +26,7 @@ release.
 | 3 | Complex roots past degree 2 (first piece done: CAS 043, x^n = c under --complex, accepted at a938637, abacus #17339) | exact complex roots where a closed form fits the line: biquadratics (`X^4+1`), X^n-1 and X^n+1, cubics with one real root; the rest stays PARTIAL | CAS 005, 007, 020 |
 | 4 | Matrices | a matrix typed as text, exact entries (rationals, letters, exact values); +, -, ×, scalar ×, transpose, determinant, inverse, rank, row reduction, A×X=B | canon and expand for entries; the arena |
 | 5 | Eigenvalues and eigenvectors | the characteristic polynomial det(A-λ×I), its roots by solve (exact where it factors into pieces solve can do; the rest PARTIAL), and an eigenvector for each root | phase 4, solve, factor, phase 3 |
-| 6 | The carried list | the 1.7.0 notes' "Not yet" items, in small units between phases or after | |
+| 6 | The carried list (CAS 045, 1.11.0's LN(EXP(u)) refused IMPROPER, accepted at d04d654, abacus #18194) | the 1.7.0 notes' "Not yet" items, in small units between phases or after | |
 
 Why eigenvalues come right after matrices: an eigenvalue is a root of the characteristic polynomial, and Casimir
 already factors and solves polynomials exactly. ~~A 2×2 rotation matrix's eigenvalues are complex, which is why phase 3
