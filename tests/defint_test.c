@@ -391,6 +391,36 @@ static void trig044(void)
     CHECK(judged >= 180, "CAS 044: %d judged", judged);
 }
 
+/* CAS 045 (work/045-typed-domain-positive.md, abacus #18154): a typed condition u > 0 or u >= 0 whose canonical u is
+   EXP, ALOG, COSH or a letter-free positive base to a power holds everywhere, so LN(EXP(u)) and SQRT(EXP(K))^2 are
+   answered, not refused IMPROPER or BAD_ARG; the true refusals beside them stay */
+static void td045(void)
+{
+    is("COS(LN(EXP(X+1)))", "1", "2", CASIM_RAD, "-SIN(2)+SIN(3)");    /* 1.11.0's four */
+    is("LN(EXP(SIN(X)))", "0", "2", CASIM_RAD, "-COS(2)+1");
+    is("LN(EXP(SIN(X+1)))", "2", "3", CASIM_RAD, "COS(3)-COS(4)");
+    is("LN(EXP(COS(X+1)))", "-1", "0.5", CASIM_RAD, "SIN(1.5)");
+    is("LN(EXP(SIN(X)))", "2", "0", CASIM_RAD, "COS(2)-1");
+    is("LN(EXP(SIN(X)))", "0", "90", CASIM_DEG, "180÷π");
+    is("LN(EXP(SIN(X)))", "0", "100", CASIM_GRAD, "200÷π");
+    is("LN(EXP(SIN(X)))^3", "0", "π", CASIM_RAD, "4÷3");
+    is("SIN(X)^2+LN(EXP(X))-X", "0", "1", CASIM_RAD, "-SIN(2)÷4+1÷2");
+    is("LOG(ALOG(SIN(X)))", "0", "π", CASIM_RAD, "2");                 /* ALOG */
+    is("LN(EXP(K))×SIN(X)", "0", "1", CASIM_RAD, "K-K×COS(1)");         /* a letter's (ruling 1) */
+    is("LN(EXP(K))×X", "0", "1", CASIM_RAD, "K÷2");                     /* the table's path */
+    is("LN(EXP(K×SIN(X)))", "0", "1", CASIM_RAD, "K-K×COS(1)");
+    is("SQRT(EXP(K))^2×SIN(X)", "0", "1", CASIM_RAD, "EXP(K)-EXP(K)×COS(1)");      /* u >= 0 */
+    is("SQRT(2^K)^2×SIN(X)", "0", "1", CASIM_RAD, "2^K-COS(1)×2^K");               /* a positive base */
+    refused("SQRT(K)^2×SIN(X)", "0", "1", CASIM_RAD, CASIM_BAD_ARG);   /* K < 0: no value */
+    refused("SQRT(K^K)^2×SIN(X)", "0", "1", CASIM_RAD, CASIM_BAD_ARG); /* a letter's base */
+    refused("SQRT((-2)^K)^2×SIN(X)", "0", "1", CASIM_RAD, CASIM_BAD_ARG);
+    refused("LN(EXP(SIN(X)))", "A", "2", CASIM_RAD, CASIM_BAD_ARG);     /* a letter bound */
+    refused("1÷(X-1)", "0", "2", CASIM_RAD, CASIM_IMPROPER);
+    refused("TAN(X)", "1", "2", CASIM_RAD, CASIM_IMPROPER);
+    refused("TAN(X)×COS(X)", "1", "2", CASIM_RAD, CASIM_NOT_INTEGRABLE);   /* CAS 017 rule 2, before any interval */
+    refused("LN(EXP(TAN(X)))×COS(X)", "1", "2", CASIM_RAD, CASIM_NOT_INTEGRABLE);
+}
+
 int main(void)
 {
     ce_init();
@@ -401,5 +431,6 @@ int main(void)
     seeded();
     visible();
     trig044();
+    td045();
     return check_done();
 }

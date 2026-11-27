@@ -7369,6 +7369,23 @@ static bool td_never0(ctx *c, ref u)
     return !any_letter(c, x->a) && lm_sgn(c, x->a) == 1;
 }
 
+/* CAS 045: u positive wherever it has a value, td_never0's list less a number and 1÷u */
+static bool td_pos(ctx *c, ref u)
+{
+    const node *x = nd(c, u);
+    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && td_never0(c, u);
+}
+
+/* CAS 045: D less its u > 0 and u >= 0 conditions that td_pos proves (LN(EXP(u))'s EXP(u) > 0); out of line, so
+   td_defint's frame stays */
+static __attribute__((noinline)) void td_droppos(ctx *c, tdc *D)
+{
+    int n = 0;
+    for (int i = 0; i < D->n; i++)
+        if (!((D->k[i] == '>' || D->k[i] == 'g') && td_pos(c, D->u[i]))) D->u[n] = D->u[i], D->k[n++] = D->k[i];
+    D->n = n;
+}
+
 static void td_put(ctx *c, tdc *D, ref u, char k)
 {
     int j = 0;
@@ -7558,6 +7575,7 @@ static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A, 
     size_t mark = c->used;
     int was = P ? P->n : 0;
     if (!td_entry(c, &T, r, &D, -1)) return IV_OK;
+    td_droppos(c, &D);                                  /* CAS 045 */
     for (int i = 0; i < D.n && c->st == CASIM_OK && !fail; i++) {
         ref u = D.u[i];
         char k = D.k[i];

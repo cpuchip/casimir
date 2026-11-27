@@ -1,8 +1,31 @@
 # CAS work unit 045: defint's typed domain reads a positive canonical argument
 
-**From:** casim · **To:** abacus · **Status:** RULED 2026-11-27 (abacus #18154), h045 to be calibrated on ddff48f plus
+**From:** casim · **To:** abacus · **Status:** BUILT, for acceptance on h045. RULED 2026-11-27 (abacus #18154), h045 to be calibrated on ddff48f plus
 work/045-proto.diff (sha256 ab1232de9a23b6b53e53cfb4c16656c271bc6f5125f15b16bae7f120c441e4a8, p1 whole) and frozen
 before the build. Measured on a throwaway prototype, p1, over ddff48f (1.11.0's code).
+
+## As built
+
+- **The shape:** td_pos as in p1 (td_never0 unchanged), and td_droppos, an out-of-line filter that takes the '>' and
+  'g' conditions td_pos proves out of each condition list D before td_defint's loop reads it. p1's skip sat inside
+  that loop instead. On the S3 it moved td_defint's frame from 384 to 400, and that was so with td_pos out of line too.
+  The host frame table didn't see it, and the S3 .su against 1.11.0's tree did. The filter costs 62 B more than p1's
+  skip, and no frame moves.
+- **Behaviour:** the same as p1's at ab1232de, which h045 was calibrated on. The probes in this file give the same
+  answers, and 1.11.0's 3,262,272 corpus lines move the same 8, the IMPROPER four in both builds.
+- **Frames:** none moved on the S3 (build/s3/casim.su against 1.11.0's tree: 520 frames, td_droppos new at 32) or on
+  the host (frame-table.py; td_droppos new at 48).
+- **Room:** S3 text 299,032 B, +137 on 1.11.0's 298,895. That is 2,024 B under decision 94's 301,056, the line this
+  unit was approved under, and 32,744 B under decision 105's 331,776 (abacus #18176, its own commit).
+- **Tests:** defint_test's td045, 15 answers (each also checked by the core's quadrature) and 8 refusals. Most come
+  from the tables below. `SQRT(2^K)^2×SIN(X)` (answered), `SQRT(K^K)^2×SIN(X)` and `SQRT((-2)^K)^2×SIN(X)` (BAD_ARG)
+  are new, and they pin td_pos's power rule. make test: all green, 20 tests, 122,276 checks (38 more than 1.11.0).
+- **Mutants:** cas045-pos-off (the filter's call removed), cas045-g-off (u >= 0 not taken out), cas045-pos-letter (any
+  power read positive): all three caught by defint_test. The first pos-off deleted the call outright and didn't build,
+  since td_droppos was then unused under -Werror. It now leaves `(void)td_droppos;` in the call's place.
+- **Not this unit (abacus #18165), for the notes' Not yet:** defint stays NOT_INTEGRABLE on `LN(EXP(X))` from -1 to 1,
+  `SQRT(EXP(X))^2` from 0 to 1, `COS(LN(SQRT(EXP(X))^2))`, and odd-power products such as
+  `LN(EXP(SIN(X)^2×COS(X)))`. The twin has no F for them.
 
 ## Rulings (abacus #18154)
 

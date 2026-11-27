@@ -1666,6 +1666,10 @@ MUTANTS = {
     "dt044-hole-off": [("src/casim.c", "        if (c.st == CASIM_OK && !ib_typed_ok(&c, n, t, var) && c.st == CASIM_OK) c.st = CASIM_NOT_INTEGRABLE;\n        if (c.st == CASIM_OK) F = tn_integ(&c, t, var);\n        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t))     /* CAS 017's other letters */\n", "        if (c.st == CASIM_OK) F = tn_integ(&c, t, var);\n        if (c.st == CASIM_OK && !ib_letters_kept(&c, F, var, t))     /* CAS 017's other letters */\n")],
     "dt044-one-bound": [("src/casim.c", "    a = check_rewrite(&c, F);                                           /* F(lo), CAS 044 */", "    c.sub_val = b, a = check_rewrite(&c, F);                            /* F(lo), CAS 044 */")],
     "dt044-sign": [("src/casim.c", "    b = add2(&c, b, (neg(&c, a)));                                      /* CAS 044 */", "    b = add2(&c, a, (neg(&c, b)));                                      /* CAS 044 */")],
+    # CAS 045 (work/045-typed-domain-positive.md): the skip off, u >= 0 not skipped, and any power read positive
+    "cas045-pos-off": [("src/casim.c", "    td_droppos(c, &D);                                  /* CAS 045 */\n", "    (void)td_droppos;\n")],
+    "cas045-g-off": [("src/casim.c", "        if (!((D->k[i] == '>' || D->k[i] == 'g') && td_pos(c, D->u[i])))", "        if (!((D->k[i] == '>') && td_pos(c, D->u[i])))")],
+    "cas045-pos-letter": [("src/casim.c", "    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && td_never0(c, u);", "    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && (td_never0(c, u) || x->kind == K_POW);")],
 }
 
 
