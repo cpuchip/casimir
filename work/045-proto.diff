@@ -1,0 +1,26 @@
+diff --git a/src/casim.c b/src/casim.c
+index 37b11cd..a1d72a1 100644
+--- a/src/casim.c
++++ b/src/casim.c
+@@ -7369,6 +7369,13 @@ static bool td_never0(ctx *c, ref u)
+     return !any_letter(c, x->a) && lm_sgn(c, x->a) == 1;
+ }
+ 
++/* CAS 045: u positive wherever it has a value, td_never0's list less a number and 1÷u */
++static bool td_pos(ctx *c, ref u)
++{
++    const node *x = nd(c, u);
++    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && td_never0(c, u);
++}
++
+ static void td_put(ctx *c, tdc *D, ref u, char k)
+ {
+     int j = 0;
+@@ -7563,6 +7570,7 @@ static __attribute__((noinline)) int td_defint(ctx *c, int var, const bound *A,
+         char k = D.k[i];
+         abn umin, umax, tol, ntol, one = abn_from_int(1), m1 = abn_from_int(-1), z = abn_zero(), t;
+         bool letter;
++        if ((k == '>' || k == 'g') && td_pos(c, u)) continue;      /* CAS 045: LN(EXP(u))'s EXP(u) > 0 */
+         if (!contains(c, u, var)) {
+             int s = any_letter(c, u) ? 2 : td_const(c, u, k);
+             if (s == 1) fail = true;

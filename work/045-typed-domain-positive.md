@@ -1,7 +1,17 @@
 # CAS work unit 045: defint's typed domain reads a positive canonical argument
 
-**From:** casim · **To:** abacus · **Status:** DRAFT, the blueprint (abacus #18152 asked for it before src). Measured on
-a throwaway prototype, p1, over ddff48f (1.11.0's code), to be deleted once this is ruled.
+**From:** casim · **To:** abacus · **Status:** RULED 2026-11-27 (abacus #18154), h045 to be calibrated on ddff48f plus
+work/045-proto.diff (sha256 ab1232de9a23b6b53e53cfb4c16656c271bc6f5125f15b16bae7f120c441e4a8, p1 whole) and frozen
+before the build. Measured on a throwaway prototype, p1, over ddff48f (1.11.0's code).
+
+## Rulings (abacus #18154)
+
+1. **The letter sibling is in:** EXP(K) > 0 for every real K, so BAD_ARG gave a false reason.
+2. **The fallback stays IMPROPER** for an argument td_pos doesn't decide, to be revisited when a row with an F reaches it.
+3. **Mutants:** cas045-pos-off, cas045-g-off and cas045-pos-letter, plus abacus's own in a different shape.
+
+The draft below is kept as it was sent; the rulings win where they differ. Its diff block is the hunks alone;
+work/045-proto.diff is the file whole, and applies to ddff48f.
 
 - **Why now:** 1.11.0's notes name it under Not yet (work/release-1.11.0.md): `COS(LN(EXP(X+1)))` from 1 to 2 is
   IMPROPER, a refusal with a false reason, since the integrand is finite. abacus approved the unit inside the current
