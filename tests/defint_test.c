@@ -419,6 +419,8 @@ static void td045(void)
     refused("TAN(X)", "1", "2", CASIM_RAD, CASIM_IMPROPER);
     refused("TAN(X)×COS(X)", "1", "2", CASIM_RAD, CASIM_NOT_INTEGRABLE);   /* CAS 017 rule 2, before any interval */
     refused("LN(EXP(TAN(X)))×COS(X)", "1", "2", CASIM_RAD, CASIM_NOT_INTEGRABLE);
+    refused("SQRT(-1)×X", "0", "1", CASIM_RAD, CASIM_UNDEFINED);       /* a negative number isn't td_pos's */
+    refused("LN(-2)×SIN(X)", "0", "1", CASIM_RAD, CASIM_UNDEFINED);
 }
 
 int main(void)

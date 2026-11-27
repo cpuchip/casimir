@@ -19,10 +19,18 @@ before the build. Measured on a throwaway prototype, p1, over ddff48f (1.11.0's 
   unit was approved under, and 32,744 B under decision 105's 331,776 (abacus #18176, its own commit).
 - **Tests:** defint_test's td045, 15 answers (each also checked by the core's quadrature) and 8 refusals. Most come
   from the tables below. `SQRT(2^K)^2×SIN(X)` (answered), `SQRT(K^K)^2×SIN(X)` and `SQRT((-2)^K)^2×SIN(X)` (BAD_ARG)
-  are new, and they pin td_pos's power rule. make test: all green, 20 tests, 122,276 checks (38 more than 1.11.0).
+  are new, and they pin td_pos's power rule. make test: all green, 20 tests, 122,276 checks (38 more than 1.11.0) at d04d654.
 - **Mutants:** cas045-pos-off (the filter's call removed), cas045-g-off (u >= 0 not taken out), cas045-pos-letter (any
   power read positive): all three caught by defint_test. The first pos-off deleted the call outright and didn't build,
   since td_droppos was then unused under -Werror. It now leaves `(void)td_droppos;` in the call's place.
+- **ACCEPTED at d04d654 (abacus #18194, ac5853a):** h045 0 of 423 runs failing, the older sets 0 moved of 34,956 and
+  h028's 568, the three mutants caught on their predicted rows, abacus's F1 caught by h045 and defint_test.
+- **abacus's F2, after acceptance (#18194):** td_never0 in td_pos's place inside td_droppos. In 1.11.0's corpus it
+  moves 11,840 lines, CAS 045's eight and 11,832 more: a negative number's root or log, UNDEFINED at 1.11.0 and answered
+  under F2 (`SQRT(-1)×X` from 0 to 1 is `SQRT(-1)÷2`; 11,500 answered, 265 BAD_ARG, 74 UNDECIDED, 1 NO_ROOM).
+  make test sees it already, at golden corpus lines 3525, 4485, 6556, 6815 and 7165, and two td045 rows now pin it as
+  well (`SQRT(-1)×X` and `LN(-2)×SIN(X)`, UNDEFINED). It is in mutants.py as cas045-never0. Its other half, td_pos
+  without its 1÷u clause, moves none of the corpus's lines past the eight, so it is left out as unreachable at this tag.
 - **Not this unit (abacus #18165), for the notes' Not yet:** defint stays NOT_INTEGRABLE on `LN(EXP(X))` from -1 to 1,
   `SQRT(EXP(X))^2` from 0 to 1, `COS(LN(SQRT(EXP(X))^2))`, and odd-power products such as
   `LN(EXP(SIN(X)^2×COS(X)))`. The twin has no F for them.

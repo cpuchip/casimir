@@ -1670,6 +1670,12 @@ MUTANTS = {
     "cas045-pos-off": [("src/casim.c", "    td_droppos(c, &D);                                  /* CAS 045 */\n", "    (void)td_droppos;\n")],
     "cas045-g-off": [("src/casim.c", "        if (!((D->k[i] == '>' || D->k[i] == 'g') && td_pos(c, D->u[i])))", "        if (!((D->k[i] == '>') && td_pos(c, D->u[i])))")],
     "cas045-pos-letter": [("src/casim.c", "    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && td_never0(c, u);", "    return x->kind != K_NUM && !(x->kind == K_POW && is_num(c, x->b)) && (td_never0(c, u) || x->kind == K_POW);")],
+    # abacus's F2 (#18194): td_never0 for td_pos, so a nonzero number or 1÷u reads positive. In 1.11.0's corpus it
+    # moves 11,832 lines past CAS 045's eight, every one a negative number's root or log, UNDEFINED at 1.11.0 and
+    # answered under it (SQRT(-1)×X from 0 to 1 is SQRT(-1)÷2); defint_test's two number rows pin it. (Its 1÷u half
+    # alone, td_pos without its K_POW clause, is left out as unreachable at this tag: it moves no corpus line past the
+    # eight, and abacus's six aimed inputs, SQRT((X-3)^(-1))^2 among them, are NOT_INTEGRABLE before the typed check.)
+    "cas045-never0": [("src/casim.c", "&& td_pos(c, D->u[i])))", "&& ((void)td_pos, td_never0(c, D->u[i]))))")],
 }
 
 
