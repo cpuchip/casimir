@@ -1,0 +1,34 @@
+# The mutant count at the v1.12.0 tag: 644 of 652 caught at the tag's tree, from one run of every mutant (2026-11-27);
+# the eight survivors are 1.11.0's eight, named below (abacus #18194).
+#
+# The tree: e7b2c51, the version commit on 8abc3c7 (CAS 045 as accepted at d04d654, with abacus's F2 pinned at 9da6c77),
+# which changes only README.md, idf_component.yml and src/casim.h's version text. The bench's code size (435,560 B,
+# scripts/device.sh --build at 16,384 B) was measured at 8abc3c7, whose code is 9da6c77's.
+#
+# The control: a worktree made at e7b2c51 with no build folder, then make test there with the firmware's core at
+# CORE_PIN: all green, 20 tests, 122,278 checks, golden reporting "Casimir 1.12.0" (2026-11-27 07:45:47Z to 07:55:31Z).
+# The run used that worktree as its tree, so every copy (cp -a, which keeps timestamps) starts from objects built from
+# e7b2c51's own sources, and make rebuilds only what depends on the file a mutant rewrites.
+#
+# The run (07:55:50Z to 13:28:04Z, 6 shards of 108 or 109, scripts/mutants.py on copies of that tree, nice 19, under a
+# claim):
+#   644 of 652 caught; none not built, none not tested.
+#   SURVIVED cancel-rewind-keeps-cache, cond-site2-lhopital, div-letter-off, ser-root-of-negative, ser-ln-no-value,
+#     factor026-letter-off: 1.7.0's six, as at 1.5.0 (work/v1.5.0-mutants.txt names what masks each).
+#   SURVIVED lq041-check-d-off, lq041-check-root-off: CAS 041's two, equivalent (work/v1.8.0-mutants.txt).
+#   Searched again at this tree (host only, 07:58:35Z to 08:00:52Z, 1,758 jobs, none failing), with 1.11.0's inputs
+#     (work/v1.11.0-mutants.txt): 2,250,577 lines through golden_check --record on the build and each of the eight, and
+#     1,011,695 through the series-only build for the two ser-*. Each moves byte for byte the lines it moved at 1.11.0's
+#     tree (each mutant's diff file identical to 1.11.0's): div-letter-off the same 16 sum lines, ser-ln-no-value the
+#     same one limit line in the series-only build, the other six none.
+#   The unmutated build's own lines moved against 1.11.0's, as CAS 045 means: 4 of the 2,250,577 and 4 of the 1,011,695
+#     (8), each a defint 1.11.0 refused IMPROPER and now answered, right by hand and against Simpson's rule in floats:
+#     COS(LN(EXP(X+1))) from 1 to 2 is -SIN(2)+SIN(3), LN(EXP(SIN(X))) from 0 to 2 is -COS(2)+1, LN(EXP(SIN(X+1))) from
+#     2 to 3 is COS(3)-COS(4), LN(EXP(COS(X+1))) from -1 to 0.5 is SIN(1.5). They are 1.11.0's IMPROPER four
+#     (work/v1.11.0-mutants.txt). None in another command, and none in another status.
+#   The 4 new since 1.11.0 (cas045-pos-off, -g-off, -pos-letter and abacus's F2 as cas045-never0) are caught. F2 alone
+#     moves 11,832 lines past those eight in the same corpus (work/045-typed-domain-positive.md).
+#
+# Peaks: the run's resident memory summed over every process whose working directory is one of its six copies,
+# sampled every 5 s: 1,963,744 KiB at most (07:58:55Z). /tmp and /dev/shm together 1,092 KiB when that peak was read,
+# box-wide, so not this run's alone. The copies on disk weren't sampled.
